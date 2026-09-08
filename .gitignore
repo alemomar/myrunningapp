@@ -45,3 +45,4 @@ venv/
 ## Logs / temp
 *.log
 .tmp/
+backups/
