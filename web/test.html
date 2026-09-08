@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tests logic.js</title>
+<style>
+  body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#f5f5f7;padding:24px;max-width:700px;margin:0 auto}
+  .pass{color:#30d158}
+  .fail{color:#ff453a;font-weight:600}
+  .case{padding:8px 0;border-bottom:1px solid #222}
+  .summary{font-size:18px;font-weight:700;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="summary" id="summary">Exécution des tests...</div>
+<div id="results"></div>
+
+<script src="logic.js?v=13"></script>
+<script>
+// Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
+// directement dans un navigateur — aucun outil/build nécessaire.
+// Objectif : éviter de redécouvrir un bug (comme les zones cardio ou
+// l'allure Work) seulement une fois de vraies données en jeu.
+
+let pass = 0, fail = 0;
+const out = document.getElementById("results");
+(async function(){
+
+function assertEqual(name, actual, expected){
+  const ok = JSON.stringify(actual) === JSON.stringify(expected);
+  if(ok) pass++; else fail++;
+  const div = document.createElement("div");
+  div.className = "case";
+  div.innerHTML = `<span class="${ok?'pass':'fail'}">${ok?'✓':'✗'}</span> ${name}` +
+    (ok ? "" : `<br><small>attendu: ${JSON.stringify(expected)} — obtenu: ${JSON.stringify(actual)}</small>`);
+  out.appendChild(div);
+}
+
+function assertClose(name, actual, expected, tolerance){
+  const ok = Math.abs(actual - expected) <= tolerance;
+  if(ok) pass++; else fail++;
+  const div = document.createElement("div");
+  div.className = "case";
+  div.innerHTML = `<span class="${ok?'pass':'fail'}">${ok?'✓':'✗'}</span> ${name}` +
+    (ok ? "" : `<br><small>attendu: ~${expected} (±${tolerance}) — obtenu: ${actual}</small>`);
+  out.appendChild(div);
+}
+
+// --- linearRegression ---
+{
+  const {slope, intercept} = linearRegression([{x:0,y:0},{x:1,y:2},{x:2,y:4}]);
+  assertClose("linearRegression : droite parfaite y=2x", slope, 2, 0.001);
+  assertClose("linearRegression : intercept proche de 0", intercept, 0, 0.001);
+}
+
+// --- hrZoneDefs (Karvonen) ---
+{
+  const defs = hrZoneDefs(191, 60);
+  assertEqual("hrZoneDefs : bornes avec FC repos (191/60)", defs.map(d=>d.max), [139, 152, 165, 178, 999]);
+  const defsNoRest = hrZoneDefs(191, 0);
+  assertEqual("hrZoneDefs : bornes sans FC repos = %FC max brut", defsNoRest.map(d=>d.max), [115, 134, 153, 172, 999]);
+}
+
+// --- computeHrZoneSeconds ---
+{
+  // 60s à 100bpm (zone 1) puis 60s à 180bpm (zone 5), FC max 191 / repos 60
+  const series = [{t:0,hr:100},{t:60,hr:100},{t:60,hr:180},{t:120,hr:180}];
+  const {secs} = computeHrZoneSeconds(series, 191, 60);
+  assertEqual("computeHrZoneSeconds : répartition zone 1 / zone 5", secs, [60,0,0,0,60]);
+}
+
+// --- detectHrSurges / looksLikeFractionne ---
+{
+  // Vrai fractionné : 7 cycles nets de ±45bpm sur 33min (reproduit une vraie séance)
+  function mkIntervalSeries(cyclePeriod, amplitude, totalDur){
+    const pts=[];
+    for(let t=0;t<=totalDur;t+=15){
+      const phase=(t%cyclePeriod)/cyclePeriod;
+      pts.push({t, hr: Math.round(155 + Math.sin(phase*2*Math.PI-Math.PI/2)*amplitude)});
+    }
+    return pts;
+  }
+  const realFractionne = mkIntervalSeries(250, 25, 2000); // ~8 cycles, amplitude 50bpm
+  assertEqual("looksLikeFractionne : vrai fractionné détecté", looksLikeFractionne(realFractionne), true);
+
+  // EF régulier : montée en warmup + léger bruit, pas de structure répétée
+  function mkEfSeries(totalDur){
+    const pts=[];
+    for(let t=0;t<=totalDur;t+=15){
+      let hr = t<480 ? 100+(145-100)*(t/480) : 145+Math.sin(t/180)*6;
+      hr += (Math.random()*6-3);
+      pts.push({t, hr: Math.round(hr)});
+    }
+    return pts;
+  }
+  const ef = mkEfSeries(2950);
+  assertEqual("looksLikeFractionne : EF régulier non détecté (pas de faux positif)", looksLikeFractionne(ef), false);
+
+  // Séance trop courte pour juger d'une structure
+  assertEqual("looksLikeFractionne : séance <5min toujours false", looksLikeFractionne(mkIntervalSeries(60, 40, 200)), false);
+}
+
+// --- looksLikeSeuil ---
+{
+  // 30min à 90% FC max (zone 4-5) : franchement du Seuil
+  const seuilSeries = [];
+  for(let t=0;t<=1800;t+=15) seuilSeries.push({t, hr:172});
+  assertEqual("looksLikeSeuil : séance à 90% FC max détectée", looksLikeSeuil(seuilSeries, 191, 60), true);
+
+  // 30min à 65% FC max (zone 2) : EF classique, pas de Seuil
+  const efSeries = [];
+  for(let t=0;t<=1800;t+=15) efSeries.push({t, hr:145});
+  assertEqual("looksLikeSeuil : EF classique non détecté", looksLikeSeuil(efSeries, 191, 60), false);
+}
+
+// --- detectPaceIntervals / computeIntervalPaces ---
+{
+  // Reproduit la capture réelle : 7 cycles de 1min Work (~260-280 sec/km) /
+  // 1min Récup (~535-585 sec/km), plus un cooldown lent en fin de séance
+  // (le genre de valeur qui faisait dérailler l'ancien seuil min/max).
+  function mkIntervalPaceSeries(cycles, cooldownPace, cooldownDurSec=180){
+    const pts=[];
+    let t=0;
+    for(let i=0;i<cycles;i++){
+      for(let s=0;s<60;s+=5) pts.push({t:t+s, pace: Math.round(260+Math.random()*20)});
+      t+=60;
+      for(let s=0;s<60;s+=5) pts.push({t:t+s, pace: Math.round(535+Math.random()*50)});
+      t+=60;
+    }
+    if(cooldownPace){
+      for(let s=0;s<cooldownDurSec;s+=5) pts.push({t:t+s, pace: cooldownPace});
+    }
+    return pts;
+  }
+  // Tolérances généreuses : c'est une heuristique sur données bruitées, pas
+  // un calcul exact — l'objectif est d'être dans le bon ordre de grandeur,
+  // de détecter la majorité des intervalles, et surtout de ne JAMAIS se
+  // faire polluer par le cooldown (l'ancien bug donnait ~400+ pour "Work").
+  const short = mkIntervalPaceSeries(7, 900, 180); // cooldown 3min
+  const resultShort = computeIntervalPaces(short);
+  assertClose("computeIntervalPaces : allure Work correcte (cooldown court)", resultShort.work, 270, 20);
+  assertClose("computeIntervalPaces : allure Récup correcte (cooldown court)", resultShort.recovery, 560, 55);
+  assertEqual("computeIntervalPaces : au moins 6 des 7 intervalles Work détectés", resultShort.workCount>=6, true);
+
+  // Cas décrit par l'utilisateur : le résultat ne doit PAS dépendre de la
+  // durée du cooldown (3min vs 12min, ~2km de récup) — preuve qu'il est bien
+  // neutralisé plutôt que juste "moins pris en compte".
+  const long = mkIntervalPaceSeries(7, 900, 720); // cooldown 12min (~2km)
+  const resultLong = computeIntervalPaces(long);
+  assertClose("computeIntervalPaces : allure Work stable, cooldown 3min ou 12min", resultLong.work, resultShort.work, 3);
+  assertClose("computeIntervalPaces : allure Récup stable, cooldown 3min ou 12min", resultLong.recovery, resultShort.recovery, 30);
+
+  const withoutCooldown = mkIntervalPaceSeries(7, null);
+  const resultNone = computeIntervalPaces(withoutCooldown);
+  assertClose("computeIntervalPaces : cohérent avec/sans cooldown (Work)", resultNone.work, 270, 15);
+}
+
+// --- computeWorkAvgHr : FC moyenne pendant les phases Work uniquement ---
+{
+  // Mêmes cycles 60s Work / 60s Récup que ci-dessus, mais avec une FC nettement
+  // plus haute pendant le Work (~165bpm) que pendant la Récup (~140bpm) — la
+  // FC Work ne doit pas être diluée par la FC (plus basse) de la récup.
+  function mkIntervalSeriesWithHr(cycles){
+    const pace=[], hr=[];
+    let t=0;
+    for(let i=0;i<cycles;i++){
+      for(let s=0;s<60;s+=5){ pace.push({t:t+s, pace: Math.round(260+Math.random()*20)}); hr.push({t:t+s, hr: Math.round(165+Math.random()*4)}); }
+      t+=60;
+      for(let s=0;s<60;s+=5){ pace.push({t:t+s, pace: Math.round(535+Math.random()*50)}); hr.push({t:t+s, hr: Math.round(140+Math.random()*4)}); }
+      t+=60;
+    }
+    return {pace, hr};
+  }
+  const {pace, hr} = mkIntervalSeriesWithHr(7);
+  const workHr = computeWorkAvgHr(pace, hr);
+  assertClose("computeWorkAvgHr : FC Work proche de 165bpm, pas diluée par la récup (~140bpm)", workHr, 165, 6);
+
+  assertEqual("computeWorkAvgHr : sans hrSeries -> null", computeWorkAvgHr(pace, null), null);
+  assertEqual("computeWorkAvgHr : sans paceSeries -> null", computeWorkAvgHr(null, hr), null);
+}
+
+// --- computeIntervalPaces sur une vraie séance (10/08) ---
+// Fixture capturée depuis pace_series en base pour une séance fractionné
+// réelle : 8 cycles Work/Récup nets, suivis d'un palier "Seuil" soutenu puis
+// d'un cooldown — exactement le cas qui a fait échouer plusieurs versions
+// précédentes de l'algo (allure Work fausse, comptage d'intervalles délirant).
+// C'est le test le plus important du fichier : s'il casse, ne pas relâcher
+// tant qu'il n'est pas vert.
+try {
+  const real = await fetch('real_pace_series.json').then(r=>r.json());
+  const result = computeIntervalPaces(real);
+  assertClose("computeIntervalPaces (vraie séance 10/08) : allure Work ≈ 4'20''/km attendue", result.work, 260, 25);
+  assertEqual("computeIntervalPaces (vraie séance 10/08) : 8 intervalles Work (palier Seuil + cooldown exclus)", result.workCount, 8);
+  assertEqual("computeIntervalPaces (vraie séance 10/08) : 8 intervalles Récup", result.recoveryCount, 8);
+} catch(e) {
+  assertEqual("computeIntervalPaces (vraie séance 10/08) : fixture chargée", "erreur: "+e.message, "pas d'erreur");
+}
+
+// --- computeIntervalPaces sur les 5 premières séances Fractionné réelles ---
+// Signalé par l'utilisateur : Work/Récup quasi identiques sur le graph pour
+// les séances les plus anciennes (07 mai, 27 mai, 16 juin...). Diagnostic sur
+// les vraies pace_series de ces séances : 4 des 5 ont un échantillonnage
+// bien trop épars (1 point toutes les ~5min, contre 2-3s pour la séance du
+// 10/08) pour résoudre des cycles Work/Récup d'~1min — l'algo doit les
+// exclure (retourner null) plutôt que produire un résultat trompeur. Seule
+// la 5e séance a un échantillonnage dense et donne un résultat exploitable.
+try {
+  const early = await fetch('real_pace_series_early.json').then(r=>r.json());
+  const [sparse1, sparse2, sparse3, mixed, dense] = early.map(computeIntervalPaces);
+  assertEqual("séances anciennes éparses : pas assez de données -> null (1/4)", sparse1, null);
+  assertEqual("séances anciennes éparses : pas assez de données -> null (2/4)", sparse2, null);
+  assertEqual("séances anciennes éparses : pas assez de données -> null (3/4)", sparse3, null);
+  assertEqual("séances anciennes éparses : pas assez de données -> null (4/4, échantillonnage mixte)", mixed, null);
+  assertEqual("séance dense (5/5) : résultat exploitable", dense !== null, true);
+  if(dense) assertEqual("séance dense (5/5) : écart Work/Récup net (pas quasi identique)", dense.recovery - dense.work > 50, true);
+} catch(e) {
+  assertEqual("séances anciennes réelles : fixture chargée", "erreur: "+e.message, "pas d'erreur");
+}
+
+// --- computeIntervalPaces sur une vraie séance avec échauffement (29/05) ---
+// Bug réel signalé par l'utilisateur : Work/Récup quasi identiques sur le
+// graph pour cette séance. Cause : 10min d'échauffement AVANT les
+// intervalles génèrent du bruit GPS classé en petits faux segments
+// Work/Récup ; l'ancienne version de trimToConsistentRun prenait CES
+// segments comme référence de régularité et coupait la vraie plage
+// fractionné avant de l'atteindre. Référence terrain (app Fitness, capture
+// "Intervals") : 4 cycles de 4min Work (~5'02"-5'32"/km, moyenne ~5'09") et
+// 2min Récup (~9'51"-10'06"/km, moyenne ~9'58"), puis 15min de cooldown à
+// 7'01"/km qui ne doit PAS être compté comme Récup.
+try {
+  const real2905 = await fetch('real_pace_series_2905.json').then(r=>r.json());
+  const result2905 = computeIntervalPaces(real2905);
+  assertClose("computeIntervalPaces (vraie séance 29/05, avec échauffement) : allure Work ≈ 5'09''/km attendue", result2905.work, 309, 30);
+  assertClose("computeIntervalPaces (vraie séance 29/05) : allure Récup ≈ 9'58''/km attendue", result2905.recovery, 598, 40);
+  assertEqual("computeIntervalPaces (vraie séance 29/05) : écart Work/Récup net (pas quasi identique, l'ancien bug)", result2905.recovery - result2905.work > 150, true);
+} catch(e) {
+  assertEqual("computeIntervalPaces (vraie séance 29/05) : fixture chargée", "erreur: "+e.message, "pas d'erreur");
+}
+
+// --- computeIntervalPaces sur une vraie séance à cycles très courts (07/05) ---
+// Bug réel signalé par l'utilisateur : allure Work fausse (calculée à
+// 5'30''/km au lieu de ~4'34''/km attendu). Cause : sur cette séance à
+// cycles 1min Work / 1min Récup, la plage retenue par findConsistentRun
+// incluait un segment en tout début et un en toute fin dont la DURÉE
+// ressemblait aux vrais intervalles mais dont l'ALLURE (~430 sec/km) n'avait
+// rien à voir avec le vrai Work (~250-300 sec/km) — une bascule progressive
+// vers le cooldown, de durée coïncidemment proche. Référence terrain (app
+// Fitness) : Work ~4'34''/km (~274s), Récup ~10'03''/km (~603s).
+try {
+  const real0705 = await fetch('real_pace_series_0705.json').then(r=>r.json());
+  const result0705 = computeIntervalPaces(real0705);
+  assertClose("computeIntervalPaces (vraie séance 07/05, cycles 1min/1min) : allure Work proche de 4'34''/km attendue", result0705.work, 274, 35);
+  assertClose("computeIntervalPaces (vraie séance 07/05) : allure Récup proche de 10'03''/km attendue", result0705.recovery, 603, 40);
+  assertEqual("computeIntervalPaces (vraie séance 07/05) : pas de segment de bord contaminé par le cooldown (Work < 300s/km)", result0705.work < 300, true);
+} catch(e) {
+  assertEqual("computeIntervalPaces (vraie séance 07/05) : fixture chargée", "erreur: "+e.message, "pas d'erreur");
+}
+
+// --- computeIntervalPaces sur une vraie séance avec récups trop brèves pour
+// survivre au filtrage (16/06) ---
+// Bug réel : une exigence d'alternance stricte (essai précédent, pour
+// corriger le 07/05) coupait cette séance à seulement 3 segments retenus sur
+// ~25min de structure ~75-80s Work/Récup par ailleurs propre, dès qu'une
+// récup entre deux Work manquait (trop courte/bruitée pour le filtre de 20s
+// min). Le nouveau correctif (allure vérifiée en continu, sans exiger
+// l'alternance) doit récupérer significativement plus de segments tout en
+// gardant une allure Work nettement sous 400s/km (zone Récup) et un net
+// écart Work/Récup.
+try {
+  const real1606 = await fetch('real_pace_series_1606.json').then(r=>r.json());
+  const result1606 = computeIntervalPaces(real1606);
+  assertEqual("computeIntervalPaces (vraie séance 16/06, récups parfois filtrées) : au moins 6 segments retenus (vs 3 avec l'alternance stricte)", result1606.workCount + result1606.recoveryCount >= 6, true);
+  assertEqual("computeIntervalPaces (vraie séance 16/06) : allure Work plausible (<350s/km)", result1606.work < 350, true);
+  assertEqual("computeIntervalPaces (vraie séance 16/06) : écart Work/Récup net", result1606.recovery - result1606.work > 200, true);
+} catch(e) {
+  assertEqual("computeIntervalPaces (vraie séance 16/06) : fixture chargée", "erreur: "+e.message, "pas d'erreur");
+}
+
+// --- getIntervalPaces : override manuel (exception) ---
+// Certaines séances ont un pace_series trop épars pour l'algo (source
+// interne à l'app Fitness bien plus fine que ce que HealthKit expose) —
+// on permet alors une saisie manuelle qui prend le pas sur le calcul.
+{
+  const manual = getIntervalPaces({fracWorkManual: 372, fracRecoveryManual: 679, paceSeries: null});
+  assertEqual("getIntervalPaces : override manuel prioritaire (Work)", manual.work, 372);
+  assertEqual("getIntervalPaces : override manuel prioritaire (Récup)", manual.recovery, 679);
+  assertEqual("getIntervalPaces : override manuel marqué comme tel", manual.manual, true);
+
+  const auto = getIntervalPaces({fracWorkManual: null, fracRecoveryManual: null, paceSeries: null});
+  assertEqual("getIntervalPaces : sans override ni pace_series -> null", auto, null);
+}
+
+// --- fmtA / fmtDur ---
+{
+  assertEqual("fmtA : 270s/km -> 4'30''", fmtA(270), "4'30''");
+  assertEqual("fmtA : valeur nulle -> —", fmtA(null), "—");
+  assertEqual("fmtDur : 90min -> 1:30:00", fmtDur(5400), "1:30:00");
+  assertEqual("fmtDur : 5min -> 5:00", fmtDur(300), "5:00");
+}
+
+document.getElementById("summary").innerHTML =
+  `<span class="${fail?'fail':'pass'}">${pass} passés, ${fail} échoués</span>`;
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+## macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## Xcode
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+DerivedData/
+*.moved-aside
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcscmblueprint
+*.xccheckout
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+## Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+## Env / secrets (au cas où on en ajoute plus tard)
+.env
+.env.local
+*.pem
+*.key
+
+## Editor
+.vscode/
+.idea/
+
+## Logs / temp
+*.log
+.tmp/

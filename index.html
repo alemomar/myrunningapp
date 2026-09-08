@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e0f11;color:#f0f0f0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:16px 14px 40px}
+.hdr{text-align:center;margin-bottom:16px}
+.hdr-sub{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8a8d96;margin-bottom:4px}
+.hdr-title{font-size:22px;font-weight:600;letter-spacing:-.5px}
+.hdr-title span{color:#1baf7a}
+.hdr-loc{font-size:12px;color:#8a8d96;margin-top:3px}
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.kpi{background:#16181c;border:1px solid #2a2d35;border-radius:12px;padding:12px 14px}
+.kpi-val{font-size:20px;font-weight:600;line-height:1}
+.kpi-lbl{font-size:10px;color:#8a8d96;text-transform:uppercase;letter-spacing:.08em;margin-top:5px}
+.tabs{display:flex;border-bottom:1px solid #2a2d35;margin-bottom:14px;overflow-x:auto}
+.tab-btn{padding:9px 11px;font-size:12px;cursor:pointer;color:#8a8d96;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-family:inherit}
+.tab-btn.active{color:#f0f0f0;border-bottom:2px solid #1baf7a}
+.card{background:#16181c;border:1px solid #2a2d35;border-radius:12px;padding:16px;margin-bottom:12px}
+.stitle{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8a8d96;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #1e2026}
+.row:last-child{border-bottom:none}
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;margin-left:6px}
+.filters{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap}
+.flt{padding:4px 11px;border-radius:20px;font-size:11px;cursor:pointer;background:transparent;color:#8a8d96;border:1px solid #2a2d35;font-family:inherit}
+.flt.active{background:#1baf7a;color:#fff;border-color:#1baf7a;font-weight:600}
+.zone-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:10px}
+.leg{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#8a8d96}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.plan-item{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #1e2026}
+.plan-item:last-child{border-bottom:none}
+.plan-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.plan-text{font-size:13px;color:#c0c3ca;line-height:1.55}
+.plan-text strong{color:#f0f0f0;font-weight:600}
+.week-title{font-size:13px;font-weight:600;color:#f0f0f0;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #2a2d35}
+.divider{height:1px;background:#2a2d35;margin:14px 0}
+.alert{border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-sub">2 Mar → 10 Aoû 2026</div>
+  <div class="hdr-title">Running <span>Omar</span></div>
+  <div class="hdr-loc">56 séances · Paris, Uccle &amp; Rabat</div>
+</div>
+
+<div class="kpi-grid" id="kpis"></div>
+<div class="tabs" id="tabs"></div>
+<div id="content"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="data/runs.js"></script>
+<script>
+const TC={EF:"#1baf7a",Long:"#2a78d6","Fractionné":"#eda100","Récup":"#888780",Course:"#e34948",Renfo:"#a855f7","Mobilité":"#06b6d4",Yoga:"#ec4899"};
+
+const fmtA=s=>{if(!s)return"—";const m=Math.floor(s/60),sc=s%60;return m+"'"+String(sc).padStart(2,"0")+"''"};
+
+const efRuns=RUNS.filter(r=>r.type==="EF");
+const fracRuns=RUNS.filter(r=>r.type==="Fractionné");
+const totalDist=RUNS.reduce((a,r)=>a+r.dist,0).toFixed(1);
+const avgPaceEF=Math.round(efRuns.reduce((a,r)=>a+r.allure,0)/efRuns.length);
+const longMax=Math.max(...RUNS.filter(r=>r.type==="Long").map(r=>r.dist));
+
+// KM mois en cours (juillet 2026)
+const now=new Date(2026,6,18);
+const monthlyDist=RUNS.filter(r=>{const[d,m]=r.date.split("/").map(Number);return m===(now.getMonth()+1)&&r.dist>0;}).reduce((a,r)=>a+r.dist,0).toFixed(1);
+
+// Allure EF 4 dernieres semaines
+const fourWeeksAgo=new Date(now);fourWeeksAgo.setDate(now.getDate()-28);
+const recentEF=efRuns.filter(r=>{const[d,m]=r.date.split("/").map(Number);return new Date(2026,m-1,d)>=fourWeeksAgo;});
+const avgPaceRecent=recentEF.length>0?Math.round(recentEF.reduce((a,r)=>a+r.allure,0)/recentEF.length):null;
+
+document.getElementById("kpis").innerHTML=[
+  [monthlyDist+" km","Km ce mois (Jul)","#1baf7a"],
+  ["43","Séances","#2a78d6"],
+  [fmtA(avgPaceEF)+"/km","Allure moy EF (total)","#1baf7a"],
+  [avgPaceRecent?fmtA(avgPaceRecent)+"/km":"—","Allure moy EF (4 sem)","#eda100"],
+  [totalDist+" km","Distance totale","#2a78d6"],
+  [longMax+" km","SL max","#888780"],
+].map(([v,l,c])=>`<div class="kpi"><div class="kpi-val" style="color:${c};font-size:17px">${v}</div><div class="kpi-lbl">${l}</div></div>`).join("");
+
+const TABS=["Général","Allure EF","Fractionné","Cardio","Volume","Dernière séance","Plan d'action"];
+let activeTab=0,activeFilter="Tous",charts=[];
+
+function destroyCharts(){charts.forEach(c=>c.destroy());charts=[];}
+function renderTabs(){
+  document.getElementById("tabs").innerHTML=TABS.map((t,i)=>`<button class="tab-btn${i===activeTab?" active":""}" onclick="setTab(${i})">${t}</button>`).join("");
+}
+window.setTab=i=>{destroyCharts();activeTab=i;renderTabs();renderContent();};
+window.setFilter=f=>{activeFilter=f;destroyCharts();renderContent();};
+
+function weeklyVol(){
+  const w={};
+  RUNS.forEach(r=>{
+    const[d,m]=r.date.split("/").map(Number);
+    const dt=new Date(2026,m-1,d),mon=new Date(dt);
+    mon.setDate(dt.getDate()-dt.getDay()+(dt.getDay()===0?-6:1));
+    const k=mon.getDate()+"/"+(mon.getMonth()+1);
+    if(!w[k])w[k]={label:k,dist:0};
+    w[k].dist=+(w[k].dist+r.dist).toFixed(1);
+  });
+  return Object.values(w);
+}
+
+function mkChart(id,cfg){
+  const isDark=true;
+  const grid="rgba(255,255,255,0.06)",tick="#8a8d96",tbg="#16181c",tbr="rgba(255,255,255,0.1)",ttx="#f0f0f0";
+  cfg.options=Object.assign({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx}}},cfg.options||{});
+  const sc={x:{ticks:{color:tick,font:{size:10}},grid:{color:grid}},y:{ticks:{color:tick,font:{size:10}},grid:{color:grid}}};
+  if(!cfg.options.scales)cfg.options.scales=sc;
+  else{cfg.options.scales.x=Object.assign({},sc.x,cfg.options.scales.x);cfg.options.scales.y=Object.assign({},sc.y,cfg.options.scales.y);}
+  const c=new Chart(document.getElementById(id),cfg);
+  charts.push(c);return c;
+}
+
+function planItem(icon,color,title,text){
+  return`<div class="plan-item"><div class="plan-icon" style="background:${color}">${icon}</div><div class="plan-text"><strong>${title}</strong><br>${text}</div></div>`;
+}
+
+function renderContent(){
+  const el=document.getElementById("content");
+  const filtered=activeFilter==="Tous"?RUNS:RUNS.filter(r=>r.type===activeFilter);
+  const last=RUNS[RUNS.length-1];
+  const prevEF=efRuns.slice(-2,-1)[0];
+
+  if(activeTab===0){
+    el.innerHTML=`<div class="card">
+      <div class="stitle">Toutes les séances</div>
+      <div class="filters">${["Tous","EF","Long","Fractionné","Récup","Course","Renfo","Mobilité","Yoga"].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${t}</button>`).join("")}</div>
+      ${filtered.slice().reverse().map(r=>`<div class="row">
+        <div>
+          <span style="font-size:13px;font-weight:600">${r.label}</span>
+          <span class="badge" style="background:${TC[r.type]}22;color:${TC[r.type]}">${r.type}</span>
+          <div style="font-size:11px;color:#8a8d96;margin-top:3px">${r.lieu} · ${r.dist} km · ${r.dur}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:600;color:#1baf7a">${fmtA(r.allure)}/km</div>
+          <div style="font-size:11px;color:#e34948">${r.fc} bpm</div>
+        </div>
+      </div>`).join("")}
+    </div>`;
+  }
+
+  else if(activeTab===1){
+    el.innerHTML=`
+      <div class="card"><div class="stitle">Progression allure — EF</div>
+        <div style="font-size:11px;color:#8a8d96;margin-bottom:8px">Axe inversé : bas = rapide</div>
+        <div style="position:relative;width:100%;height:200px"><canvas id="cEF"></canvas></div>
+      </div>
+      <div class="card"><div class="stitle">Efficacité cardio EF (FC ÷ allure×60)</div>
+        <div style="font-size:11px;color:#8a8d96;margin-bottom:8px">↑ = même FC, allure plus rapide</div>
+        <div style="position:relative;width:100%;height:170px"><canvas id="cEff"></canvas></div>
+      </div>`;
+    setTimeout(()=>{
+      mkChart("cEF",{type:"line",data:{labels:efRuns.map(r=>r.label),datasets:[{label:"Allure",data:efRuns.map(r=>r.allure),borderColor:"#1baf7a",borderWidth:2,pointBackgroundColor:"#1baf7a",pointRadius:3,tension:0.2}]},options:{scales:{y:{reverse:true,ticks:{callback:v=>fmtA(v)}}},plugins:{tooltip:{callbacks:{label:ctx=>"Allure: "+fmtA(ctx.raw)}}}}});
+      mkChart("cEff",{type:"line",data:{labels:efRuns.map(r=>r.label),datasets:[{label:"Efficacité",data:efRuns.map(r=>+(r.fc/(r.allure/60)).toFixed(2)),borderColor:"#eda100",borderWidth:2,pointBackgroundColor:"#eda100",pointRadius:3,tension:0.2}]},options:{plugins:{tooltip:{callbacks:{label:ctx=>"Efficacité: "+ctx.raw}}}}});
+    },50);
+  }
+
+  else if(activeTab===2){
+    el.innerHTML=`
+      <div class="card"><div class="stitle">Allure work uniquement — fractionnés</div>
+        <div style="font-size:11px;color:#8a8d96;margin-bottom:8px">Phases de récup exclues · axe inversé</div>
+        <div style="position:relative;width:100%;height:200px"><canvas id="cWork"></canvas></div>
+        <div class="leg"><div class="leg-item"><div class="leg-dot" style="background:#eda100"></div>Allure work</div></div>
+      </div>
+      <div class="card"><div class="stitle">Détail séances fractionné</div>
+        ${fracRuns.map(r=>`<div class="row">
+          <div><span style="font-size:13px;font-weight:600">${r.label}</span>
+          <div style="font-size:11px;color:#8a8d96;margin-top:2px">${r.dist} km · ${r.fc} bpm</div></div>
+          <div style="text-align:right">
+            <div style="font-size:13px;font-weight:600;color:#eda100">Work ${fmtA(r.work)}</div>
+            <div style="font-size:11px;color:#8a8d96">Récup ${r.rec?fmtA(r.rec):"—"}</div>
+          </div>
+        </div>`).join("")}
+      </div>`;
+    setTimeout(()=>{
+      mkChart("cWork",{type:"line",data:{labels:fracRuns.map(r=>r.label),datasets:[{label:"Work",data:fracRuns.map(r=>r.work),borderColor:"#eda100",borderWidth:2,pointBackgroundColor:"#eda100",pointRadius:4,tension:0.2}]},options:{scales:{y:{reverse:true,ticks:{callback:v=>fmtA(v)}}},plugins:{tooltip:{callbacks:{label:ctx=>"Work: "+fmtA(ctx.raw)}}}}});
+    },50);
+  }
+
+  else if(activeTab===3){
+    el.innerHTML=`
+      <div class="card"><div class="stitle">FC moyenne — EF</div>
+        <div style="position:relative;width:100%;height:200px"><canvas id="cFC"></canvas></div>
+      </div>
+      <div class="card"><div class="stitle">Puissance moyenne (W) — EF</div>
+        <div style="position:relative;width:100%;height:180px"><canvas id="cPW"></canvas></div>
+      </div>`;
+    setTimeout(()=>{
+      mkChart("cFC",{type:"line",data:{labels:efRuns.map(r=>r.label),datasets:[{label:"FC",data:efRuns.map(r=>r.fc),borderColor:"#e34948",borderWidth:2,pointBackgroundColor:"#e34948",pointRadius:3,tension:0.2}]},options:{scales:{y:{min:128,max:158}},plugins:{annotation:{}}}});
+      mkChart("cPW",{type:"line",data:{labels:efRuns.filter(r=>r.pw).map(r=>r.label),datasets:[{label:"Puissance (W)",data:efRuns.filter(r=>r.pw).map(r=>r.pw),borderColor:"#2a78d6",borderWidth:2,pointBackgroundColor:"#2a78d6",pointRadius:3,tension:0.2}]},options:{plugins:{tooltip:{callbacks:{label:ctx=>ctx.raw+"W"}}}}});
+    },50);
+  }
+
+  else if(activeTab===4){
+    const wv=weeklyVol();
+    el.innerHTML=`
+      <div class="card"><div class="stitle">Volume hebdomadaire (km)</div>
+        <div style="position:relative;width:100%;height:200px"><canvas id="cVol"></canvas></div>
+      </div>
+      <div class="card"><div class="stitle">Records personnels</div>
+        ${[["Sortie longue max","12,0 km","10 Mai & 13 Jun"],["Meilleure allure EF","6'42''/km","29 Jun 2026 ✨"],["Meilleure allure work frac","4'26''/km","21 Avr 2026"],["FC EF la plus basse","133 bpm","19 Avr 2026"],["Course officielle","9,99 km · 5'55''/km","07 Jun 2026"]].map(([l,v,d])=>`<div class="row">
+          <div style="font-size:13px;color:#c0c3ca">${l}</div>
+          <div style="text-align:right"><div style="font-size:13px;font-weight:600;color:#1baf7a">${v}</div><div style="font-size:10px;color:#8a8d96">${d}</div></div>
+        </div>`).join("")}
+      </div>`;
+    setTimeout(()=>{
+      mkChart("cVol",{type:"bar",data:{labels:wv.map(r=>r.label),datasets:[{label:"km",data:wv.map(r=>r.dist),backgroundColor:"#1baf7a",borderRadius:4}]},options:{scales:{x:{ticks:{autoSkip:false,maxRotation:45}}},plugins:{tooltip:{callbacks:{label:ctx=>ctx.raw+" km"}}}}});
+    },50);
+  }
+
+  else if(activeTab===5){
+    const lastRun=RUNS.filter(r=>r.dist>0).slice(-1)[0];
+    const prevEFrun=efRuns.slice(-2,-1)[0];
+    const lastType=lastRun?lastRun.type:'—';
+    const lastColor=TC[lastType]||'#1baf7a';
+    el.innerHTML=`
+      <div style="background:rgba(27,175,122,0.07);border:1px solid rgba(27,175,122,0.2);border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
+        <div style="font-size:10px;color:#8a8d96;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Dernière séance</div>
+        <div style="font-size:20px;font-weight:600">${lastRun?lastRun.label+' · ':''}<span style="color:${lastColor}">${lastType}</span></div>
+        <div style="font-size:12px;color:#8a8d96;margin-top:4px">${lastRun?lastRun.lieu+' · '+lastRun.dur:''}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px">
+        ${[[lastRun.dist+" km","Distance","#2a78d6"],[fmtA(last.allure)+"/km","Allure","#1baf7a"],[lastRun.fc+" bpm","FC moy","#e34948"],[lastRun.dur,"Durée","#eda100"],[lastRun.pw+"W","Puissance","#1baf7a"],[lastRun.cad+" spm","Cadence","#2a78d6"]].map(([v,l,c])=>`<div class="kpi"><div class="kpi-val" style="color:${c}">${v}</div><div class="kpi-lbl">${l}</div></div>`).join("")}
+      </div>
+      <div class="card"><div class="stitle">Contexte</div>
+        ${[["Effort ressenti","Difficile (7/10)","#e34948"],["Jambes au départ","Correctes","#f0f0f0"],["Douleurs","Genoux + Hanches","#eda100"],["Conditions","28°C · fatigue semaine","#f0f0f0"]].map(([l,v,c])=>`<div class="row"><div style="font-size:13px;color:#8a8d96">${l}</div><div style="font-size:13px;font-weight:600;color:${c}">${v}</div></div>`).join("")}
+      </div>
+      <div class="card"><div class="stitle">Vs EF précédente (${prevEFrun.label})</div>
+        ${[["Allure",fmtA(prevEFrun.allure)+"/km",fmtA(last.allure)+"/km",last.allure<prevEFrun.allure],["FC moy",prevEFrun.fc+" bpm",last.fc+" bpm",last.fc<prevEFrun.fc],["Distance",prevEFrun.dist+" km",last.dist+" km",last.dist>prevEFrun.dist],["Puissance",prevEFrun.pw+"W",last.pw+"W",last.pw>prevEFrun.pw]].map(([m,pv,lv,b])=>`<div class="row">
+          <div style="font-size:13px;color:#8a8d96">${m}</div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="font-size:12px;color:#555">${pv}</div>
+            <div style="font-size:11px;color:#444">→</div>
+            <div style="font-size:13px;font-weight:600;color:${b?"#1baf7a":"#e34948"}">${lv} ${b?"↑":"↓"}</div>
+          </div>
+        </div>`).join("")}
+      </div>
+      <div class="card"><div class="stitle">Zones cardio · 5 Jul</div>
+        <div class="zone-bar">
+          <div style="width:8.6%;background:#2a78d6"></div>
+          <div style="width:79.9%;background:#1baf7a"></div>
+          <div style="width:10.8%;background:#eda100"></div>
+        </div>
+        ${[["#2a78d6","Z1 &lt;138 bpm","05:18","8.6%"],["#1baf7a","Z2 139–150 bpm","49:08","79.9%"],["#eda100","Z3 151–162 bpm","06:40","10.8%"]].map(([c,l,t,p])=>`<div class="row">
+          <div style="display:flex;align-items:center;gap:8px"><div class="leg-dot" style="background:${c}"></div><span style="font-size:12px;color:#c0c3ca">${l}</span></div>
+          <div style="text-align:right"><div style="font-size:12px;font-weight:600;color:${c}">${t}</div><div style="font-size:10px;color:#8a8d96">${p}</div></div>
+        </div>`).join("")}
+      </div>`;
+  }
+
+  else if(activeTab===6){
+
+    const SVG = {
+      hipthrust:`<svg viewBox="0 0 120 80" width="110" height="74">
+        <!-- sol -->
+        <line x1="10" y1="68" x2="110" y2="68" stroke="#2a2d35" stroke-width="2"/>
+        <!-- mur/banc -->
+        <rect x="8" y="38" width="14" height="30" rx="3" fill="#2a2d35"/>
+        <!-- corps allongé dos sur banc -->
+        <rect x="18" y="34" width="38" height="10" rx="4" fill="#1baf7a"/>
+        <!-- bassin levé -->
+        <rect x="52" y="28" width="22" height="10" rx="4" fill="#1baf7a" transform="rotate(-18,63,33)"/>
+        <!-- jambe gauche -->
+        <line x1="62" y1="36" x2="75" y2="56" stroke="#1baf7a" stroke-width="5" stroke-linecap="round"/>
+        <line x1="75" y1="56" x2="85" y2="68" stroke="#1baf7a" stroke-width="5" stroke-linecap="round"/>
+        <!-- jambe droite (plus courte car vue côté) -->
+        <line x1="58" y1="37" x2="68" y2="55" stroke="#00a06e" stroke-width="4" stroke-linecap="round"/>
+        <line x1="68" y1="55" x2="76" y2="68" stroke="#00a06e" stroke-width="4" stroke-linecap="round"/>
+        <!-- tête -->
+        <circle cx="20" cy="30" r="7" fill="#1baf7a"/>
+        <!-- flèche haut -->
+        <line x1="95" y1="55" x2="95" y2="30" stroke="#eda100" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <polygon points="95,24 91,32 99,32" fill="#eda100"/>
+        <text x="97" y="46" font-size="8" fill="#eda100">↑</text>
+      </svg>`,
+
+      clamshell:`<svg viewBox="0 0 120 80" width="110" height="74">
+        <!-- sol -->
+        <line x1="10" y1="70" x2="110" y2="70" stroke="#2a2d35" stroke-width="2"/>
+        <!-- corps allongé sur le côté -->
+        <ellipse cx="55" cy="52" rx="38" ry="8" fill="#1baf7a" opacity="0.3"/>
+        <rect x="18" y="47" width="74" height="10" rx="5" fill="#1baf7a"/>
+        <!-- tête -->
+        <circle cx="16" cy="44" r="7" fill="#1baf7a"/>
+        <!-- jambe basse -->
+        <path d="M56,54 Q72,62 88,68" stroke="#1baf7a" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <!-- jambe haute ouverte -->
+        <path d="M56,50 Q68,36 84,38" stroke="#eda100" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <!-- arc rotation -->
+        <path d="M76,50 Q82,44 84,38" stroke="#eda100" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/>
+        <polygon points="84,37 79,41 87,43" fill="#eda100"/>
+        <!-- label G -->
+        <text x="86" y="34" font-size="9" fill="#eda100" font-weight="bold">G</text>
+      </svg>`,
+
+      stepup:`<svg viewBox="0 0 120 90" width="110" height="83">
+        <!-- marche -->
+        <rect x="30" y="48" width="60" height="22" rx="3" fill="#2a2d35"/>
+        <rect x="30" y="46" width="60" height="5" rx="2" fill="#3a3d45"/>
+        <!-- sol -->
+        <line x1="10" y1="70" x2="30" y2="70" stroke="#2a2d35" stroke-width="2"/>
+        <line x1="90" y1="70" x2="110" y2="70" stroke="#2a2d35" stroke-width="2"/>
+        <!-- jambe sur marche (gauche) -->
+        <line x1="60" y1="46" x2="60" y2="30" stroke="#1baf7a" stroke-width="6" stroke-linecap="round"/>
+        <!-- corps droit -->
+        <rect x="54" y="18" width="12" height="16" rx="5" fill="#1baf7a"/>
+        <!-- tête -->
+        <circle cx="60" cy="13" r="7" fill="#1baf7a"/>
+        <!-- bras -->
+        <line x1="54" y1="22" x2="44" y2="32" stroke="#1baf7a" stroke-width="3" stroke-linecap="round"/>
+        <line x1="66" y1="22" x2="76" y2="32" stroke="#1baf7a" stroke-width="3" stroke-linecap="round"/>
+        <!-- jambe droite en l'air -->
+        <line x1="60" y1="34" x2="48" y2="48" stroke="#8a8d96" stroke-width="5" stroke-linecap="round"/>
+        <!-- flèche montée -->
+        <line x1="90" y1="60" x2="90" y2="20" stroke="#eda100" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <polygon points="90,13 86,22 94,22" fill="#eda100"/>
+        <!-- label G -->
+        <text x="50" y="58" font-size="9" fill="#eda100" font-weight="bold">G</text>
+      </svg>`,
+
+      psoas:`<svg viewBox="0 0 120 90" width="110" height="83">
+        <!-- sol -->
+        <line x1="10" y1="82" x2="110" y2="82" stroke="#2a2d35" stroke-width="2"/>
+        <!-- genou arrière au sol -->
+        <circle cx="80" cy="78" r="5" fill="#2a2d35"/>
+        <!-- jambe avant fléchie 90° -->
+        <line x1="40" y1="82" x2="40" y2="55" stroke="#1baf7a" stroke-width="7" stroke-linecap="round"/>
+        <line x1="40" y1="82" x2="55" y2="82" stroke="#1baf7a" stroke-width="5" stroke-linecap="round"/>
+        <!-- jambe arrière -->
+        <line x1="55" y1="82" x2="80" y2="82" stroke="#1baf7a" stroke-width="5" stroke-linecap="round"/>
+        <line x1="80" y1="82" x2="80" y2="58" stroke="#1baf7a" stroke-width="7" stroke-linecap="round"/>
+        <!-- bassin/corps -->
+        <rect x="36" y="42" width="16" height="18" rx="5" fill="#1baf7a"/>
+        <!-- torse incliné légèrement en avant -->
+        <rect x="38" y="26" width="12" height="20" rx="5" fill="#1baf7a" transform="rotate(5,44,36)"/>
+        <!-- tête -->
+        <circle cx="45" cy="20" r="7" fill="#1baf7a"/>
+        <!-- flèche étirement psoas -->
+        <path d="M80,70 Q90,60 88,50" stroke="#eda100" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/>
+        <polygon points="88,46 83,52 91,54" fill="#eda100"/>
+        <text x="88" y="42" font-size="8" fill="#eda100">←</text>
+        <!-- label -->
+        <text x="72" y="52" font-size="8" fill="#eda100" font-weight="bold">G</text>
+      </svg>`,
+
+      pigeon:`<svg viewBox="0 0 120 90" width="110" height="83">
+        <!-- sol -->
+        <line x1="5" y1="82" x2="115" y2="82" stroke="#2a2d35" stroke-width="2"/>
+        <!-- jambe avant (genou au sol, pied vers intérieur) -->
+        <line x1="35" y1="75" x2="62" y2="78" stroke="#1baf7a" stroke-width="7" stroke-linecap="round"/>
+        <line x1="35" y1="75" x2="28" y2="82" stroke="#1baf7a" stroke-width="5" stroke-linecap="round"/>
+        <!-- jambe arrière allongée -->
+        <line x1="62" y1="78" x2="100" y2="80" stroke="#1baf7a" stroke-width="7" stroke-linecap="round"/>
+        <!-- torse penché en avant -->
+        <line x1="48" y1="72" x2="35" y2="50" stroke="#1baf7a" stroke-width="8" stroke-linecap="round"/>
+        <!-- bras étirés devant -->
+        <line x1="35" y1="50" x2="16" y2="60" stroke="#1baf7a" stroke-width="4" stroke-linecap="round"/>
+        <line x1="35" y1="50" x2="22" y2="56" stroke="#1baf7a" stroke-width="4" stroke-linecap="round"/>
+        <!-- tête vers sol -->
+        <circle cx="30" cy="46" r="7" fill="#1baf7a"/>
+        <!-- zone étirement -->
+        <ellipse cx="55" cy="74" rx="14" ry="6" fill="rgba(237,161,0,0.2)" stroke="#eda100" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="52" y="68" font-size="8" fill="#eda100" font-weight="bold">G</text>
+      </svg>`,
+
+      stretch9090:`<svg viewBox="0 0 120 90" width="110" height="83">
+        <!-- sol -->
+        <line x1="5" y1="82" x2="115" y2="82" stroke="#2a2d35" stroke-width="2"/>
+        <!-- jambe avant 90° -->
+        <line x1="50" y1="82" x2="50" y2="65" stroke="#1baf7a" stroke-width="6" stroke-linecap="round"/>
+        <line x1="50" y1="65" x2="28" y2="65" stroke="#1baf7a" stroke-width="6" stroke-linecap="round"/>
+        <line x1="28" y1="65" x2="28" y2="82" stroke="#1baf7a" stroke-width="6" stroke-linecap="round"/>
+        <!-- angle 90 -->
+        <text x="32" y="63" font-size="8" fill="#8a8d96">90°</text>
+        <!-- jambe arrière 90° -->
+        <line x1="50" y1="82" x2="80" y2="82" stroke="#1baf7a" stroke-width="6" stroke-linecap="round"/>
+        <line x1="80" y1="82" x2="80" y2="62" stroke="#1baf7a" stroke-width="6" stroke-linecap="round"/>
+        <text x="82" y="75" font-size="8" fill="#8a8d96">90°</text>
+        <!-- torse droit -->
+        <rect x="44" y="45" width="12" height="22" rx="5" fill="#1baf7a"/>
+        <!-- tête -->
+        <circle cx="50" cy="40" r="7" fill="#1baf7a"/>
+        <!-- bras -->
+        <line x1="44" y1="52" x2="34" y2="62" stroke="#1baf7a" stroke-width="3" stroke-linecap="round"/>
+        <line x1="56" y1="52" x2="66" y2="62" stroke="#1baf7a" stroke-width="3" stroke-linecap="round"/>
+        <!-- zones étirement -->
+        <ellipse cx="65" cy="78" rx="10" ry="5" fill="rgba(237,161,0,0.2)" stroke="#eda100" stroke-width="1" stroke-dasharray="3,2"/>
+        <ellipse cx="36" cy="70" rx="7" ry="5" fill="rgba(237,161,0,0.2)" stroke="#eda100" stroke-width="1" stroke-dasharray="3,2"/>
+      </svg>`,
+
+      deadbug:`<svg viewBox="0 0 120 90" width="110" height="83">
+        <!-- sol -->
+        <line x1="5" y1="72" x2="115" y2="72" stroke="#2a2d35" stroke-width="2"/>
+        <!-- corps allongé sur le dos -->
+        <rect x="25" y="60" width="70" height="12" rx="6" fill="#1baf7a"/>
+        <!-- tête -->
+        <circle cx="22" cy="63" r="7" fill="#1baf7a"/>
+        <!-- bras gauche en l'air -->
+        <line x1="35" y1="60" x2="28" y2="38" stroke="#eda100" stroke-width="5" stroke-linecap="round"/>
+        <line x1="28" y1="38" x2="18" y2="26" stroke="#eda100" stroke-width="4" stroke-linecap="round"/>
+        <!-- bras droit contre sol -->
+        <line x1="55" y1="60" x2="62" y2="44" stroke="#8a8d96" stroke-width="4" stroke-linecap="round"/>
+        <!-- jambe gauche tendue en l'air -->
+        <line x1="70" y1="60" x2="68" y2="40" stroke="#8a8d96" stroke-width="5" stroke-linecap="round"/>
+        <line x1="68" y1="40" x2="80" y2="28" stroke="#8a8d96" stroke-width="4" stroke-linecap="round"/>
+        <!-- jambe droite fléchie vers haut -->
+        <line x1="85" y1="60" x2="88" y2="42" stroke="#eda100" stroke-width="5" stroke-linecap="round"/>
+        <line x1="88" y1="42" x2="100" y2="38" stroke="#eda100" stroke-width="4" stroke-linecap="round"/>
+        <!-- label -->
+        <text x="14" y="24" font-size="8" fill="#eda100" font-weight="bold">G</text>
+        <text x="98" y="36" font-size="8" fill="#eda100" font-weight="bold">D</text>
+      </svg>`,
+
+      squatbulg:`<svg viewBox="0 0 120 95" width="110" height="88">
+        <!-- sol -->
+        <line x1="5" y1="85" x2="115" y2="85" stroke="#2a2d35" stroke-width="2"/>
+        <!-- banc/chaise derrière -->
+        <rect x="78" y="60" width="26" height="6" rx="2" fill="#2a2d35"/>
+        <rect x="80" y="66" width="4" height="19" rx="1" fill="#2a2d35"/>
+        <rect x="98" y="66" width="4" height="19" rx="1" fill="#2a2d35"/>
+        <!-- jambe arrière sur banc -->
+        <line x1="68" y1="85" x2="80" y2="65" stroke="#8a8d96" stroke-width="6" stroke-linecap="round"/>
+        <!-- jambe avant (gauche) fléchie descente -->
+        <line x1="52" y1="85" x2="52" y2="62" stroke="#eda100" stroke-width="7" stroke-linecap="round"/>
+        <line x1="52" y1="85" x2="38" y2="85" stroke="#eda100" stroke-width="5" stroke-linecap="round"/>
+        <!-- corps légèrement penché avant -->
+        <rect x="46" y="40" width="14" height="26" rx="6" fill="#1baf7a" transform="rotate(-5,53,53)"/>
+        <!-- tête -->
+        <circle cx="52" cy="34" r="7" fill="#1baf7a"/>
+        <!-- bras -->
+        <line x1="46" y1="47" x2="36" y2="58" stroke="#1baf7a" stroke-width="3" stroke-linecap="round"/>
+        <line x1="60" y1="47" x2="70" y2="58" stroke="#1baf7a" stroke-width="3" stroke-linecap="round"/>
+        <!-- flèche bas -->
+        <line x1="20" y1="42" x2="20" y2="70" stroke="#eda100" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <polygon points="20,76 16,67 24,67" fill="#eda100"/>
+        <text x="6" y="52" font-size="8" fill="#eda100" font-weight="bold">G</text>
+      </svg>`,
+    };
+
+    function exoCard(svg, name, sets, muscle, color){
+      return `<div style="background:#1e2026;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:center">
+        <div style="flex-shrink:0;background:#0e0f11;border-radius:8px;padding:4px">${svg}</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#f0f0f0;margin-bottom:3px">${name}</div>
+          <div style="font-size:12px;color:${color};font-weight:600;margin-bottom:3px">${sets}</div>
+          <div style="font-size:11px;color:#8a8d96">${muscle}</div>
+        </div>
+      </div>`;
+    }
+
+    el.innerHTML=`
+      <div class="card"><div class="stitle">Points à travailler</div>
+        ${planItem("🦵","rgba(227,73,72,0.15)","Genoux & hanches — priorité 1","Genou gauche (haut, escaliers) → vaste médial/tendon rotulien. Psoas gauche faible → fessier gauche qui ne s'active pas. Légère douleur genou droit en course → compensation. Chaîne postérieure gauche à renforcer.")}
+        ${planItem("💓","rgba(237,161,0,0.15)","FC élevée à effort modéré","FC 140–145 bpm sur les EF récentes. Cible : <140 bpm à 7'00''/km. Progrès réels depuis mars, encore du chemin.")}
+        ${planItem("🏃","rgba(42,120,214,0.15)","Cadence à améliorer","Stable à 167 spm. Cible : 170–180 spm. Une cadence basse surcharge les genoux à chaque foulée.")}
+        ${planItem("😴","rgba(27,175,122,0.15)","Gestion fatigue & chaleur","Moduler l'allure selon la chaleur et la fatigue accumulée. La séance du 5 Jul était dure à 28°C — c'est normal.")}
+      </div>
+
+      <div class="card"><div class="stitle">Plan d'action — semaine du 19 Jul</div>
+        <div class="alert" style="background:rgba(27,175,122,0.1);border:1px solid rgba(27,175,122,0.3);color:#1baf7a;margin-bottom:14px">
+          Objectif : <strong>repousser le seuil psoas du km 4 au km 6.</strong> 2 sorties EF + renfo ciblé + mobilité.
+        </div>
+
+        <div class="week-title">Semaine du 19–25 Jul</div>
+
+        ${planItem("💪","rgba(42,120,214,0.15)","Lun 20 — Renfo ciblé psoas (20 min)","Priorité avant de remettre du volume : Hip Thrust unilatéral G · Clamshell G · Dead Bug 3×10. Le psoas qui lâche au km 4 se renforce ici.")}
+        ${planItem("🟢","rgba(27,175,122,0.15)","Mar 21 — EF courte (6 km)","Allure conservatrice 7'00''–7'15''/km · FC &lt;143 bpm · Stop si psoas se manifeste avant le km 4.")}
+        ${planItem("🧘","rgba(237,161,0,0.15)","Mer 22 — Yoga ou mobilité (30 min)","Laisser récupérer le psoas entre les deux sorties. Pigeon pose + 90/90 + étirement psoas debout.")}
+        ${planItem("😴","rgba(136,135,128,0.15)","Jeu 23 — Repos","Récupération active.")}
+        ${planItem("🟢","rgba(27,175,122,0.15)","Ven 24 — EF (7–8 km)","Si psoas OK mardi : allonger légèrement. Même allure conservatrice. Objectif : tenir sans douleur au-delà du km 4.")}
+        ${planItem("😴","rgba(136,135,128,0.15)","Sam/Dim — Repos ou mobilité légère","Selon ressenti.")}
+
+        <div class="divider"></div>
+
+        <div style="margin:12px 0 4px;font-size:11px;color:#eda100;letter-spacing:.08em;text-transform:uppercase;font-weight:600">Renforcement recommandé (lun 20)</div>
+        ${exoCard(SVG.hipthrust,"Hip Thrust unilatéral","3 × 12 reps · côté gauche","Fessier, ischio · Active la chaîne post. gauche","#1baf7a")}
+        ${exoCard(SVG.clamshell,"Clamshell","3 × 15 reps · bilatéral, priorité G","Moyen fessier · Stabilise la hanche","#1baf7a")}
+        ${exoCard(SVG.deadbug,"Dead Bug","3 × 10 reps","Sangle abdominale · Stabilise le bassin et le psoas","#2a78d6")}
+
+        <div style="margin:12px 0 4px;font-size:11px;color:#eda100;letter-spacing:.08em;text-transform:uppercase;font-weight:600">Mobilité — avant chaque sortie (5 min)</div>
+        ${exoCard(SVG.psoas,"Étirement psoas debout","60 sec · côté gauche","Psoas · Prépare le psoas avant l'effort","#eda100")}
+        ${exoCard(SVG.pigeon,"Pigeon pose","60 sec · bilatéral","Piriforme, rotateurs · Ouvre la hanche","#eda100")}
+
+        <div class="divider"></div>
+        <div style="background:#1e2026;border-radius:10px;padding:12px;font-size:12px;color:#8a8d96;line-height:1.6">
+          <strong style="color:#f0f0f0;font-size:13px">Indicateurs de réussite au 25 Jul</strong><br>
+          Psoas gauche tient jusqu'au km 6+ · Genoux sans douleur · FC &lt;143 bpm à 7'00''/km · Cadence ≥169 spm
+        </div>
+      </div>
+
+      <div class="card"><div class="stitle">Bilan reprise — 18 Jul</div>
+        <div style="font-size:13px;color:#c0c3ca;line-height:1.6">
+          ✅ Genoux OK en course · ⚠️ Psoas gauche fatigue au km 4 (récupère bien après) · 7,23 km à 6'49''/km avec 64m de dénivelé — excellente reprise après 13 jours sans courir.
+        </div>
+      </div>`;
+  }
+}
+
+renderTabs();
+renderContent();
+</script>
+</body>
+</html>

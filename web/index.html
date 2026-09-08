@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MyRunningApp</title>
+<style>
+:root{
+  --bg:#000000;
+  --card:#1c1c1e;
+  --card-2:#232326;
+  --border:rgba(255,255,255,0.08);
+  --text:#f5f5f7;
+  --text-dim:#98989f;
+  --text-faint:#5c5c60;
+  --accent:#30d158;
+  --accent-dim:rgba(48,209,88,0.15);
+  --red:#ff453a;
+  --blue:#0a84ff;
+  --orange:#ff9f0a;
+  --purple:#bf5af2;
+  --pink:#ff375f;
+  --cyan:#64d2ff;
+  --radius-lg:20px;
+  --radius-md:14px;
+  --radius-sm:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-font-smoothing:antialiased}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+  min-height:100vh;
+  padding-bottom:calc(78px + env(safe-area-inset-bottom));
+}
+button,input,select{font-family:inherit}
+::selection{background:var(--accent);color:#000}
+
+/* ---------- Auth ---------- */
+#authView{
+  min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  max-width:360px;margin:0 auto;padding:32px 24px;
+}
+.auth-icon{
+  width:72px;height:72px;border-radius:22px;margin:0 auto 20px;
+  background:linear-gradient(135deg,var(--accent),#0bb654);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 24px rgba(48,209,88,0.35);
+}
+#authView h1{font-size:26px;font-weight:700;text-align:center;letter-spacing:-.4px}
+#authView .tagline{text-align:center;color:var(--text-dim);font-size:14px;margin-top:6px;margin-bottom:32px}
+.field{
+  display:flex;align-items:center;gap:10px;
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:14px 16px;margin-bottom:12px;transition:border-color .15s;
+}
+.field:focus-within{border-color:var(--accent)}
+.field svg{flex-shrink:0;color:var(--text-faint)}
+.field input{
+  flex:1;background:none;border:none;outline:none;color:var(--text);font-size:15px;
+}
+.field input::placeholder{color:var(--text-faint)}
+.goal-level-cards{display:flex;gap:8px}
+.goal-level-card{flex:1;padding:12px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
+.goal-level-card.active{border-color:var(--accent);background:rgba(48,209,88,0.1)}
+.goal-level-card .lbl{font-size:13px;font-weight:600}
+.goal-level-card .sub{font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.3}
+.pace-stepper{display:flex;align-items:center;gap:12px}
+.pace-stepper button{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--card-2);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+.pace-stepper .val{font-weight:700;font-size:15px;min-width:64px;text-align:center}
+.time-input{width:44px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;text-align:center;padding:8px 0}
+.btn-primary{
+  width:100%;padding:15px;border-radius:var(--radius-sm);border:none;
+  background:var(--accent);color:#000;font-weight:600;font-size:15px;cursor:pointer;
+  margin-top:6px;transition:transform .1s, opacity .15s;
+}
+.btn-primary:active{transform:scale(0.97)}
+.btn-primary:disabled{opacity:.5}
+/* Confirmation animée après un "Enregistrer" — un simple changement de texte
+   passe inaperçu (bug remonté : "on a l'impression que le bouton ne
+   fonctionne pas"), un vrai mouvement (pop avec rebond) se voit. Reste
+   affichée (pas de disparition) : le message est le signal, pas une nuisance. */
+.save-confirm{font-size:12px;color:var(--accent);margin-top:8px;text-align:center;min-height:16px;font-weight:600}
+.save-confirm.show{animation:saveConfirmPop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes saveConfirmPop{
+  0%{opacity:0;transform:translateY(2px) scale(0.85)}
+  60%{opacity:1;transform:scale(1.08)}
+  100%{opacity:1;transform:scale(1)}
+}
+#authError{color:var(--red);font-size:13px;margin-top:12px;text-align:center;min-height:16px;line-height:1.4}
+#authSwitch{margin-top:22px;font-size:13px;color:var(--accent);text-align:center;cursor:pointer;font-weight:500}
+
+/* ---------- App shell ---------- */
+#appView{display:none;max-width:640px;margin:0 auto}
+@media (min-width:700px){
+  #appView{max-width:960px}
+}
+.topbar{
+  padding:calc(env(safe-area-inset-top) + 18px) 20px 8px;
+}
+.topbar-title{font-size:28px;font-weight:700;letter-spacing:-.6px}
+.topbar-title span{color:var(--accent)}
+
+/* ---------- KPI ring + grid ---------- */
+.hero{padding:4px 20px 18px;display:flex;align-items:center;gap:20px}
+.ring-wrap{position:relative;width:108px;height:108px;flex-shrink:0}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-label{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.ring-label .val{font-size:19px;font-weight:700}
+.ring-label .unit{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin-top:1px}
+.hero-rings-row{display:flex;justify-content:space-between;gap:8px}
+.ring-wrap-sm{position:relative;width:90px;height:90px;flex-shrink:0}
+.ring-wrap-sm svg{transform:rotate(-90deg)}
+.ring-label-sm{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-label-sm .val{font-size:17px;font-weight:700}
+.ring-label-sm .unit{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-top:1px}
+.ring-caption{font-size:11px;color:var(--text-dim);text-align:center}
+.hero-stats{flex:1;display:flex;flex-direction:column;gap:10px}
+.hero-stat{display:flex;justify-content:space-between;align-items:baseline}
+.hero-stat .lbl{font-size:13px;color:var(--text-dim)}
+.hero-stat .v{font-size:15px;font-weight:600}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 20px 20px}
+.kpi{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:14px;display:flex;flex-direction:column;gap:8px;
+}
+.kpi-top{display:flex;align-items:center;justify-content:space-between}
+.kpi-icon{
+  width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+}
+.kpi-val{font-size:19px;font-weight:700;letter-spacing:-.3px}
+.kpi-lbl{font-size:11px;color:var(--text-dim)}
+
+/* ---------- Bottom nav ---------- */
+.tabs{
+  position:fixed;bottom:0;left:0;right:0;z-index:10;
+  display:flex;justify-content:space-around;
+  background:rgba(20,20,22,0.86);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  padding:8px 4px calc(8px + env(safe-area-inset-bottom));
+}
+.tab-btn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:none;border:none;color:var(--text-faint);cursor:pointer;
+  padding:4px 6px;flex:1;min-width:0;
+}
+.tab-btn svg{width:20px;height:20px}
+.tab-btn span{font-size:9px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.tab-btn.active{color:var(--accent)}
+
+/* ---------- Content cards ---------- */
+#content{padding:0 20px}
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:18px;margin-bottom:14px;
+}
+.stitle{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--text-dim);margin-bottom:14px;text-transform:uppercase}
+.chart-hint{font-size:12px;color:var(--text-faint);margin-top:-8px;margin-bottom:12px}
+
+.card-row{display:flex;flex-direction:column}
+@media (min-width:700px){
+  .card-row{flex-direction:row;gap:14px}
+  .card-row>.card{flex:1;min-width:0}
+}
+
+.session-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.session-row:last-child{border-bottom:none}
+.session-dot{width:38px;height:38px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.session-main{flex:1;min-width:0}
+.session-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+.session-sub{font-size:12px;color:var(--text-dim);margin-top:2px}
+.session-right{text-align:right;flex-shrink:0}
+.session-pace{font-size:14px;font-weight:700;color:var(--accent)}
+.session-hr{font-size:11px;color:var(--text-dim);margin-top:2px}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.type-select{background:var(--card-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 6px;font-size:12px;font-weight:600;font-family:inherit;width:100%}
+.toggle{position:relative;width:42px;height:25px;flex-shrink:0}
+.toggle input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer;z-index:1}
+.toggle .track{position:absolute;inset:0;background:var(--card-2);border-radius:13px;transition:background .15s}
+.toggle .thumb{position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:transform .15s}
+.toggle input:checked ~ .track{background:var(--accent)}
+.toggle input:checked ~ .thumb{transform:translateX(17px)}
+
+.manage-row{padding:14px 0;border-bottom:1px solid var(--border)}
+.manage-row:last-child{border-bottom:none}
+.manage-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.manage-date{font-size:14px;font-weight:600;flex:1}
+.toggle-col{display:flex;flex-direction:column;align-items:center;gap:3px}
+.toggle-col span{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
+.manage-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-left:48px}
+.manage-field{display:flex;flex-direction:column;gap:4px}
+.field-lbl{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
+.field-val{font-size:13px;font-weight:600}
+.field-sub{font-size:10px;color:var(--text-faint)}
+.filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;overflow-x:auto;padding-bottom:2px}
+.flt{padding:6px 13px;border-radius:20px;font-size:12px;cursor:pointer;background:var(--card-2);color:var(--text-dim);border:1px solid transparent;font-weight:500;white-space:nowrap}
+.flt.active{background:var(--accent);color:#000;font-weight:700}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-dim)}
+.empty-state svg{color:var(--text-faint);margin-bottom:14px}
+.empty-state .title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
+.empty-state .sub{font-size:13px;line-height:1.5}
+
+
+.loading{display:flex;justify-content:center;padding:60px 0}
+.spinner{width:26px;height:26px;border-radius:50%;border:3px solid var(--card-2);border-top-color:var(--accent);animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.soon-card{text-align:center;padding:44px 22px}
+.soon-card svg{color:var(--text-faint);margin-bottom:16px}
+.soon-badge{display:inline-block;background:var(--accent-dim);color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin-bottom:12px}
+.soon-card h3{font-size:17px;font-weight:700;margin-bottom:8px}
+.soon-card p{font-size:13px;color:var(--text-dim);line-height:1.6;max-width:320px;margin:0 auto}
+
+.pain-row{padding:10px 0;border-bottom:1px solid var(--border)}
+.pain-row:last-child{border-bottom:none}
+.pain-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.pain-row-top .lbl{font-size:13px;color:var(--text)}
+.pain-row-top .val{font-size:13px;font-weight:700;min-width:20px;text-align:right}
+.pain-row input[type="range"]{width:100%;accent-color:var(--accent);height:20px}
+.session-pick{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.session-pick:last-child{border-bottom:none}
+.session-pick .rated{color:var(--accent);font-size:11px;font-weight:600}
+.account-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+.account-row:last-child{border-bottom:none}
+.account-row .lbl{font-size:13px;color:var(--text-dim)}
+.account-row .v{font-size:13px;font-weight:600}
+.btn-secondary{
+  width:100%;padding:13px;border-radius:var(--radius-sm);border:1px solid var(--border);
+  background:var(--card-2);color:var(--text);font-weight:600;font-size:14px;cursor:pointer;
+}
+.btn-danger{color:var(--red);background:none;border:none;font-size:14px;font-weight:500;cursor:pointer;padding:12px 0}
+</style>
+</head>
+<body>
+
+<div id="authView">
+  <div class="auth-icon">
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="#000" stroke="none"/><path d="M4 22l4-8 3 3 2-5 4 2"/><path d="M13.5 8.5L11 13l3 2-1.5 4"/></svg>
+  </div>
+  <h1>MyRunningApp</h1>
+  <div class="tagline">Suis tes courses, simplement.</div>
+
+  <div class="field">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    <input id="authEmail" type="email" placeholder="Email" autocomplete="username">
+  </div>
+  <div class="field">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <input id="authPassword" type="password" placeholder="Mot de passe" autocomplete="current-password">
+  </div>
+
+  <button class="btn-primary" id="authSubmit">Se connecter</button>
+  <div id="authError"></div>
+  <div id="authSwitch">Pas de compte ? Créer un compte</div>
+</div>
+
+<div id="appView">
+  <div class="topbar">
+    <div class="topbar-title">My<span>Running</span>App</div>
+  </div>
+
+  <div id="content"></div>
+
+  <div class="tabs" id="tabs"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="logic.js?v=13"></script>
+<script>
+const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const TC={
+  EF:"#30d158", Long:"#0a84ff", "Fractionné":"#ff9f0a", "Seuil":"#d70015", "Récup":"#98989f", Course:"#ff453a",
+  Marche:"#64d2ff", Renfo:"#bf5af2", Yoga:"#ff375f", "Mobilité":"#ffd60a", "Souplesse":"#00c7be",
+  "Kiné":"#a2845e", Pilates:"#66d4cf", Other:"#98989f"
+};
+const TICON={
+  EF:"runner", Long:"route", "Fractionné":"bolt", "Seuil":"flame", "Récup":"runner", Course:"flag",
+  Marche:"walk", Renfo:"dumbbell", Yoga:"yoga", "Mobilité":"stretch", "Souplesse":"bend",
+  "Kiné":"care", Pilates:"ring", Other:"activity"
+};
+const TYPE_OPTIONS=["EF","Long","Fractionné","Seuil","Récup","Course","Marche","Renfo","Yoga","Mobilité","Souplesse","Kiné","Pilates","Other"];
+const MONTHS=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+
+const ICONS = {
+  bars: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>`,
+  clock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/></svg>`,
+  list: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
+  trend: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
+  sparkle: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.5 5.5L19 9l-5.5 1.5L12 16l-1.5-5.5L5 9l5.5-1.5z"/></svg>`,
+  target: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>`,
+  user: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>`,
+  bolt: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  heart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
+  flame: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>`,
+  route: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7a4 4 0 0 0 4-4v0a4 4 0 0 0-4-4H9a4 4 0 0 1-4-4v0a4 4 0 0 1 4-4h1"/></svg>`,
+  runner: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="2"/><path d="M4 22l4-8 3 3 2-5 4 2"/><path d="M13.5 8.5L11 13l3 2-1.5 4"/></svg>`,
+  dumbbell: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="9" width="4" height="6" rx="1"/><rect x="19" y="9" width="4" height="6" rx="1"/><line x1="5" y1="12" x2="19" y2="12"/><rect x="7" y="7" width="2" height="10" rx="1"/><rect x="15" y="7" width="2" height="10" rx="1"/></svg>`,
+  yoga: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v5"/><path d="M12 12l-6 7"/><path d="M12 12l6 7"/><path d="M8 10l-4 2"/><path d="M16 10l4 2"/></svg>`,
+  activity: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+  walk: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="2"/><path d="M13 6v5"/><path d="M13 11l-3 3"/><path d="M13 11l3 7"/><path d="M13 8l4 2"/><path d="M10 9l-2 2"/></svg>`,
+  flag: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="3"/><path d="M5 4h13l-3.5 4L18 12H5"/></svg>`,
+  stretch: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M12 6v7"/><path d="M12 8l-5-4"/><path d="M12 8l5-4"/><path d="M12 13l-3 7"/><path d="M12 13l3 7"/></svg>`,
+  bend: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="5" r="2"/><path d="M15 7l-3 5"/><path d="M12 12l-5 2"/><path d="M12 12l1 8"/><path d="M7 14l-2 3"/></svg>`,
+  care: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
+  ring: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="5" ry="3"/></svg>`,
+  chevronRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
+  chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+};
+function icon(name,size=18){ return ICONS[name].replace("<svg ",`<svg width="${size}" height="${size}" `); }
+
+function mapRow(r){
+  const d=new Date(r.start_date);
+  const dd=String(d.getDate()).padStart(2,"0"),mm=String(d.getMonth()+1).padStart(2,"0");
+  return {
+    id:r.id,
+    date:`${dd}/${mm}`,
+    label:`${dd} ${MONTHS[d.getMonth()]}`,
+    time:d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
+    type:r.type||"Other",
+    appleType:r.apple_type||null,
+    lieu:r.lieu||"",
+    dist:Number(r.distance_km)||0,
+    dur:fmtDur(r.duration_sec),
+    durationSec:Number(r.duration_sec)||0,
+    allure:r.distance_km>0?Math.round(r.duration_sec/r.distance_km):null,
+    fc:r.avg_hr||null,
+    peakHr:r.peak_hr||null,
+    pw:r.avg_power||null,
+    cad:r.avg_cadence||null,
+    cal:r.calories||null,
+    effort:r.effort||null,
+    notes:r.notes||undefined,
+    includeInStats: r.include_in_stats !== false,
+    legsFocused: r.legs_focused === null || r.legs_focused === undefined ? null : !!r.legs_focused,
+    painRatings: r.pain_ratings || null,
+    hrSeries: r.hr_series || null,
+    paceSeries: r.pace_series || null,
+    fracWorkManual: r.frac_work_manual || null,
+    fracRecoveryManual: r.frac_recovery_manual || null,
+  };
+}
+
+/* ---------- Auth ---------- */
+let authMode="signin";
+document.getElementById("authSwitch").onclick=()=>{
+  authMode = authMode==="signin" ? "signup" : "signin";
+  document.getElementById("authSubmit").textContent = authMode==="signin" ? "Se connecter" : "Créer le compte";
+  document.getElementById("authSwitch").textContent = authMode==="signin" ? "Pas de compte ? Créer un compte" : "Déjà un compte ? Se connecter";
+  document.getElementById("authError").textContent = "";
+};
+document.getElementById("authSubmit").onclick = async () => {
+  const email = document.getElementById("authEmail").value.trim();
+  const password = document.getElementById("authPassword").value;
+  const btn = document.getElementById("authSubmit");
+  const errEl = document.getElementById("authError");
+  errEl.textContent = "";
+  btn.disabled = true;
+  const { error } = authMode==="signin"
+    ? await supa.auth.signInWithPassword({ email, password })
+    : await supa.auth.signUp({ email, password });
+  btn.disabled = false;
+  if (error) { errEl.textContent = error.message; return; }
+  if (authMode==="signup") { errEl.style.color="var(--accent)"; errEl.textContent = "Compte créé — vérifie tes emails si une confirmation est demandée, puis connecte-toi."; return; }
+  await boot();
+};
+
+/* ---------- Dashboard ---------- */
+let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=0, activeFilter="Tous", charts=[];
+let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = null, restingHrUpdatedAt = null, restingHrIsManual = false, avatarUrl = null;
+let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
+let lastCheckin = null, openSessionRatings = new Set();
+let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
+const BODY_PARTS=[
+  ["tendon_g","Tendon gauche"],["tendon_d","Tendon droit"],
+  ["genou_g","Genou gauche"],["genou_d","Genou droit"],
+  ["cuisse_g","Cuisse gauche"],["cuisse_d","Cuisse droite"],
+  ["pied_g","Pied gauche"],["pied_d","Pied droit"],
+  ["bassin","Bassin"],["dos","Dos"],
+];
+const TABS=[
+  {label:"Dashboard", icon:"bars"},
+  {label:"Plan", icon:"sparkle"},
+  {label:"Objectifs", icon:"target"},
+  {label:"Séances", icon:"list"},
+  {label:"Mon compte", icon:"user"},
+];
+
+async function loadData() {
+  const { data, error } = await supa.from("runs").select("*").order("start_date", { ascending: true });
+  if (error) { alert("Erreur de chargement : " + error.message); return; }
+  RUNS = (data || []).map(mapRow);
+  runningRuns = RUNS.filter(r=>r.includeInStats);
+  efRuns = runningRuns.filter(r=>r.type==="EF");
+  fracRuns = runningRuns.filter(r=>r.type==="Fractionné");
+
+  const { data: { user } } = await supa.auth.getUser();
+  userEmail = user?.email || "";
+
+  // .maybeSingle() échoue (silencieusement si on ne vérifie pas l'erreur) dès
+  // que la requête matche PLUS d'une ligne — ex: un doublon de profil pour ce
+  // user_id. Sans ce garde-fou, tout le profil retombe à vide (profile
+  // devient undefined) et ça donne l'impression que rien n'a jamais été
+  // enregistré, alors que les écritures individuelles fonctionnent très bien.
+  const { data: profile, error: profileError } = await supa.from("profiles").select("sync_since_date, goals, max_hr, resting_hr, resting_hr_updated_at, resting_hr_is_manual, vo2_max, vo2_max_updated_at, vo2_max_is_manual, avatar_url, pseudo, age, gender, cities, dashboard_period").maybeSingle();
+  if(profileError){
+    console.error("Erreur de chargement du profil :", profileError);
+    alert("Erreur de chargement du profil : "+profileError.message+"\n\nTes réglages (Mon compte, Objectifs) risquent d'apparaître vides même s'ils sont bien enregistrés. Contacte-moi avec ce message.");
+  }
+  syncSinceDate = profile?.sync_since_date || null;
+  goals = profile?.goals || {};
+  avatarUrl = profile?.avatar_url || null;
+  maxHr = profile?.max_hr || null;
+  restingHr = profile?.resting_hr || null;
+  restingHrUpdatedAt = profile?.resting_hr_updated_at || null;
+  restingHrIsManual = !!profile?.resting_hr_is_manual;
+  vo2Max = profile?.vo2_max || null;
+  vo2MaxUpdatedAt = profile?.vo2_max_updated_at || null;
+  vo2MaxIsManual = !!profile?.vo2_max_is_manual;
+  pseudo = profile?.pseudo || "";
+  age = profile?.age || null;
+  gender = profile?.gender || "";
+  cities = profile?.cities || [];
+  dashboardPeriod = profile?.dashboard_period || "monthly";
+
+  const { data: checkins } = await supa.from("pain_checkins").select("*").order("created_at",{ascending:false}).limit(1);
+  lastCheckin = checkins?.[0] || null;
+}
+
+// Formule 220-âge par défaut : plus fiable que le pic FC observé en
+// entraînement, qui sous-estime presque toujours la vraie FC max (on ne
+// l'atteint qu'à l'effort quasi maximal, rarement en footing).
+function estimatedMaxHr(){
+  if(age) return 220 - age;
+  const peaks = runningRuns.map(r=>r.peakHr).filter(Boolean);
+  return peaks.length ? Math.max(...peaks) : null;
+}
+
+function dismissedPromptIds(){
+  try { return JSON.parse(localStorage.getItem("dismissedPainPrompts")||"[]"); } catch { return []; }
+}
+// Uniquement la toute dernière séance de course — pas de repli sur une plus
+// ancienne si celle-ci est ignorée, pour ne pas relancer sans fin.
+function unratedRecentSession(){
+  if(runningRuns.length===0) return null;
+  const last = runningRuns[runningRuns.length-1];
+  if(last.painRatings) return null;
+  if(dismissedPromptIds().includes(last.id)) return null;
+  return last;
+}
+window.dismissPainPrompt = (id) => {
+  const el = document.getElementById("painPrompt");
+  if(el){
+    el.style.maxHeight = el.offsetHeight+"px";
+    requestAnimationFrame(()=>{
+      el.style.transition = "max-height .35s ease, opacity .35s ease, margin .35s ease, padding .35s ease";
+      el.style.opacity = "0";
+      el.style.maxHeight = "0px";
+      el.style.marginBottom = "0px";
+      el.style.paddingTop = "0px";
+      el.style.paddingBottom = "0px";
+      el.style.overflow = "hidden";
+    });
+  }
+  const list = dismissedPromptIds();
+  list.push(id);
+  localStorage.setItem("dismissedPainPrompts", JSON.stringify(list));
+  setTimeout(()=>renderContent(), 380);
+};
+window.goRateSession = (id) => {
+  activeTab = 1;
+  openSessionRatings.add(id);
+  renderTabs();
+  renderContent();
+  window.scrollTo({top:0,behavior:"smooth"});
+};
+function painPromptBanner(){
+  const r = unratedRecentSession();
+  if(!r) return "";
+  return `<div class="card" id="painPrompt" style="border-color:rgba(255,159,10,0.4);background:rgba(255,159,10,0.08)">
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Comment s'est passée ta séance du ${r.label} ?</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Note tes douleurs éventuelles — ça aide l'IA à personnaliser ton plan.</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="margin-top:0" onclick="goRateSession('${r.id}')">Noter maintenant</button>
+      <button class="btn-secondary" onclick="dismissPainPrompt('${r.id}')">Plus tard</button>
+    </div>
+  </div>`;
+}
+
+// Rappel léger (pas de vraie notification push, ça demanderait une infra
+// serveur qu'on n'a pas) : si la dernière séance connue date de plusieurs
+// jours, on suggère d'ouvrir l'app pour synchroniser — l'app ne remonte
+// rien tant qu'elle n'est pas ouverte.
+function staleSyncBanner(){
+  if(!runningRuns.length) return "";
+  const last = runningRuns[runningRuns.length-1];
+  const days = Math.floor((new Date() - dateFromRun(last)) / 86400000);
+  if(days < 5) return "";
+  return `<div class="card" style="border-color:rgba(10,132,255,0.4);background:rgba(10,132,255,0.08)">
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Pas de séance depuis ${days} jours</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Pense à synchroniser si tu as couru récemment.</div>
+    <button class="btn-secondary" onclick="location.href='myrunningapp://sync'">Ouvrir l'app et synchroniser</button>
+  </div>`;
+}
+
+// Wrappers centralisant la gestion d'erreur réseau : sans ça, un upsert qui
+// échoue silencieusement donne l'impression que rien n'est enregistré (cause
+// du bug remonté sur Mon compte — plus jamais de write non vérifié).
+// Anime la confirmation de sauvegarde (voir .save-confirm) : relance
+// l'animation à chaque appel même si l'élément l'a déjà jouée récemment.
+function flashSaved(elId, text="Enregistré"){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  el.textContent = "✓ "+text;
+  el.classList.remove("show");
+  void el.offsetWidth; // force le reflow pour relancer l'animation CSS
+  el.classList.add("show");
+}
+// getUser() peut renvoyer { user: null } (session expirée, cookie perdu...)
+// sans lever d'erreur — sans ce garde-fou, "user.id" plante silencieusement
+// AVANT même d'atteindre l'upsert, donc avant que la moindre alerte
+// d'erreur puisse se déclencher : ça a l'air de marcher, rien n'est
+// enregistré, et rien ne le signale (cause probable du bug "ça n'enregistre
+// rien" remonté sur Mon compte).
+async function upsertProfile(fields){
+  const { data: { user }, error: authError } = await supa.auth.getUser();
+  if(authError || !user){ alert("Session expirée — recharge la page et reconnecte-toi."); return false; }
+  const { error } = await supa.from("profiles").upsert({ user_id: user.id, ...fields });
+  if(error) alert("Erreur d'enregistrement : "+error.message);
+  return !error;
+}
+async function updateRun(id, fields){
+  const { error } = await supa.from("runs").update(fields).eq("id", id);
+  if(error) alert("Erreur d'enregistrement : "+error.message);
+  return !error;
+}
+
+window.saveSyncSinceDate = async (value) => {
+  if(!(await upsertProfile({ sync_since_date: value }))) return;
+  syncSinceDate = value;
+};
+const GOALS_FIELDS = ["objectifPrincipal","distanceCourse","dateCible","kmMensuel","frequence","plusLongueDistance","allureEfVisee","allureWorkVisee","niveau","autre"];
+const RACE_DISTANCES_KM = {"5km":5,"10km":10,"Semi":21.0975,"Marathon":42.195};
+
+// Sélection à puces générique (objectif principal, distance de course,
+// séances/semaine, niveau) : met à jour un input caché + l'état visuel
+// (.active) sans passer par renderContent(), pour ne pas perdre les autres
+// champs en cours de saisie ailleurs sur la page.
+window.selectChip = (field, value) => {
+  const hidden = document.getElementById("goal_"+field);
+  if(hidden) hidden.value = value;
+  const group = document.querySelector(`[data-chipgroup="${field}"]`);
+  if(group) group.querySelectorAll("[data-value]").forEach(el=>{
+    el.classList.toggle("active", el.dataset.value===value);
+  });
+  if(field==="objectifPrincipal"){
+    const raceBlock = document.getElementById("raceGoalBlock");
+    if(raceBlock) raceBlock.style.display = (value==="Préparer une course") ? "" : "none";
+  }
+  if(field==="distanceCourse") updateRacePaceGoal();
+};
+
+// Allure cible calculée en direct à partir de la distance choisie + du temps
+// visé (h/m/s) — donne un repère concret plutôt qu'un temps abstrait.
+function updateRacePaceGoal(){
+  const dist = document.getElementById("goal_distanceCourse")?.value;
+  const km = RACE_DISTANCES_KM[dist];
+  const h = parseInt(document.getElementById("goal_tempsH")?.value,10)||0;
+  const m = parseInt(document.getElementById("goal_tempsM")?.value,10)||0;
+  const s = parseInt(document.getElementById("goal_tempsS")?.value,10)||0;
+  const totalSec = h*3600+m*60+s;
+  const out = document.getElementById("racePaceOut");
+  if(!out) return;
+  out.textContent = (km && totalSec>0) ? `→ allure cible : ${fmtA(Math.round(totalSec/km))}/km` : "";
+}
+window.updateRacePaceGoal = updateRacePaceGoal;
+
+// Stepper d'allure (±5s/km) : plus intuitif qu'un champ numérique brut pour
+// une valeur qu'on affine par petits pas.
+window.adjustPaceGoal = (field, delta, fallback) => {
+  const hidden = document.getElementById("goal_"+field);
+  let sec = parseInt(hidden.value, 10) || fallback;
+  sec = Math.max(120, Math.min(900, sec+delta));
+  hidden.value = sec;
+  const disp = document.getElementById(field+"_display");
+  if(disp) disp.textContent = fmtA(sec);
+};
+
+window.saveGoals = async () => {
+  const value = {};
+  GOALS_FIELDS.forEach(k=>{ const el=document.getElementById("goal_"+k); if(el) value[k]=el.value; });
+  const h = parseInt(document.getElementById("goal_tempsH")?.value,10)||0;
+  const m = parseInt(document.getElementById("goal_tempsM")?.value,10)||0;
+  const s = parseInt(document.getElementById("goal_tempsS")?.value,10)||0;
+  const totalSec = h*3600+m*60+s;
+  value.tempsViseSec = totalSec>0 ? totalSec : "";
+  if(!(await upsertProfile({ goals: value }))) return;
+  goals = value;
+  flashSaved("goalsSaved");
+};
+window.uploadAvatar = async (input) => {
+  const file = input.files[0];
+  if(!file) return;
+  const msg = document.getElementById("avatarMsg");
+  if(msg) msg.textContent = "Envoi en cours...";
+  const { data: { user }, error: authError } = await supa.auth.getUser();
+  if(authError || !user){ if(msg) msg.textContent=""; alert("Session expirée — recharge la page et reconnecte-toi."); return; }
+  const ext = (file.name.split('.').pop()||"jpg").toLowerCase();
+  const path = `${user.id}/avatar.${ext}`;
+  const { error: upErr } = await supa.storage.from('avatars').upload(path, file, { upsert: true });
+  if(upErr){ if(msg) msg.textContent = "Erreur : "+upErr.message; return; }
+  const { data: { publicUrl } } = supa.storage.from('avatars').getPublicUrl(path);
+  const bustedUrl = publicUrl + "?t=" + Date.now();
+  if(!(await upsertProfile({ avatar_url: bustedUrl }))){ if(msg) msg.textContent=""; return; }
+  avatarUrl = bustedUrl;
+  if(msg) msg.textContent = "";
+  renderContent();
+};
+// Un seul bouton "Enregistrer" pour toute la page Mon compte (Profil, FC max,
+// FC repos, VO2 max) — plusieurs boutons séparés prêtaient à confusion
+// (facile de n'en cliquer qu'un et de croire que tout était enregistré).
+// Une seule requête, un seul point de confirmation/erreur.
+window.saveAccountInfo = async () => {
+  const pseudoVal = document.getElementById("profPseudo").value;
+  const ageVal = parseInt(document.getElementById("profAge").value, 10) || null;
+  const genderVal = document.getElementById("profGender").value;
+  const citiesVal = document.getElementById("profCities").value.split(",").map(s=>s.trim()).filter(Boolean);
+  const maxHrVal = document.getElementById("maxHrInput").value;
+  const maxHrNum = maxHrVal ? parseInt(maxHrVal, 10) : null;
+  const restingHrVal = document.getElementById("restingHrInput").value;
+  const restingHrNum = restingHrVal ? parseInt(restingHrVal, 10) : null;
+  const restingHrNow = restingHrNum ? new Date().toISOString() : null;
+  const vo2MaxVal = document.getElementById("vo2MaxInput").value;
+  const vo2MaxNum = vo2MaxVal ? parseFloat(vo2MaxVal) : null;
+  const vo2MaxNow = vo2MaxNum ? new Date().toISOString() : null;
+
+  const ok = await upsertProfile({
+    pseudo: pseudoVal, age: ageVal, gender: genderVal, cities: citiesVal,
+    max_hr: maxHrNum,
+    resting_hr: restingHrNum, resting_hr_updated_at: restingHrNow, resting_hr_is_manual: !!restingHrNum,
+    vo2_max: vo2MaxNum, vo2_max_updated_at: vo2MaxNow, vo2_max_is_manual: !!vo2MaxNum,
+  });
+  if(!ok) return;
+  pseudo = pseudoVal; age = ageVal; gender = genderVal; cities = citiesVal;
+  maxHr = maxHrNum;
+  restingHr = restingHrNum; restingHrUpdatedAt = restingHrNow; restingHrIsManual = !!restingHrNum;
+  vo2Max = vo2MaxNum; vo2MaxUpdatedAt = vo2MaxNow; vo2MaxIsManual = !!vo2MaxNum;
+  flashSaved("accountSaved");
+};
+window.saveDashboardPeriod = async (value) => {
+  dashboardPeriod = value;
+  renderContent();
+  await upsertProfile({ dashboard_period: value });
+};
+window.changePassword = async () => {
+  const pw = document.getElementById("newPassword").value;
+  const msg = document.getElementById("pwMsg");
+  if(!pw || pw.length<6){ msg.textContent="Au moins 6 caractères."; msg.style.color="var(--red)"; return; }
+  const { error } = await supa.auth.updateUser({ password: pw });
+  msg.style.color = error ? "var(--red)" : "var(--accent)";
+  msg.textContent = error ? error.message : "Mot de passe changé.";
+  if(!error) document.getElementById("newPassword").value="";
+};
+
+async function refreshAfterEdit(){
+  await loadData();
+  renderContent();
+}
+window.toggleInclude = async (id, checked) => {
+  if(!(await updateRun(id, { include_in_stats: checked }))) return;
+  await refreshAfterEdit();
+};
+window.changeType = async (id, newType) => {
+  if(!(await updateRun(id, { type: newType }))) return;
+  await refreshAfterEdit();
+};
+window.setLegsFocused = async (id, value) => {
+  if(!(await updateRun(id, { legs_focused: value }))) return;
+  await refreshAfterEdit();
+};
+function readPainForm(prefix){
+  const ratings={};
+  BODY_PARTS.forEach(([key])=>{ ratings[key]=parseInt(document.getElementById(`${prefix}_${key}`).value,10); });
+  return ratings;
+}
+window.saveCheckin = async () => {
+  const ratings = readPainForm("now");
+  const { data: { user } } = await supa.auth.getUser();
+  const { error } = await supa.from("pain_checkins").insert({ user_id: user.id, ratings });
+  if(error){ alert("Erreur d'enregistrement : "+error.message); return; }
+  await loadData(); // recharge lastCheckin sans reconstruire tout le HTML (garde les curseurs tels quels)
+  flashSaved("checkinSaved", `Enregistré à ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`);
+};
+window.toggleSessionRating = (id) => {
+  if(openSessionRatings.has(id)) openSessionRatings.delete(id);
+  else openSessionRatings.add(id);
+  renderContent();
+};
+window.saveSessionRating = async (id) => {
+  const ratings = readPainForm(`sess_${id}`);
+  if(!(await updateRun(id, { pain_ratings: ratings }))) return;
+  // Laisse l'animation de confirmation le temps de se voir avant que
+  // refreshAfterEdit() ne reconstruise le DOM en dessous (sinon elle
+  // disparaît instantanément, invisible pour l'utilisateur).
+  flashSaved(`sessRatingSaved_${id}`);
+  await new Promise(r=>setTimeout(r, 550));
+  await refreshAfterEdit();
+};
+window.logout = async () => {
+  await supa.auth.signOut();
+  document.getElementById("appView").style.display="none";
+  document.getElementById("authView").style.display="flex";
+};
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+window.exportData = (format) => {
+  const stamp = new Date().toISOString().slice(0,10);
+  if(format==='json'){
+    const blob = new Blob([JSON.stringify(RUNS, null, 2)], {type:'application/json'});
+    downloadBlob(blob, `myrunningapp-export-${stamp}.json`);
+    return;
+  }
+  const headers = ["date","type","distance_km","duree","allure_sec_km","fc_moyenne","fc_pic","calories","cadence","puissance","lieu","notes"];
+  const cols = r => [r.date, r.type, r.dist, r.dur, r.allure, r.fc, r.peakHr, r.cal, r.cad, r.pw, r.lieu, r.notes];
+  const esc = v => `"${(v??"").toString().replace(/"/g,'""')}"`;
+  const csv = [headers.map(esc).join(","), ...RUNS.map(r=>cols(r).map(esc).join(","))].join("\n");
+  const blob = new Blob([csv], {type:'text/csv'});
+  downloadBlob(blob, `myrunningapp-export-${stamp}.csv`);
+};
+
+function dateFromRun(r){ const[d,m]=r.date.split("/").map(Number); return new Date(new Date().getFullYear(), m-1, d); }
+
+function periodStats(period){
+  const now=new Date();
+  const start = period==="weekly"
+    ? (()=>{ const d=new Date(now); d.setDate(now.getDate()-7); return d; })()
+    : new Date(now.getFullYear(), now.getMonth(), 1);
+  const runs = runningRuns.filter(r=>dateFromRun(r)>=start && r.dist>0);
+  const dist = runs.reduce((a,r)=>a+r.dist,0);
+  const time = runs.reduce((a,r)=>{const[h,m,s]=r.dur.split(":").map(Number);return a+(r.dur.split(":").length===3?h*3600+m*60+s:h*60+m);},0);
+  const withPace = runs.filter(r=>r.allure);
+  const avgPace = withPace.length ? Math.round(withPace.reduce((a,r)=>a+r.allure,0)/withPace.length) : null;
+  const longMax = runs.length ? Math.max(...runs.map(r=>r.dist)) : 0;
+  const withHr = runs.filter(r=>r.fc);
+  const avgFc = withHr.length ? Math.round(withHr.reduce((a,r)=>a+r.fc,0)/withHr.length) : null;
+  return { runs, dist, time, avgPace, longMax, avgFc };
+}
+
+// 3 anneaux d'objectifs, toujours MENSUELS par choix explicite — indépendants
+// du bascule semaine/mois qui pilote le reste du dashboard (ce sont des
+// objectifs du mois, pas une vue par période). L'objectif "Séances" vient du
+// champ "Séances visées / semaine" (onglet Objectifs), mensualisé ×4.33
+// (nombre moyen de semaines par mois) plutôt que juste ×4, pour ne pas sous-
+// estimer légèrement l'objectif réel.
+function ringSmHTML(val, goal, color, valLabel, unitLabel, caption){
+  const pct = goal ? Math.min(1, val/goal) : 0;
+  const R=38, C=2*Math.PI*R;
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+    <div class="ring-wrap-sm">
+      <svg width="90" height="90" viewBox="0 0 90 90">
+        <circle cx="45" cy="45" r="${R}" fill="none" stroke="var(--card-2)" stroke-width="8"/>
+        <circle cx="45" cy="45" r="${R}" fill="none" stroke="${color}" stroke-width="8"
+          stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}" stroke-linecap="round"/>
+      </svg>
+      <div class="ring-label-sm">
+        <div class="val">${valLabel}</div>
+        <div class="unit">${unitLabel}</div>
+      </div>
+    </div>
+    <div class="ring-caption">${caption}</div>
+  </div>`;
+}
+function heroHTML(){
+  const monthS = periodStats("monthly");
+  const kmGoal = goals.kmMensuel ? Number(goals.kmMensuel) : null;
+  const weeklySessionGoal = goals.frequence ? Number(goals.frequence) : null;
+  const sessionGoal = weeklySessionGoal ? Math.round(weeklySessionGoal*4.33) : null;
+  const distGoal = goals.plusLongueDistance ? Number(goals.plusLongueDistance) : null;
+
+  return `<div class="hero" style="flex-direction:column;align-items:stretch">
+    <div class="hero-rings-row">
+      ${ringSmHTML(monthS.dist, kmGoal, "#30d158", monthS.dist.toFixed(0), kmGoal?`/${kmGoal}km`:"km", "Km ce mois")}
+      ${ringSmHTML(monthS.runs.length, sessionGoal, "#0a84ff", String(monthS.runs.length), sessionGoal?`/${sessionGoal}`:"séances", "Séances ce mois")}
+      ${ringSmHTML(monthS.longMax||0, distGoal, "#ffd60a", (monthS.longMax||0).toFixed(0), distGoal?`/${distGoal}km`:"km", "Plus longue sortie")}
+    </div>
+    ${(!kmGoal||!sessionGoal||!distGoal)?`<div class="chart-hint" style="margin-top:10px;margin-bottom:0">Objectifs incomplets — <a href="#" onclick="setTab(1);return false" style="color:var(--accent)">renseigne-les dans l'onglet Objectifs</a> pour voir ta progression.</div>`:""}
+  </div>`;
+}
+
+function kpisHTML(){
+  const period = dashboardPeriod;
+  const s = periodStats(period);
+  const periodLbl = period==="weekly" ? "(semaine)" : "(mois)";
+  const now=new Date();
+  const yearStart=new Date(now.getFullYear(),0,1);
+  // Toutes séances incluses dans les stats (include_in_stats), tous types
+  // confondus — pas seulement les courses. Voir migration_002 pour la règle
+  // d'inclusion par défaut (EF/Long/Fractionné/Récup/Course), modifiable par
+  // séance via le toggle "Inclure dans les stats".
+  const yearDist = runningRuns.filter(r=>dateFromRun(r)>=yearStart && r.dist>0).reduce((a,r)=>a+r.dist,0);
+  const monthS = periodStats("monthly");
+  const avgOf = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : null;
+
+  // Fenêtres glissantes (pas des trimestres calendaires) : "dernier trimestre"
+  // = 91 derniers jours, "avant-dernier" = les 91 jours précédents.
+  const today=new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const inWindow = (runs, daysStart, daysEnd) => {
+    const from=new Date(today); from.setDate(today.getDate()-daysEnd);
+    const to=new Date(today); to.setDate(today.getDate()-daysStart);
+    return runs.filter(r=>dateFromRun(r)>=from && dateFromRun(r)<=to);
+  };
+  const avgPaceWindow = (runs, daysStart, daysEnd) => avgOf(inWindow(runs, daysStart, daysEnd).filter(r=>r.allure).map(r=>r.allure));
+  const pacePrevQuarter = avgPaceWindow(efRuns, 84, 168);
+  const paceLastQuarter = avgPaceWindow(efRuns, 0, 84);
+  const paceLast4Weeks = avgPaceWindow(efRuns, 0, 28);
+  const avgFracPace4w = avgOf(inWindow(fracRuns, 0, 28).map(r=>getIntervalPaces(r)).filter(ip=>ip&&ip.work).map(ip=>ip.work));
+
+  const longRunsAll = runningRuns.filter(r=>r.type==="Long");
+  const seuilRunsAll = runningRuns.filter(r=>r.type==="Seuil");
+  const avgFcLong = avgOf(longRunsAll.filter(r=>r.fc).map(r=>r.fc));
+  const avgFcEf = avgOf(efRuns.filter(r=>r.fc).map(r=>r.fc));
+  const avgFcSeuil = avgOf(seuilRunsAll.filter(r=>r.fc).map(r=>r.fc));
+  const avgFcFracWork = avgOf(fracRuns.filter(r=>r.paceSeries && r.hrSeries).map(r=>computeWorkAvgHr(r.paceSeries, r.hrSeries)).filter(v=>v!=null));
+
+  // Regroupées par type de donnée plutôt qu'en une seule grille mélangée.
+  const groups=[
+    ["Volume",[
+      [yearDist.toFixed(2)+" km","Distance annuelle","route","#30d158"],
+      [s.longMax?s.longMax.toFixed(2)+" km":"—","Plus longue sortie "+periodLbl,"flame","#ff453a"],
+    ]],
+    ["Allure",[
+      [pacePrevQuarter?fmtA(pacePrevQuarter)+"/km":"—","Allure avant-dernier trimestre","trend","#ff9f0a"],
+      [paceLastQuarter?fmtA(paceLastQuarter)+"/km":"—","Allure dernier trimestre","trend","#bf5af2"],
+      [paceLast4Weeks?fmtA(paceLast4Weeks)+"/km":"—","Allure 4 dernières semaines","bolt","#0a84ff"],
+      [avgFracPace4w?fmtA(avgFracPace4w)+"/km":"—","Allure Fractionné (4 sem.)","bolt","#30d158"],
+    ]],
+    ["Activité",[
+      [String(s.runs.length),"Séances "+periodLbl,"runner","#0a84ff"],
+      [fmtDur(s.time),"Temps de course "+periodLbl,"clock","#64d2ff"],
+      [monthS.dist.toFixed(2)+" km","Km ce mois-ci","route","#30d158"],
+    ]],
+    ["Cardio",[
+      [maxHr?maxHr+" bpm":"—","FC max","heart","#ff375f"],
+      [avgFcEf?avgFcEf+" bpm":"—","FC moy. EF","heart","#30d158"],
+      [avgFcLong?avgFcLong+" bpm":"—","FC moy. Long","heart","#0a84ff"],
+      [avgFcSeuil?avgFcSeuil+" bpm":"—","FC moy. Seuil","heart","#ff453a"],
+      [avgFcFracWork?avgFcFracWork+" bpm":"—","FC moy. Work Fractionné","heart","#ff9f0a"],
+    ]],
+  ];
+  return groups.map(([label,items])=>`
+    <div class="stitle" style="padding:0 20px;margin-bottom:8px">${label}</div>
+    <div class="kpi-grid" style="margin-top:-6px${items.length===3?';grid-template-columns:repeat(3,1fr)':''}">${items.map(([v,l,ic,c])=>`
+      <div class="kpi"${items.length===1?' style="grid-column:1/-1"':''}>
+        <div class="kpi-top">
+          <div class="kpi-icon" style="background:${c}22;color:${c}">${icon(ic,15)}</div>
+        </div>
+        <div class="kpi-val">${v}</div>
+        <div class="kpi-lbl">${l}</div>
+      </div>`).join("")}</div>`).join("");
+}
+
+function destroyCharts(){charts.forEach(c=>c.destroy());charts=[];}
+function renderTabs(){
+  document.getElementById("tabs").innerHTML=TABS.map((t,i)=>`
+    <button class="tab-btn${i===activeTab?" active":""}" onclick="setTab(${i})">
+      ${icon(t.icon,20)}<span>${t.label}</span>
+    </button>`).join("");
+}
+window.setTab=i=>{destroyCharts();activeTab=i;renderTabs();renderContent();window.scrollTo({top:0,behavior:"smooth"});};
+window.setFilter=f=>{activeFilter=f;destroyCharts();renderContent();};
+
+function weeklyVol(){
+  const w={};
+  runningRuns.forEach(r=>{
+    const[d,m]=r.date.split("/").map(Number);
+    const dt=new Date(2000,m-1,d),mon=new Date(dt);
+    mon.setDate(dt.getDate()-dt.getDay()+(dt.getDay()===0?-6:1));
+    const k=mon.getDate()+"/"+(mon.getMonth()+1);
+    if(!w[k])w[k]={label:k,dist:0};
+    w[k].dist=+(w[k].dist+r.dist).toFixed(2);
+  });
+  return Object.values(w);
+}
+
+function monthlyVol(){
+  const w={};
+  runningRuns.forEach(r=>{
+    const d=dateFromRun(r);
+    const k=d.getFullYear()*12+d.getMonth();
+    if(!w[k])w[k]={label:MONTHS[d.getMonth()],dist:0,order:k};
+    w[k].dist=+(w[k].dist+r.dist).toFixed(2);
+  });
+  return Object.values(w).sort((a,b)=>a.order-b.order);
+}
+
+// Points sans ligne reliée + droite de tendance projetée sur 3 mois.
+// Rend un emoji sur un mini-canvas pour l'utiliser comme pointStyle Chart.js
+// (rendu synchrone, pas de chargement d'image asynchrone nécessaire).
+function emojiPointStyle(emoji, size=22){
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.font = `${Math.round(size*0.85)}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, size/2, size/2+1);
+  return canvas;
+}
+
+function mkPaceTrendChart(canvasId, runs, showRaces, projectionDays=90){
+  if(!runs.length) return;
+  const withPace = runs.filter(r=>r.allure);
+  if(!withPace.length) return;
+  const first = dateFromRun(withPace[0]);
+  const points = withPace.map(r=>({x:Math.round((dateFromRun(r)-first)/86400000), y:r.allure}));
+  const {slope,intercept} = linearRegression(points);
+  const lastX = points[points.length-1].x;
+  const projX = lastX + projectionDays;
+  const trend = [{x:0,y:intercept},{x:projX,y:slope*projX+intercept}];
+  const dayToLabel = x => { const d=new Date(first); d.setDate(first.getDate()+Math.round(x)); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}); };
+  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const datasets = [
+    {type:'scatter', label:'Allure', data:points, backgroundColor:'#30d158', pointRadius:4},
+    {type:'line', label:'Tendance', data:trend, borderColor:'#ff9f0a', borderWidth:2, borderDash:[6,4], pointRadius:0, fill:false},
+  ];
+  // Une course officielle est un point de repère (vraie perf), pas une donnée
+  // d'entraînement : affichée en plus, mais jamais incluse dans la régression.
+  const courseRuns = showRaces ? runningRuns.filter(r=>r.type==="Course" && r.allure) : [];
+  if(courseRuns.length){
+    const coursePoints = courseRuns.map(r=>({x:Math.round((dateFromRun(r)-first)/86400000), y:r.allure, label:r.label}));
+    datasets.push({type:'scatter', label:'Course', data:coursePoints, backgroundColor:'#ff453a', pointStyle:coursePoints.map(()=>emojiPointStyle('🚩')), pointRadius:11});
+  }
+  // Sorties longues : repère visuel (bleu), jamais dans la régression — même
+  // logique que les courses, une sortie longue a une dynamique différente
+  // d'une séance EF classique et fausserait la tendance.
+  const longRuns = showRaces ? runningRuns.filter(r=>r.type==="Long" && r.allure) : [];
+  if(longRuns.length){
+    const longPoints = longRuns.map(r=>({x:Math.round((dateFromRun(r)-first)/86400000), y:r.allure, label:r.label}));
+    datasets.push({type:'scatter', label:'Long', data:longPoints, backgroundColor:'#0a84ff', pointRadius:5});
+  }
+  const c = new Chart(document.getElementById(canvasId), {
+    data: { datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{title:items=>dayToLabel(items[0].parsed.x), label:ctx=>(ctx.dataset.label==='Allure'||ctx.dataset.label==='Long')?ctx.dataset.label+": "+fmtA(ctx.parsed.y):ctx.dataset.label}}},
+      scales:{
+        x:{type:'linear', ticks:{color:tick,font:{size:10},callback:v=>dayToLabel(v)}, grid:{display:false}},
+        y:{reverse:true, ticks:{color:tick,font:{size:10},callback:v=>fmtA(v)}, grid:{color:grid}},
+      }
+    }
+  });
+  charts.push(c);
+  return c;
+}
+
+// Progression allure des séances fractionné : deux séries de points (Work et
+// Récup), la tendance/projection étant calculée sur le Work uniquement (c'est
+// la métrique de progression qui a du sens, la Récup n'est qu'un repère).
+function mkFractionneChart(canvasId, fracRuns, projectionDays=90){
+  const withIntervals = fracRuns
+    .map(r=>({r, ip: getIntervalPaces(r)}))
+    .filter(x=>x.ip);
+  if(!withIntervals.length) return;
+  const first = dateFromRun(withIntervals[0].r);
+  const workPoints = withIntervals.map(({r,ip})=>({x:Math.round((dateFromRun(r)-first)/86400000), y:ip.work}));
+  const recoveryPoints = withIntervals.filter(({ip})=>ip.recovery).map(({r,ip})=>({x:Math.round((dateFromRun(r)-first)/86400000), y:ip.recovery}));
+  const {slope,intercept} = linearRegression(workPoints);
+  const lastX = workPoints[workPoints.length-1].x;
+  const projX = lastX + projectionDays;
+  const trend = [{x:0,y:intercept},{x:projX,y:slope*projX+intercept}];
+  const dayToLabel = x => { const d=new Date(first); d.setDate(first.getDate()+Math.round(x)); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}); };
+  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const datasets = [
+    {type:'scatter', label:'Work', data:workPoints, backgroundColor:'#30d158', pointRadius:5},
+    {type:'scatter', label:'Récup', data:recoveryPoints, backgroundColor:'#98989f', pointRadius:5},
+    {type:'line', label:'Tendance', data:trend, borderColor:'#ff9f0a', borderWidth:2, borderDash:[6,4], pointRadius:0, fill:false},
+  ];
+  const c = new Chart(document.getElementById(canvasId), {
+    data: { datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:true, position:'bottom', labels:{color:tick,boxWidth:10,font:{size:10},filter:item=>item.text!=='Tendance'}}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{title:items=>dayToLabel(items[0].parsed.x), label:ctx=>ctx.dataset.label==='Tendance'?null:ctx.dataset.label+": "+fmtA(ctx.parsed.y)}}},
+      scales:{
+        x:{type:'linear', ticks:{color:tick,font:{size:10},callback:v=>dayToLabel(v)}, grid:{display:false}},
+        y:{reverse:true, ticks:{color:tick,font:{size:10},callback:v=>fmtA(v)}, grid:{color:grid}},
+      }
+    }
+  });
+  charts.push(c);
+  return c;
+}
+
+/* ---------- Zones cardio & détection fractionné : voir logic.js ---------- */
+
+// Agrège le temps par zone de toutes les séances avec détail FC, groupé par mois calendaire.
+function monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr){
+  const byMonth = {};
+  cardioRuns.filter(r=>r.hrSeries && r.hrSeries.length>1).forEach(r=>{
+    const d = dateFromRun(r);
+    const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+    if(!byMonth[key]) byMonth[key] = {label: d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}), secs:[0,0,0,0,0], sortKey: d.getFullYear()*12+d.getMonth()};
+    const {secs} = computeHrZoneSeconds(r.hrSeries, effMaxHr, effRestingHr);
+    secs.forEach((s,i)=>byMonth[key].secs[i]+=s);
+  });
+  return Object.values(byMonth).sort((a,b)=>a.sortKey-b.sortKey);
+}
+function mkZoneMonthlyChart(canvasId, monthly){
+  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const zoneColors=["#5ac8fa","#30d158","#a8e063","#ff9f0a","#ff375f"];
+  const zoneLabels=["Zone 1","Zone 2","Zone 3","Zone 4","Zone 5"];
+  const datasets = zoneLabels.map((lbl,i)=>({
+    label: lbl, backgroundColor: zoneColors[i],
+    data: monthly.map(m=>{ const total=m.secs.reduce((a,b)=>a+b,0)||1; return Math.round(m.secs[i]/total*1000)/10; }),
+  }));
+  const c = new Chart(document.getElementById(canvasId), {
+    type:'bar',
+    data:{labels: monthly.map(m=>m.label), datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:true, position:'bottom', labels:{color:tick,boxWidth:10,font:{size:10}}}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{label:ctx=>ctx.dataset.label+" : "+ctx.parsed.y+"%"}}},
+      scales:{
+        x:{stacked:true, ticks:{color:tick,font:{size:10}}, grid:{display:false}},
+        y:{stacked:true, max:100, ticks:{color:tick,font:{size:10},callback:v=>v+"%"}, grid:{color:grid}},
+      }
+    }
+  });
+  charts.push(c);
+  return c;
+}
+// Volume d'effort intense (zones 4+5) par mois — utile pour suivre la charge
+// haute intensité dans le temps (logique 80/20 : peu mais bien dosée).
+function mkHighIntensityMonthlyChart(canvasId, monthly){
+  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const data = monthly.map(m=>Math.round((m.secs[3]+m.secs[4])/60));
+  const c = new Chart(document.getElementById(canvasId), {
+    type:'line',
+    data:{labels: monthly.map(m=>m.label), datasets:[{label:"Zones 4-5", data, borderColor:"#ff375f", backgroundColor:"rgba(255,55,95,0.08)", fill:true, borderWidth:2, pointBackgroundColor:"#ff375f", pointRadius:3, tension:0.3}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{label:ctx=>ctx.parsed.y+" min"}}},
+      scales:{
+        x:{ticks:{color:tick,font:{size:10}}, grid:{display:false}},
+        y:{ticks:{color:tick,font:{size:10},callback:v=>v+" min"}, grid:{color:grid}},
+      }
+    }
+  });
+  charts.push(c);
+  return c;
+}
+// Même agrégation que monthlyZoneBreakdown mais par semaine (lundi-dimanche),
+// limitée aux N dernières semaines pour rester lisible.
+function weeklyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr, weeks=12){
+  const byWeek = {};
+  cardioRuns.filter(r=>r.hrSeries && r.hrSeries.length>1).forEach(r=>{
+    const d = dateFromRun(r);
+    const mon = new Date(d); mon.setDate(d.getDate()-d.getDay()+(d.getDay()===0?-6:1));
+    const key = mon.getTime();
+    if(!byWeek[key]) byWeek[key] = {label: mon.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}), secs:[0,0,0,0,0], sortKey: key};
+    const {secs} = computeHrZoneSeconds(r.hrSeries, effMaxHr, effRestingHr);
+    secs.forEach((s,i)=>byWeek[key].secs[i]+=s);
+  });
+  return Object.values(byWeek).sort((a,b)=>a.sortKey-b.sortKey).slice(-weeks);
+}
+// Vision "polarisée" : % du temps en zones faciles (1-3) vs intenses (4-5),
+// utile pour repérer si l'entraînement suit bien une logique 80/20.
+function mkPolarizationChart(canvasId, buckets){
+  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const pct = (b,idxs) => { const total=b.secs.reduce((a,c)=>a+c,0)||1; return Math.round(idxs.reduce((a,i)=>a+b.secs[i],0)/total*1000)/10; };
+  const c = new Chart(document.getElementById(canvasId), {
+    type:'bar',
+    data:{labels: buckets.map(b=>b.label), datasets:[
+      {label:"Zones 1-3 (facile)", backgroundColor:"#30d158", data: buckets.map(b=>pct(b,[0,1,2]))},
+      {label:"Zones 4-5 (intense)", backgroundColor:"#ff375f", data: buckets.map(b=>pct(b,[3,4]))},
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:true, position:'bottom', labels:{color:tick,boxWidth:10,font:{size:10}}}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{label:ctx=>ctx.dataset.label+" : "+ctx.parsed.y+"%"}}},
+      scales:{
+        x:{stacked:true, ticks:{color:tick,font:{size:10},autoSkip:false,maxRotation:45}, grid:{display:false}},
+        y:{stacked:true, max:100, ticks:{color:tick,font:{size:10},callback:v=>v+"%"}, grid:{color:grid}},
+      }
+    }
+  });
+  charts.push(c);
+  return c;
+}
+function mkHrCurveChart(canvasId, hrSeries){
+  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const sorted = hrSeries.slice().sort((a,b)=>a.t-b.t);
+  const c = new Chart(document.getElementById(canvasId), {
+    type:'line',
+    data:{datasets:[{data:sorted.map(p=>({x:p.t,y:p.hr})), borderColor:"#ff375f", backgroundColor:"rgba(255,55,95,0.08)", fill:true, borderWidth:1.5, pointRadius:0, tension:0.25}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{title:items=>fmtDur(items[0].parsed.x), label:ctx=>Math.round(ctx.parsed.y)+" bpm"}}},
+      scales:{
+        x:{type:'linear', ticks:{color:tick,font:{size:10},callback:v=>fmtDur(v)}, grid:{display:false}},
+        y:{ticks:{color:tick,font:{size:10}}, grid:{color:grid}},
+      }
+    }
+  });
+  charts.push(c);
+  return c;
+}
+
+// Plugin Chart.js maison pour afficher la valeur au-dessus de chaque barre —
+// pas besoin de charger chartjs-plugin-datalabels pour un seul usage.
+const barValueLabelsPlugin = {
+  id: 'barValueLabels',
+  afterDatasetsDraw(chart){
+    const {ctx} = chart;
+    chart.data.datasets.forEach((ds, i)=>{
+      const meta = chart.getDatasetMeta(i);
+      if(meta.hidden) return;
+      meta.data.forEach((bar, idx)=>{
+        const val = ds.data[idx];
+        if(val==null) return;
+        ctx.save();
+        ctx.fillStyle = '#f5f5f7';
+        ctx.font = '600 10px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(val, bar.x, bar.y - 6);
+        ctx.restore();
+      });
+    });
+  }
+};
+function mkChart(id,cfg){
+  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  cfg.options=Object.assign({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,padding:10,cornerRadius:8}}},cfg.options||{});
+  const sc={x:{ticks:{color:tick,font:{size:10}},grid:{display:false}},y:{ticks:{color:tick,font:{size:10}},grid:{color:grid}}};
+  if(!cfg.options.scales)cfg.options.scales=sc;
+  else{cfg.options.scales.x=Object.assign({},sc.x,cfg.options.scales.x);cfg.options.scales.y=Object.assign({},sc.y,cfg.options.scales.y);}
+  const c=new Chart(document.getElementById(id),cfg);
+  charts.push(c);return c;
+}
+
+function emptyState(title,sub,withSyncCta){
+  const cta = withSyncCta ? `<button class="btn-primary" style="margin-top:16px" onclick="location.href='myrunningapp://sync'">Ouvrir l'app et synchroniser</button>` : "";
+  return `<div class="empty-state">${icon("runner",44)}<div class="title">${title}</div><div class="sub">${sub}</div>${cta}</div>`;
+}
+
+function painColor(v){
+  if(v<=3) return "#30d158";
+  if(v<=6) return "#ff9f0a";
+  return "#ff453a";
+}
+function painFormHTML(prefix, initial){
+  initial = initial || {};
+  return BODY_PARTS.map(([key,label])=>{
+    const v = initial[key] ?? 0;
+    const c = painColor(v);
+    return `<div class="pain-row">
+      <div class="pain-row-top"><span class="lbl">${label}</span><span class="val" id="${prefix}_${key}_v" style="color:${c}">${v}</span></div>
+      <input type="range" min="0" max="10" value="${v}" id="${prefix}_${key}" style="accent-color:${c}"
+        oninput="const v=document.getElementById('${prefix}_${key}_v');v.textContent=this.value;const c=painColor(this.value);v.style.color=c;this.style.accentColor=c;">
+    </div>`;
+  }).join("");
+}
+
+let openHrDetail = new Set();
+window.toggleHrDetail = (id) => {
+  if(openHrDetail.has(id)) openHrDetail.delete(id);
+  else openHrDetail.add(id);
+  renderContent();
+};
+
+function hrDetailHTML(r, effMaxHr, effRestingHr){
+  if(!r.hrSeries || r.hrSeries.length<2){
+    return `<div style="padding:8px 0 14px;font-size:12px;color:var(--text-dim)">Pas de détail FC pour cette séance — resynchronise-la depuis l'app pour le récupérer.</div>`;
+  }
+  if(!effMaxHr){
+    return `<div style="padding:8px 0 14px;font-size:12px;color:var(--text-dim)">Renseigne ta FC max (onglet Mon compte) pour voir la répartition par zones.</div>`;
+  }
+  const {secs, defs} = computeHrZoneSeconds(r.hrSeries, effMaxHr, effRestingHr);
+  const total = secs.reduce((a,b)=>a+b,0)||1;
+  const flagFrac = r.type!=="Fractionné" && looksLikeFractionne(r.hrSeries);
+  const flagSeuil = !flagFrac && r.type!=="Seuil" && looksLikeSeuil(r.hrSeries, effMaxHr, effRestingHr);
+  const intervalPaces = r.type==="Fractionné" ? getIntervalPaces(r) : null;
+  return `<div style="padding:8px 0 14px">
+    <div style="position:relative;width:100%;height:130px"><canvas id="cHr_${r.id}"></canvas></div>
+    <div style="margin-top:12px">
+      ${defs.map((d,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px">
+          <span style="width:52px;color:${d.color}">${d.label}</span>
+          <div style="flex:1;height:6px;border-radius:3px;background:var(--card-2);overflow:hidden">
+            <div style="width:${Math.round(secs[i]/total*100)}%;height:100%;background:${d.color}"></div>
+          </div>
+          <span style="width:48px;text-align:right;color:var(--text-dim)">${fmtDur(secs[i])}</span>
+        </div>`).join("")}
+    </div>
+    ${!effRestingHr?`<div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Zones basées sur % de FC max uniquement. Renseigne ta FC de repos (Mon compte) pour matcher exactement l'app Santé.</div>`:""}
+    ${intervalPaces && (intervalPaces.manual || intervalPaces.workCount>=2)?`<div style="margin-top:12px;display:flex;gap:16px">
+      <div><div style="font-size:11px;color:var(--text-dim)">Allure Work ${intervalPaces.manual?"(manuel)":`(${intervalPaces.workCount})`}</div><div style="font-size:15px;font-weight:700;color:#30d158">${fmtA(intervalPaces.work)}/km</div></div>
+      ${intervalPaces.recovery?`<div><div style="font-size:11px;color:var(--text-dim)">Allure Récup ${intervalPaces.manual?"(manuel)":`(${intervalPaces.recoveryCount})`}</div><div style="font-size:15px;font-weight:700;color:#98989f">${fmtA(intervalPaces.recovery)}/km</div></div>`:""}
+    </div>`:r.allure?`<div style="margin-top:12px"><div style="font-size:11px;color:var(--text-dim)">Allure moyenne</div><div style="font-size:15px;font-weight:700;color:var(--text)">${fmtA(r.allure)}/km</div></div>`:""}
+    ${flagFrac?`<div style="margin-top:10px;padding:8px 10px;background:rgba(255,159,10,0.1);border:1px solid rgba(255,159,10,0.3);border-radius:8px;font-size:12px">
+      La FC oscille beaucoup sur cette séance — ça ressemble à un fractionné.
+      <div><button class="btn-secondary" style="margin-top:6px" onclick="changeType('${r.id}','Fractionné')">Reclasser en Fractionné</button></div>
+    </div>`:""}
+    ${flagSeuil?`<div style="margin-top:10px;padding:8px 10px;background:rgba(215,0,21,0.1);border:1px solid rgba(215,0,21,0.3);border-radius:8px;font-size:12px">
+      Plus de la moitié de cette séance est passée en zones 3-5 — ça ressemble à du Seuil.
+      <div><button class="btn-secondary" style="margin-top:6px" onclick="changeType('${r.id}','Seuil')">Reclasser en Seuil</button></div>
+    </div>`:""}
+  </div>`;
+}
+
+function soonCard(iconName,title,sub){
+  return `<div class="card soon-card">
+    ${icon(iconName,40)}
+    <div class="soon-badge">Bientôt disponible</div>
+    <h3>${title}</h3>
+    <p>${sub}</p>
+  </div>`;
+}
+
+// Ligne "gérable" : type modifiable + inclusion dans les stats + question
+// jambes pour le renfo + détail FC/zones si disponible (fusion Séances/Cardio).
+function manageableRow(r, effMaxHr, effRestingHr){
+  const c=TC[r.type]||TC.Other;
+  const legsPrompt = r.type==="Renfo" ? `
+      <div class="manage-field" style="grid-column:1/-1">
+        <span class="field-lbl">Ciblé jambes ?</span>
+        <div style="display:flex;gap:8px;margin-top:2px">
+          <button class="flt${r.legsFocused===true?" active":""}" onclick="setLegsFocused('${r.id}', true)">Oui</button>
+          <button class="flt${r.legsFocused===false?" active":""}" onclick="setLegsFocused('${r.id}', false)">Non</button>
+        </div>
+      </div>` : "";
+  return `<div class="manage-row">
+    <div class="manage-top">
+      <div class="session-dot" style="background:${c}22;color:${c}">${icon(TICON[r.type]||"activity",18)}</div>
+      <div class="manage-date">${r.label}</div>
+      <label class="toggle-col" title="Inclure dans le suivi">
+        <span>Suivi</span>
+        <label class="toggle">
+          <input type="checkbox" ${r.includeInStats?"checked":""} onchange="toggleInclude('${r.id}', this.checked)">
+          <span class="track"></span><span class="thumb"></span>
+        </label>
+      </label>
+    </div>
+    <div class="manage-grid">
+      <div class="manage-field">
+        <span class="field-lbl">Type de séance</span>
+        <select class="type-select" onchange="changeType('${r.id}', this.value)">
+          ${TYPE_OPTIONS.map(t=>`<option value="${t}" ${t===r.type?"selected":""}>${t}</option>`).join("")}
+        </select>
+        ${r.appleType?`<span class="field-sub">Détecté par Santé : ${r.appleType}</span>`:""}
+      </div>
+      <div class="manage-field"><span class="field-lbl">Temps d'effort</span><span class="field-val">${r.dur}</span></div>
+      ${r.dist>0?`<div class="manage-field"><span class="field-lbl">Distance</span><span class="field-val">${r.dist.toFixed(2)} km</span></div>
+      <div class="manage-field"><span class="field-lbl">Allure</span><span class="field-val">${fmtA(r.allure)}/km</span></div>`:""}
+      ${legsPrompt}
+    </div>
+    ${cardioDetailBlockHTML(r, effMaxHr, effRestingHr)}
+  </div>`;
+}
+// Détail FC/zones intégré à la ligne de séance (fusion des anciens onglets
+// Séances et Cardio) : n'apparaît que si la séance a des échantillons FC.
+function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
+  if(!r.hrSeries || r.hrSeries.length<2) return "";
+  const open = openHrDetail.has(r.id);
+  const flagFrac = r.type!=="Fractionné" && looksLikeFractionne(r.hrSeries);
+  const flagSeuil = !flagFrac && r.type!=="Seuil" && looksLikeSeuil(r.hrSeries, effMaxHr, effRestingHr);
+  return `<div class="session-pick" style="margin-top:6px" onclick="toggleHrDetail('${r.id}')">
+    <span>${icon(open?"chevronDown":"chevronRight",13)} Détail cardio</span>
+    ${flagFrac?`<span class="badge" style="background:#ff9f0a22;color:#ff9f0a">FC variable</span>`:""}
+    ${flagSeuil?`<span class="badge" style="background:#d7001522;color:#d70015">Zone haute</span>`:""}
+  </div>
+  ${open?hrDetailHTML(r, effMaxHr, effRestingHr):""}`;
+}
+
+function renderContent(){
+  const el=document.getElementById("content");
+  const filtered=activeFilter==="Tous"?RUNS:RUNS.filter(r=>r.type===activeFilter);
+
+  if (RUNS.length===0 && activeTab!==4){
+    el.innerHTML=`<div class="card">${emptyState("Aucune séance pour l'instant","Première fois ? Ouvre l'app pour choisir depuis quelle date importer, puis synchronise.",true)}</div>`;
+    return;
+  }
+
+  if(activeTab===0){
+    // Dashboard : seul endroit avec l'anneau, les KPIs et les graphiques globaux
+    if(runningRuns.length===0){ el.innerHTML=heroHTML()+kpisHTML()+`<div class="card">${emptyState("Aucune séance de course incluse","Va dans Séances pour inclure tes courses dans le suivi.",true)}</div>`; return; }
+    const isMonthly = dashboardPeriod==="monthly";
+    const vol = isMonthly ? monthlyVol() : weeklyVol();
+    const hasFrac = fracRuns.filter(r=>r.allure).length>0;
+    const fracExcludedCount = fracRuns.filter(r => !getIntervalPaces(r)).length;
+    const lastRun = runningRuns[runningRuns.length-1];
+    const effMaxHr = maxHr || estimatedMaxHr();
+    const effRestingHr = restingHr || null;
+    el.innerHTML=heroHTML()+kpisHTML()+staleSyncBanner()+painPromptBanner()+`
+      <div class="card-row">
+        <div class="card"><div class="stitle">Progression allure — EF</div>
+          <div class="chart-hint">Points = séances · pointillés = tendance et projection à 2 mois · 🚩 = course</div>
+          <div style="position:relative;width:100%;height:180px"><canvas id="cEFmini"></canvas></div>
+        </div>
+        ${hasFrac?`<div class="card"><div class="stitle">Progression allure — Fractionné</div>
+          <div class="chart-hint">Allure des intervalles Work et Récup · pointillés = tendance (Work) et projection à 2 mois</div>
+          ${fracExcludedCount>0?`<div class="chart-hint" style="color:#98989f">${fracExcludedCount} séance${fracExcludedCount>1?"s":""} exclue${fracExcludedCount>1?"s":""} du graph (pas assez de données pour calculer Work/Récup)</div>`:""}
+          <div style="position:relative;width:100%;height:180px"><canvas id="cFracMini"></canvas></div>
+        </div>`:""}
+      </div>
+      <div class="card"><div class="stitle">Volume ${isMonthly?"mensuel":"hebdomadaire"} (km)</div>
+        <div style="position:relative;width:100%;height:180px"><canvas id="cVolMini"></canvas></div>
+      </div>
+      ${lastRun?`<div class="card">
+        <div class="stitle">Dernière séance</div>
+        <div class="chart-hint" style="margin-top:0">${lastRun.label} · ${lastRun.time} · <span style="color:${TC[lastRun.type]||TC.Other}">${lastRun.type}</span>${lastRun.dist>0?` · ${lastRun.dist.toFixed(2)} km`:""}</div>
+        ${hrDetailHTML(lastRun, effMaxHr, effRestingHr)}
+      </div>`:""}`;
+    setTimeout(()=>{
+      mkPaceTrendChart("cEFmini", efRuns, true, 60);
+      if(hasFrac) mkFractionneChart("cFracMini", fracRuns, 60);
+      mkChart("cVolMini",{type:"bar",data:{labels:vol.map(r=>r.label),datasets:[{label:"km",data:vol.map(r=>r.dist),backgroundColor:"#30d158",borderRadius:6}]},plugins:[barValueLabelsPlugin],options:{scales:{x:{ticks:{autoSkip:false,maxRotation:45}}},plugins:{tooltip:{callbacks:{label:ctx=>ctx.raw+" km"}}}}});
+      if(lastRun && lastRun.hrSeries && lastRun.hrSeries.length>1 && effMaxHr) mkHrCurveChart("cHr_"+lastRun.id, lastRun.hrSeries);
+    },50);
+  }
+
+  else if(activeTab===3){
+    // Séances : fusion Séances + Cardio — plus de doublon entre deux listes
+    // cliquables séparées. Charts globaux en haut, détail FC/zones intégré
+    // à chaque ligne (au lieu d'une liste "cardio" à part).
+    const withHr=efRuns.filter(r=>r.fc);
+    const effMaxHr = maxHr || estimatedMaxHr();
+    const effRestingHr = restingHr || null;
+    const cardioRuns = [...efRuns, ...fracRuns].sort((a,b)=>dateFromRun(b)-dateFromRun(a));
+    const monthly = effMaxHr ? monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr).filter(m=>m.secs.reduce((a,b)=>a+b,0)>0) : [];
+    const weekly = effMaxHr ? weeklyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr).filter(m=>m.secs.reduce((a,b)=>a+b,0)>0) : [];
+    el.innerHTML=`
+      ${withHr.length?`<div class="card"><div class="stitle">FC moyenne — EF</div>
+        <div style="position:relative;width:100%;height:200px"><canvas id="cFC"></canvas></div>
+      </div>`:""}
+      ${monthly.length>=2?`<div class="card"><div class="stitle">Répartition des zones par mois</div>
+        <div class="chart-hint">% du temps passé dans chaque zone, toutes séances confondues</div>
+        <div style="position:relative;width:100%;height:220px"><canvas id="cZoneMonthly"></canvas></div>
+      </div>
+      <div class="card"><div class="stitle">Volume haute intensité par mois</div>
+        <div class="chart-hint">Minutes passées en zones 4-5 (effort soutenu/intense)</div>
+        <div style="position:relative;width:100%;height:180px"><canvas id="cHiMonthly"></canvas></div>
+      </div>`:""}
+      <div class="card-row">
+        ${weekly.length>=2?`<div class="card"><div class="stitle">Polarisation hebdo</div>
+          <div class="chart-hint">Zones faciles (1-3) vs intenses (4-5), 12 dernières semaines</div>
+          <div style="position:relative;width:100%;height:200px"><canvas id="cPolarWeek"></canvas></div>
+        </div>`:""}
+        ${monthly.length>=2?`<div class="card"><div class="stitle">Polarisation mensuelle</div>
+          <div class="chart-hint">Zones faciles (1-3) vs intenses (4-5)</div>
+          <div style="position:relative;width:100%;height:200px"><canvas id="cPolarMonth"></canvas></div>
+        </div>`:""}
+      </div>
+      <div class="card">
+        <div class="stitle">Toutes les séances</div>
+        <div class="chart-hint">Change le type ou l'interrupteur "Suivi" pour piloter ce qui compte dans tes stats de course. "Détail cardio" affiche la courbe FC et les zones quand elles sont disponibles.</div>
+        <div class="filters">${["Tous",...TYPE_OPTIONS.filter(t=>t!=="Other")].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${t}</button>`).join("")}</div>
+        ${filtered.length?filtered.slice().reverse().map(r=>manageableRow(r, effMaxHr, effRestingHr)).join(""):`<div style="font-size:13px;color:var(--text-dim);padding:12px 0">Aucune séance de ce type</div>`}
+      </div>`;
+    setTimeout(()=>{
+      if(withHr.length){
+        mkChart("cFC",{type:"line",data:{labels:withHr.map(r=>r.label),datasets:[{label:"FC",data:withHr.map(r=>r.fc),borderColor:"#ff375f",backgroundColor:"rgba(255,55,95,0.08)",fill:true,borderWidth:2,pointBackgroundColor:"#ff375f",pointRadius:3,tension:0.3}]}});
+      }
+      if(monthly.length>=2){
+        mkZoneMonthlyChart("cZoneMonthly", monthly);
+        mkHighIntensityMonthlyChart("cHiMonthly", monthly);
+        mkPolarizationChart("cPolarMonth", monthly);
+      }
+      if(weekly.length>=2){
+        mkPolarizationChart("cPolarWeek", weekly);
+      }
+      filtered.filter(r=>openHrDetail.has(r.id) && r.hrSeries && r.hrSeries.length>1 && effMaxHr).forEach(r=>{
+        mkHrCurveChart("cHr_"+r.id, r.hrSeries);
+      });
+    },50);
+  }
+
+  else if(activeTab===1){
+    const ratedCount = runningRuns.filter(r=>r.painRatings).length;
+    const usingMode = ratedCount>0
+      ? `L'IA se basera sur tes ${ratedCount} séance(s) notée(s) individuellement.`
+      : (lastCheckin ? `L'IA se basera sur ton dernier check-in.` : `Fais au moins un check-in pour que l'IA ait de quoi travailler.`);
+    const recent = runningRuns.slice(-10).reverse();
+    const lastSavedTxt = lastCheckin ? `Dernier enregistrement : ${new Date(lastCheckin.created_at).toLocaleDateString('fr-FR')} à ${new Date(lastCheckin.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}` : "";
+
+    el.innerHTML=`
+      <div class="card">
+        <div class="stitle">Plan</div>
+        <div class="chart-hint" style="margin-bottom:14px">Renseigne tes douleurs et tes objectifs (onglet Objectifs) — l'IA s'en servira pour te proposer un plan d'entraînement personnalisé.</div>
+      </div>
+
+      <div class="card">
+        <div class="stitle">Comment tu te sens maintenant ?</div>
+        <div class="chart-hint">0 = aucune douleur, 10 = très douloureux. Rapide : ~15 secondes.</div>
+        ${painFormHTML("now", lastCheckin?.ratings)}
+        <button class="btn-primary" style="margin-top:8px" onclick="saveCheckin()">Enregistrer ce check-in</button>
+        <div id="checkinSaved" class="save-confirm">${lastSavedTxt}</div>
+      </div>
+
+      <div class="card">
+        <div class="stitle">Ou note tes dernières séances (optionnel)</div>
+        <div class="chart-hint">Si tu notes tes séances, l'IA privilégiera ce détail plutôt que ton check-in.</div>
+        ${recent.length===0?`<div style="font-size:13px;color:var(--text-dim)">Aucune séance de course pour l'instant.</div>`:recent.map(r=>{
+          const open = openSessionRatings.has(r.id);
+          const c = TC[r.type]||TC.Other;
+          return `
+          <div class="session-pick" onclick="toggleSessionRating('${r.id}')">
+            <span>${icon(open?"chevronDown":"chevronRight",13)} <strong style="color:${c}">${r.label} · ${r.time}</strong> · ${r.dist>0?r.dist.toFixed(2)+" km":r.type}</span>
+            <span class="rated">${r.painRatings?"Notée ✓":"Noter"}</span>
+          </div>
+          ${open?`<div style="padding:10px 0 4px">
+            ${painFormHTML(`sess_${r.id}`, r.painRatings)}
+            <button class="btn-primary" style="margin-top:6px" onclick="saveSessionRating('${r.id}')">Enregistrer</button>
+            <div id="sessRatingSaved_${r.id}" class="save-confirm"></div>
+          </div>`:""}
+        `;}).join("")}
+      </div>
+
+      ${soonCard("sparkle","Plan personnalisé par IA", usingMode + " Le plan lui-même arrive dans une prochaine étape.")}
+    `;
+  }
+
+  else if(activeTab===2){
+    const ta = (id,val)=>`<textarea id="${id}" style="width:100%;min-height:80px;background:var(--card-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;padding:12px;resize:vertical">${val||""}</textarea>`;
+    const chipRow = (field, options, current) => `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
+      ${options.map(o=>`<button type="button" class="flt${o===current?" active":""}" data-value="${o}" onclick="selectChip('${field}','${o}')">${o}</button>`).join("")}
+    </div>`;
+    const isRace = goals.objectifPrincipal==="Préparer une course";
+    const tH=Math.floor((goals.tempsViseSec||0)/3600), tM=Math.floor(((goals.tempsViseSec||0)%3600)/60), tS=(goals.tempsViseSec||0)%60;
+    const raceKm = RACE_DISTANCES_KM[goals.distanceCourse];
+    const racePaceTxt = (raceKm && goals.tempsViseSec) ? `→ allure cible : ${fmtA(Math.round(goals.tempsViseSec/raceKm))}/km` : "";
+    const NIVEAUX = [["Débutant","Tu commences ou reprends"],["Intermédiaire","Tu cours régulièrement"],["Confirmé","Tu as de l'expérience en compet"]];
+
+    el.innerHTML=`<div class="card">
+      <div class="stitle">Objectif principal</div>
+      <div class="chart-hint">Sert de base au futur plan personnalisé par IA (onglet Plan) et conditionne les questions suivantes.</div>
+      ${chipRow("objectifPrincipal", ["Préparer une course","Améliorer mon allure","Courir plus régulièrement","Reprendre après une pause/blessure","Rester en forme","Autre"], goals.objectifPrincipal)}
+      <input type="hidden" id="goal_objectifPrincipal" value="${goals.objectifPrincipal||""}">
+
+      <div id="raceGoalBlock" style="margin-top:14px;display:${isRace?"":"none"}">
+        <div class="chart-hint" style="margin-top:0">Distance visée</div>
+        ${chipRow("distanceCourse", ["5km","10km","Semi","Marathon","Trail","Autre"], goals.distanceCourse)}
+        <input type="hidden" id="goal_distanceCourse" value="${goals.distanceCourse||""}">
+        <div class="field" style="margin-top:12px">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Date de la course</span>
+          <input type="date" id="goal_dateCible" value="${goals.dateCible||""}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Temps visé</span>
+          <div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:flex-end">
+            <input type="number" min="0" max="99" class="time-input" id="goal_tempsH" value="${tH||""}" placeholder="h" oninput="updateRacePaceGoal()">:
+            <input type="number" min="0" max="59" class="time-input" id="goal_tempsM" value="${tM||""}" placeholder="min" oninput="updateRacePaceGoal()">:
+            <input type="number" min="0" max="59" class="time-input" id="goal_tempsS" value="${tS||""}" placeholder="sec" oninput="updateRacePaceGoal()">
+          </div>
+        </div>
+        <div id="racePaceOut" style="font-size:12px;color:var(--accent);text-align:right;margin-top:4px;font-weight:600">${racePaceTxt}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stitle">Rythme visé</div>
+      <div class="field">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Séances / semaine</span>
+        ${chipRow("frequence", ["1","2","3","4","5","6","7"], goals.frequence)}
+      </div>
+      <input type="hidden" id="goal_frequence" value="${goals.frequence||""}">
+      <div class="field">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Km / mois</span>
+        <input type="number" min="1" max="1000" id="goal_kmMensuel" value="${goals.kmMensuel||""}" placeholder="ex: 120" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Plus longue distance (km)</span>
+        <input type="number" min="1" max="200" step="0.1" id="goal_plusLongueDistance" value="${goals.plusLongueDistance||""}" placeholder="ex: 21" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stitle">Allure cible</div>
+      <div class="chart-hint">Optionnel — sert de repère sur les graphs de progression (onglets Dashboard/Séances).</div>
+      <div class="field">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure EF</span>
+        <div class="pace-stepper">
+          <button type="button" onclick="adjustPaceGoal('allureEfVisee',5,360)">−</button>
+          <span class="val" id="allureEfVisee_display">${goals.allureEfVisee?fmtA(Number(goals.allureEfVisee)):"—"}</span>
+          <button type="button" onclick="adjustPaceGoal('allureEfVisee',-5,360)">+</button>
+        </div>
+      </div>
+      <input type="hidden" id="goal_allureEfVisee" value="${goals.allureEfVisee||""}">
+      <div class="field" style="margin-bottom:0">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure Work (fractionné)</span>
+        <div class="pace-stepper">
+          <button type="button" onclick="adjustPaceGoal('allureWorkVisee',5,300)">−</button>
+          <span class="val" id="allureWorkVisee_display">${goals.allureWorkVisee?fmtA(Number(goals.allureWorkVisee)):"—"}</span>
+          <button type="button" onclick="adjustPaceGoal('allureWorkVisee',-5,300)">+</button>
+        </div>
+      </div>
+      <input type="hidden" id="goal_allureWorkVisee" value="${goals.allureWorkVisee||""}">
+    </div>
+
+    <div class="card">
+      <div class="stitle">Ton niveau actuel</div>
+      <div class="goal-level-cards" data-chipgroup="niveau">
+        ${NIVEAUX.map(([lbl,sub])=>`<div class="goal-level-card${goals.niveau===lbl?" active":""}" data-value="${lbl}" onclick="selectChip('niveau','${lbl}')">
+          <div class="lbl">${lbl}</div>
+          <div class="sub">${sub}</div>
+        </div>`).join("")}
+      </div>
+      <input type="hidden" id="goal_niveau" value="${goals.niveau||""}">
+    </div>
+
+    <div class="card">
+      <div class="stitle">Autre chose à préciser</div>
+      <div class="chart-hint" style="margin-top:0">Préférences d'entraînement, contexte particulier...</div>
+      ${ta("goal_autre", goals.autre)}
+      <button class="btn-primary" style="margin-top:14px" onclick="saveGoals()">Enregistrer</button>
+      <div id="goalsSaved" class="save-confirm"></div>
+    </div>`;
+  }
+
+  else if(activeTab===4){
+    const estMaxHr = estimatedMaxHr();
+    el.innerHTML=`
+      <div class="card">
+        <div class="stitle">Profil</div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+          <div style="width:60px;height:60px;border-radius:50%;overflow:hidden;background:var(--card-2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            ${avatarUrl?`<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover">`:icon("user",26)}
+          </div>
+          <div>
+            <label class="btn-secondary" style="display:inline-block;cursor:pointer">
+              Changer la photo
+              <input type="file" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+            </label>
+            <div id="avatarMsg" style="font-size:12px;color:var(--text-dim);margin-top:4px"></div>
+          </div>
+        </div>
+        <div class="account-row"><span class="lbl">Email</span><span class="v">${userEmail||"—"}</span></div>
+        <div class="field" style="margin-top:10px">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Pseudo</span>
+          <input type="text" id="profPseudo" value="${pseudo}" placeholder="Pour que tes amis te retrouvent" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        </div>
+        <div class="field">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Âge</span>
+          <input type="number" id="profAge" min="10" max="100" value="${age||""}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        </div>
+        <div class="field">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Genre</span>
+          <select id="profGender" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+            <option value="" ${!gender?"selected":""}>—</option>
+            <option value="F" ${gender==='F'?"selected":""}>Femme</option>
+            <option value="H" ${gender==='H'?"selected":""}>Homme</option>
+            <option value="Autre" ${gender==='Autre'?"selected":""}>Autre</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Villes</span>
+          <input type="text" id="profCities" value="${cities.join(', ')}" placeholder="Paris, Rabat..." style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stitle">Sécurité</div>
+        <div class="field">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Nouveau mot de passe</span>
+          <input type="password" id="newPassword" placeholder="6 caractères min." style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        </div>
+        <button class="btn-secondary" onclick="changePassword()">Changer le mot de passe</button>
+        <div id="pwMsg" style="font-size:12px;margin-top:8px;text-align:center;min-height:16px"></div>
+      </div>
+
+      <div class="card">
+        <div class="stitle">Affichage</div>
+        <div class="chart-hint">Période affichée par défaut sur le Dashboard.</div>
+        <div class="filters" style="margin-bottom:0">
+          <button class="flt${dashboardPeriod==='weekly'?" active":""}" onclick="saveDashboardPeriod('weekly')">Hebdomadaire</button>
+          <button class="flt${dashboardPeriod==='monthly'?" active":""}" onclick="saveDashboardPeriod('monthly')">Mensuel</button>
+        </div>
+        <div class="chart-hint" style="margin-top:12px;margin-bottom:0">Thème sombre pour l'instant — mode clair à venir.</div>
+      </div>
+
+      <div class="card">
+        <div class="stitle">Fréquence cardiaque max</div>
+        <div class="chart-hint">Utilisée pour calculer tes zones cardio (onglet Séances). ${maxHr?"Renseignée manuellement.":estMaxHr?`Pré-saisie à <strong style="color:var(--text)">${estMaxHr} bpm</strong> (formule 220 − âge) — corrige-la si tu connais ta vraie FC max, mesurée sur un effort proche du maximum.`:"Renseigne ton âge (ci-dessus) pour une pré-saisie automatique, ou entre directement ta FC max."}</div>
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">FC max manuelle (bpm)</span>
+          <input type="number" id="maxHrInput" min="120" max="230" value="${maxHr||estMaxHr||""}" placeholder="ex: 190" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stitle">Fréquence cardiaque de repos</div>
+        <div class="chart-hint">${restingHr?`Utilisée avec ta FC max pour calculer des zones cardio identiques à l'app Santé (méthode réserve de FC). ${restingHrIsManual?"Saisie manuellement : ne sera jamais écrasée automatiquement.":`Rafraîchie automatiquement depuis ta Watch une fois par mois${restingHrUpdatedAt?` (dernière maj : ${new Date(restingHrUpdatedAt).toLocaleDateString('fr-FR')})`:""}.`}`:"Récupérée automatiquement depuis ta Watch si elle capte des données au repos. Si tu ne la portes que pendant tes séances, HealthKit n'a rien de fiable à analyser : renseigne-la manuellement ci-dessous, elle ne sera alors plus jamais modifiée automatiquement."}</div>
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">FC repos (bpm)</span>
+          <input type="number" id="restingHrInput" min="30" max="100" value="${restingHr||""}" placeholder="ex: 60" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stitle">VO2 max</div>
+        <div class="chart-hint">${vo2Max?`Capacité cardio-respiratoire estimée. ${vo2MaxIsManual?"Saisie manuellement : ne sera jamais écrasée automatiquement.":`Rafraîchie automatiquement depuis ta Watch une fois par mois${vo2MaxUpdatedAt?` (dernière maj : ${new Date(vo2MaxUpdatedAt).toLocaleDateString('fr-FR')})`:""}.`}`:"Récupérée automatiquement depuis ta Watch (nécessite des sorties extérieures avec GPS). Sinon, renseigne-la manuellement si tu la connais."}</div>
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">VO2 max (ml/kg/min)</span>
+          <input type="number" id="vo2MaxInput" min="20" max="90" step="0.1" value="${vo2Max||""}" placeholder="ex: 45" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        </div>
+      </div>
+
+      <div class="card">
+        <button class="btn-primary" onclick="saveAccountInfo()">Enregistrer</button>
+        <div id="accountSaved" class="save-confirm"></div>
+      </div>
+
+      <div class="card">
+        <div class="stitle">Synchronisation</div>
+        <button class="btn-secondary" onclick="location.href='myrunningapp://sync'">Synchroniser mes courses</button>
+        <div class="chart-hint" style="margin-top:10px">Ouvre l'app iOS et lance la sync — fonctionne uniquement depuis Safari sur ton iPhone.</div>
+        <div class="field" style="margin-top:6px;margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Importer depuis</span>
+          <input type="date" value="${syncSinceDate||""}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1" onchange="saveSyncSinceDate(this.value)">
+        </div>
+      </div>
+      <div class="card">
+        <div class="stitle">Export</div>
+        <div class="chart-hint">Un backup perso de toutes tes séances, en dehors de Supabase.</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" onclick="exportData('json')">Exporter en JSON</button>
+          <button class="btn-secondary" onclick="exportData('csv')">Exporter en CSV</button>
+        </div>
+      </div>
+      <div class="card">
+        <button class="btn-danger" onclick="logout()">Déconnexion</button>
+      </div>`;
+  }
+}
+
+async function boot(){
+  document.getElementById("authView").style.display="none";
+  document.getElementById("appView").style.display="block";
+  document.getElementById("content").innerHTML=`<div class="loading"><div class="spinner"></div></div>`;
+  await loadData();
+  renderTabs();
+  renderContent();
+}
+
+supa.auth.getSession().then(({ data }) => {
+  if (data.session) boot();
+});
+</script>
+</body>
+</html>
