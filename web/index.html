@@ -839,11 +839,13 @@ function kpisHTML(){
     return runs.filter(r=>dateFromRun(r)>=from && dateFromRun(r)<=to);
   };
 
-  // Comparaison "avant / maintenant" adaptée à l'ancienneté réelle des
-  // données plutôt que des fenêtres fixes (qui restent vides pour un
-  // nouvel utilisateur et ne veulent plus rien dire après plusieurs années).
+  // Nombre et taille des fenêtres adaptés à l'ancienneté réelle des données
+  // plutôt que des fenêtres fixes (qui restent vides pour un nouvel
+  // utilisateur et ne veulent plus rien dire après plusieurs années).
   // `valueFn` extrait la valeur à comparer (allure EF, allure de travail en
   // fractionné...) — la fonction reste agnostique du type de séance.
+  // Renvoie un nombre variable de points (1 à 3) : plus il y a d'historique,
+  // plus la tendance se découpe finement.
   function adaptivePaceCompare(runs, valueFn){
     const pts = runs.map(r=>({d:dateFromRun(r), v:valueFn(r)})).filter(p=>p.v!=null);
     if(pts.length===0) return null;
@@ -856,33 +858,38 @@ function kpisHTML(){
     if(spanDays < 21){
       return { tooNew:true, current: avgOf(pts.map(p=>p.v)) };
     }
-    let beforeLabel, afterLabel, beforeWin, afterWin;
     if(spanDays < 60){
-      beforeLabel="2 premières semaines"; beforeWin=[earliest, plusDays(earliest,14)];
-      afterLabel="7 derniers jours"; afterWin=[daysAgo(7), today];
-    } else if(spanDays < 180){
-      beforeLabel="1er mois"; beforeWin=[earliest, plusDays(earliest,30)];
-      afterLabel="4 dernières semaines"; afterWin=[daysAgo(28), today];
-    } else {
-      beforeLabel="3 premiers mois"; beforeWin=[earliest, plusDays(earliest,90)];
-      afterLabel="dernier mois"; afterWin=[daysAgo(30), today];
+      return { tooNew:false, points:[
+        {label:"2 premières semaines", value:avgOf(inRange(earliest, plusDays(earliest,14)))},
+        {label:"7 derniers jours", value:avgOf(inRange(daysAgo(7), today))},
+      ]};
     }
-    return {
-      tooNew:false, beforeLabel, afterLabel,
-      before: avgOf(inRange(beforeWin[0], beforeWin[1])),
-      after: avgOf(inRange(afterWin[0], afterWin[1])),
-    };
+    if(spanDays < 180){
+      return { tooNew:false, points:[
+        {label:"1er mois", value:avgOf(inRange(earliest, plusDays(earliest,30)))},
+        {label:"4 dernières semaines", value:avgOf(inRange(daysAgo(28), today))},
+      ]};
+    }
+    // 6 mois+ : 3 fenêtres glissantes accolées, ancrées à aujourd'hui plutôt
+    // qu'au début des données — donne une vraie tendance en 3 points.
+    return { tooNew:false, points:[
+      {label:"il y a 3 à 6 mois", value:avgOf(inRange(daysAgo(180), daysAgo(90)))},
+      {label:"il y a 1 à 3 mois", value:avgOf(inRange(daysAgo(90), daysAgo(30)))},
+      {label:"dernier mois", value:avgOf(inRange(daysAgo(30), today))},
+    ]};
   }
-  // Cartes KPI générées à partir d'une comparaison adaptative : 1 carte
-  // "en cours de collecte" tant qu'il y a moins de 3 semaines de recul,
-  // sinon 2 cartes (avant / maintenant) avec des libellés qui s'ajustent.
-  function adaptivePaceCards(compare, tooNewLabel, colorBefore, colorAfter){
+  // Cartes KPI générées à partir d'une comparaison adaptative : 1 carte "en
+  // cours de collecte" tant qu'il y a moins de 3 semaines de recul, sinon
+  // 2 ou 3 cartes selon l'ancienneté. `colors` va du plus ancien au plus
+  // récent ; la dernière carte (la plus récente) utilise l'icône "bolt".
+  function adaptivePaceCards(compare, tooNewLabel, colors){
     if(!compare) return [["—", tooNewLabel, "trend", "#8e8e93"]];
-    if(compare.tooNew) return [[compare.current?fmtA(compare.current)+"/km":"—", tooNewLabel, "trend", "#0a84ff"]];
-    return [
-      [compare.before?fmtA(compare.before)+"/km":"—", "Allure "+compare.beforeLabel, "trend", colorBefore],
-      [compare.after?fmtA(compare.after)+"/km":"—", "Allure "+compare.afterLabel, "bolt", colorAfter],
-    ];
+    if(compare.tooNew) return [[compare.current?fmtA(compare.current)+"/km":"—", tooNewLabel, "trend", colors[colors.length-1]]];
+    return compare.points.map((p,i)=>[
+      p.value?fmtA(p.value)+"/km":"—", "Allure "+p.label,
+      i===compare.points.length-1?"bolt":"trend",
+      colors[i],
+    ]);
   }
   const efCompare = adaptivePaceCompare(efRuns, r=>r.allure);
   const fracCompare = adaptivePaceCompare(fracRuns, r=>{ const ip=getIntervalPaces(r); return ip&&ip.work?ip.work:null; });
@@ -901,8 +908,8 @@ function kpisHTML(){
       [s.longMax?s.longMax.toFixed(2)+" km":"—","Plus longue sortie "+periodLbl,"flame","#ff453a"],
     ]],
     ["Allure",[
-      ...adaptivePaceCards(efCompare, "Allure moyenne (encore peu de recul)", "#ff9f0a", "#0a84ff"),
-      ...adaptivePaceCards(fracCompare, "Allure Fractionné (encore peu de recul)", "#bf5af2", "#30d158"),
+      ...adaptivePaceCards(efCompare, "Allure moyenne (encore peu de recul)", ["#ff9f0a","#bf5af2","#0a84ff"]),
+      ...adaptivePaceCards(fracCompare, "Allure Fractionné (encore peu de recul)", ["#ff375f","#ffd60a","#30d158"]),
     ]],
     ["Activité",[
       [String(s.runs.length),"Séances "+periodLbl,"runner","#0a84ff"],
