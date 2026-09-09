@@ -15,6 +15,17 @@ struct PacePoint: Codable {
     }
 }
 
+// Frontière d'intervalle posée par HealthKit lui-même (événement .lap), pas
+// reconstruite depuis l'allure GPS : quand la séance a été enregistrée via
+// l'entraînement fractionné structuré de la Watch (Work/Récup programmés),
+// ces bornes sont exactes — bien plus fiables que la détection heuristique
+// côté dashboard, qui doit deviner les frontières depuis un signal GPS
+// bruité. `start`/`end` en secondes depuis le début de la séance.
+struct LapMarker: Codable {
+    let start: Int
+    let end: Int
+}
+
 // Les clés doivent correspondre aux colonnes de la table `runs` (db/schema.sql)
 struct WorkoutPayload: Codable {
     let userId: String
@@ -32,6 +43,7 @@ struct WorkoutPayload: Codable {
     let notes: String?
     let hrSeries: [HrPoint]?
     let paceSeries: [PacePoint]?
+    let lapMarkers: [LapMarker]?
 
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -49,6 +61,7 @@ struct WorkoutPayload: Codable {
         case notes
         case hrSeries = "hr_series"
         case paceSeries = "pace_series"
+        case lapMarkers = "lap_markers"
     }
 
     // PostgREST exige des objets aux clés identiques dans un même envoi groupé :
@@ -71,6 +84,7 @@ struct WorkoutPayload: Codable {
         try c.encode(notes, forKey: .notes)
         try c.encode(hrSeries, forKey: .hrSeries)
         try c.encode(paceSeries, forKey: .paceSeries)
+        try c.encode(lapMarkers, forKey: .lapMarkers)
     }
 }
 

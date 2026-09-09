@@ -317,12 +317,42 @@ function computeWorkAvgHr(paceSeries, hrSeries){
   return Math.round(segAvgs.reduce((a,b)=>a+b,0)/segAvgs.length);
 }
 
+// Quand HealthKit a lui-même posé les frontières d'intervalles (événements
+// .lap de la Watch, séance enregistrée via l'entraînement fractionné
+// structuré — voir ios-app/HealthKitManager.swift) : bien plus fiable que la
+// reconstruction heuristique depuis l'allure GPS (findWorkoutSegments), qui
+// doit deviner où commence/finit chaque intervalle sur un signal bruité et
+// peut se tromper de quelques secondes par frontière. Ici les bornes sont
+// exactes, il ne reste qu'à classer chaque lap Work/Récup par comparaison à
+// la médiane des allures (les plus rapides = Work).
+function computeIntervalPacesFromLaps(paceSeries, lapMarkers){
+  if(!lapMarkers || lapMarkers.length<2 || !paceSeries) return null;
+  const laps = lapMarkers.map(m=>{
+    const pts = paceSeries.filter(p=>p.t>=m.start && p.t<=m.end).map(p=>p.pace);
+    return pts.length ? pts.reduce((a,b)=>a+b,0)/pts.length : null;
+  }).filter(v=>v!=null);
+  if(laps.length<2) return null;
+  const mid = median(laps);
+  const workPaces = laps.filter(p=>p<mid);
+  const recoveryPaces = laps.filter(p=>p>=mid);
+  if(!workPaces.length) return null;
+  return {
+    work: Math.round(workPaces.reduce((a,b)=>a+b,0)/workPaces.length),
+    recovery: recoveryPaces.length ? Math.round(recoveryPaces.reduce((a,b)=>a+b,0)/recoveryPaces.length) : null,
+    workCount: workPaces.length,
+    recoveryCount: recoveryPaces.length,
+    fromLaps: true,
+  };
+}
+
 // Exception : pour certaines séances, le pace_series capturé par HealthKit
 // est trop épars (échantillonnage ~5min) pour que l'algo puisse fiablement
 // isoler les intervalles — alors que l'app Fitness, qui dispose d'une source
 // de données interne bien plus fine, y arrive très bien. Dans ce cas
 // seulement, une allure Work/Récup saisie manuellement (lue dans l'app
 // Fitness) prend le pas sur le calcul automatique.
+// Ordre de priorité : saisie manuelle > lap_markers natifs HealthKit >
+// reconstruction heuristique depuis le GPS (dans cet ordre de fiabilité).
 function getIntervalPaces(run){
   if(run.fracWorkManual){
     return {
@@ -333,5 +363,7 @@ function getIntervalPaces(run){
       manual: true,
     };
   }
+  const fromLaps = computeIntervalPacesFromLaps(run.paceSeries, run.lapMarkers);
+  if(fromLaps) return fromLaps;
   return run.paceSeries ? computeIntervalPaces(run.paceSeries) : null;
 }

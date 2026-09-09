@@ -161,6 +161,25 @@ final class HealthKitManager {
         }
     }
 
+    // Frontières d'intervalles posées par HealthKit lui-même (événements
+    // .lap), quand la séance a été enregistrée via l'entraînement fractionné
+    // structuré de la Watch (Work/Récup programmés) — bien plus fiables que
+    // la reconstruction heuristique depuis l'allure GPS faite côté dashboard.
+    // Une séance enregistrée sans structure d'intervalles (course libre) n'a
+    // simplement aucun événement .lap : tableau vide, pas une erreur.
+    private func extractLapMarkers(workout: HKWorkout, start: Date) -> [LapMarker] {
+        guard let events = workout.workoutEvents else { return [] }
+        return events
+            .filter { $0.type == .lap }
+            .map { event in
+                let interval = event.dateInterval
+                return LapMarker(
+                    start: Int(round(interval.start.timeIntervalSince(start))),
+                    end: Int(round(interval.end.timeIntervalSince(start)))
+                )
+            }
+    }
+
     // FC de repos : calculée par la Watch une fois par jour. On prend la
     // plus récente disponible plutôt qu'une valeur liée à une séance précise.
     func fetchLatestRestingHeartRate() async -> Double? {
@@ -215,6 +234,7 @@ final class HealthKitManager {
         async let hrSamples = fetchHeartRateSamples(start: start, end: end)
         async let distanceSamples = fetchDistanceSamples(start: start, end: end)
 
+        let lapMarkers = extractLapMarkers(workout: workout, start: start)
         let distanceKm = (workout.totalDistance?.doubleValue(for: .meterUnit(with: .kilo))) ?? 0
         let calories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
         let isoFormatter = ISO8601DateFormatter()
@@ -235,7 +255,8 @@ final class HealthKitManager {
             lieu: nil,
             notes: nil,
             hrSeries: buildHrSeries(start: start, samples: await hrSamples),
-            paceSeries: buildPaceSeries(start: start, samples: await distanceSamples)
+            paceSeries: buildPaceSeries(start: start, samples: await distanceSamples),
+            lapMarkers: lapMarkers.isEmpty ? nil : lapMarkers
         )
     }
 }
