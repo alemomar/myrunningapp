@@ -839,18 +839,31 @@ function kpisHTML(){
     return runs.filter(r=>dateFromRun(r)>=from && dateFromRun(r)<=to);
   };
 
+  // Ancienneté (date de la 1ère séance valide + nb de jours écoulés depuis)
+  // utilisée pour choisir le découpage temporel dans adaptivePaceCompare.
+  function spanFromRuns(runs, valueFn){
+    const pts = runs.map(r=>({d:dateFromRun(r), v:valueFn(r)})).filter(p=>p.v!=null);
+    if(pts.length===0) return null;
+    const earliest = new Date(Math.min(...pts.map(p=>p.d.getTime())));
+    return { earliest, spanDays: Math.floor((today-earliest)/86400000) };
+  }
   // Nombre et taille des fenêtres adaptés à l'ancienneté réelle des données
   // plutôt que des fenêtres fixes (qui restent vides pour un nouvel
   // utilisateur et ne veulent plus rien dire après plusieurs années).
   // `valueFn` extrait la valeur à comparer (allure EF, allure de travail en
   // fractionné...) — la fonction reste agnostique du type de séance.
+  // `refSpan` (optionnel) : force le découpage à suivre l'ancienneté d'un
+  // AUTRE historique (ex: le Fractionné suit l'ancienneté du EF) — la date
+  // de la 1ère séance *catégorisée* Fractionné n'a pas de sens en soi,
+  // c'est juste la date à laquelle l'utilisateur a commencé à étiqueter ses
+  // séances, pas depuis quand il court vraiment.
   // Renvoie un nombre variable de points (1 à 3) : plus il y a d'historique,
   // plus la tendance se découpe finement.
-  function adaptivePaceCompare(runs, valueFn){
+  function adaptivePaceCompare(runs, valueFn, refSpan){
     const pts = runs.map(r=>({d:dateFromRun(r), v:valueFn(r)})).filter(p=>p.v!=null);
     if(pts.length===0) return null;
-    const earliest = new Date(Math.min(...pts.map(p=>p.d.getTime())));
-    const spanDays = Math.floor((today-earliest)/86400000);
+    const span = refSpan || spanFromRuns(runs, valueFn);
+    const { earliest, spanDays } = span;
     const inRange = (from,to) => pts.filter(p=>p.d>=from && p.d<=to).map(p=>p.v);
     const plusDays = (base,n) => { const d=new Date(base); d.setDate(d.getDate()+n); return d; };
     const daysAgo = n => plusDays(today,-n);
@@ -891,8 +904,9 @@ function kpisHTML(){
       colors[i],
     ]);
   }
-  const efCompare = adaptivePaceCompare(efRuns, r=>r.allure);
-  const fracCompare = adaptivePaceCompare(fracRuns, r=>{ const ip=getIntervalPaces(r); return ip&&ip.work?ip.work:null; });
+  const efSpan = spanFromRuns(efRuns, r=>r.allure);
+  const efCompare = adaptivePaceCompare(efRuns, r=>r.allure, efSpan);
+  const fracCompare = adaptivePaceCompare(fracRuns, r=>{ const ip=getIntervalPaces(r); return ip&&ip.work?ip.work:null; }, efSpan);
 
   const longRunsAll = runningRuns.filter(r=>r.type==="Long");
   const seuilRunsAll = runningRuns.filter(r=>r.type==="Seuil");
