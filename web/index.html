@@ -191,6 +191,8 @@ button,input,select{font-family:inherit}
 .manage-date{font-size:14px;font-weight:600;flex:1}
 .toggle-col{display:flex;flex-direction:column;align-items:center;gap:3px}
 .toggle-col span{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
+.delete-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--card-2);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+.delete-btn:hover{background:#d7001522;color:var(--red);border-color:#d7001555}
 .manage-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-left:48px}
 .manage-field{display:flex;flex-direction:column;gap:4px}
 .field-lbl{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
@@ -313,6 +315,7 @@ const ICONS = {
   ring: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="5" ry="3"/></svg>`,
   chevronRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
   chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+  trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`,
 };
 function icon(name,size=18){ return ICONS[name].replace("<svg ",`<svg width="${size}" height="${size}" `); }
 
@@ -683,6 +686,14 @@ window.changeType = async (id, newType) => {
 };
 window.setLegsFocused = async (id, value) => {
   if(!(await updateRun(id, { legs_focused: value }))) return;
+  await refreshAfterEdit();
+};
+// Suppression définitive (pas de corbeille) : contrairement au reste des
+// actions sur une séance, il n'y a pas de retour en arrière, d'où la confirmation.
+window.deleteRun = async (id, label) => {
+  if(!confirm(`Supprimer définitivement la séance du ${label} ? Cette action est irréversible.`)) return;
+  const { error } = await supa.from("runs").delete().eq("id", id);
+  if(error){ alert("Erreur de suppression : "+error.message); return; }
   await refreshAfterEdit();
 };
 function readPainForm(prefix){
@@ -1250,6 +1261,7 @@ function manageableRow(r, effMaxHr, effRestingHr){
           <span class="track"></span><span class="thumb"></span>
         </label>
       </label>
+      <button class="delete-btn" title="Supprimer définitivement" onclick="deleteRun('${r.id}', '${r.label}')">${icon("trash",15)}</button>
     </div>
     <div class="manage-grid">
       <div class="manage-field">

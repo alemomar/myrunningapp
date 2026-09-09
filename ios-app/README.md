@@ -26,6 +26,7 @@ Supprime le fichier `ContentView.swift` et le fichier `RunSyncApp.swift` (ou `No
 - `Config.swift`
 - `Models.swift`
 - `HealthKitManager.swift`
+- `BackgroundSyncManager.swift`
 - `SyncService.swift`
 - `ContentView.swift`
 - `RunSyncApp.swift`
@@ -45,11 +46,12 @@ Supprime le fichier `ContentView.swift` et le fichier `RunSyncApp.swift` (ou `No
 2. iOS va te demander l'autorisation d'accéder à Santé — accepte (coche au moins Entraînements, Fréquence cardiaque, Distance, Calories, Nombre de pas)
 3. Vérifie le message affiché, puis va voir dans ta Google Sheet ("Running Data - Omar") que les séances sont bien arrivées dans l'onglet **Runs**
 
-## 7. Automatisation via Shortcuts (une fois l'étape 6 validée)
+## 7. Synchro automatique en arrière-plan (pas besoin de Shortcuts)
 
-1. App **Raccourcis** → **Automatisation** → **+** → **Créer une automatisation personnelle**
-2. **Heure de la journée** → l'heure de ton choix → **Tous les jours**
-3. Ajoute une action, cherche **"Synchroniser mes courses"** (apparaît car l'app a été lancée au moins une fois) → ajoute-la
-4. Termine, puis désactive **"Demander avant l'exécution"** sur cette automatisation
+Depuis septembre 2026, l'app se synchronise **automatiquement dès qu'une nouvelle séance apparaît dans Santé**, via `BackgroundSyncManager.swift` (HealthKit `HKObserverQuery` + `enableBackgroundDelivery`). Pas d'automatisation Shortcuts à configurer — ça s'enregistre tout seul à chaque lancement de l'app (`RunSyncApp.init()`).
 
-À partir de là, la synchro tourne toute seule, sans ouvrir l'app.
+**Pourquoi pas Shortcuts** : testé et abandonné — une automatisation Shortcuts silencieuse ("Automatisation personnelle" sans "Demander avant l'exécution") ne dispose que d'environ **1 seconde** de budget d'exécution avant qu'iOS ne tue le process (`LNContextErrorDomain` code 2022, confirmé par logs Console.app) — bien trop court pour HealthKit + réseau. `HKObserverQuery` dispose d'une fenêtre bien plus généreuse, prévue par Apple pour ce cas d'usage exact.
+
+**Vérifier que ça fonctionne** : Console.app → filtre `com.omaralem.RunSync` → chercher `[background]` après une nouvelle séance enregistrée dans Santé.
+
+**Si tu veux quand même une synchro à heure fixe en plus** (filet de sécurité), le bouton "Forcer une synchronisation" dans l'app fait ça manuellement.
