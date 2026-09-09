@@ -154,10 +154,30 @@ function detectPaceIntervals(paceSeries, minSegDurationSec=20, localWindowSec=65
   }
   if(current) segments.push(current);
 
-  return segments.filter(s => {
+  const filtered = segments.filter(s => {
     const dur = s.points[s.points.length-1].t - s.points[0].t;
     return dur >= minSegDurationSec;
   });
+
+  // Un blip de l'autre type trop court (<minSegDurationSec) au milieu d'un
+  // intervalle est retiré par le filtre ci-dessus SANS recoller les deux
+  // morceaux du même type de part et d'autre : un vrai intervalle Work de
+  // ~4min peut ainsi finir coupé en 2-3 fragments d'une minute chacun,
+  // chaque fragment étant alors trop court pour passer le test de
+  // régularité de findConsistentRun (comparé à la durée de référence des
+  // autres intervalles) — sous-comptage réel observé : 4 intervalles Work
+  // réels, seulement 2 détectés, le calcul biaisé vers les 2 restants.
+  // On recolle donc les segments adjacents de même type juste après filtrage.
+  const merged = [];
+  for(const s of filtered){
+    const prev = merged[merged.length-1];
+    if(prev && prev.isWork === s.isWork){
+      prev.points = prev.points.concat(s.points);
+    } else {
+      merged.push({isWork:s.isWork, points:s.points.slice()});
+    }
+  }
+  return merged;
 }
 
 // Retire le début/fin de chaque intervalle avant de moyenner : le lissage
