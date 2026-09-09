@@ -325,6 +325,10 @@ function mapRow(r){
   return {
     id:r.id,
     date:`${dd}/${mm}`,
+    // Date complète (avec année) conservée à part : `date` (dd/mm) seul ne
+    // suffit pas pour reconstruire une année fiable au-delà de l'année en
+    // cours — voir dateFromRun().
+    fullDate:d,
     label:`${dd} ${MONTHS[d.getMonth()]}`,
     time:d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
     type:r.type||"Other",
@@ -752,7 +756,10 @@ window.exportData = (format) => {
   downloadBlob(blob, `myrunningapp-export-${stamp}.csv`);
 };
 
-function dateFromRun(r){ const[d,m]=r.date.split("/").map(Number); return new Date(new Date().getFullYear(), m-1, d); }
+// Copie défensive : certains appelants font des calculs style
+// `new Date(dateFromRun(r)).setDate(...)` — ne jamais renvoyer la même
+// instance de Date que celle stockée sur la séance, pour ne pas la muter.
+function dateFromRun(r){ return new Date(r.fullDate); }
 
 function periodStats(period){
   const now=new Date();
@@ -825,19 +832,60 @@ function kpisHTML(){
   const monthS = periodStats("monthly");
   const avgOf = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : null;
 
-  // Fenêtres glissantes (pas des trimestres calendaires) : "dernier trimestre"
-  // = 91 derniers jours, "avant-dernier" = les 91 jours précédents.
   const today=new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const inWindow = (runs, daysStart, daysEnd) => {
     const from=new Date(today); from.setDate(today.getDate()-daysEnd);
     const to=new Date(today); to.setDate(today.getDate()-daysStart);
     return runs.filter(r=>dateFromRun(r)>=from && dateFromRun(r)<=to);
   };
-  const avgPaceWindow = (runs, daysStart, daysEnd) => avgOf(inWindow(runs, daysStart, daysEnd).filter(r=>r.allure).map(r=>r.allure));
-  const pacePrevQuarter = avgPaceWindow(efRuns, 84, 168);
-  const paceLastQuarter = avgPaceWindow(efRuns, 0, 84);
-  const paceLast4Weeks = avgPaceWindow(efRuns, 0, 28);
-  const avgFracPace4w = avgOf(inWindow(fracRuns, 0, 28).map(r=>getIntervalPaces(r)).filter(ip=>ip&&ip.work).map(ip=>ip.work));
+
+  // Comparaison "avant / maintenant" adaptée à l'ancienneté réelle des
+  // données plutôt que des fenêtres fixes (qui restent vides pour un
+  // nouvel utilisateur et ne veulent plus rien dire après plusieurs années).
+  // `valueFn` extrait la valeur à comparer (allure EF, allure de travail en
+  // fractionné...) — la fonction reste agnostique du type de séance.
+  function adaptivePaceCompare(runs, valueFn){
+    const pts = runs.map(r=>({d:dateFromRun(r), v:valueFn(r)})).filter(p=>p.v!=null);
+    if(pts.length===0) return null;
+    const earliest = new Date(Math.min(...pts.map(p=>p.d.getTime())));
+    const spanDays = Math.floor((today-earliest)/86400000);
+    const inRange = (from,to) => pts.filter(p=>p.d>=from && p.d<=to).map(p=>p.v);
+    const plusDays = (base,n) => { const d=new Date(base); d.setDate(d.getDate()+n); return d; };
+    const daysAgo = n => plusDays(today,-n);
+
+    if(spanDays < 21){
+      return { tooNew:true, current: avgOf(pts.map(p=>p.v)) };
+    }
+    let beforeLabel, afterLabel, beforeWin, afterWin;
+    if(spanDays < 60){
+      beforeLabel="2 premières semaines"; beforeWin=[earliest, plusDays(earliest,14)];
+      afterLabel="7 derniers jours"; afterWin=[daysAgo(7), today];
+    } else if(spanDays < 180){
+      beforeLabel="1er mois"; beforeWin=[earliest, plusDays(earliest,30)];
+      afterLabel="4 dernières semaines"; afterWin=[daysAgo(28), today];
+    } else {
+      beforeLabel="3 premiers mois"; beforeWin=[earliest, plusDays(earliest,90)];
+      afterLabel="dernier mois"; afterWin=[daysAgo(30), today];
+    }
+    return {
+      tooNew:false, beforeLabel, afterLabel,
+      before: avgOf(inRange(beforeWin[0], beforeWin[1])),
+      after: avgOf(inRange(afterWin[0], afterWin[1])),
+    };
+  }
+  // Cartes KPI générées à partir d'une comparaison adaptative : 1 carte
+  // "en cours de collecte" tant qu'il y a moins de 3 semaines de recul,
+  // sinon 2 cartes (avant / maintenant) avec des libellés qui s'ajustent.
+  function adaptivePaceCards(compare, tooNewLabel, colorBefore, colorAfter){
+    if(!compare) return [["—", tooNewLabel, "trend", "#8e8e93"]];
+    if(compare.tooNew) return [[compare.current?fmtA(compare.current)+"/km":"—", tooNewLabel, "trend", "#0a84ff"]];
+    return [
+      [compare.before?fmtA(compare.before)+"/km":"—", "Allure "+compare.beforeLabel, "trend", colorBefore],
+      [compare.after?fmtA(compare.after)+"/km":"—", "Allure "+compare.afterLabel, "bolt", colorAfter],
+    ];
+  }
+  const efCompare = adaptivePaceCompare(efRuns, r=>r.allure);
+  const fracCompare = adaptivePaceCompare(fracRuns, r=>{ const ip=getIntervalPaces(r); return ip&&ip.work?ip.work:null; });
 
   const longRunsAll = runningRuns.filter(r=>r.type==="Long");
   const seuilRunsAll = runningRuns.filter(r=>r.type==="Seuil");
@@ -853,10 +901,8 @@ function kpisHTML(){
       [s.longMax?s.longMax.toFixed(2)+" km":"—","Plus longue sortie "+periodLbl,"flame","#ff453a"],
     ]],
     ["Allure",[
-      [pacePrevQuarter?fmtA(pacePrevQuarter)+"/km":"—","Allure avant-dernier trimestre","trend","#ff9f0a"],
-      [paceLastQuarter?fmtA(paceLastQuarter)+"/km":"—","Allure dernier trimestre","trend","#bf5af2"],
-      [paceLast4Weeks?fmtA(paceLast4Weeks)+"/km":"—","Allure 4 dernières semaines","bolt","#0a84ff"],
-      [avgFracPace4w?fmtA(avgFracPace4w)+"/km":"—","Allure Fractionné (4 sem.)","bolt","#30d158"],
+      ...adaptivePaceCards(efCompare, "Allure moyenne (encore peu de recul)", "#ff9f0a", "#0a84ff"),
+      ...adaptivePaceCards(fracCompare, "Allure Fractionné (encore peu de recul)", "#bf5af2", "#30d158"),
     ]],
     ["Activité",[
       [String(s.runs.length),"Séances "+periodLbl,"runner","#0a84ff"],
