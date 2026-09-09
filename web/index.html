@@ -907,10 +907,12 @@ function kpisHTML(){
       [yearDist.toFixed(2)+" km","Distance annuelle","route","#30d158"],
       [s.longMax?s.longMax.toFixed(2)+" km":"—","Plus longue sortie "+periodLbl,"flame","#ff453a"],
     ]],
-    ["Allure",[
-      ...adaptivePaceCards(efCompare, "Allure moyenne (encore peu de recul)", ["#ff9f0a","#bf5af2","#0a84ff"]),
-      ...adaptivePaceCards(fracCompare, "Allure Fractionné (encore peu de recul)", ["#ff375f","#ffd60a","#30d158"]),
-    ]],
+    ["Allure EF",
+      adaptivePaceCards(efCompare, "Allure moyenne (encore peu de recul)", ["#ff9f0a","#bf5af2","#0a84ff"]),
+    ],
+    ["Allure Fractionné",
+      adaptivePaceCards(fracCompare, "Allure moyenne (encore peu de recul)", ["#ff375f","#ffd60a","#30d158"]),
+    ],
     ["Activité",[
       [String(s.runs.length),"Séances "+periodLbl,"runner","#0a84ff"],
       [fmtDur(s.time),"Temps de course "+periodLbl,"clock","#64d2ff"],
