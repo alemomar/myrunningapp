@@ -1343,7 +1343,7 @@ function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
   const flagSeuil = !flagFrac && r.type!=="Seuil" && looksLikeSeuil(r.hrSeries, effMaxHr, effRestingHr);
   return `<div class="session-pick" style="margin-top:6px" onclick="toggleHrDetail('${r.id}')">
     <span>${icon(open?"chevronDown":"chevronRight",13)} Détail cardio</span>
-    ${flagFrac?`<span class="badge" style="background:#ff9f0a22;color:#ff9f0a">FC variable</span>`:""}
+    ${flagFrac?`<span class="badge" style="background:#ff9f0a22;color:#ff9f0a">⚠️ Fractionné détecté</span>`:""}
     ${flagSeuil?`<span class="badge" style="background:#d7001522;color:#d70015">Zone haute</span>`:""}
   </div>
   ${open?hrDetailHTML(r, effMaxHr, effRestingHr):""}`;
