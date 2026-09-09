@@ -60,16 +60,31 @@ En revanche, la clé secrète utilisée par le **script de sauvegarde automatiqu
 
 ### 4. Remettre en place la sauvegarde automatique
 
-1. Copie `~/Library/LaunchAgents/com.omaralem.myrunningapp.backup.plist` (si tu l'as encore quelque part) ou recrée-le — le contenu de référence est documenté dans l'historique Git / à redemander à Claude si besoin.
-2. **Attention** : le chemin vers le script dans ce fichier plist doit correspondre à l'emplacement du dossier `Test RUNNING` sur le nouveau Mac (change-le si ce n'est plus exactement le même chemin Google Drive).
+**Important** : le script exécuté par launchd n'est PAS celui de ce repo (dans Google Drive) — c'est une copie locale, hors Google Drive. Google Drive (mode streaming) bloque l'accès à ses fichiers pour les process lancés en arrière-plan par launchd (`Operation not permitted`, même avec Accès complet au disque accordé), sauf pour créer des fichiers neufs. Donc :
+
+- Le **script** (`backup_supabase.py`) vit en local : `~/.local/share/myrunningapp/backup_supabase.py`
+- Il **écrit** ses sauvegardes dans Google Drive (`backups/`) et met à jour ce README — ça, ça marche, seule la *lecture d'un fichier déjà existant* (listing d'un dossier, relecture du README) échoue parfois sous launchd, donc ces deux étapes sont non bloquantes dans le script (`try/except`, log un avertissement sans faire échouer la sauvegarde).
+
+Sur un nouveau Mac :
+
+1. Copie le script à jour vers l'emplacement local :
+   ```bash
+   mkdir -p ~/.local/share/myrunningapp
+   cp backend/backup_supabase.py ~/.local/share/myrunningapp/backup_supabase.py
+   ```
+   **Attention** : si le dossier `Test RUNNING` n'est plus exactement au même chemin Google Drive, mets aussi à jour la constante `PROJECT_DIR` en haut de `backend/backup_supabase.py` (et donc de la copie locale) — elle est en dur, pas dérivée automatiquement.
+2. Copie `~/Library/LaunchAgents/com.omaralem.myrunningapp.backup.plist` (si tu l'as encore quelque part) ou recrée-le — le contenu de référence est documenté dans l'historique Git / à redemander à Claude si besoin. Le `ProgramArguments` doit pointer vers `~/.local/share/myrunningapp/backup_supabase.py` (la copie locale, pas le fichier dans Google Drive).
 3. Charge la tâche :
    ```bash
-   launchctl load ~/Library/LaunchAgents/com.omaralem.myrunningapp.backup.plist
+   launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/com.omaralem.myrunningapp.backup.plist
    ```
 4. Teste manuellement une fois pour vérifier que ça marche :
    ```bash
-   python3 backend/backup_supabase.py
+   launchctl kickstart -k "gui/$(id -u)/com.omaralem.myrunningapp.backup"
+   cat ~/Library/Logs/myrunningapp/backup.log ~/Library/Logs/myrunningapp/backup.error.log
    ```
+
+**Si tu modifies `backend/backup_supabase.py` dans Google Drive**, pense à recopier vers la copie locale (`cp backend/backup_supabase.py ~/.local/share/myrunningapp/backup_supabase.py`) — sinon la version planifiée ne verra jamais tes changements.
 
 ### 5. Réinstaller l'app iOS
 
@@ -88,11 +103,11 @@ Sur un Mac neuf, ces outils ne sont pas là par défaut et ont été installés 
 ## Dernière sauvegarde
 
 <!-- BACKUP_STATUS_START -->
-Dernière exécution : **08/09/2026 à 19:39**
+Dernière exécution : **09/09/2026 à 21:13**
 
-- `runs` : 171 ligne(s)
+- `runs` : 172 ligne(s)
 - `profiles` : 1 ligne(s)
-- `pain_checkins` : 7 ligne(s)
+- `pain_checkins` : 8 ligne(s)
 <!-- BACKUP_STATUS_END -->
 
 Cette section est mise à jour automatiquement par `backend/backup_supabase.py` à chaque exécution (2x/jour, 3h et 14h). Ne pas éditer à la main entre les marqueurs — ce serait écrasé au prochain passage.

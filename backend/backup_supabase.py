@@ -22,7 +22,17 @@ SUPABASE_URL = "https://iwzlxizgppghjpnasawy.supabase.co"
 TABLES = ["runs", "profiles", "pain_checkins"]
 BACKUP_KEEP = 60
 
-PROJECT_DIR = Path(__file__).resolve().parent.parent
+# Chemin fixe (pas dérivé de __file__) : le script tourne depuis une copie
+# locale hors Google Drive (~/.local/share/myrunningapp/), pour que launchd
+# puisse l'exécuter (Google Drive File Stream bloque les accès fichier des
+# process lancés en arrière-plan par launchd, même avec Accès complet au
+# disque accordé à Xcode/python3 — cause du échec silencieux "Operation not
+# permitted" observé). Seule cette constante doit changer si le projet
+# change d'emplacement.
+PROJECT_DIR = Path(
+    "/Users/omaralem/Library/CloudStorage/GoogleDrive-omaralempro@gmail.com"
+    "/Mon Drive/[3] Omar perso/Projets/Entrepreneuriat/Test RUNNING"
+)
 ENV_FILE = Path.home() / ".config" / "myrunningapp" / "backup.env"
 BACKUPS_DIR = PROJECT_DIR / "backups"
 README_FILE = PROJECT_DIR / "README.md"
@@ -53,10 +63,22 @@ def fetch_table(table: str, key: str) -> list:
 
 
 def prune_old_backups() -> None:
-    backups = sorted(
-        (p for p in BACKUPS_DIR.iterdir() if p.is_dir()),
-        key=lambda p: p.name,
-    )
+    # Lister un dossier Google Drive (iterdir) échoue parfois avec
+    # "Operation not permitted" quand le script est lancé par launchd en
+    # arrière-plan (contrairement à lire/écrire un fichier précis, qui
+    # fonctionne très bien dans ce même contexte) — probablement une
+    # restriction propre à l'extension Google Drive côté énumération de
+    # dossier. Non bloquant : la sauvegarde elle-même a déjà réussi à ce
+    # stade, mieux vaut garder quelques sauvegardes en trop que faire
+    # échouer tout le run pour ça.
+    try:
+        backups = sorted(
+            (p for p in BACKUPS_DIR.iterdir() if p.is_dir()),
+            key=lambda p: p.name,
+        )
+    except OSError as err:
+        print(f"[prune] listing de {BACKUPS_DIR} impossible, purge ignorée : {err}", file=sys.stderr)
+        return
     for old in backups[:-BACKUP_KEEP]:
         shutil.rmtree(old)
 
@@ -108,7 +130,18 @@ def main() -> None:
         print(f"[{timestamp}] {table} : {len(rows)} ligne(s) sauvegardée(s)")
 
     prune_old_backups()
-    update_readme_status(now, counts, errors)
+
+    # Comme prune_old_backups, lire+réécrire un fichier déjà existant sur
+    # Google Drive (README.md) peut échouer sous launchd ("Operation not
+    # permitted", Google Drive doit re-matérialiser le fichier à la demande)
+    # alors que la sauvegarde elle-même (créer des fichiers neufs) a déjà
+    # réussi juste au-dessus. Non bloquant : la donnée est en sécurité, la
+    # mise à jour du statut dans le README est secondaire.
+    try:
+        update_readme_status(now, counts, errors)
+    except OSError as err:
+        print(f"[{timestamp}] mise à jour du README impossible : {err}", file=sys.stderr)
+
     print(f"[{timestamp}] Sauvegarde terminée -> {dest}")
 
 
