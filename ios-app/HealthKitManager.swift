@@ -167,7 +167,7 @@ final class HealthKitManager {
     // la reconstruction heuristique depuis l'allure GPS faite côté dashboard.
     // Une séance enregistrée sans structure d'intervalles (course libre) n'a
     // simplement aucun événement .lap : tableau vide, pas une erreur.
-    private func extractLapMarkers(workout: HKWorkout, start: Date) -> [LapMarker] {
+    func extractLapMarkers(workout: HKWorkout, start: Date) -> [LapMarker] {
         guard let events = workout.workoutEvents else { return [] }
         return events
             .filter { $0.type == .lap }

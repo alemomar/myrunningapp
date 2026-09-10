@@ -81,6 +81,11 @@ final class SyncService {
         syncLogger.notice("[sync] envoi réussi")
         LastSync.date = Date()
 
+        // Rattrapage ponctuel : ajoute lap_markers aux séances déjà
+        // synchronisées avant l'ajout de ce champ (voir backfillLapMarkersIfNeeded).
+        // Fire-and-forget, ne doit jamais faire échouer une sync normale.
+        Task { await backfillLapMarkersIfNeeded(session: session) }
+
         // Fait avancer la date de départ après chaque sync réussie : sans ça,
         // sync_since_date reste figée à sa valeur initiale pour toujours, et
         // chaque sync (y compris l'automatisation silencieuse du soir) doit
@@ -149,6 +154,62 @@ final class SyncService {
             syncLogger.notice("[sync] envoi lot \(batchNum) (\(batch.count) séance(s))")
             try await sendBatch(batch, session: session)
             syncLogger.notice("[sync] lot \(batchNum) envoyé")
+        }
+    }
+
+    // Rattrapage ponctuel des séances déjà en base avant l'ajout du champ
+    // lap_markers : contrairement à la sync normale (ignore-duplicates,
+    // qui ne touche jamais une ligne existante pour protéger une
+    // catégorisation manuelle), ceci fait un vrai UPDATE ciblé sur la seule
+    // colonne lap_markers, sans toucher au reste de la ligne. Toutes les
+    // séances Running sont passées en revue (pas seulement les Fractionné
+    // catégorisées : le champ ne sert que si des événements .lap existent
+    // réellement, sinon rien n'est envoyé). Protégé par un flag pour ne
+    // tourner qu'une fois par appareil.
+    private func backfillLapMarkersIfNeeded(session: Session) async {
+        let doneKey = "runsync.lapMarkersBackfillDone"
+        guard !UserDefaults.standard.bool(forKey: doneKey) else { return }
+        syncLogger.notice("[backfill] lap_markers: début")
+
+        let veryEarly = Date(timeIntervalSince1970: 0)
+        guard let workouts = try? await healthKit.fetchWorkouts(since: veryEarly) else {
+            syncLogger.error("[backfill] lap_markers: échec récupération séances")
+            return
+        }
+
+        var updated = 0
+        for workout in workouts where workout.workoutActivityType == .running {
+            let markers = healthKit.extractLapMarkers(workout: workout, start: workout.startDate)
+            guard !markers.isEmpty else { continue }
+            do {
+                try await updateLapMarkers(startDate: workout.startDate, markers: markers, session: session)
+                updated += 1
+            } catch {
+                syncLogger.error("[backfill] lap_markers: échec sur une séance: \(String(describing: error), privacy: .public)")
+            }
+        }
+
+        UserDefaults.standard.set(true, forKey: doneKey)
+        syncLogger.notice("[backfill] lap_markers: terminé, \(updated) séance(s) mise(s) à jour")
+    }
+
+    private func updateLapMarkers(startDate: Date, markers: [LapMarker], session: Session) async throws {
+        let isoFormatter = ISO8601DateFormatter()
+        let dateStr = isoFormatter.string(from: startDate)
+        guard let encodedDate = dateStr.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { return }
+
+        var request = URLRequest(url: URL(string: "\(Config.supabaseURL)/rest/v1/runs?user_id=eq.\(session.userId)&start_date=eq.\(encodedDate)")!)
+        request.httpMethod = "PATCH"
+        request.setValue(Config.supabaseAnonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+        request.httpBody = try JSONEncoder().encode(["lap_markers": markers])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "réponse invalide"
+            throw SyncServiceError.badResponse(message)
         }
     }
 
