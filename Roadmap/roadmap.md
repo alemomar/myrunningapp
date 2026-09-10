@@ -52,6 +52,9 @@ Commentaires laissés ligne par ligne sur [le tableau d'audit produit](https://c
 
 ## P2 — Envisagées (valeur probable, scope à affiner)
 
+### Objectifs de fréquence pour Yoga / Mobilité / Musculation
+**(2026-09-10)** Se fixer un nombre de séances cible (ex: 2x/semaine Musculation, 1x/semaine Yoga) pour ces types déjà trackés via HealthKit, sur le même principe que les objectifs existants côté course à pied (onglet Objectifs). À creuser : période de mesure (semaine/mois), affichage de la progression (probablement un KPI adaptatif comme pour Allure EF/Fractionné), emplacement dans l'app (onglet Objectifs actuel, ou la nouvelle rubrique envisagée dans Mon compte — voir retours d'audit ci-dessus).
+
 ### Gamification
 Rendre l'expérience plus engageante : badges, streaks, objectifs déblocables, etc. À définir : quels leviers de gamification correspondent à l'usage réel (pas de la gamification pour la gamification).
 
@@ -66,4 +69,4 @@ Le dashboard tourne aujourd'hui en local (serveur Python sur le Mac, accessible 
 **Reconsidéré (2026-09-09)** : voir "Ouvrir l'app à des amis pour la tester" en P1 — la question du MVP se pose plus tôt que prévu.
 
 ---
-*Dernière mise à jour : 2026-09-09*
+*Dernière mise à jour : 2026-09-10*
