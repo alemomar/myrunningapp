@@ -167,8 +167,11 @@ final class SyncService {
     // réellement, sinon rien n'est envoyé). Protégé par un flag pour ne
     // tourner qu'une fois par appareil.
     private func backfillLapMarkersIfNeeded(session: Session) async {
+        // DIAGNOSTIC TEMPORAIRE (2e passe, workoutActivities cette fois) :
+        // guard désactivé + logs détaillés, uniquement pour les séances qui
+        // ont plus d'une activité (les autres ne sont pas intéressantes ici).
         let doneKey = "runsync.lapMarkersBackfillDone"
-        guard !UserDefaults.standard.bool(forKey: doneKey) else { return }
+        // guard !UserDefaults.standard.bool(forKey: doneKey) else { return }
         syncLogger.notice("[backfill] lap_markers: début")
 
         let veryEarly = Date(timeIntervalSince1970: 0)
@@ -179,13 +182,18 @@ final class SyncService {
 
         var updated = 0
         for workout in workouts where workout.workoutActivityType == .running {
+            let dateStr = ISO8601DateFormatter().string(from: workout.startDate)
+            let activityCount = workout.workoutActivities.count
             let markers = healthKit.extractLapMarkers(workout: workout, start: workout.startDate)
+            if activityCount > 1 {
+                syncLogger.notice("[backfill] lap_markers: \(dateStr, privacy: .public) -> \(activityCount) activities, \(markers.count) marker(s)")
+            }
             guard !markers.isEmpty else { continue }
             do {
                 try await updateLapMarkers(startDate: workout.startDate, markers: markers, session: session)
                 updated += 1
             } catch {
-                syncLogger.error("[backfill] lap_markers: échec sur une séance: \(String(describing: error), privacy: .public)")
+                syncLogger.error("[backfill] lap_markers: échec sur \(dateStr, privacy: .public): \(String(describing: error), privacy: .public)")
             }
         }
 

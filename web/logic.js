@@ -317,24 +317,37 @@ function computeWorkAvgHr(paceSeries, hrSeries){
   return Math.round(segAvgs.reduce((a,b)=>a+b,0)/segAvgs.length);
 }
 
-// Quand HealthKit a lui-même posé les frontières d'intervalles (événements
-// .lap de la Watch, séance enregistrée via l'entraînement fractionné
-// structuré — voir ios-app/HealthKitManager.swift) : bien plus fiable que la
-// reconstruction heuristique depuis l'allure GPS (findWorkoutSegments), qui
-// doit deviner où commence/finit chaque intervalle sur un signal bruité et
-// peut se tromper de quelques secondes par frontière. Ici les bornes sont
-// exactes, il ne reste qu'à classer chaque lap Work/Récup par comparaison à
-// la médiane des allures (les plus rapides = Work).
+// Quand HealthKit a lui-même posé les frontières d'intervalles (une
+// HKWorkoutActivity par bloc du plan structuré programmé sur la Watch —
+// voir ios-app/HealthKitManager.swift ; PAS des événements .lap, essayés en
+// premier, toujours vides) : bien plus fiable que la reconstruction
+// heuristique depuis l'allure GPS (findWorkoutSegments), qui doit deviner où
+// commence/finit chaque intervalle sur un signal bruité et peut se tromper
+// de quelques secondes par frontière. Ici les bornes sont exactes.
+// Le plan inclut aussi Warmup/Cooldown (pas juste Work/Récup) : on les
+// exclut par leur durée, nettement différente de chaque répétition
+// individuelle (ex: Warmup à 2s ou 15min, Cooldown à 15min, vs 1min par
+// répétition Work/Récup selon les séances observées) — un filtre à bornes
+// symétriques autour de la médiane, plus robuste que de supposer qu'ils
+// sont toujours en 1re/dernière position ou toujours plus longs (un plan
+// peut ne pas avoir de cooldown, et un warmup peut être quasi instantané).
+// Le reste est classé Work/Récup par comparaison à la médiane des allures
+// (les plus rapides = Work).
 function computeIntervalPacesFromLaps(paceSeries, lapMarkers){
   if(!lapMarkers || lapMarkers.length<2 || !paceSeries) return null;
   const laps = lapMarkers.map(m=>{
     const pts = paceSeries.filter(p=>p.t>=m.start && p.t<=m.end).map(p=>p.pace);
-    return pts.length ? pts.reduce((a,b)=>a+b,0)/pts.length : null;
-  }).filter(v=>v!=null);
+    return pts.length ? {dur:m.end-m.start, pace:pts.reduce((a,b)=>a+b,0)/pts.length} : null;
+  }).filter(l=>l!=null);
   if(laps.length<2) return null;
-  const mid = median(laps);
-  const workPaces = laps.filter(p=>p<mid);
-  const recoveryPaces = laps.filter(p=>p>=mid);
+
+  const durMedian = median(laps.map(l=>l.dur));
+  const reps = laps.filter(l => l.dur >= durMedian/2.5 && l.dur <= durMedian*2.5);
+  const usable = reps.length>=2 ? reps : laps;
+
+  const mid = median(usable.map(l=>l.pace));
+  const workPaces = usable.filter(l=>l.pace<mid).map(l=>l.pace);
+  const recoveryPaces = usable.filter(l=>l.pace>=mid).map(l=>l.pace);
   if(!workPaces.length) return null;
   return {
     work: Math.round(workPaces.reduce((a,b)=>a+b,0)/workPaces.length),

@@ -161,23 +161,25 @@ final class HealthKitManager {
         }
     }
 
-    // Frontières d'intervalles posées par HealthKit lui-même (événements
-    // .lap), quand la séance a été enregistrée via l'entraînement fractionné
-    // structuré de la Watch (Work/Récup programmés) — bien plus fiables que
-    // la reconstruction heuristique depuis l'allure GPS faite côté dashboard.
-    // Une séance enregistrée sans structure d'intervalles (course libre) n'a
-    // simplement aucun événement .lap : tableau vide, pas une erreur.
+    // Frontières d'intervalles posées par HealthKit lui-même, quand la séance
+    // a été enregistrée via un plan d'entraînement structuré programmé sur la
+    // Watch (Warmup/Work/Récup/Cooldown) — bien plus fiables que la
+    // reconstruction heuristique depuis l'allure GPS faite côté dashboard.
+    // Chaque bloc du plan (une répétition Work, une répétition Récup...) est
+    // une HKWorkoutActivity distincte au sein de la même HKWorkout — PAS un
+    // événement .lap (essayé en premier, s'est avéré toujours vide : cette
+    // API-là sert à autre chose). Une séance libre sans plan structuré n'a
+    // qu'UNE SEULE activité couvrant toute sa durée : on l'ignore (pas une
+    // vraie frontière d'intervalle).
     func extractLapMarkers(workout: HKWorkout, start: Date) -> [LapMarker] {
-        guard let events = workout.workoutEvents else { return [] }
-        return events
-            .filter { $0.type == .lap }
-            .map { event in
-                let interval = event.dateInterval
-                return LapMarker(
-                    start: Int(round(interval.start.timeIntervalSince(start))),
-                    end: Int(round(interval.end.timeIntervalSince(start)))
-                )
-            }
+        let activities = workout.workoutActivities
+        guard activities.count > 1 else { return [] }
+        return activities.map { activity in
+            LapMarker(
+                start: Int(round(activity.startDate.timeIntervalSince(start))),
+                end: Int(round((activity.endDate ?? activity.startDate).timeIntervalSince(start)))
+            )
+        }
     }
 
     // FC de repos : calculée par la Watch une fois par jour. On prend la
