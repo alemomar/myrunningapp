@@ -233,9 +233,9 @@ button,input,select{font-family:inherit}
 .body-svg .zone{cursor:pointer;transition:opacity .15s,filter .15s}
 .body-svg .zone:hover{opacity:.8}
 .body-svg .zone.active{filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 4px #fff)}
-.zone-rows{flex:1;min-width:0;padding-top:8px}
-.zone-placeholder{font-size:12px;color:var(--text-faint);padding:10px 0}
-.zone-row{padding:4px 0}
+.zone-rows{flex:1;min-width:0;padding-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 16px;align-content:start}
+.zone-placeholder{grid-column:1/-1;font-size:12px;color:var(--text-faint);padding:10px 0}
+.zone-row{padding:4px 0;border-bottom:1px solid var(--border)}
 .session-pick{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
 .session-pick:last-child{border-bottom:none}
 .session-pick .rated{color:var(--accent);font-size:11px;font-weight:600}
@@ -1436,17 +1436,21 @@ function painSliderRow(prefix, key, label, initial, lowLabel, highLabel){
 // Capsules arrondies posées sur un contour de corps discret (viewBox
 // 170x320) — le contour donne le repère visuel ("c'est un corps"), les
 // capsules sont les vraies cibles tactiles, plus grosses et plus espacées
-// qu'un simple trait. Pas de prétention anatomique exacte (dos/abdos,
-// cuisse/ischios partagent une seule silhouette de face, sans vue de dos
-// séparée) — juste un découpage clair et tapable. Les zones symétriques
-// (genoux, tendons, pied) affichent une capsule de chaque côté mais
-// partagent la même valeur.
+// qu'un simple trait. Les organes visibles de face (abdos, cuisse, genoux,
+// tendons, pied, bassin) restent posés directement sur la silhouette.
+// Le dos et les ischios (arrière du buste et de la cuisse) sont à
+// l'opposé : les afficher par-dessus la silhouette de face aurait prêté à
+// confusion avec abdos/cuisse au même endroit, donc leurs capsules
+// flottent à côté du corps (offBody), avec leur nom écrit juste en
+// dessous pour lever toute ambiguïté. Cuisse et ischios existent chacun
+// en deux capsules (jambe gauche/droite) comme genoux/tendons/pied — un
+// muscle existe des deux côtés, pas d'un côté seulement.
 const BODY_ZONE_CAPS={
-  dos:      {cx:74, cy:80,  rx:9,  ry:26},
+  dos:      {cx:18, cy:80,  rx:9,  ry:24, offBody:true},
   abdos:    {cx:96, cy:80,  rx:9,  ry:26},
   bassin:   {cx:85, cy:150, rx:26, ry:12},
-  cuisse:   {cx:70, cy:210, rx:10, ry:34},
-  ischios:  {cx:100,cy:210, rx:10, ry:34},
+  cuisse:   {cx:85, cy:210, rx:9,  ry:34, both:true, dx:15},
+  ischios:  {cx:85, cy:210, rx:8,  ry:30, both:true, dx:40, offBody:true},
   genoux:   {cx:85, cy:256, rx:11, ry:8,  both:true, dx:17},
   tendons:  {cx:85, cy:284, rx:8,  ry:16, both:true, dx:18},
   pied:     {cx:85, cy:310, rx:13, ry:6,  both:true, dx:22},
@@ -1464,6 +1468,11 @@ const ZONE_NEUTRAL = "#48484c";
 // avant même de la toucher (utile quand une séance déjà notée est
 // rouverte) ; la zone touchée s'éclaire en plus pour bien voir laquelle est
 // en cours d'édition.
+// Étiquette discrète collée à une capsule "hors corps" (dos, ischios) pour
+// lever l'ambiguïté vu qu'elle ne touche pas la silhouette à cet endroit.
+function zoneLabelSVG(x, y, text){
+  return `<text x="${x}" y="${y}" text-anchor="middle" font-size="8" fill="${ZONE_NEUTRAL}" style="pointer-events:none">${text}</text>`;
+}
 function bodyMapHTML(prefix, initial){
   // Zones déjà notées (valeur > 0) : leur ligne reste visible d'entrée,
   // pas la peine de retoucher la capsule pour la revoir.
@@ -1473,13 +1482,15 @@ function bodyMapHTML(prefix, initial){
     const s = BODY_ZONE_CAPS[key];
     const fill = v>0 ? painColor(v) : ZONE_NEUTRAL;
     if(s.both){
+      const labels = s.offBody ? zoneLabelSVG(s.cx-s.dx, s.cy+s.ry+10, label)+zoneLabelSVG(s.cx+s.dx, s.cy+s.ry+10, label) : "";
       return `<g class="zone" id="${prefix}_zone_${key}" onclick="bodyZoneTap('${prefix}','${key}')">
         <ellipse cx="${s.cx-s.dx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" fill="${fill}"/>
         <ellipse cx="${s.cx+s.dx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" fill="${fill}"/>
-      </g>`;
+      </g>${labels}`;
     }
+    const label2 = s.offBody ? zoneLabelSVG(s.cx, s.cy+s.ry+10, label) : "";
     return `<ellipse class="zone" id="${prefix}_zone_${key}" cx="${s.cx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" fill="${fill}"
-      onclick="bodyZoneTap('${prefix}','${key}')"/>`;
+      onclick="bodyZoneTap('${prefix}','${key}')"/>${label2}`;
   }).join("");
   const rows = BODY_ZONES.map(([key,label])=>{
     const v = initial[key] ?? 0;
