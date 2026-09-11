@@ -467,7 +467,19 @@ document.getElementById("authSubmit").onclick = async () => {
 };
 
 /* ---------- Dashboard ---------- */
-let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=0, activeFilter="Tous", charts=[], activeGoalSlot="principal";
+// Le dernier onglet consulté est mémorisé en local (par appareil) pour
+// qu'un rechargement de page reste sur place plutôt que de repartir sur
+// le Dashboard à chaque fois.
+function initialActiveTab(){
+  try{
+    const saved = Number(localStorage.getItem("mra_activeTab"));
+    return (Number.isInteger(saved) && saved>=0 && saved<=4) ? saved : 0;
+  }catch(e){ return 0; }
+}
+function persistActiveTab(){
+  try{ localStorage.setItem("mra_activeTab", String(activeTab)); }catch(e){}
+}
+let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=initialActiveTab(), activeFilter="Tous", charts=[], activeGoalSlot="principal";
 let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = null, restingHrUpdatedAt = null, restingHrIsManual = false, avatarUrl = null;
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let openSessionRatings = new Set();
@@ -590,6 +602,7 @@ window.dismissPainPrompt = (id) => {
 };
 window.goRateSession = (id) => {
   activeTab = 1;
+  persistActiveTab();
   openSessionRatings.add(id);
   renderTabs();
   renderContent();
@@ -1318,7 +1331,7 @@ function renderTabs(){
       ${icon(t.icon,20)}<span>${t.label}</span>
     </button>`).join("");
 }
-window.setTab=i=>{destroyCharts();activeTab=i;renderTabs();renderContent();window.scrollTo({top:0,behavior:"smooth"});};
+window.setTab=i=>{destroyCharts();activeTab=i;persistActiveTab();renderTabs();renderContent();window.scrollTo({top:0,behavior:"smooth"});};
 window.setFilter=f=>{activeFilter=f;destroyCharts();renderContent();};
 
 function weeklyVol(){
