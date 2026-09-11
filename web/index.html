@@ -1446,7 +1446,7 @@ function painSliderRow(prefix, key, label, initial, lowLabel, highLabel){
   </div>`;
 }
 // Capsules arrondies posées sur un contour de corps discret (viewBox
-// 190x340) — le contour donne le repère visuel ("c'est un corps"), les
+// 257x470) — le contour donne le repère visuel ("c'est un corps"), les
 // capsules sont les vraies cibles tactiles, plus grosses et plus espacées
 // qu'un simple trait. Les organes visibles de face (épaules, abdos,
 // psoas, bassin, cuisse, genoux, tibias, pied) restent posés directement
@@ -1454,52 +1454,71 @@ function painSliderRow(prefix, key, label, initial, lowLabel, highLabel){
 // bassin, pas au niveau des poumons). Ceux à l'opposé — dos, fessiers,
 // ischios, mollets, tendons — seraient au même endroit que leur organe
 // "de face" sur une silhouette qui ne montre que l'avant du corps ; leurs
-// capsules flottent donc à côté (offBody), avec leur nom écrit juste en
-// dessous pour lever toute ambiguïté. Chaque zone paire a sa propre clé
-// gauche/droite (ex. cuisse_g/cuisse_d) — indépendantes l'une de l'autre.
+// capsules flottent donc à côté (offBody). Chaque zone paire a sa propre
+// clé gauche/droite (ex. cuisse_g/cuisse_d) — indépendantes l'une de
+// l'autre. Le schéma est volontairement plus grand que le strict
+// nécessaire (échelle ~1,35x) pour laisser de la place à l'étiquette de
+// chaque zone, affichée systématiquement, sans se marcher dessus.
 const BODY_ZONE_CAPS={
-  epaules_g:  {cx:60,  cy:54,  rx:9,  ry:8},
-  epaules_d:  {cx:130, cy:54,  rx:9,  ry:8},
-  dos:        {cx:28,  cy:90,  rx:9,  ry:24, offBody:true},
-  abdos:      {cx:95,  cy:95,  rx:15, ry:18, sixpack:true},
-  psoas_g:    {cx:78,  cy:130, rx:7,  ry:13},
-  psoas_d:    {cx:112, cy:130, rx:7,  ry:13},
-  bassin:     {cx:95,  cy:152, rx:24, ry:10},
-  fessiers_g: {cx:48,  cy:152, rx:8,  ry:16, offBody:true},
-  fessiers_d: {cx:142, cy:152, rx:8,  ry:16, offBody:true},
-  cuisse_g:   {cx:70,  cy:200, rx:8,  ry:28},
-  cuisse_d:   {cx:120, cy:200, rx:8,  ry:28},
-  ischios_g:  {cx:44,  cy:200, rx:8,  ry:26, offBody:true},
-  ischios_d:  {cx:146, cy:200, rx:8,  ry:26, offBody:true},
-  genoux_g:   {cx:67,  cy:248, rx:7,  ry:8},
-  genoux_d:   {cx:123, cy:248, rx:7,  ry:8},
-  tibias_g:   {cx:64,  cy:278, rx:7,  ry:16},
-  tibias_d:   {cx:126, cy:278, rx:7,  ry:16},
-  mollets_g:  {cx:40,  cy:278, rx:7,  ry:15, offBody:true},
-  mollets_d:  {cx:150, cy:278, rx:7,  ry:15, offBody:true},
-  tendons_g:  {cx:36,  cy:308, rx:6,  ry:7,  offBody:true},
-  tendons_d:  {cx:154, cy:308, rx:6,  ry:7,  offBody:true},
-  pied_g:     {cx:60,  cy:320, rx:12, ry:6},
-  pied_d:     {cx:130, cy:320, rx:12, ry:6},
+  epaules_g:  {cx:81,  cy:73,  rx:12, ry:11},
+  epaules_d:  {cx:176, cy:73,  rx:12, ry:11},
+  dos:        {cx:38,  cy:122, rx:12, ry:32, offBody:true},
+  abdos:      {cx:128, cy:125, rx:20, ry:20, sixpack:true},
+  psoas_g:    {cx:105, cy:172, rx:9,  ry:15},
+  psoas_d:    {cx:151, cy:172, rx:9,  ry:15},
+  bassin:     {cx:128, cy:210, rx:32, ry:13},
+  fessiers_g: {cx:65,  cy:210, rx:11, ry:22, offBody:true},
+  fessiers_d: {cx:192, cy:210, rx:11, ry:22, offBody:true},
+  cuisse_g:   {cx:94,  cy:272, rx:11, ry:36},
+  cuisse_d:   {cx:162, cy:272, rx:11, ry:36},
+  ischios_g:  {cx:59,  cy:272, rx:11, ry:34, offBody:true},
+  ischios_d:  {cx:197, cy:272, rx:11, ry:34, offBody:true},
+  genoux_g:   {cx:90,  cy:338, rx:9,  ry:10},
+  genoux_d:   {cx:166, cy:338, rx:9,  ry:10},
+  tibias_g:   {cx:86,  cy:382, rx:9,  ry:19},
+  tibias_d:   {cx:170, cy:382, rx:9,  ry:19},
+  mollets_g:  {cx:54,  cy:382, rx:9,  ry:18, offBody:true},
+  mollets_d:  {cx:202, cy:382, rx:9,  ry:18, offBody:true},
+  tendons_g:  {cx:49,  cy:420, rx:8,  ry:9,  offBody:true},
+  tendons_d:  {cx:208, cy:420, rx:8,  ry:9,  offBody:true},
+  pied_g:     {cx:81,  cy:440, rx:16, ry:8},
+  pied_d:     {cx:176, cy:440, rx:16, ry:8},
+};
+// Version courte du nom, affichée sur le schéma (le nom complet reste
+// dans la liste à droite une fois la zone touchée) — sans indication
+// gauche/droite, déjà donnée par la position de la capsule.
+const ZONE_SHORT_LABEL={
+  epaules_g:"Épaule", epaules_d:"Épaule",
+  dos:"Dos", abdos:"Abdos",
+  psoas_g:"Psoas", psoas_d:"Psoas",
+  bassin:"Bassin",
+  fessiers_g:"Fessier", fessiers_d:"Fessier",
+  cuisse_g:"Cuisse", cuisse_d:"Cuisse",
+  ischios_g:"Ischio", ischios_d:"Ischio",
+  genoux_g:"Genou", genoux_d:"Genou",
+  tibias_g:"Tibia", tibias_d:"Tibia",
+  mollets_g:"Mollet", mollets_d:"Mollet",
+  tendons_g:"Tendon", tendons_d:"Tendon",
+  pied_g:"Pied", pied_d:"Pied",
 };
 // Tête + bras courts, décoratifs (pas des zones). Le tronc/jambes est un
 // tracé fermé séparé (sans manches) pour laisser de la place aux capsules
 // hors-corps sur les côtés ; les bras ne sont que deux courts traits
 // arrondis suggérant les épaules, plutôt qu'un bras entier jusqu'au poignet.
-const HEAD_CIRCLE = {cx:95, cy:26, r:16};
+const HEAD_CIRCLE = {cx:128, cy:35, r:22};
 const ARM_STUBS = [
-  "M78,46 Q60,50 56,62",
-  "M112,46 Q130,50 134,62",
+  "M105,62 Q81,68 76,84",
+  "M151,62 Q176,68 181,84",
 ];
 // Contour du corps (tronc + jambes en un seul tracé fermé, sans manches),
 // dessiné par-dessus les capsules pour rester visible quel que soit le
 // recouvrement.
-const BODY_OUTLINE="M78,44 C75,60 73,85 72,110 C70,128 68,142 66,155 L62,230 L60,256 L56,300 C54,306 52,309 52,312 C52,317 53,320 54,322 L70,324 C71,320 70,313 68,308 L72,256 L74,230 L78,168 C80,158 81,155 82,152 L108,152 C109,155 110,158 112,168 L116,230 L118,256 L122,308 C120,313 119,320 120,324 L136,322 C137,320 138,317 138,312 C138,309 136,306 134,300 L130,256 L128,230 L124,155 C122,142 120,128 118,110 C117,85 115,60 112,44 C105,50 88,50 78,44 Z";
+const BODY_OUTLINE="M105,59 C101,81 99,115 97,148 C94,173 92,192 89,209 L84,310 L81,346 L76,405 C73,413 70,417 70,421 C70,428 72,432 73,435 L94,437 C96,432 94,423 92,416 L97,346 L100,310 L105,227 C108,213 109,209 111,205 L146,205 C147,209 148,213 151,227 L157,310 L159,346 L165,416 C162,423 161,432 162,437 L184,435 C185,432 186,428 186,421 C186,417 184,413 181,405 L176,346 L173,310 L167,209 C165,192 162,173 159,148 C158,115 155,81 151,59 C142,68 119,68 105,59 Z";
 const ZONE_NEUTRAL = "#48484c";
-// Étiquette discrète collée à une capsule "hors corps" (dos, ischios) pour
-// lever l'ambiguïté vu qu'elle ne touche pas la silhouette à cet endroit.
+// Étiquette collée sous chaque capsule (nom court, systématique, dedans
+// comme dehors) — teinte claire pour rester lisible sur le fond sombre.
 function zoneLabelSVG(x, y, text){
-  return `<text x="${x}" y="${y}" text-anchor="middle" font-size="8" fill="${ZONE_NEUTRAL}" style="pointer-events:none">${text}</text>`;
+  return `<text x="${x}" y="${y}" text-anchor="middle" font-size="9" fill="#d1d1d6" style="pointer-events:none">${text}</text>`;
 }
 // Forme d'une zone : une simple ellipse pour la plupart des zones, sauf
 // l'abdos qui reçoit un petit motif "tablette de chocolat" (coutures en
@@ -1522,11 +1541,11 @@ function bodyMapHTML(prefix, initial){
   // Zones déjà notées (valeur > 0) : leur ligne reste visible d'entrée,
   // pas la peine de retoucher la capsule pour la revoir.
   const revealed = new Set(BODY_ZONES.filter(([key])=>(initial[key] ?? 0) > 0).map(([key])=>key));
-  const svgZones = BODY_ZONES.map(([key,label])=>{
+  const svgZones = BODY_ZONES.map(([key])=>{
     const v = initial[key] ?? 0;
     const s = BODY_ZONE_CAPS[key];
     const fill = v>0 ? painColor(v) : ZONE_NEUTRAL;
-    const zoneLabel = s.offBody ? zoneLabelSVG(s.cx, s.cy+s.ry+10, label) : "";
+    const zoneLabel = zoneLabelSVG(s.cx, s.cy+s.ry+11, ZONE_SHORT_LABEL[key]);
     return `<g class="zone" id="${prefix}_zone_${key}" onclick="bodyZoneTap('${prefix}','${key}')">${zoneShapeSVG(key,s,fill)}</g>${zoneLabel}`;
   }).join("");
   const rows = BODY_ZONES.map(([key,label])=>{
@@ -1545,7 +1564,7 @@ function bodyMapHTML(prefix, initial){
     `<path d="${BODY_OUTLINE}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" pointer-events="none"/>`,
   ].join("");
   return `<div class="body-map-wrap">
-    <svg class="body-svg" width="190" height="340" viewBox="0 0 190 340">
+    <svg class="body-svg" width="257" height="470" viewBox="0 0 257 470">
       ${svgZones}
       ${decor}
     </svg>
@@ -1824,7 +1843,7 @@ function renderContent(){
     el.innerHTML=`
       <div class="card">
         <div class="stitle">Ressenti</div>
-        <div class="chart-hint" style="margin-bottom:14px">Note ton ressenti après chaque séance et tes objectifs (onglet Objectifs) — l'IA s'en servira pour te proposer un plan d'entraînement personnalisé.</div>
+        <div class="chart-hint" style="margin-bottom:14px">Note ton ressenti après chaque séance ici, et tes objectifs dans l'onglet Objectifs — l'IA combinera les deux pour te proposer un plan d'entraînement personnalisé.</div>
       </div>
 
       <div class="card">
