@@ -17,6 +17,7 @@
   --accent-dim:rgba(48,209,88,0.15);
   --red:#ff453a;
   --blue:#0a84ff;
+  --blue-dim:rgba(10,132,255,0.15);
   --orange:#ff9f0a;
   --purple:#bf5af2;
   --pink:#ff375f;
@@ -65,11 +66,15 @@ button,input,select{font-family:inherit}
 .goal-level-card.active{border-color:var(--accent);background:rgba(48,209,88,0.1)}
 .goal-level-card .lbl{font-size:13px;font-weight:600}
 .goal-level-card .sub{font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.3}
+.goal-slot-switch{display:flex;gap:8px;margin-bottom:14px}
+.goal-slot-btn{flex:1;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer;text-align:center;transition:border-color .15s,background .15s,color .15s}
+.goal-slot-btn.active-principal{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+.goal-slot-btn.active-secondaire{border-color:var(--blue);background:var(--blue-dim);color:var(--blue)}
 .goal-principal-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .goal-principal-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);cursor:pointer;transition:border-color .15s,background .15s}
-.goal-principal-card.active{border-color:var(--accent);background:rgba(48,209,88,0.1)}
+.goal-principal-card.active{border-color:var(--accent);background:var(--accent-dim)}
 .goal-principal-card .icon-wrap{width:32px;height:32px;border-radius:50%;background:var(--card-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-dim);transition:color .15s,background .15s}
-.goal-principal-card.active .icon-wrap{color:var(--accent);background:rgba(48,209,88,0.15)}
+.goal-principal-card.active .icon-wrap{color:var(--accent);background:var(--accent-dim)}
 .goal-principal-card .lbl{font-size:12.5px;font-weight:600;line-height:1.25}
 @media (prefers-reduced-motion: no-preference){
   .goal-principal-card.active .icon-wrap{animation:goalIconPop .4s cubic-bezier(.34,1.56,.64,1)}
@@ -459,7 +464,7 @@ document.getElementById("authSubmit").onclick = async () => {
 };
 
 /* ---------- Dashboard ---------- */
-let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=0, activeFilter="Tous", charts=[];
+let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=0, activeFilter="Tous", charts=[], activeGoalSlot="principal";
 let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = null, restingHrUpdatedAt = null, restingHrIsManual = false, avatarUrl = null;
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let openSessionRatings = new Set();
@@ -524,7 +529,7 @@ async function loadData() {
     alert("Erreur de chargement du profil : "+profileError.message+"\n\nTes réglages (Mon compte, Objectifs) risquent d'apparaître vides même s'ils sont bien enregistrés. Contacte-moi avec ce message.");
   }
   syncSinceDate = profile?.sync_since_date || null;
-  goals = profile?.goals || {};
+  goals = migrateGoals(profile?.goals || {});
   avatarUrl = profile?.avatar_url || null;
   maxHr = profile?.max_hr || null;
   restingHr = profile?.resting_hr || null;
@@ -652,8 +657,26 @@ window.saveSyncSinceDate = async (value) => {
   if(!(await upsertProfile({ sync_since_date: value }))) return;
   syncSinceDate = value;
 };
-const GOALS_FIELDS = ["objectifPrincipal","distanceCourse","dateCible","kmMensuel","frequence","plusLongueDistance","allureEfVisee","allureWorkVisee","niveau","autre"];
+// Champs propres à un objectif (principal OU secondaire) — "niveau" et
+// "autre" restent partagés entre les deux (ils décrivent le coureur, pas
+// un objectif en particulier).
+const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","dateCible","kmMensuel","frequence","plusLongueDistance","allureEfVisee","allureWorkVisee"];
 const RACE_DISTANCES_KM = {"5km":5,"10km":10,"Semi":21.0975,"Marathon":42.195};
+// Anciens objectifs enregistrés à plat (avant l'ajout de l'objectif
+// secondaire) : repris tels quels comme objectif "principal" au premier
+// chargement, sans réécriture en base tant que l'utilisateur n'a pas
+// resauvegardé — aucune perte de données.
+function migrateGoals(g){
+  if(g.principal || g.secondaire) return g;
+  const {niveau, autre, ...rest} = g;
+  return { principal: rest, secondaire: {}, niveau, autre };
+}
+// Bascule l'objectif affiché/édité (principal ↔ secondaire) — un
+// re-rendu complet suffit, comme pour les onglets.
+window.selectGoalSlot = (slot) => {
+  activeGoalSlot = slot;
+  renderContent();
+};
 
 // Sélection à puces générique (objectif principal, distance de course,
 // séances/semaine, niveau) : met à jour un input caché + l'état visuel
@@ -700,13 +723,19 @@ window.adjustPaceGoal = (field, delta, fallback) => {
 };
 
 window.saveGoals = async () => {
-  const value = {};
-  GOALS_FIELDS.forEach(k=>{ const el=document.getElementById("goal_"+k); if(el) value[k]=el.value; });
+  const slotValue = {};
+  GOAL_SLOT_FIELDS.forEach(k=>{ const el=document.getElementById("goal_"+k); if(el) slotValue[k]=el.value; });
   const h = parseInt(document.getElementById("goal_tempsH")?.value,10)||0;
   const m = parseInt(document.getElementById("goal_tempsM")?.value,10)||0;
   const s = parseInt(document.getElementById("goal_tempsS")?.value,10)||0;
   const totalSec = h*3600+m*60+s;
-  value.tempsViseSec = totalSec>0 ? totalSec : "";
+  slotValue.tempsViseSec = totalSec>0 ? totalSec : "";
+  const value = {
+    ...goals,
+    [activeGoalSlot]: slotValue,
+    niveau: document.getElementById("goal_niveau")?.value ?? goals.niveau,
+    autre: document.getElementById("goal_autre")?.value ?? goals.autre,
+  };
   if(!(await upsertProfile({ goals: value }))) return;
   goals = value;
   flashSaved("goalsSaved");
@@ -1898,10 +1927,19 @@ function renderContent(){
     const chipRow = (field, options, current) => `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
       ${options.map(o=>`<button type="button" class="flt${o===current?" active":""}" data-value="${o}" onclick="selectChip('${field}','${o}')">${o}</button>`).join("")}
     </div>`;
-    const isRace = goals.objectifPrincipal==="Préparer une course";
-    const tH=Math.floor((goals.tempsViseSec||0)/3600), tM=Math.floor(((goals.tempsViseSec||0)%3600)/60), tS=(goals.tempsViseSec||0)%60;
-    const raceKm = RACE_DISTANCES_KM[goals.distanceCourse];
-    const racePaceTxt = (raceKm && goals.tempsViseSec) ? `→ allure cible : ${fmtA(Math.round(goals.tempsViseSec/raceKm))}/km` : "";
+    // Deux objectifs indépendants (principal/secondaire), chacun avec son
+    // propre type, sa course éventuelle, son rythme et son allure cible —
+    // "niveau" et "autre" restent partagés (voir GOAL_SLOT_FIELDS). La
+    // couleur de tout le bloc slot-specific (vert principal / bleu
+    // secondaire) vient d'une surcharge locale de --accent/--accent-dim :
+    // le reste du CSS (puces, cartes, bouton) s'appuie déjà sur ces
+    // variables, pas besoin de dupliquer les règles.
+    const slot = goals[activeGoalSlot] || {};
+    const slotColorVars = activeGoalSlot==="secondaire" ? "--accent:var(--blue);--accent-dim:var(--blue-dim);" : "";
+    const isRace = slot.objectifPrincipal==="Préparer une course";
+    const tH=Math.floor((slot.tempsViseSec||0)/3600), tM=Math.floor(((slot.tempsViseSec||0)%3600)/60), tS=(slot.tempsViseSec||0)%60;
+    const raceKm = RACE_DISTANCES_KM[slot.distanceCourse];
+    const racePaceTxt = (raceKm && slot.tempsViseSec) ? `→ allure cible : ${fmtA(Math.round(slot.tempsViseSec/raceKm))}/km` : "";
     const NIVEAUX = [["Débutant","Tu commences ou reprends"],["Intermédiaire","Tu cours régulièrement"],["Confirmé","Tu as de l'expérience en compet"]];
     // Icône par objectif — cartes plus grandes que les puces des autres
     // champs, avec un peu de vie sur l'icône choisie (pop au clic, léger
@@ -1921,19 +1959,25 @@ function renderContent(){
       </div>`).join("")}
     </div>`;
 
-    el.innerHTML=`<div class="card">
-      <div class="stitle">Objectif principal</div>
+    el.innerHTML=`<div class="goal-slot-switch">
+      <div class="goal-slot-btn${activeGoalSlot==="principal"?" active-principal":""}" onclick="selectGoalSlot('principal')">Objectif principal</div>
+      <div class="goal-slot-btn${activeGoalSlot==="secondaire"?" active-secondaire":""}" onclick="selectGoalSlot('secondaire')">Objectif secondaire</div>
+    </div>
+
+    <div style="${slotColorVars}">
+    <div class="card">
+      <div class="stitle">${activeGoalSlot==="principal"?"Objectif principal":"Objectif secondaire"}</div>
       <div class="chart-hint">Sert de base au futur plan personnalisé par IA (onglet Ressenti) et conditionne les questions suivantes.</div>
-      ${objectifCards(goals.objectifPrincipal)}
-      <input type="hidden" id="goal_objectifPrincipal" value="${goals.objectifPrincipal||""}">
+      ${objectifCards(slot.objectifPrincipal)}
+      <input type="hidden" id="goal_objectifPrincipal" value="${slot.objectifPrincipal||""}">
 
       <div id="raceGoalBlock" style="margin-top:14px;display:${isRace?"":"none"}">
         <div class="chart-hint" style="margin-top:0">Distance visée</div>
-        ${chipRow("distanceCourse", ["5km","10km","Semi","Marathon","Trail","Autre"], goals.distanceCourse)}
-        <input type="hidden" id="goal_distanceCourse" value="${goals.distanceCourse||""}">
+        ${chipRow("distanceCourse", ["5km","10km","Semi","Marathon","Trail","Autre"], slot.distanceCourse)}
+        <input type="hidden" id="goal_distanceCourse" value="${slot.distanceCourse||""}">
         <div class="field" style="margin-top:12px">
           <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Date de la course</span>
-          <input type="date" id="goal_dateCible" value="${goals.dateCible||""}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+          <input type="date" id="goal_dateCible" value="${slot.dateCible||""}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
         </div>
         <div class="field" style="margin-bottom:0">
           <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Temps visé</span>
@@ -1951,16 +1995,16 @@ function renderContent(){
       <div class="stitle">Rythme visé</div>
       <div class="field">
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Séances / semaine</span>
-        ${chipRow("frequence", ["1","2","3","4","5","6","7"], goals.frequence)}
+        ${chipRow("frequence", ["1","2","3","4","5","6","7"], slot.frequence)}
       </div>
-      <input type="hidden" id="goal_frequence" value="${goals.frequence||""}">
+      <input type="hidden" id="goal_frequence" value="${slot.frequence||""}">
       <div class="field">
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Km / mois</span>
-        <input type="number" min="1" max="1000" id="goal_kmMensuel" value="${goals.kmMensuel||""}" placeholder="ex: 120" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        <input type="number" min="1" max="1000" id="goal_kmMensuel" value="${slot.kmMensuel||""}" placeholder="ex: 120" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
       </div>
       <div class="field" style="margin-bottom:0">
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Plus longue distance (km)</span>
-        <input type="number" min="1" max="200" step="0.1" id="goal_plusLongueDistance" value="${goals.plusLongueDistance||""}" placeholder="ex: 21" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        <input type="number" min="1" max="200" step="0.1" id="goal_plusLongueDistance" value="${slot.plusLongueDistance||""}" placeholder="ex: 21" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
       </div>
     </div>
 
@@ -1971,20 +2015,21 @@ function renderContent(){
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure EF</span>
         <div class="pace-stepper">
           <button type="button" onclick="adjustPaceGoal('allureEfVisee',5,360)">−</button>
-          <span class="val" id="allureEfVisee_display">${goals.allureEfVisee?fmtA(Number(goals.allureEfVisee)):"—"}</span>
+          <span class="val" id="allureEfVisee_display">${slot.allureEfVisee?fmtA(Number(slot.allureEfVisee)):"—"}</span>
           <button type="button" onclick="adjustPaceGoal('allureEfVisee',-5,360)">+</button>
         </div>
       </div>
-      <input type="hidden" id="goal_allureEfVisee" value="${goals.allureEfVisee||""}">
+      <input type="hidden" id="goal_allureEfVisee" value="${slot.allureEfVisee||""}">
       <div class="field" style="margin-bottom:0">
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure Work (fractionné)</span>
         <div class="pace-stepper">
           <button type="button" onclick="adjustPaceGoal('allureWorkVisee',5,300)">−</button>
-          <span class="val" id="allureWorkVisee_display">${goals.allureWorkVisee?fmtA(Number(goals.allureWorkVisee)):"—"}</span>
+          <span class="val" id="allureWorkVisee_display">${slot.allureWorkVisee?fmtA(Number(slot.allureWorkVisee)):"—"}</span>
           <button type="button" onclick="adjustPaceGoal('allureWorkVisee',-5,300)">+</button>
         </div>
       </div>
-      <input type="hidden" id="goal_allureWorkVisee" value="${goals.allureWorkVisee||""}">
+      <input type="hidden" id="goal_allureWorkVisee" value="${slot.allureWorkVisee||""}">
+    </div>
     </div>
 
     <div class="card">
