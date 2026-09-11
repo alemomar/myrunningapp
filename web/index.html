@@ -263,6 +263,7 @@ button,input,select{font-family:inherit}
 .last-run-stat-row{background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);padding:9px 14px}
 .last-run-stat-row .l{font-size:11px;color:var(--text-dim)}
 .last-run-stat-row .v{font-size:17px;font-weight:700;letter-spacing:-.2px;margin-top:1px}
+.last-run-stat-row .cmp{font-size:10px;color:var(--text-faint);margin-top:3px}
 
 /* Célébration : entrée en pop + éclats qui partent de l'icône. Ne joue
    qu'une fois par ouverture du dashboard (voir renderContent), jamais si
@@ -871,15 +872,30 @@ function lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate){
   const intervalPaces = lastRun.type==="Fractionné" ? getIntervalPaces(lastRun) : null;
   const showWorkRecovery = intervalPaces && (intervalPaces.manual || intervalPaces.workCount>=2);
 
+  // Comparatif "par rapport à d'habitude" : moyenne des séances du même
+  // type sur les 30 derniers jours (séance actuelle exclue) — un chiffre
+  // isolé ne dit rien sans repère récent. Pas de comparatif si c'est la
+  // seule séance de ce type ce dernier mois.
+  const avgOf = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+  const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate()-30);
+  const sameTypeLastMonth = runningRuns.filter(r => r.type===lastRun.type && r.id!==lastRun.id && dateFromRun(r)>=monthAgo);
+  const avgKm = avgOf(sameTypeLastMonth.filter(r=>r.dist>0).map(r=>r.dist));
+  const avgDurSec = avgOf(sameTypeLastMonth.map(r=>r.durationSec));
+  const avgAllure = avgOf(sameTypeLastMonth.filter(r=>r.allure).map(r=>r.allure));
+  const fracPacesLastMonth = sameTypeLastMonth.map(r=>getIntervalPaces(r)).filter(ip=>ip && (ip.manual || ip.workCount>=2));
+  const avgWork = avgOf(fracPacesLastMonth.map(ip=>ip.work));
+  const avgRecovery = avgOf(fracPacesLastMonth.filter(ip=>ip.recovery).map(ip=>ip.recovery));
+  const cmp = v => v==null?null:`Moyenne dernier mois : ${v}`;
+
   const statRows = [
-    ["km", km],
-    ["Durée", lastRun.dur],
+    ["km", km, cmp(avgKm?avgKm.toFixed(2)+" km":null)],
+    ["Durée", lastRun.dur, cmp(avgDurSec?fmtDur(Math.round(avgDurSec)):null)],
     ...(showWorkRecovery
       ? [
-          [`Allure Work${intervalPaces.manual?"":` (${intervalPaces.workCount})`}`, fmtA(intervalPaces.work)+"/km"],
-          ...(intervalPaces.recovery ? [[`Allure Récup${intervalPaces.manual?"":` (${intervalPaces.recoveryCount})`}`, fmtA(intervalPaces.recovery)+"/km"]] : []),
+          [`Allure Work${intervalPaces.manual?"":` (${intervalPaces.workCount})`}`, fmtA(intervalPaces.work)+"/km", cmp(avgWork?fmtA(Math.round(avgWork))+"/km":null)],
+          ...(intervalPaces.recovery ? [[`Allure Récup${intervalPaces.manual?"":` (${intervalPaces.recoveryCount})`}`, fmtA(intervalPaces.recovery)+"/km", cmp(avgRecovery?fmtA(Math.round(avgRecovery))+"/km":null)]] : []),
         ]
-      : [["Allure", lastRun.dist>0?fmtA(lastRun.allure)+"/km":"—"]]
+      : [["Allure", lastRun.dist>0?fmtA(lastRun.allure)+"/km":"—", cmp(avgAllure?fmtA(Math.round(avgAllure))+"/km":null)]]
     ),
   ];
 
@@ -919,7 +935,7 @@ function lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate){
     ${expanded?`<div class="last-run-body">
       <div class="last-run-left">${leftHTML}</div>
       <div class="last-run-right">
-        ${statRows.map(([l,v])=>`<div class="last-run-stat-row"><div class="l">${l}</div><div class="v">${v}</div></div>`).join("")}
+        ${statRows.map(([l,v,cmp])=>`<div class="last-run-stat-row"><div class="l">${l}</div><div class="v">${v}</div>${cmp?`<div class="cmp">${cmp}</div>`:""}</div>`).join("")}
       </div>
     </div>`:""}
   </div>`;
@@ -1312,7 +1328,11 @@ function mkHrCurveChart(canvasId, hrSeries){
       plugins:{legend:{display:false}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{title:items=>fmtDur(items[0].parsed.x), label:ctx=>Math.round(ctx.parsed.y)+" bpm"}}},
       scales:{
         x:{type:'linear', ticks:{color:tick,font:{size:10},callback:v=>fmtDur(v)}, grid:{display:false}},
-        y:{ticks:{color:tick,font:{size:10}}, grid:{color:grid}},
+        // Bornes fixes (100-190 bpm) plutôt qu'un auto-scale sur les données :
+        // sinon une séance EF tranquille (ex: 90-150 bpm) s'affiche collée en
+        // haut du graph, donnant l'impression trompeuse d'un effort proche du
+        // maximum alors que ce n'est pas le cas.
+        y:{min:100, max:190, ticks:{color:tick,font:{size:10},stepSize:30}, grid:{color:grid}},
       }
     }
   });
