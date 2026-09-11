@@ -224,6 +224,13 @@ button,input,select{font-family:inherit}
 .pain-row-top .lbl{font-size:13px;color:var(--text)}
 .pain-row-top .val{font-size:13px;font-weight:700;min-width:20px;text-align:right}
 .pain-row input[type="range"]{width:100%;accent-color:var(--accent);height:20px}
+.body-map-wrap{display:flex;gap:16px;align-items:flex-start;margin-top:4px}
+.body-svg{flex-shrink:0}
+.body-svg .zone{cursor:pointer;transition:opacity .15s}
+.body-svg .zone:hover{opacity:.8}
+.zone-rows{flex:1;min-width:0;padding-top:8px}
+.zone-placeholder{font-size:12px;color:var(--text-faint);padding:10px 0}
+.zone-row{padding:4px 0}
 .session-pick{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
 .session-pick:last-child{border-bottom:none}
 .session-pick .rated{color:var(--accent);font-size:11px;font-weight:600}
@@ -439,23 +446,24 @@ let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = 
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let lastCheckin = null, openSessionRatings = new Set();
 let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
-const BODY_PARTS=[
-  ["tendon_g","Tendon gauche"],["tendon_d","Tendon droit"],
-  ["genou_g","Genou gauche"],["genou_d","Genou droit"],
-  ["cuisse_g","Cuisse gauche"],["cuisse_d","Cuisse droite"],
-  ["pied_g","Pied gauche"],["pied_d","Pied droit"],
-  ["bassin","Bassin"],["dos","Dos"],
+// Refonte complète du check-in douleur (retour d'audit : trop lourd à
+// remplir, confus, pas terrible visuellement). Zones simplifiées — plus de
+// distinction gauche/droite (l'utilisateur ne la voulait plus, ça double le
+// nombre de champs pour peu de valeur) — affichées sur une carte du corps
+// tapable plutôt qu'une liste de curseurs (voir bodyMapHTML). Ancien schéma
+// (tendon_g/tendon_d/...) abandonné : les vieilles séances notées avant
+// cette refonte gardent leurs anciennes clés en base (pas de perte de
+// données), mais ne remontent plus dans le nouveau formulaire.
+const BODY_ZONES=[
+  ["tendons","Tendons"],["genoux","Genoux"],["cuisse","Cuisse"],["ischios","Ischios"],
+  ["pied","Pied"],["bassin","Bassin"],["dos","Dos"],["abdos","Abdos"],
 ];
-// Retours d'audit : le check-in se limitait aux douleurs par zone, alors que
-// le ressenti d'une séance ne se résume pas qu'à ça — ajout de critères
-// généraux à côté des zones du corps (même stockage jsonb `ratings`/
-// `pain_ratings`, pas de migration nécessaire : juste de nouvelles clés).
 const WELLBEING_EXTRA=[
-  ["respiration","Respiration"],["fatigue","Fatigue générale"],
+  ["fatigue","Fatigue générale"],["mental","Mental"],["respiration","Respiration"],
 ];
 const TABS=[
   {label:"Dashboard", icon:"bars"},
-  {label:"Plan", icon:"sparkle"},
+  {label:"Ressenti", icon:"sparkle"},
   {label:"Objectifs", icon:"target"},
   {label:"Séances", icon:"list"},
   {label:"Mon compte", icon:"user"},
@@ -763,8 +771,17 @@ window.deleteRun = async (id, label) => {
 };
 function readPainForm(prefix){
   const ratings={};
-  [...WELLBEING_EXTRA, ...BODY_PARTS].forEach(([key])=>{ ratings[key]=parseInt(document.getElementById(`${prefix}_${key}`).value,10); });
+  [...WELLBEING_EXTRA, ...BODY_ZONES].forEach(([key])=>{ ratings[key]=parseInt(document.getElementById(`${prefix}_${key}`).value,10); });
   return ratings;
+}
+// Reprise des derniers éléments enregistrés (check-in général le plus
+// récent, ou à défaut la dernière séance notée individuellement) : sert de
+// valeur de départ pour toute nouvelle saisie, pour qu'il n'y ait plus qu'à
+// ajuster ce qui a changé plutôt que tout ressaisir depuis zéro à chaque fois.
+function lastKnownRatings(){
+  if(lastCheckin?.ratings) return lastCheckin.ratings;
+  const rated = runningRuns.filter(r=>r.painRatings);
+  return rated.length ? rated[rated.length-1].painRatings : {};
 }
 window.saveCheckin = async () => {
   const ratings = readPainForm("now");
@@ -1398,12 +1415,79 @@ function painSliderRow(prefix, key, label, initial){
       oninput="const v=document.getElementById('${prefix}_${key}_v');v.textContent=this.value;const c=painColor(this.value);v.style.color=c;this.style.accentColor=c;">
   </div>`;
 }
+// Coordonnées des zones sur le schéma (viewBox 110x230). Pas de prétention
+// anatomique exacte (dos/abdos, cuisse/ischios partagent une seule
+// silhouette de face, sans vue de dos séparée) — juste un découpage clair
+// et tapable, le nom de la zone s'affiche dès qu'on la touche.
+const BODY_ZONE_RECTS={
+  dos:      {x:33, y:38,  w:20, h:52},
+  abdos:    {x:57, y:38,  w:20, h:52},
+  bassin:   {x:33, y:92,  w:44, h:22},
+  cuisse:   {x:33, y:116, w:20, h:45},
+  ischios:  {x:57, y:116, w:20, h:45},
+  genoux:   {x:33, y:163, w:44, h:16},
+  tendons:  {x:33, y:181, w:44, h:30},
+  pied:     {x:30, y:213, w:50, h:13},
+};
+// Carte du corps tapable : remplace la liste de curseurs pour les zones
+// (retour d'audit — "pas terrible visuellement"). Tous les sliders de zone
+// existent dans le DOM dès le rendu (juste cachés) pour que readPainForm
+// puisse les lire normalement au moment d'enregistrer, même si une seule
+// ligne est visible à la fois. La teinte de chaque zone sur le schéma
+// reflète déjà sa valeur (reprise des derniers éléments enregistrés) avant
+// même de la toucher, pour qu'on voie d'un coup d'oeil ce qui est prérempli.
+function bodyMapHTML(prefix, initial){
+  const svgZones = BODY_ZONES.map(([key,label])=>{
+    const v = initial[key] ?? 0;
+    const r = BODY_ZONE_RECTS[key];
+    const fill = v>0 ? painColor(v)+"55" : "var(--card-2)";
+    return `<rect class="zone" id="${prefix}_zone_${key}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="7"
+      fill="${fill}" stroke="var(--border)"
+      onclick="bodyZoneTap('${prefix}','${key}','${label}')"/>`;
+  }).join("");
+  const rows = BODY_ZONES.map(([key,label])=>{
+    const v = initial[key] ?? 0;
+    const c = painColor(v);
+    return `<div class="zone-row" id="${prefix}_${key}_row" style="display:none">
+      <div class="pain-row-top"><span class="lbl">${label}</span><span class="val" id="${prefix}_${key}_v" style="color:${c}">${v}</span></div>
+      <input type="range" min="0" max="10" value="${v}" id="${prefix}_${key}" style="accent-color:${c}"
+        oninput="bodyZoneSlide('${prefix}','${key}',this.value)">
+    </div>`;
+  }).join("");
+  return `<div class="body-map-wrap">
+    <svg class="body-svg" width="110" height="230" viewBox="0 0 110 230">
+      <circle cx="55" cy="20" r="16" fill="var(--card-2)"/>
+      ${svgZones}
+    </svg>
+    <div class="zone-rows">
+      <div class="zone-placeholder" id="${prefix}_zoneph">Touche une zone sur le schéma</div>
+      ${rows}
+    </div>
+  </div>`;
+}
+window.bodyZoneTap = (prefix, key, label) => {
+  BODY_ZONES.forEach(([k])=>{
+    const row = document.getElementById(`${prefix}_${k}_row`);
+    if(row) row.style.display = (k===key) ? "" : "none";
+  });
+  const ph = document.getElementById(`${prefix}_zoneph`);
+  if(ph) ph.style.display = "none";
+};
+window.bodyZoneSlide = (prefix, key, val) => {
+  const v = document.getElementById(`${prefix}_${key}_v`);
+  const input = document.getElementById(`${prefix}_${key}`);
+  const zone = document.getElementById(`${prefix}_zone_${key}`);
+  const c = painColor(val);
+  if(v){ v.textContent = val; v.style.color = c; }
+  if(input) input.style.accentColor = c;
+  if(zone) zone.setAttribute("fill", val>0 ? c+"55" : "var(--card-2)");
+};
 function painFormHTML(prefix, initial){
   initial = initial || {};
   return `
     ${WELLBEING_EXTRA.map(([key,label])=>painSliderRow(prefix,key,label,initial)).join("")}
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);margin:14px 0 4px">Douleurs par zone</div>
-    ${BODY_PARTS.map(([key,label])=>painSliderRow(prefix,key,label,initial)).join("")}
+    ${bodyMapHTML(prefix, initial)}
   `;
 }
 
@@ -1635,36 +1719,35 @@ function renderContent(){
     const usingMode = ratedCount>0
       ? `L'IA se basera sur tes ${ratedCount} séance(s) notée(s) individuellement.`
       : (lastCheckin ? `L'IA se basera sur ton dernier check-in.` : `Fais au moins un check-in pour que l'IA ait de quoi travailler.`);
-    const recent = runningRuns.slice(-10).reverse();
+    const allSessions = runningRuns.slice().reverse();
     const lastSavedTxt = lastCheckin ? `Dernier enregistrement : ${new Date(lastCheckin.created_at).toLocaleDateString('fr-FR')} à ${new Date(lastCheckin.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}` : "";
 
     el.innerHTML=`
       <div class="card">
-        <div class="stitle">Plan</div>
+        <div class="stitle">Ressenti</div>
         <div class="chart-hint" style="margin-bottom:14px">Note ton ressenti et tes objectifs (onglet Objectifs) — l'IA s'en servira pour te proposer un plan d'entraînement personnalisé.</div>
       </div>
 
       <div class="card">
         <div class="stitle">Comment tu te sens maintenant ?</div>
-        <div class="chart-hint">0 = aucune gêne, 10 = très intense. Rapide : ~15 secondes.</div>
-        ${painFormHTML("now", lastCheckin?.ratings)}
+        <div class="chart-hint">0 = aucune gêne, 10 = très intense. Prérempli avec ta dernière saisie — ajuste juste ce qui a changé.</div>
+        ${painFormHTML("now", lastKnownRatings())}
         <button class="btn-primary" style="margin-top:8px" onclick="saveCheckin()">Enregistrer ce check-in</button>
         <div id="checkinSaved" class="save-confirm">${lastSavedTxt}</div>
       </div>
 
       <div class="card">
-        <div class="stitle">Ou note tes dernières séances (optionnel)</div>
-        <div class="chart-hint">Si tu notes tes séances, l'IA privilégiera ce détail plutôt que ton check-in.</div>
-        ${recent.length===0?`<div style="font-size:13px;color:var(--text-dim)">Aucune séance de course pour l'instant.</div>`:recent.map(r=>{
+        <div class="stitle">Ou note une séance en particulier</div>
+        <div class="chart-hint">Si tu notes une séance, l'IA privilégiera ce détail plutôt que ton check-in général.</div>
+        ${allSessions.length===0?`<div style="font-size:13px;color:var(--text-dim)">Aucune séance de course pour l'instant.</div>`:allSessions.map(r=>{
           const open = openSessionRatings.has(r.id);
-          const c = TC[r.type]||TC.Other;
           return `
           <div class="session-pick" onclick="toggleSessionRating('${r.id}')">
-            <span>${icon(open?"chevronDown":"chevronRight",13)} <strong style="color:${c}">${r.label} · ${r.time}</strong> · ${r.dist>0?r.dist.toFixed(2)+" km":r.type}</span>
+            <span>${icon(open?"chevronDown":"chevronRight",13)} ${r.label} · ${r.time}${r.dist>0?" · "+r.dist.toFixed(2)+" km":""}</span>
             <span class="rated">${r.painRatings?"Notée ✓":"Noter"}</span>
           </div>
           ${open?`<div style="padding:10px 0 4px">
-            ${painFormHTML(`sess_${r.id}`, r.painRatings)}
+            ${painFormHTML(`sess_${r.id}`, r.painRatings || lastKnownRatings())}
             <button class="btn-primary" style="margin-top:6px" onclick="saveSessionRating('${r.id}')">Enregistrer</button>
             <div id="sessRatingSaved_${r.id}" class="save-confirm"></div>
           </div>`:""}
@@ -1688,7 +1771,7 @@ function renderContent(){
 
     el.innerHTML=`<div class="card">
       <div class="stitle">Objectif principal</div>
-      <div class="chart-hint">Sert de base au futur plan personnalisé par IA (onglet Plan) et conditionne les questions suivantes.</div>
+      <div class="chart-hint">Sert de base au futur plan personnalisé par IA (onglet Ressenti) et conditionne les questions suivantes.</div>
       ${chipRow("objectifPrincipal", ["Préparer une course","Améliorer mon allure","Courir plus régulièrement","Reprendre après une pause/blessure","Rester en forme","Autre"], goals.objectifPrincipal)}
       <input type="hidden" id="goal_objectifPrincipal" value="${goals.objectifPrincipal||""}">
 
