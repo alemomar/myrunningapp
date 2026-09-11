@@ -65,6 +65,18 @@ button,input,select{font-family:inherit}
 .goal-level-card.active{border-color:var(--accent);background:rgba(48,209,88,0.1)}
 .goal-level-card .lbl{font-size:13px;font-weight:600}
 .goal-level-card .sub{font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.3}
+.goal-principal-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.goal-principal-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);cursor:pointer;transition:border-color .15s,background .15s}
+.goal-principal-card.active{border-color:var(--accent);background:rgba(48,209,88,0.1)}
+.goal-principal-card .icon-wrap{width:32px;height:32px;border-radius:50%;background:var(--card-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-dim);transition:color .15s,background .15s}
+.goal-principal-card.active .icon-wrap{color:var(--accent);background:rgba(48,209,88,0.15)}
+.goal-principal-card .lbl{font-size:12.5px;font-weight:600;line-height:1.25}
+@media (prefers-reduced-motion: no-preference){
+  .goal-principal-card.active .icon-wrap{animation:goalIconPop .4s cubic-bezier(.34,1.56,.64,1)}
+  .goal-principal-card.active .icon-wrap svg{animation:goalIconFloat 2.4s ease-in-out infinite}
+}
+@keyframes goalIconPop{0%{transform:scale(.6)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes goalIconFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
 .pace-stepper{display:flex;align-items:center;gap:12px}
 .pace-stepper button{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--card-2);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
 .pace-stepper .val{font-weight:700;font-size:15px;min-width:64px;text-align:center}
@@ -1878,11 +1890,28 @@ function renderContent(){
     const raceKm = RACE_DISTANCES_KM[goals.distanceCourse];
     const racePaceTxt = (raceKm && goals.tempsViseSec) ? `→ allure cible : ${fmtA(Math.round(goals.tempsViseSec/raceKm))}/km` : "";
     const NIVEAUX = [["Débutant","Tu commences ou reprends"],["Intermédiaire","Tu cours régulièrement"],["Confirmé","Tu as de l'expérience en compet"]];
+    // Icône par objectif — cartes plus grandes que les puces des autres
+    // champs, avec un peu de vie sur l'icône choisie (pop au clic, léger
+    // flottement en continu) pour que l'écran ne soit pas que du texte.
+    const OBJECTIF_ICONS = [
+      ["Préparer une course","flag"],
+      ["Améliorer mon allure","bolt"],
+      ["Courir plus régulièrement","route"],
+      ["Reprendre après une pause/blessure","care"],
+      ["Rester en forme","heart"],
+      ["Autre","sparkle"],
+    ];
+    const objectifCards = (current) => `<div class="goal-principal-cards" data-chipgroup="objectifPrincipal">
+      ${OBJECTIF_ICONS.map(([label,ic])=>`<div class="goal-principal-card${label===current?" active":""}" data-value="${label}" onclick="selectChip('objectifPrincipal','${label}')">
+        <span class="icon-wrap">${icon(ic,17)}</span>
+        <span class="lbl">${label}</span>
+      </div>`).join("")}
+    </div>`;
 
     el.innerHTML=`<div class="card">
       <div class="stitle">Objectif principal</div>
       <div class="chart-hint">Sert de base au futur plan personnalisé par IA (onglet Ressenti) et conditionne les questions suivantes.</div>
-      ${chipRow("objectifPrincipal", ["Préparer une course","Améliorer mon allure","Courir plus régulièrement","Reprendre après une pause/blessure","Rester en forme","Autre"], goals.objectifPrincipal)}
+      ${objectifCards(goals.objectifPrincipal)}
       <input type="hidden" id="goal_objectifPrincipal" value="${goals.objectifPrincipal||""}">
 
       <div id="raceGoalBlock" style="margin-top:14px;display:${isRace?"":"none"}">
