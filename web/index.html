@@ -237,21 +237,32 @@ button,input,select{font-family:inherit}
 }
 .btn-danger{color:var(--red);background:none;border:none;font-size:14px;font-weight:500;cursor:pointer;padding:12px 0}
 
-/* ---------- Dernière séance (hero) ---------- */
+/* ---------- Dernière séance (hero, repliable) ---------- */
 .last-run-card{
   background:linear-gradient(160deg,var(--card) 0%,var(--card-2) 100%);
   border:1px solid var(--border);border-radius:var(--radius-lg);
-  padding:20px;margin-bottom:14px;position:relative;overflow:hidden;
+  padding:16px 20px;margin-bottom:14px;position:relative;overflow:hidden;
 }
+.last-run-card.expanded{padding-bottom:20px}
 .last-run-eyebrow{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px}
-.last-run-top{display:flex;align-items:center;gap:12px;margin-top:10px}
+.last-run-head{display:flex;align-items:center;gap:12px;margin-top:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .last-run-icon{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
 .last-run-title{font-size:17px;font-weight:700}
 .last-run-sub{font-size:12px;color:var(--text-dim);margin-top:2px}
-.last-run-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
-.last-run-stat{background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);padding:10px;text-align:center}
-.last-run-stat .v{font-size:16px;font-weight:700;letter-spacing:-.2px}
-.last-run-stat .l{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;margin-top:2px}
+.last-run-collapsed-km{font-size:15px;font-weight:700;flex-shrink:0}
+.last-run-chevron{color:var(--text-faint);flex-shrink:0;transition:transform .2s}
+.last-run-card.expanded .last-run-chevron{transform:rotate(180deg)}
+
+.last-run-body{display:flex;flex-direction:column;gap:16px;margin-top:16px}
+@media (min-width:700px){
+  .last-run-body{flex-direction:row}
+  .last-run-left{flex:1.2;min-width:0}
+  .last-run-right{flex:1;min-width:0}
+}
+.last-run-right{display:flex;flex-direction:column;gap:8px;justify-content:center}
+.last-run-stat-row{background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);padding:9px 14px}
+.last-run-stat-row .l{font-size:11px;color:var(--text-dim)}
+.last-run-stat-row .v{font-size:17px;font-weight:700;letter-spacing:-.2px;margin-top:1px}
 
 /* Célébration : entrée en pop + éclats qui partent de l'icône. Ne joue
    qu'une fois par ouverture du dashboard (voir renderContent), jamais si
@@ -844,30 +855,73 @@ function ringSmHTML(val, goal, color, valLabel, unitLabel, caption){
   </div>`;
 }
 // Carte "Dernière séance" tout en haut du dashboard : premier truc vu à
-// l'ouverture, donc infos aussi complètes que la ligne détaillée de l'onglet
-// Séances (distance/durée/allure + zones FC + Work/Récup fractionné), avec
-// un traitement visuel distinct (dégradé, stats en grille) plutôt qu'une
-// simple carte parmi d'autres. `celebrate` n'est vrai qu'au tout premier
-// rendu du dashboard depuis l'ouverture de l'app (voir renderContent) —
-// l'animation ne doit pas rejouer à chaque re-render (changement de filtre,
-// etc.), seulement à l'arrivée sur l'app.
+// l'ouverture. Repliée par défaut (juste date + km, voir lastRunExpanded) —
+// dépliée au clic, en deux colonnes (graph+zones FC à gauche, stats à
+// droite) plutôt qu'empilée, pour prendre moins de place. L'allure
+// n'apparaît qu'une fois : allure moyenne pour une séance classique, ou
+// Allure Work/Récup pour un fractionné avec assez de données — jamais les
+// deux (c'était le doublon signalé). `celebrate` n'est vrai qu'au tout
+// premier rendu du dashboard depuis l'ouverture de l'app (voir
+// renderContent) — l'animation ne doit pas rejouer à chaque re-render.
 function lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate){
   const c = TC[lastRun.type]||TC.Other;
-  return `<div class="last-run-card${celebrate?" celebrate":""}">
+  const expanded = lastRunExpanded;
+  const km = lastRun.dist>0 ? lastRun.dist.toFixed(2)+" km" : "—";
+
+  const intervalPaces = lastRun.type==="Fractionné" ? getIntervalPaces(lastRun) : null;
+  const showWorkRecovery = intervalPaces && (intervalPaces.manual || intervalPaces.workCount>=2);
+
+  const statRows = [
+    ["km", km],
+    ["Durée", lastRun.dur],
+    ...(showWorkRecovery
+      ? [
+          [`Allure Work${intervalPaces.manual?"":` (${intervalPaces.workCount})`}`, fmtA(intervalPaces.work)+"/km"],
+          ...(intervalPaces.recovery ? [[`Allure Récup${intervalPaces.manual?"":` (${intervalPaces.recoveryCount})`}`, fmtA(intervalPaces.recovery)+"/km"]] : []),
+        ]
+      : [["Allure", lastRun.dist>0?fmtA(lastRun.allure)+"/km":"—"]]
+    ),
+  ];
+
+  const hasHr = lastRun.hrSeries && lastRun.hrSeries.length>1;
+  let leftHTML;
+  if(!hasHr){
+    leftHTML = `<div style="font-size:12px;color:var(--text-dim);padding:8px 0">Pas de détail FC pour cette séance.</div>`;
+  } else if(!effMaxHr){
+    leftHTML = `<div style="font-size:12px;color:var(--text-dim);padding:8px 0">Renseigne ta FC max (Mon compte) pour voir les zones.</div>`;
+  } else {
+    const {secs, defs} = computeHrZoneSeconds(lastRun.hrSeries, effMaxHr, effRestingHr);
+    const total = secs.reduce((a,b)=>a+b,0)||1;
+    leftHTML = `<div style="position:relative;width:100%;height:120px"><canvas id="cHr_${lastRun.id}"></canvas></div>
+      <div style="margin-top:10px">
+        ${defs.map((d,i)=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px">
+            <span style="width:52px;color:${d.color}">${d.label}</span>
+            <div style="flex:1;height:6px;border-radius:3px;background:var(--card-2);overflow:hidden">
+              <div style="width:${Math.round(secs[i]/total*100)}%;height:100%;background:${d.color}"></div>
+            </div>
+            <span style="width:48px;text-align:right;color:var(--text-dim)">${fmtDur(secs[i])}</span>
+          </div>`).join("")}
+      </div>`;
+  }
+
+  return `<div class="last-run-card${celebrate?" celebrate":""}${expanded?" expanded":""}">
     <div class="last-run-eyebrow">${icon("sparkle",12)} Dernière séance</div>
-    <div class="last-run-top">
+    <div class="last-run-head" onclick="toggleLastRunExpanded()">
       <div class="last-run-icon" style="background:${c}22;color:${c}">${icon(TICON[lastRun.type]||"activity",22)}</div>
-      <div>
+      <div style="flex:1;min-width:0">
         <div class="last-run-title">${lastRun.label} · ${lastRun.time}</div>
         <div class="last-run-sub"><span style="color:${c};font-weight:600">${lastRun.type}</span></div>
       </div>
+      ${!expanded?`<div class="last-run-collapsed-km">${km}</div>`:""}
+      <div class="last-run-chevron">${icon("chevronDown",16)}</div>
     </div>
-    <div class="last-run-stats">
-      <div class="last-run-stat"><div class="v">${lastRun.dist>0?lastRun.dist.toFixed(2):"—"}</div><div class="l">km</div></div>
-      <div class="last-run-stat"><div class="v">${lastRun.dur}</div><div class="l">Durée</div></div>
-      <div class="last-run-stat"><div class="v">${lastRun.dist>0?fmtA(lastRun.allure):"—"}</div><div class="l">Allure/km</div></div>
-    </div>
-    ${hrDetailHTML(lastRun, effMaxHr, effRestingHr)}
+    ${expanded?`<div class="last-run-body">
+      <div class="last-run-left">${leftHTML}</div>
+      <div class="last-run-right">
+        ${statRows.map(([l,v])=>`<div class="last-run-stat-row"><div class="l">${l}</div><div class="v">${v}</div></div>`).join("")}
+      </div>
+    </div>`:""}
   </div>`;
 }
 
@@ -1326,6 +1380,13 @@ let openHrDetail = new Set();
 // l'app : l'animation de célébration de la carte "Dernière séance" ne doit
 // jouer qu'une fois, pas à chaque re-render (changement de filtre, etc.).
 let lastRunCelebrated = false;
+// Repliée par défaut (juste date + km) : dépliée au clic pour voir le
+// détail complet. Un seul état pour toute la session (une seule carte).
+let lastRunExpanded = false;
+window.toggleLastRunExpanded = () => {
+  lastRunExpanded = !lastRunExpanded;
+  renderContent();
+};
 window.toggleHrDetail = (id) => {
   if(openHrDetail.has(id)) openHrDetail.delete(id);
   else openHrDetail.add(id);
@@ -1477,7 +1538,7 @@ function renderContent(){
       mkPaceTrendChart("cEFmini", efRuns, true, 60);
       if(hasFrac) mkFractionneChart("cFracMini", fracRuns, 60);
       mkChart("cVolMini",{type:"bar",data:{labels:vol.map(r=>r.label),datasets:[{label:"km",data:vol.map(r=>r.dist),backgroundColor:"#30d158",borderRadius:6}]},plugins:[barValueLabelsPlugin],options:{scales:{x:{ticks:{autoSkip:false,maxRotation:45}}},plugins:{tooltip:{callbacks:{label:ctx=>ctx.raw+" km"}}}}});
-      if(lastRun && lastRun.hrSeries && lastRun.hrSeries.length>1 && effMaxHr) mkHrCurveChart("cHr_"+lastRun.id, lastRun.hrSeries);
+      if(lastRunExpanded && lastRun && lastRun.hrSeries && lastRun.hrSeries.length>1 && effMaxHr) mkHrCurveChart("cHr_"+lastRun.id, lastRun.hrSeries);
     },50);
   }
 
