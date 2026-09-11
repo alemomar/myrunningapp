@@ -15,15 +15,29 @@ struct PacePoint: Codable {
     }
 }
 
-// Frontière d'intervalle posée par HealthKit lui-même (événement .lap), pas
-// reconstruite depuis l'allure GPS : quand la séance a été enregistrée via
-// l'entraînement fractionné structuré de la Watch (Work/Récup programmés),
-// ces bornes sont exactes — bien plus fiables que la détection heuristique
-// côté dashboard, qui doit deviner les frontières depuis un signal GPS
-// bruité. `start`/`end` en secondes depuis le début de la séance.
+// Frontière d'intervalle posée par HealthKit lui-même (une HKWorkoutActivity
+// par bloc du plan structuré), pas reconstruite depuis l'allure GPS : ces
+// bornes sont exactes — bien plus fiables que la détection heuristique côté
+// dashboard, qui doit deviner les frontières depuis un signal GPS bruité.
+// `start`/`end` en secondes depuis le début de la séance.
+// `pace` (secondes/km) est calculé nativement par HealthKit : distance
+// totale sur exactement [start,end] / durée exacte — pas une moyenne de nos
+// propres échantillons d'allure instantanée (dont la méthode de calcul
+// diverge légèrement de celle d'Apple, écart constant de ~7-9% observé en
+// comparant à l'app Fitness). `nil` si HealthKit n'a aucune donnée de
+// distance sur cette fenêtre précise (séance ancienne à échantillonnage
+// très épars) — le dashboard retombe alors sur l'estimation depuis
+// pace_series.
 struct LapMarker: Codable {
     let start: Int
     let end: Int
+    let paceSecKm: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case start
+        case end
+        case paceSecKm = "pace"
+    }
 }
 
 // Les clés doivent correspondre aux colonnes de la table `runs` (db/schema.sql)

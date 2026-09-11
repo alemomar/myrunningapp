@@ -171,15 +171,35 @@ final class HealthKitManager {
     // API-là sert à autre chose). Une séance libre sans plan structuré n'a
     // qu'UNE SEULE activité couvrant toute sa durée : on l'ignore (pas une
     // vraie frontière d'intervalle).
-    func extractLapMarkers(workout: HKWorkout, start: Date) -> [LapMarker] {
+    func extractLapMarkers(workout: HKWorkout, start: Date) async -> [LapMarker] {
         let activities = workout.workoutActivities
         guard activities.count > 1 else { return [] }
-        return activities.map { activity in
-            LapMarker(
+        var markers: [LapMarker] = []
+        for activity in activities {
+            let activityEnd = activity.endDate ?? activity.startDate
+            let pace = await computeActivityPace(start: activity.startDate, end: activityEnd)
+            markers.append(LapMarker(
                 start: Int(round(activity.startDate.timeIntervalSince(start))),
-                end: Int(round((activity.endDate ?? activity.startDate).timeIntervalSince(start)))
-            )
+                end: Int(round(activityEnd.timeIntervalSince(start))),
+                paceSecKm: pace
+            ))
         }
+        return markers
+    }
+
+    // Allure exacte d'un intervalle : distance totale mesurée par HealthKit
+    // sur EXACTEMENT [start,end] / durée exacte — pas une moyenne de nos
+    // échantillons d'allure instantanée (dont la méthode de calcul diverge
+    // de celle d'Apple, écart constant de ~7-9% observé en comparant à
+    // l'app Fitness sur des séances réelles).
+    private func computeActivityPace(start: Date, end: Date) async -> Int? {
+        let duration = end.timeIntervalSince(start)
+        guard duration > 0,
+              let meters = await sumQuantity(.distanceWalkingRunning, unit: .meter(), start: start, end: end),
+              meters > 0 else { return nil }
+        let paceSecPerKm = duration / (meters / 1000)
+        guard paceSecPerKm > 60 && paceSecPerKm < 1800 else { return nil }
+        return Int(round(paceSecPerKm))
     }
 
     // FC de repos : calculée par la Watch une fois par jour. On prend la
@@ -236,7 +256,7 @@ final class HealthKitManager {
         async let hrSamples = fetchHeartRateSamples(start: start, end: end)
         async let distanceSamples = fetchDistanceSamples(start: start, end: end)
 
-        let lapMarkers = extractLapMarkers(workout: workout, start: start)
+        let lapMarkers = await extractLapMarkers(workout: workout, start: start)
         let distanceKm = (workout.totalDistance?.doubleValue(for: .meterUnit(with: .kilo))) ?? 0
         let calories = workout.totalEnergyBurned?.doubleValue(for: .kilocalorie())
         let isoFormatter = ISO8601DateFormatter()

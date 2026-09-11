@@ -333,11 +333,22 @@ function computeWorkAvgHr(paceSeries, hrSeries){
 // peut ne pas avoir de cooldown, et un warmup peut être quasi instantané).
 // Le reste est classé Work/Récup par comparaison à la médiane des allures
 // (les plus rapides = Work).
+// `m.pace` (quand présent) est calculé nativement côté iOS : distance
+// HealthKit exacte sur [m.start,m.end] / durée exacte — pas une moyenne de
+// nos échantillons pace_series, dont la méthode de calcul diverge de celle
+// d'Apple (écart constant de ~7-9% observé, allure toujours plus lente que
+// l'app Fitness). On ne retombe sur l'estimation depuis pace_series que si
+// `m.pace` est absent (marker calculé avant l'ajout de ce champ, ou aucune
+// distance mesurée par HealthKit sur cette fenêtre précise).
 function computeIntervalPacesFromLaps(paceSeries, lapMarkers){
-  if(!lapMarkers || lapMarkers.length<2 || !paceSeries) return null;
+  if(!lapMarkers || lapMarkers.length<2) return null;
   const laps = lapMarkers.map(m=>{
-    const pts = paceSeries.filter(p=>p.t>=m.start && p.t<=m.end).map(p=>p.pace);
-    return pts.length ? {dur:m.end-m.start, pace:pts.reduce((a,b)=>a+b,0)/pts.length} : null;
+    let pace = m.pace;
+    if(pace==null && paceSeries){
+      const pts = paceSeries.filter(p=>p.t>=m.start && p.t<=m.end).map(p=>p.pace);
+      pace = pts.length ? pts.reduce((a,b)=>a+b,0)/pts.length : null;
+    }
+    return pace!=null ? {dur:m.end-m.start, pace} : null;
   }).filter(l=>l!=null);
   if(laps.length<2) return null;
 
