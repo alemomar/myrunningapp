@@ -679,7 +679,7 @@ window.saveSyncSinceDate = async (value) => {
 // Champs propres à un objectif (principal OU secondaire) — "niveau" et
 // "autre" restent partagés entre les deux (ils décrivent le coureur, pas
 // un objectif en particulier).
-const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","dateCible","kmMensuel","frequence","allureEfVisee","allureWorkVisee","dureeArret","zoneConcernee"];
+const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","dateCible","kmMensuel","frequence","frequenceAutre","allureEfVisee","allureWorkVisee","dureeArret","zoneConcernee"];
 const RACE_DISTANCES_KM = {"5km":5,"10km":10,"15km":15,"Semi":21.0975,"Marathon":42.195};
 // Quels blocs afficher selon le type d'objectif — pour ne demander que ce
 // qui est pertinent (retour d'audit). "rythme" vaut "full" (les 3 champs),
@@ -1027,10 +1027,6 @@ function periodStats(period){
 // Repères "où tu en es" pour l'onglet Objectifs (voir situationStats) :
 // des fenêtres glissantes plutôt que le mois calendaire de periodStats,
 // pour ne pas donner un chiffre tronqué en tout début de mois.
-function recentEfPace(){
-  const recent = efRuns.filter(r=>r.allure).slice(-5);
-  return recent.length ? Math.round(recent.reduce((a,r)=>a+r.allure,0)/recent.length) : null;
-}
 function recentWeeklyFrequency(){
   const start = new Date(); start.setDate(start.getDate()-28);
   const recent = runningRuns.filter(r=>dateFromRun(r)>=start);
@@ -1053,12 +1049,9 @@ function recentMonthlyVolume(){
 function situationStats(objectifType){
   const na = "pas encore assez de données";
   switch(objectifType){
-    // Pas de bloc pour "Préparer une course" : le temps/allure visés sont
-    // déjà juste au-dessus, pas la peine d'un second bloc à côté.
-    case "Améliorer mon allure": {
-      const p = recentEfPace();
-      return [["Allure EF actuelle (5 dernières séances)", p!=null?fmtA(p)+"/km":na]];
-    }
+    // Pas de bloc pour "Préparer une course" ni "Améliorer mon allure" :
+    // le temps/allure visés (ou l'allure cible juste en dessous) suffisent
+    // déjà, pas la peine d'un second bloc à côté.
     case "Courir plus régulièrement": {
       const f = recentWeeklyFrequency();
       return [["Fréquence actuelle (4 dernières semaines)", f!=null?f+" séance(s)/semaine":na]];
@@ -2198,12 +2191,15 @@ function renderContent(){
     ${blocks.rythme?`<div class="card">
       <div class="stitle">Rythme visé</div>
       ${blocks.rythmeHint?`<div class="chart-hint" style="margin-top:0">${blocks.rythmeHint}</div>`:""}
-      <div class="field" style="margin-bottom:6px">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Séances / semaine</span>
-        ${chipRow("frequence", ["1","2","3","4","5","6","7"], slot.frequence)}
-      </div>
-      <div class="chart-hint" id="frequenceHint" style="margin-top:0;${blocks.rythme==="freqOnly"?"margin-bottom:0":""}">${FREQUENCE_HINTS[slot.frequence]||""}</div>
+      <div class="chart-hint" style="margin-top:0">Séances de course / semaine</div>
+      ${chipRow("frequence", ["1","2","3","4","5","6","7"], slot.frequence)}
+      <div class="chart-hint" id="frequenceHint" style="margin-top:6px">${FREQUENCE_HINTS[slot.frequence]||""}</div>
       <input type="hidden" id="goal_frequence" value="${slot.frequence||""}">
+      <div class="chart-hint" style="margin-top:14px">Renfo / mobilité / semaine</div>
+      <div style="${blocks.rythme==="freqOnly"?"margin-bottom:0":"margin-bottom:12px"}">
+        ${chipRow("frequenceAutre", ["0","1","2","3","4","5","6","7"], slot.frequenceAutre)}
+      </div>
+      <input type="hidden" id="goal_frequenceAutre" value="${slot.frequenceAutre||""}">
       ${blocks.rythme==="full"?`
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="field" style="margin-bottom:0">
@@ -2215,7 +2211,7 @@ function renderContent(){
           <input type="number" min="1" max="12000" id="goal_kmAnnuel" value="${kmAnnuelInit}" placeholder="ex: 1440" oninput="syncKmGoal('annuel')" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;min-width:0">
         </div>
       </div>`:`<input type="hidden" id="goal_kmMensuel" value="${slot.kmMensuel||""}">`}
-    </div>`:`<input type="hidden" id="goal_frequence" value="${slot.frequence||""}"><input type="hidden" id="goal_kmMensuel" value="${slot.kmMensuel||""}">`}
+    </div>`:`<input type="hidden" id="goal_frequence" value="${slot.frequence||""}"><input type="hidden" id="goal_frequenceAutre" value="${slot.frequenceAutre||""}"><input type="hidden" id="goal_kmMensuel" value="${slot.kmMensuel||""}">`}
 
     ${blocks.allure?`<div class="card">
       <div class="stitle">Allure cible</div>
