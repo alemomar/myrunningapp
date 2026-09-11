@@ -459,13 +459,19 @@ let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
 // (tendon_g/tendon_d/...) abandonné : les vieilles séances notées avant
 // cette refonte gardent leurs anciennes clés en base (pas de perte de
 // données), mais ne remontent plus dans le nouveau formulaire.
-// Les zones des jambes existent en deux clés indépendantes (gauche/droite)
+// Les zones paires existent en deux clés indépendantes (gauche/droite)
 // pour pouvoir noter un mollet ou un genou sans affecter l'autre côté.
 const BODY_ZONES=[
-  ["dos","Dos"],["abdos","Abdos"],["bassin","Bassin"],
+  ["epaules_g","Épaules G"],["epaules_d","Épaules D"],
+  ["dos","Dos"],["abdos","Abdos"],
+  ["psoas_g","Psoas G"],["psoas_d","Psoas D"],
+  ["bassin","Bassin"],
+  ["fessiers_g","Fessiers G"],["fessiers_d","Fessiers D"],
   ["cuisse_g","Cuisse G"],["cuisse_d","Cuisse D"],
   ["ischios_g","Ischios G"],["ischios_d","Ischios D"],
   ["genoux_g","Genoux G"],["genoux_d","Genoux D"],
+  ["tibias_g","Tibias G"],["tibias_d","Tibias D"],
+  ["mollets_g","Mollets G"],["mollets_d","Mollets D"],
   ["tendons_g","Tendons G"],["tendons_d","Tendons D"],
   ["pied_g","Pied G"],["pied_d","Pied D"],
 ];
@@ -1440,36 +1446,55 @@ function painSliderRow(prefix, key, label, initial, lowLabel, highLabel){
   </div>`;
 }
 // Capsules arrondies posées sur un contour de corps discret (viewBox
-// 170x320) — le contour donne le repère visuel ("c'est un corps"), les
+// 190x340) — le contour donne le repère visuel ("c'est un corps"), les
 // capsules sont les vraies cibles tactiles, plus grosses et plus espacées
-// qu'un simple trait. Les organes visibles de face (abdos, cuisse, genoux,
-// tendons, pied, bassin) restent posés directement sur la silhouette, à la
-// bonne hauteur anatomique (abdos entre buste et bassin, pas au niveau des
-// poumons). Le dos et les ischios (arrière du buste et de la cuisse) sont
-// à l'opposé : les afficher par-dessus la silhouette de face aurait prêté
-// à confusion avec abdos/cuisse au même endroit, donc leurs capsules
-// flottent à côté du corps (offBody), avec leur nom écrit juste en
-// dessous pour lever toute ambiguïté. Chaque zone de jambe a sa propre
-// clé gauche/droite (ex. cuisse_g/cuisse_d) — indépendantes l'une de
-// l'autre, pas une valeur partagée entre les deux côtés.
+// qu'un simple trait. Les organes visibles de face (épaules, abdos,
+// psoas, bassin, cuisse, genoux, tibias, pied) restent posés directement
+// sur la silhouette, à la bonne hauteur anatomique (abdos entre buste et
+// bassin, pas au niveau des poumons). Ceux à l'opposé — dos, fessiers,
+// ischios, mollets, tendons — seraient au même endroit que leur organe
+// "de face" sur une silhouette qui ne montre que l'avant du corps ; leurs
+// capsules flottent donc à côté (offBody), avec leur nom écrit juste en
+// dessous pour lever toute ambiguïté. Chaque zone paire a sa propre clé
+// gauche/droite (ex. cuisse_g/cuisse_d) — indépendantes l'une de l'autre.
 const BODY_ZONE_CAPS={
-  dos:        {cx:18,  cy:80,  rx:9,  ry:24, offBody:true},
-  abdos:      {cx:85,  cy:116, rx:16, ry:20, sixpack:true},
-  bassin:     {cx:85,  cy:150, rx:26, ry:12},
-  cuisse_g:   {cx:70,  cy:210, rx:9,  ry:34},
-  cuisse_d:   {cx:100, cy:210, rx:9,  ry:34},
-  ischios_g:  {cx:45,  cy:210, rx:8,  ry:30, offBody:true},
-  ischios_d:  {cx:125, cy:210, rx:8,  ry:30, offBody:true},
-  genoux_g:   {cx:68,  cy:256, rx:11, ry:8},
-  genoux_d:   {cx:102, cy:256, rx:11, ry:8},
-  tendons_g:  {cx:67,  cy:284, rx:8,  ry:16},
-  tendons_d:  {cx:103, cy:284, rx:8,  ry:16},
-  pied_g:     {cx:63,  cy:310, rx:13, ry:6},
-  pied_d:     {cx:107, cy:310, rx:13, ry:6},
+  epaules_g:  {cx:60,  cy:54,  rx:9,  ry:8},
+  epaules_d:  {cx:130, cy:54,  rx:9,  ry:8},
+  dos:        {cx:28,  cy:90,  rx:9,  ry:24, offBody:true},
+  abdos:      {cx:95,  cy:95,  rx:15, ry:18, sixpack:true},
+  psoas_g:    {cx:78,  cy:130, rx:7,  ry:13},
+  psoas_d:    {cx:112, cy:130, rx:7,  ry:13},
+  bassin:     {cx:95,  cy:152, rx:24, ry:10},
+  fessiers_g: {cx:48,  cy:152, rx:8,  ry:16, offBody:true},
+  fessiers_d: {cx:142, cy:152, rx:8,  ry:16, offBody:true},
+  cuisse_g:   {cx:70,  cy:200, rx:8,  ry:28},
+  cuisse_d:   {cx:120, cy:200, rx:8,  ry:28},
+  ischios_g:  {cx:44,  cy:200, rx:8,  ry:26, offBody:true},
+  ischios_d:  {cx:146, cy:200, rx:8,  ry:26, offBody:true},
+  genoux_g:   {cx:67,  cy:248, rx:7,  ry:8},
+  genoux_d:   {cx:123, cy:248, rx:7,  ry:8},
+  tibias_g:   {cx:64,  cy:278, rx:7,  ry:16},
+  tibias_d:   {cx:126, cy:278, rx:7,  ry:16},
+  mollets_g:  {cx:40,  cy:278, rx:7,  ry:15, offBody:true},
+  mollets_d:  {cx:150, cy:278, rx:7,  ry:15, offBody:true},
+  tendons_g:  {cx:36,  cy:308, rx:6,  ry:7,  offBody:true},
+  tendons_d:  {cx:154, cy:308, rx:6,  ry:7,  offBody:true},
+  pied_g:     {cx:60,  cy:320, rx:12, ry:6},
+  pied_d:     {cx:130, cy:320, rx:12, ry:6},
 };
-// Contour du corps (tête, bras, tronc, jambes en un seul tracé), dessiné
-// par-dessus les capsules pour rester visible quel que soit le recouvrement.
-const BODY_OUTLINE="M85,14 C74,14 66,23 66,34 C66,42 69,48 74,52 C56,58 46,72 44,96 L40,150 C39,160 42,168 48,170 C52,158 53,146 55,132 C57,116 62,102 72,92 L72,120 C68,124 66,132 66,144 L66,196 C66,204 62,210 58,214 L52,268 C50,282 52,294 58,300 L64,300 C66,290 66,278 68,264 C70,246 73,228 76,196 L94,196 C97,228 100,246 102,264 C104,278 104,290 106,300 L112,300 C118,294 120,282 118,268 L112,214 C108,210 104,204 104,196 L104,144 C104,132 102,124 98,120 L98,92 C108,102 113,116 115,132 C117,146 118,158 122,170 C128,168 131,160 130,150 L126,96 C124,72 114,58 96,52 C101,48 104,42 104,34 C104,23 96,14 85,14 Z";
+// Tête + bras courts, décoratifs (pas des zones). Le tronc/jambes est un
+// tracé fermé séparé (sans manches) pour laisser de la place aux capsules
+// hors-corps sur les côtés ; les bras ne sont que deux courts traits
+// arrondis suggérant les épaules, plutôt qu'un bras entier jusqu'au poignet.
+const HEAD_CIRCLE = {cx:95, cy:26, r:16};
+const ARM_STUBS = [
+  "M78,46 Q60,50 56,62",
+  "M112,46 Q130,50 134,62",
+];
+// Contour du corps (tronc + jambes en un seul tracé fermé, sans manches),
+// dessiné par-dessus les capsules pour rester visible quel que soit le
+// recouvrement.
+const BODY_OUTLINE="M78,44 C75,60 73,85 72,110 C70,128 68,142 66,155 L62,230 L60,256 L56,300 C54,306 52,309 52,312 C52,317 53,320 54,322 L70,324 C71,320 70,313 68,308 L72,256 L74,230 L78,168 C80,158 81,155 82,152 L108,152 C109,155 110,158 112,168 L116,230 L118,256 L122,308 C120,313 119,320 120,324 L136,322 C137,320 138,317 138,312 C138,309 136,306 134,300 L130,256 L128,230 L124,155 C122,142 120,128 118,110 C117,85 115,60 112,44 C105,50 88,50 78,44 Z";
 const ZONE_NEUTRAL = "#48484c";
 // Étiquette discrète collée à une capsule "hors corps" (dos, ischios) pour
 // lever l'ambiguïté vu qu'elle ne touche pas la silhouette à cet endroit.
@@ -1514,10 +1539,15 @@ function bodyMapHTML(prefix, initial){
       ${scaleTicksHTML()}
     </div>`;
   }).join("");
+  const decor = [
+    `<circle cx="${HEAD_CIRCLE.cx}" cy="${HEAD_CIRCLE.cy}" r="${HEAD_CIRCLE.r}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>`,
+    ...ARM_STUBS.map(d=>`<path d="${d}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>`),
+    `<path d="${BODY_OUTLINE}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" pointer-events="none"/>`,
+  ].join("");
   return `<div class="body-map-wrap">
-    <svg class="body-svg" width="170" height="320" viewBox="0 0 170 320">
+    <svg class="body-svg" width="190" height="340" viewBox="0 0 190 340">
       ${svgZones}
-      <path d="${BODY_OUTLINE}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" pointer-events="none"/>
+      ${decor}
     </svg>
     <div class="zone-rows">
       <div class="zone-placeholder" id="${prefix}_zoneph" style="display:${revealed.size?"none":""}">Touche une zone sur le schéma</div>
