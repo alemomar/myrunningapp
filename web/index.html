@@ -236,6 +236,47 @@ button,input,select{font-family:inherit}
   background:var(--card-2);color:var(--text);font-weight:600;font-size:14px;cursor:pointer;
 }
 .btn-danger{color:var(--red);background:none;border:none;font-size:14px;font-weight:500;cursor:pointer;padding:12px 0}
+
+/* ---------- Dernière séance (hero) ---------- */
+.last-run-card{
+  background:linear-gradient(160deg,var(--card) 0%,var(--card-2) 100%);
+  border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:20px;margin-bottom:14px;position:relative;overflow:hidden;
+}
+.last-run-eyebrow{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px}
+.last-run-top{display:flex;align-items:center;gap:12px;margin-top:10px}
+.last-run-icon{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
+.last-run-title{font-size:17px;font-weight:700}
+.last-run-sub{font-size:12px;color:var(--text-dim);margin-top:2px}
+.last-run-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.last-run-stat{background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);padding:10px;text-align:center}
+.last-run-stat .v{font-size:16px;font-weight:700;letter-spacing:-.2px}
+.last-run-stat .l{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;margin-top:2px}
+
+/* Célébration : entrée en pop + éclats qui partent de l'icône. Ne joue
+   qu'une fois par ouverture du dashboard (voir renderContent), jamais si
+   l'utilisateur préfère moins d'animation. */
+@media (prefers-reduced-motion: no-preference){
+  .last-run-card.celebrate{animation:lastRunPop .5s cubic-bezier(.34,1.56,.64,1) both}
+  .last-run-card.celebrate .last-run-icon::before,
+  .last-run-card.celebrate .last-run-icon::after{
+    content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:var(--accent);
+    top:50%;left:50%;opacity:0;animation:lastRunSpark .9s ease-out .25s both;
+  }
+  .last-run-card.celebrate .last-run-icon::after{background:#ffd60a;animation:lastRunSpark2 .9s ease-out .35s both}
+}
+@keyframes lastRunPop{
+  0%{opacity:0;transform:scale(.94) translateY(6px)}
+  100%{opacity:1;transform:scale(1) translateY(0)}
+}
+@keyframes lastRunSpark{
+  0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(calc(-50% + 34px),calc(-50% - 28px)) scale(0)}
+}
+@keyframes lastRunSpark2{
+  0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(calc(-50% - 30px),calc(-50% - 20px)) scale(0)}
+}
 </style>
 </head>
 <body>
@@ -802,6 +843,34 @@ function ringSmHTML(val, goal, color, valLabel, unitLabel, caption){
     <div class="ring-caption">${caption}</div>
   </div>`;
 }
+// Carte "Dernière séance" tout en haut du dashboard : premier truc vu à
+// l'ouverture, donc infos aussi complètes que la ligne détaillée de l'onglet
+// Séances (distance/durée/allure + zones FC + Work/Récup fractionné), avec
+// un traitement visuel distinct (dégradé, stats en grille) plutôt qu'une
+// simple carte parmi d'autres. `celebrate` n'est vrai qu'au tout premier
+// rendu du dashboard depuis l'ouverture de l'app (voir renderContent) —
+// l'animation ne doit pas rejouer à chaque re-render (changement de filtre,
+// etc.), seulement à l'arrivée sur l'app.
+function lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate){
+  const c = TC[lastRun.type]||TC.Other;
+  return `<div class="last-run-card${celebrate?" celebrate":""}">
+    <div class="last-run-eyebrow">${icon("sparkle",12)} Dernière séance</div>
+    <div class="last-run-top">
+      <div class="last-run-icon" style="background:${c}22;color:${c}">${icon(TICON[lastRun.type]||"activity",22)}</div>
+      <div>
+        <div class="last-run-title">${lastRun.label} · ${lastRun.time}</div>
+        <div class="last-run-sub"><span style="color:${c};font-weight:600">${lastRun.type}</span></div>
+      </div>
+    </div>
+    <div class="last-run-stats">
+      <div class="last-run-stat"><div class="v">${lastRun.dist>0?lastRun.dist.toFixed(2):"—"}</div><div class="l">km</div></div>
+      <div class="last-run-stat"><div class="v">${lastRun.dur}</div><div class="l">Durée</div></div>
+      <div class="last-run-stat"><div class="v">${lastRun.dist>0?fmtA(lastRun.allure):"—"}</div><div class="l">Allure/km</div></div>
+    </div>
+    ${hrDetailHTML(lastRun, effMaxHr, effRestingHr)}
+  </div>`;
+}
+
 function heroHTML(){
   const monthS = periodStats("monthly");
   const kmGoal = goals.kmMensuel ? Number(goals.kmMensuel) : null;
@@ -1253,6 +1322,10 @@ function painFormHTML(prefix, initial){
 }
 
 let openHrDetail = new Set();
+// Vrai seulement au tout premier rendu du dashboard depuis l'ouverture de
+// l'app : l'animation de célébration de la carte "Dernière séance" ne doit
+// jouer qu'une fois, pas à chaque re-render (changement de filtre, etc.).
+let lastRunCelebrated = false;
 window.toggleHrDetail = (id) => {
   if(openHrDetail.has(id)) openHrDetail.delete(id);
   else openHrDetail.add(id);
@@ -1383,7 +1456,9 @@ function renderContent(){
     const lastRun = runningRuns[runningRuns.length-1];
     const effMaxHr = maxHr || estimatedMaxHr();
     const effRestingHr = restingHr || null;
-    el.innerHTML=heroHTML()+kpisHTML()+staleSyncBanner()+painPromptBanner()+`
+    const celebrate = lastRun && !lastRunCelebrated;
+    if(celebrate) lastRunCelebrated = true;
+    el.innerHTML=(lastRun?lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate):"")+heroHTML()+kpisHTML()+staleSyncBanner()+painPromptBanner()+`
       <div class="card-row">
         <div class="card"><div class="stitle">Progression allure — EF</div>
           <div class="chart-hint">Points = séances · pointillés = tendance et projection à 2 mois · 🚩 = course</div>
@@ -1397,12 +1472,7 @@ function renderContent(){
       </div>
       <div class="card"><div class="stitle">Volume ${isMonthly?"mensuel":"hebdomadaire"} (km)</div>
         <div style="position:relative;width:100%;height:180px"><canvas id="cVolMini"></canvas></div>
-      </div>
-      ${lastRun?`<div class="card">
-        <div class="stitle">Dernière séance</div>
-        <div class="chart-hint" style="margin-top:0">${lastRun.label} · ${lastRun.time} · <span style="color:${TC[lastRun.type]||TC.Other}">${lastRun.type}</span>${lastRun.dist>0?` · ${lastRun.dist.toFixed(2)} km`:""}</div>
-        ${hrDetailHTML(lastRun, effMaxHr, effRestingHr)}
-      </div>`:""}`;
+      </div>`;
     setTimeout(()=>{
       mkPaceTrendChart("cEFmini", efRuns, true, 60);
       if(hasFrac) mkFractionneChart("cFracMini", fracRuns, 60);
