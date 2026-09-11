@@ -663,14 +663,16 @@ window.saveSyncSinceDate = async (value) => {
 // Champs propres à un objectif (principal OU secondaire) — "niveau" et
 // "autre" restent partagés entre les deux (ils décrivent le coureur, pas
 // un objectif en particulier).
-const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","dateCible","kmMensuel","frequence","plusLongueDistance","allureEfVisee","allureWorkVisee","dureeArret","zoneConcernee"];
-const RACE_DISTANCES_KM = {"5km":5,"10km":10,"Semi":21.0975,"Marathon":42.195};
+const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","dateCible","kmMensuel","frequence","allureEfVisee","allureWorkVisee","dureeArret","zoneConcernee"];
+const RACE_DISTANCES_KM = {"5km":5,"10km":10,"15km":15,"Semi":21.0975,"Marathon":42.195};
 // Quels blocs afficher selon le type d'objectif — pour ne demander que ce
 // qui est pertinent (retour d'audit). "rythme" vaut "full" (les 3 champs),
 // "freqOnly" (juste séances/semaine) ou false. "Autre" et un objectif pas
-// encore choisi affichent tout, en secours.
+// encore choisi affichent tout, en secours. Pas d'"Allure cible" pour
+// "Préparer une course" : l'allure visée se règle directement dans le
+// bloc course (à côté du temps visé), doublon sinon.
 const OBJECTIF_BLOCKS = {
-  "Préparer une course":                {rythme:"full",     allure:true,  blessure:false},
+  "Préparer une course":                {rythme:"full",     allure:false, blessure:false},
   "Améliorer mon allure":               {rythme:"full",     allure:true,  blessure:false},
   "Courir plus régulièrement":          {rythme:"freqOnly", allure:false, blessure:false},
   "Reprendre après une pause/blessure": {rythme:"full",     allure:false, blessure:true,
@@ -725,8 +727,9 @@ window.selectChip = (field, value) => {
   if(field==="distanceCourse") updateRacePaceGoal();
 };
 
-// Allure cible calculée en direct à partir de la distance choisie + du temps
-// visé (h/m/s) — donne un repère concret plutôt qu'un temps abstrait.
+// Temps visé et allure visée se calculent l'un à partir de l'autre (avec
+// la distance choisie juste au-dessus) — seul le temps est enregistré
+// (goal_tempsH/M/S), l'allure n'est qu'une vue pratique dessus.
 function updateRacePaceGoal(){
   const dist = document.getElementById("goal_distanceCourse")?.value;
   const km = RACE_DISTANCES_KM[dist];
@@ -734,11 +737,57 @@ function updateRacePaceGoal(){
   const m = parseInt(document.getElementById("goal_tempsM")?.value,10)||0;
   const s = parseInt(document.getElementById("goal_tempsS")?.value,10)||0;
   const totalSec = h*3600+m*60+s;
-  const out = document.getElementById("racePaceOut");
-  if(!out) return;
-  out.textContent = (km && totalSec>0) ? `→ allure cible : ${fmtA(Math.round(totalSec/km))}/km` : "";
+  const disp = document.getElementById("raceAllureVisee_display");
+  const hidden = document.getElementById("goal_raceAllureVisee");
+  if(!disp) return;
+  if(km && totalSec>0){
+    const pace = Math.round(totalSec/km);
+    disp.textContent = fmtA(pace);
+    if(hidden) hidden.value = pace;
+  } else {
+    disp.textContent = "—";
+    if(hidden) hidden.value = "";
+  }
 }
 window.updateRacePaceGoal = updateRacePaceGoal;
+
+// Sens inverse : ajuster l'allure visée (stepper ±5s/km) recalcule le
+// temps visé (h/m/s) à partir de la distance choisie.
+window.adjustRaceAllureGoal = (delta) => {
+  const km = RACE_DISTANCES_KM[document.getElementById("goal_distanceCourse")?.value];
+  if(!km) return;
+  const hidden = document.getElementById("goal_raceAllureVisee");
+  let pace = parseInt(hidden?.value, 10);
+  if(!pace){
+    const h = parseInt(document.getElementById("goal_tempsH")?.value,10)||0;
+    const m = parseInt(document.getElementById("goal_tempsM")?.value,10)||0;
+    const s = parseInt(document.getElementById("goal_tempsS")?.value,10)||0;
+    const totalSec = h*3600+m*60+s;
+    pace = totalSec>0 ? Math.round(totalSec/km) : 300;
+  }
+  pace = Math.max(120, Math.min(900, pace+delta));
+  if(hidden) hidden.value = pace;
+  const disp = document.getElementById("raceAllureVisee_display");
+  if(disp) disp.textContent = fmtA(pace);
+  const totalSec = Math.round(pace*km);
+  const hEl = document.getElementById("goal_tempsH"), mEl = document.getElementById("goal_tempsM"), sEl = document.getElementById("goal_tempsS");
+  if(hEl) hEl.value = Math.floor(totalSec/3600) || "";
+  if(mEl) mEl.value = Math.floor((totalSec%3600)/60) || "";
+  if(sEl) sEl.value = (totalSec%60) || "";
+};
+
+// Idem pour km/mois et km/an — deux vues du même chiffre, seul km/mois
+// est enregistré.
+window.syncKmGoal = (source) => {
+  const mEl = document.getElementById("goal_kmMensuel"), aEl = document.getElementById("goal_kmAnnuel");
+  if(source==="mensuel"){
+    const v = parseFloat(mEl.value);
+    aEl.value = v ? Math.round(v*12) : "";
+  } else {
+    const v = parseFloat(aEl.value);
+    mEl.value = v ? Math.round(v/12) : "";
+  }
+};
 
 // Stepper d'allure (±5s/km) : plus intuitif qu'un champ numérique brut pour
 // une valeur qu'on affine par petits pas.
@@ -963,11 +1012,6 @@ function daysSinceLastRun(){
   if(!runningRuns.length) return null;
   return Math.floor((new Date() - dateFromRun(runningRuns[runningRuns.length-1]))/86400000);
 }
-function recentLongestRun(){
-  const start = new Date(); start.setDate(start.getDate()-60);
-  const recent = runningRuns.filter(r=>dateFromRun(r)>=start && r.dist>0);
-  return recent.length ? Math.max(...recent.map(r=>r.dist)) : null;
-}
 function recentMonthlyVolume(){
   const start = new Date(); start.setMonth(start.getMonth()-3);
   const recent = runningRuns.filter(r=>dateFromRun(r)>=start && r.dist>0);
@@ -981,13 +1025,8 @@ function recentMonthlyVolume(){
 function situationStats(objectifType){
   const na = "pas encore assez de données";
   switch(objectifType){
-    case "Préparer une course": {
-      const longMax = recentLongestRun(), vol = recentMonthlyVolume();
-      return [
-        ["Plus longue sortie (60 derniers jours)", longMax!=null?longMax.toFixed(1)+" km":na],
-        ["Volume moyen (3 derniers mois)", vol!=null?vol+" km/mois":na],
-      ];
-    }
+    // Pas de bloc pour "Préparer une course" : le temps/allure visés sont
+    // déjà juste au-dessus, pas la peine d'un second bloc à côté.
     case "Améliorer mon allure": {
       const p = recentEfPace();
       return [["Allure EF actuelle (5 dernières séances)", p!=null?fmtA(p)+"/km":na]];
@@ -2036,7 +2075,8 @@ function renderContent(){
     const stats = situationStats(slot.objectifPrincipal);
     const tH=Math.floor((slot.tempsViseSec||0)/3600), tM=Math.floor(((slot.tempsViseSec||0)%3600)/60), tS=(slot.tempsViseSec||0)%60;
     const raceKm = RACE_DISTANCES_KM[slot.distanceCourse];
-    const racePaceTxt = (raceKm && slot.tempsViseSec) ? `→ allure cible : ${fmtA(Math.round(slot.tempsViseSec/raceKm))}/km` : "";
+    const racePaceInit = (raceKm && slot.tempsViseSec) ? Math.round(slot.tempsViseSec/raceKm) : null;
+    const kmAnnuelInit = slot.kmMensuel ? Math.round(slot.kmMensuel*12) : "";
     const NIVEAUX = [["Débutant","Tu commences ou reprends"],["Intermédiaire","Tu cours régulièrement"],["Confirmé","Tu as de l'expérience en compet"]];
     // Icône par objectif — cartes plus grandes que les puces des autres
     // champs, avec un peu de vie sur l'icône choisie (pop au clic, léger
@@ -2061,6 +2101,17 @@ function renderContent(){
       <div class="goal-slot-btn${activeGoalSlot==="secondaire"?" active-secondaire":""}" onclick="selectGoalSlot('secondaire')">Objectif secondaire</div>
     </div>
 
+    <div class="card">
+      <div class="stitle">Ton niveau actuel</div>
+      <div class="goal-level-cards" data-chipgroup="niveau">
+        ${NIVEAUX.map(([lbl,sub])=>`<div class="goal-level-card${goals.niveau===lbl?" active":""}" data-value="${lbl}" onclick="selectChip('niveau','${lbl}')">
+          <div class="lbl">${lbl}</div>
+          <div class="sub">${sub}</div>
+        </div>`).join("")}
+      </div>
+      <input type="hidden" id="goal_niveau" value="${goals.niveau||""}">
+    </div>
+
     <div style="${slotColorVars}">
     <div class="card">
       <div class="stitle">${activeGoalSlot==="principal"?"Objectif principal":"Objectif secondaire"}</div>
@@ -2070,21 +2121,31 @@ function renderContent(){
 
       <div id="raceGoalBlock" style="margin-top:14px;display:${isRace?"":"none"}">
         <div class="chart-hint" style="margin-top:0">Distance visée</div>
-        ${chipRow("distanceCourse", ["5km","10km","Semi","Marathon","Trail","Autre"], slot.distanceCourse)}
+        ${chipRow("distanceCourse", ["5km","10km","15km","Semi","Marathon","Autre"], slot.distanceCourse)}
         <input type="hidden" id="goal_distanceCourse" value="${slot.distanceCourse||""}">
-        <div class="field" style="margin-top:12px">
+        <div class="field" style="margin-top:12px;margin-bottom:0">
           <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Date de la course</span>
           <input type="date" id="goal_dateCible" value="${slot.dateCible||""}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
         </div>
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Temps visé</span>
-          <div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:flex-end">
-            <input type="number" min="0" max="99" class="time-input" id="goal_tempsH" value="${tH||""}" placeholder="h" oninput="updateRacePaceGoal()">:
-            <input type="number" min="0" max="59" class="time-input" id="goal_tempsM" value="${tM||""}" placeholder="min" oninput="updateRacePaceGoal()">:
-            <input type="number" min="0" max="59" class="time-input" id="goal_tempsS" value="${tS||""}" placeholder="sec" oninput="updateRacePaceGoal()">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+          <div>
+            <div class="chart-hint" style="margin:0 0 6px">Temps visé</div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <input type="number" min="0" max="99" class="time-input" id="goal_tempsH" value="${tH||""}" placeholder="h" oninput="updateRacePaceGoal()">:
+              <input type="number" min="0" max="59" class="time-input" id="goal_tempsM" value="${tM||""}" placeholder="min" oninput="updateRacePaceGoal()">:
+              <input type="number" min="0" max="59" class="time-input" id="goal_tempsS" value="${tS||""}" placeholder="sec" oninput="updateRacePaceGoal()">
+            </div>
+          </div>
+          <div>
+            <div class="chart-hint" style="margin:0 0 6px">Allure visée</div>
+            <div class="pace-stepper">
+              <button type="button" onclick="adjustRaceAllureGoal(5)">−</button>
+              <span class="val" id="raceAllureVisee_display">${racePaceInit?fmtA(racePaceInit):"—"}</span>
+              <button type="button" onclick="adjustRaceAllureGoal(-5)">+</button>
+            </div>
+            <input type="hidden" id="goal_raceAllureVisee" value="${racePaceInit||""}">
           </div>
         </div>
-        <div id="racePaceOut" style="font-size:12px;color:var(--accent);text-align:right;margin-top:4px;font-weight:600">${racePaceTxt}</div>
       </div>
     </div>
 
@@ -2112,15 +2173,17 @@ function renderContent(){
       </div>
       <input type="hidden" id="goal_frequence" value="${slot.frequence||""}">
       ${blocks.rythme==="full"?`
-      <div class="field">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Km / mois</span>
-        <input type="number" min="1" max="1000" id="goal_kmMensuel" value="${slot.kmMensuel||""}" placeholder="ex: 120" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Plus longue distance (km)</span>
-        <input type="number" min="1" max="200" step="0.1" id="goal_plusLongueDistance" value="${slot.plusLongueDistance||""}" placeholder="ex: 21" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-      </div>`:`<input type="hidden" id="goal_kmMensuel" value="${slot.kmMensuel||""}"><input type="hidden" id="goal_plusLongueDistance" value="${slot.plusLongueDistance||""}">`}
-    </div>`:`<input type="hidden" id="goal_frequence" value="${slot.frequence||""}"><input type="hidden" id="goal_kmMensuel" value="${slot.kmMensuel||""}"><input type="hidden" id="goal_plusLongueDistance" value="${slot.plusLongueDistance||""}">`}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Km / mois</span>
+          <input type="number" min="1" max="1000" id="goal_kmMensuel" value="${slot.kmMensuel||""}" placeholder="ex: 120" oninput="syncKmGoal('mensuel')" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;min-width:0">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Km / an</span>
+          <input type="number" min="1" max="12000" id="goal_kmAnnuel" value="${kmAnnuelInit}" placeholder="ex: 1440" oninput="syncKmGoal('annuel')" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;min-width:0">
+        </div>
+      </div>`:`<input type="hidden" id="goal_kmMensuel" value="${slot.kmMensuel||""}">`}
+    </div>`:`<input type="hidden" id="goal_frequence" value="${slot.frequence||""}"><input type="hidden" id="goal_kmMensuel" value="${slot.kmMensuel||""}">`}
 
     ${blocks.allure?`<div class="card">
       <div class="stitle">Allure cible</div>
@@ -2145,17 +2208,6 @@ function renderContent(){
       <input type="hidden" id="goal_allureWorkVisee" value="${slot.allureWorkVisee||""}">
     </div>`:`<input type="hidden" id="goal_allureEfVisee" value="${slot.allureEfVisee||""}"><input type="hidden" id="goal_allureWorkVisee" value="${slot.allureWorkVisee||""}">`}
     ${!blocks.blessure?`<input type="hidden" id="goal_dureeArret" value="${slot.dureeArret||""}"><input type="hidden" id="goal_zoneConcernee" value="${slot.zoneConcernee||""}">`:""}
-    </div>
-
-    <div class="card">
-      <div class="stitle">Ton niveau actuel</div>
-      <div class="goal-level-cards" data-chipgroup="niveau">
-        ${NIVEAUX.map(([lbl,sub])=>`<div class="goal-level-card${goals.niveau===lbl?" active":""}" data-value="${lbl}" onclick="selectChip('niveau','${lbl}')">
-          <div class="lbl">${lbl}</div>
-          <div class="sub">${sub}</div>
-        </div>`).join("")}
-      </div>
-      <input type="hidden" id="goal_niveau" value="${goals.niveau||""}">
     </div>
 
     <div class="card">
