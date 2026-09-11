@@ -233,7 +233,7 @@ button,input,select{font-family:inherit}
 .body-svg .zone{cursor:pointer;transition:opacity .15s,filter .15s}
 .body-svg .zone:hover{opacity:.8}
 .body-svg .zone.active{filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 4px #fff)}
-.zone-rows{flex:1;min-width:0;padding-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 16px;align-content:start}
+.zone-rows{flex:1;min-width:0;padding-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(max(150px,32%),1fr));gap:0 16px;align-content:start}
 .zone-placeholder{grid-column:1/-1;font-size:12px;color:var(--text-faint);padding:10px 0}
 .zone-row{padding:4px 0;border-bottom:1px solid var(--border)}
 .session-pick{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
@@ -459,9 +459,15 @@ let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
 // (tendon_g/tendon_d/...) abandonné : les vieilles séances notées avant
 // cette refonte gardent leurs anciennes clés en base (pas de perte de
 // données), mais ne remontent plus dans le nouveau formulaire.
+// Les zones des jambes existent en deux clés indépendantes (gauche/droite)
+// pour pouvoir noter un mollet ou un genou sans affecter l'autre côté.
 const BODY_ZONES=[
-  ["tendons","Tendons"],["genoux","Genoux"],["cuisse","Cuisse"],["ischios","Ischios"],
-  ["pied","Pied"],["bassin","Bassin"],["dos","Dos"],["abdos","Abdos"],
+  ["dos","Dos"],["abdos","Abdos"],["bassin","Bassin"],
+  ["cuisse_g","Cuisse G"],["cuisse_d","Cuisse D"],
+  ["ischios_g","Ischios G"],["ischios_d","Ischios D"],
+  ["genoux_g","Genoux G"],["genoux_d","Genoux D"],
+  ["tendons_g","Tendons G"],["tendons_d","Tendons D"],
+  ["pied_g","Pied G"],["pied_d","Pied D"],
 ];
 // [clé, label, texte à gauche du curseur (0), texte à droite (10)]
 const WELLBEING_EXTRA=[
@@ -1411,10 +1417,10 @@ function emptyState(title,sub,withSyncCta){
 }
 
 function painColor(v){
-  if(v<=3) return "#30d158"; // vert
-  if(v<=5) return "#0a84ff"; // bleu
-  if(v<=7) return "#bf5af2"; // violet
-  return "#ff453a"; // rouge orangé
+  if(v<=3) return "#6fd98c"; // vert pâle
+  if(v<=5) return "#6cb8fa"; // bleu pâle
+  if(v<=7) return "#d29cf0"; // violet pâle
+  return "#ff8f7a"; // rouge orangé pâle
 }
 // Repères 0-10 alignés sous le curseur (mêmes proportions que le range
 // lui-même, qui fait toute la largeur) pour viser une valeur précise du
@@ -1437,41 +1443,55 @@ function painSliderRow(prefix, key, label, initial, lowLabel, highLabel){
 // 170x320) — le contour donne le repère visuel ("c'est un corps"), les
 // capsules sont les vraies cibles tactiles, plus grosses et plus espacées
 // qu'un simple trait. Les organes visibles de face (abdos, cuisse, genoux,
-// tendons, pied, bassin) restent posés directement sur la silhouette.
-// Le dos et les ischios (arrière du buste et de la cuisse) sont à
-// l'opposé : les afficher par-dessus la silhouette de face aurait prêté à
-// confusion avec abdos/cuisse au même endroit, donc leurs capsules
+// tendons, pied, bassin) restent posés directement sur la silhouette, à la
+// bonne hauteur anatomique (abdos entre buste et bassin, pas au niveau des
+// poumons). Le dos et les ischios (arrière du buste et de la cuisse) sont
+// à l'opposé : les afficher par-dessus la silhouette de face aurait prêté
+// à confusion avec abdos/cuisse au même endroit, donc leurs capsules
 // flottent à côté du corps (offBody), avec leur nom écrit juste en
-// dessous pour lever toute ambiguïté. Cuisse et ischios existent chacun
-// en deux capsules (jambe gauche/droite) comme genoux/tendons/pied — un
-// muscle existe des deux côtés, pas d'un côté seulement.
+// dessous pour lever toute ambiguïté. Chaque zone de jambe a sa propre
+// clé gauche/droite (ex. cuisse_g/cuisse_d) — indépendantes l'une de
+// l'autre, pas une valeur partagée entre les deux côtés.
 const BODY_ZONE_CAPS={
-  dos:      {cx:18, cy:80,  rx:9,  ry:24, offBody:true},
-  abdos:    {cx:96, cy:80,  rx:9,  ry:26},
-  bassin:   {cx:85, cy:150, rx:26, ry:12},
-  cuisse:   {cx:85, cy:210, rx:9,  ry:34, both:true, dx:15},
-  ischios:  {cx:85, cy:210, rx:8,  ry:30, both:true, dx:40, offBody:true},
-  genoux:   {cx:85, cy:256, rx:11, ry:8,  both:true, dx:17},
-  tendons:  {cx:85, cy:284, rx:8,  ry:16, both:true, dx:18},
-  pied:     {cx:85, cy:310, rx:13, ry:6,  both:true, dx:22},
+  dos:        {cx:18,  cy:80,  rx:9,  ry:24, offBody:true},
+  abdos:      {cx:85,  cy:116, rx:16, ry:20, sixpack:true},
+  bassin:     {cx:85,  cy:150, rx:26, ry:12},
+  cuisse_g:   {cx:70,  cy:210, rx:9,  ry:34},
+  cuisse_d:   {cx:100, cy:210, rx:9,  ry:34},
+  ischios_g:  {cx:45,  cy:210, rx:8,  ry:30, offBody:true},
+  ischios_d:  {cx:125, cy:210, rx:8,  ry:30, offBody:true},
+  genoux_g:   {cx:68,  cy:256, rx:11, ry:8},
+  genoux_d:   {cx:102, cy:256, rx:11, ry:8},
+  tendons_g:  {cx:67,  cy:284, rx:8,  ry:16},
+  tendons_d:  {cx:103, cy:284, rx:8,  ry:16},
+  pied_g:     {cx:63,  cy:310, rx:13, ry:6},
+  pied_d:     {cx:107, cy:310, rx:13, ry:6},
 };
 // Contour du corps (tête, bras, tronc, jambes en un seul tracé), dessiné
 // par-dessus les capsules pour rester visible quel que soit le recouvrement.
 const BODY_OUTLINE="M85,14 C74,14 66,23 66,34 C66,42 69,48 74,52 C56,58 46,72 44,96 L40,150 C39,160 42,168 48,170 C52,158 53,146 55,132 C57,116 62,102 72,92 L72,120 C68,124 66,132 66,144 L66,196 C66,204 62,210 58,214 L52,268 C50,282 52,294 58,300 L64,300 C66,290 66,278 68,264 C70,246 73,228 76,196 L94,196 C97,228 100,246 102,264 C104,278 104,290 106,300 L112,300 C118,294 120,282 118,268 L112,214 C108,210 104,204 104,196 L104,144 C104,132 102,124 98,120 L98,92 C108,102 113,116 115,132 C117,146 118,158 122,170 C128,168 131,160 130,150 L126,96 C124,72 114,58 96,52 C101,48 104,42 104,34 C104,23 96,14 85,14 Z";
 const ZONE_NEUTRAL = "#48484c";
-// Carte du corps tapable : remplace la liste de curseurs pour les zones
-// (retour d'audit — "pas terrible visuellement", puis "pas super clair"
-// pour le bonhomme-bâton essayé ensuite). Tous les sliders de zone existent
-// dans le DOM dès le rendu (juste cachés) pour que readPainForm puisse les
-// lire normalement au moment d'enregistrer, même si une seule ligne est
-// visible à la fois. La teinte de chaque capsule reflète déjà sa valeur
-// avant même de la toucher (utile quand une séance déjà notée est
-// rouverte) ; la zone touchée s'éclaire en plus pour bien voir laquelle est
-// en cours d'édition.
 // Étiquette discrète collée à une capsule "hors corps" (dos, ischios) pour
 // lever l'ambiguïté vu qu'elle ne touche pas la silhouette à cet endroit.
 function zoneLabelSVG(x, y, text){
   return `<text x="${x}" y="${y}" text-anchor="middle" font-size="8" fill="${ZONE_NEUTRAL}" style="pointer-events:none">${text}</text>`;
+}
+// Forme d'une zone : une simple ellipse pour la plupart des zones, sauf
+// l'abdos qui reçoit un petit motif "tablette de chocolat" (coutures en
+// couleur de fond sur un rectangle arrondi) pour se distinguer d'un coup
+// d'œil des autres capsules — toutes identiques sinon. Le remplissage
+// (unique classe "zone-fill", même sur plusieurs éléments) est ce que
+// bodyZoneSlide recolore au fil du curseur.
+function zoneShapeSVG(key, s, fill){
+  if(key === "abdos"){
+    const x=s.cx-s.rx, y=s.cy-s.ry, w=s.rx*2, h=s.ry*2;
+    const seam = (x1,y1,x2,y2)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1c1c1e" stroke-width="2"/>`;
+    return `<rect class="zone-fill" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="${fill}"/>
+      ${seam(s.cx, y+4, s.cx, y+h-4)}
+      ${seam(x+4, s.cy-s.ry/3, x+w-4, s.cy-s.ry/3)}
+      ${seam(x+4, s.cy+s.ry/3, x+w-4, s.cy+s.ry/3)}`;
+  }
+  return `<ellipse class="zone-fill" cx="${s.cx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" fill="${fill}"/>`;
 }
 function bodyMapHTML(prefix, initial){
   // Zones déjà notées (valeur > 0) : leur ligne reste visible d'entrée,
@@ -1481,16 +1501,8 @@ function bodyMapHTML(prefix, initial){
     const v = initial[key] ?? 0;
     const s = BODY_ZONE_CAPS[key];
     const fill = v>0 ? painColor(v) : ZONE_NEUTRAL;
-    if(s.both){
-      const labels = s.offBody ? zoneLabelSVG(s.cx-s.dx, s.cy+s.ry+10, label)+zoneLabelSVG(s.cx+s.dx, s.cy+s.ry+10, label) : "";
-      return `<g class="zone" id="${prefix}_zone_${key}" onclick="bodyZoneTap('${prefix}','${key}')">
-        <ellipse cx="${s.cx-s.dx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" fill="${fill}"/>
-        <ellipse cx="${s.cx+s.dx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" fill="${fill}"/>
-      </g>${labels}`;
-    }
-    const label2 = s.offBody ? zoneLabelSVG(s.cx, s.cy+s.ry+10, label) : "";
-    return `<ellipse class="zone" id="${prefix}_zone_${key}" cx="${s.cx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" fill="${fill}"
-      onclick="bodyZoneTap('${prefix}','${key}')"/>${label2}`;
+    const zoneLabel = s.offBody ? zoneLabelSVG(s.cx, s.cy+s.ry+10, label) : "";
+    return `<g class="zone" id="${prefix}_zone_${key}" onclick="bodyZoneTap('${prefix}','${key}')">${zoneShapeSVG(key,s,fill)}</g>${zoneLabel}`;
   }).join("");
   const rows = BODY_ZONES.map(([key,label])=>{
     const v = initial[key] ?? 0;
@@ -1537,8 +1549,7 @@ window.bodyZoneSlide = (prefix, key, val) => {
   if(input) input.style.accentColor = c;
   if(zone){
     const fill = val>0 ? c : ZONE_NEUTRAL;
-    if(zone.tagName === "ellipse") zone.setAttribute("fill", fill);
-    else zone.querySelectorAll("ellipse").forEach(e=>e.setAttribute("fill", fill));
+    zone.querySelectorAll(".zone-fill").forEach(e=>e.setAttribute("fill", fill));
   }
 };
 function painFormHTML(prefix, initial){
