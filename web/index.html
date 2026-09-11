@@ -446,6 +446,13 @@ const BODY_PARTS=[
   ["pied_g","Pied gauche"],["pied_d","Pied droit"],
   ["bassin","Bassin"],["dos","Dos"],
 ];
+// Retours d'audit : le check-in se limitait aux douleurs par zone, alors que
+// le ressenti d'une séance ne se résume pas qu'à ça — ajout de critères
+// généraux à côté des zones du corps (même stockage jsonb `ratings`/
+// `pain_ratings`, pas de migration nécessaire : juste de nouvelles clés).
+const WELLBEING_EXTRA=[
+  ["respiration","Respiration"],["fatigue","Fatigue générale"],
+];
 const TABS=[
   {label:"Dashboard", icon:"bars"},
   {label:"Plan", icon:"sparkle"},
@@ -546,8 +553,8 @@ function painPromptBanner(){
   const r = unratedRecentSession();
   if(!r) return "";
   return `<div class="card" id="painPrompt" style="border-color:rgba(255,159,10,0.4);background:rgba(255,159,10,0.08)">
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Comment s'est passée ta séance du ${r.label} ?</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Note tes douleurs éventuelles — ça aide l'IA à personnaliser ton plan.</div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Note ton ressenti — séance du ${r.label}</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Douleurs, respiration, fatigue... ça aide l'IA à personnaliser ton plan.</div>
     <div style="display:flex;gap:8px">
       <button class="btn-primary" style="margin-top:0" onclick="goRateSession('${r.id}')">Noter maintenant</button>
       <button class="btn-secondary" onclick="dismissPainPrompt('${r.id}')">Plus tard</button>
@@ -756,7 +763,7 @@ window.deleteRun = async (id, label) => {
 };
 function readPainForm(prefix){
   const ratings={};
-  BODY_PARTS.forEach(([key])=>{ ratings[key]=parseInt(document.getElementById(`${prefix}_${key}`).value,10); });
+  [...WELLBEING_EXTRA, ...BODY_PARTS].forEach(([key])=>{ ratings[key]=parseInt(document.getElementById(`${prefix}_${key}`).value,10); });
   return ratings;
 }
 window.saveCheckin = async () => {
@@ -1382,17 +1389,22 @@ function painColor(v){
   if(v<=6) return "#ff9f0a";
   return "#ff453a";
 }
+function painSliderRow(prefix, key, label, initial){
+  const v = initial[key] ?? 0;
+  const c = painColor(v);
+  return `<div class="pain-row">
+    <div class="pain-row-top"><span class="lbl">${label}</span><span class="val" id="${prefix}_${key}_v" style="color:${c}">${v}</span></div>
+    <input type="range" min="0" max="10" value="${v}" id="${prefix}_${key}" style="accent-color:${c}"
+      oninput="const v=document.getElementById('${prefix}_${key}_v');v.textContent=this.value;const c=painColor(this.value);v.style.color=c;this.style.accentColor=c;">
+  </div>`;
+}
 function painFormHTML(prefix, initial){
   initial = initial || {};
-  return BODY_PARTS.map(([key,label])=>{
-    const v = initial[key] ?? 0;
-    const c = painColor(v);
-    return `<div class="pain-row">
-      <div class="pain-row-top"><span class="lbl">${label}</span><span class="val" id="${prefix}_${key}_v" style="color:${c}">${v}</span></div>
-      <input type="range" min="0" max="10" value="${v}" id="${prefix}_${key}" style="accent-color:${c}"
-        oninput="const v=document.getElementById('${prefix}_${key}_v');v.textContent=this.value;const c=painColor(this.value);v.style.color=c;this.style.accentColor=c;">
-    </div>`;
-  }).join("");
+  return `
+    ${WELLBEING_EXTRA.map(([key,label])=>painSliderRow(prefix,key,label,initial)).join("")}
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);margin:14px 0 4px">Douleurs par zone</div>
+    ${BODY_PARTS.map(([key,label])=>painSliderRow(prefix,key,label,initial)).join("")}
+  `;
 }
 
 let openHrDetail = new Set();
@@ -1629,12 +1641,12 @@ function renderContent(){
     el.innerHTML=`
       <div class="card">
         <div class="stitle">Plan</div>
-        <div class="chart-hint" style="margin-bottom:14px">Renseigne tes douleurs et tes objectifs (onglet Objectifs) — l'IA s'en servira pour te proposer un plan d'entraînement personnalisé.</div>
+        <div class="chart-hint" style="margin-bottom:14px">Note ton ressenti et tes objectifs (onglet Objectifs) — l'IA s'en servira pour te proposer un plan d'entraînement personnalisé.</div>
       </div>
 
       <div class="card">
         <div class="stitle">Comment tu te sens maintenant ?</div>
-        <div class="chart-hint">0 = aucune douleur, 10 = très douloureux. Rapide : ~15 secondes.</div>
+        <div class="chart-hint">0 = aucune gêne, 10 = très intense. Rapide : ~15 secondes.</div>
         ${painFormHTML("now", lastCheckin?.ratings)}
         <button class="btn-primary" style="margin-top:8px" onclick="saveCheckin()">Enregistrer ce check-in</button>
         <div id="checkinSaved" class="save-confirm">${lastSavedTxt}</div>
