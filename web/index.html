@@ -70,6 +70,7 @@ button,input,select{font-family:inherit}
 .goal-level-card .lbl{font-size:13px;font-weight:600}
 .goal-level-card .sub{font-size:10px;color:var(--text-dim);margin-top:2px;line-height:1.3}
 .goal-slot-switch{display:flex;gap:8px;margin-bottom:14px}
+.goal-sticky-header{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:10px;margin-top:-10px}
 .goal-slot-btn{flex:1;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);color:var(--text-dim);font-size:13px;font-weight:600;cursor:pointer;text-align:center;transition:border-color .15s,background .15s,color .15s}
 .goal-slot-btn.active-principal{border-color:var(--yellow);background:var(--yellow-dim);color:var(--yellow)}
 .goal-slot-btn.active-secondaire{border-color:var(--purple);background:var(--purple-dim);color:var(--purple)}
@@ -697,6 +698,17 @@ const OBJECTIF_BLOCKS = {
 // Ressenti (sans le suffixe gauche/droite, hors-sujet ici).
 const ZONE_OPTIONS = [...new Set(BODY_ZONES.map(([,label])=>label.replace(/ [GD]$/,"")))];
 const DUREE_OPTIONS = ["Moins d'1 semaine","1 à 4 semaines","1 à 3 mois","Plus de 3 mois"];
+// Petit commentaire qui accompagne le choix de fréquence — rend le
+// chiffre plus parlant qu'un simple nombre de séances.
+const FREQUENCE_HINTS = {
+  "1":"J'y vais tranquillement",
+  "2":"Un rythme cool, sans pression",
+  "3":"Un bon équilibre régulier",
+  "4":"Un rythme sérieux",
+  "5":"Un rythme de coureur engagé",
+  "6":"Un gros volume, presque quotidien",
+  "7":"Tous les jours, à fond !",
+};
 // Anciens objectifs enregistrés à plat (avant l'ajout de l'objectif
 // secondaire) : repris tels quels comme objectif "principal" au premier
 // chargement, sans réécriture en base tant que l'utilisateur n'a pas
@@ -738,6 +750,10 @@ window.selectChip = (field, value) => {
     el.classList.toggle("active", el.dataset.value===value);
   });
   if(field==="distanceCourse") updateRacePaceGoal();
+  if(field==="frequence"){
+    const hint = document.getElementById("frequenceHint");
+    if(hint) hint.textContent = FREQUENCE_HINTS[value]||"";
+  }
 };
 
 // Temps visé et allure visée se calculent l'un à partir de l'autre (avec
@@ -748,8 +764,7 @@ function updateRacePaceGoal(){
   const km = RACE_DISTANCES_KM[dist];
   const h = parseInt(document.getElementById("goal_tempsH")?.value,10)||0;
   const m = parseInt(document.getElementById("goal_tempsM")?.value,10)||0;
-  const s = parseInt(document.getElementById("goal_tempsS")?.value,10)||0;
-  const totalSec = h*3600+m*60+s;
+  const totalSec = h*3600+m*60;
   const disp = document.getElementById("raceAllureVisee_display");
   const hidden = document.getElementById("goal_raceAllureVisee");
   if(!disp) return;
@@ -765,7 +780,8 @@ function updateRacePaceGoal(){
 window.updateRacePaceGoal = updateRacePaceGoal;
 
 // Sens inverse : ajuster l'allure visée (stepper ±5s/km) recalcule le
-// temps visé (h/m/s) à partir de la distance choisie.
+// temps visé (h/min, arrondi à la minute — pas de secondes à afficher)
+// à partir de la distance choisie.
 window.adjustRaceAllureGoal = (delta) => {
   const km = RACE_DISTANCES_KM[document.getElementById("goal_distanceCourse")?.value];
   if(!km) return;
@@ -774,19 +790,17 @@ window.adjustRaceAllureGoal = (delta) => {
   if(!pace){
     const h = parseInt(document.getElementById("goal_tempsH")?.value,10)||0;
     const m = parseInt(document.getElementById("goal_tempsM")?.value,10)||0;
-    const s = parseInt(document.getElementById("goal_tempsS")?.value,10)||0;
-    const totalSec = h*3600+m*60+s;
+    const totalSec = h*3600+m*60;
     pace = totalSec>0 ? Math.round(totalSec/km) : 300;
   }
   pace = Math.max(120, Math.min(900, pace+delta));
   if(hidden) hidden.value = pace;
   const disp = document.getElementById("raceAllureVisee_display");
   if(disp) disp.textContent = fmtA(pace);
-  const totalSec = Math.round(pace*km);
-  const hEl = document.getElementById("goal_tempsH"), mEl = document.getElementById("goal_tempsM"), sEl = document.getElementById("goal_tempsS");
-  if(hEl) hEl.value = Math.floor(totalSec/3600) || "";
-  if(mEl) mEl.value = Math.floor((totalSec%3600)/60) || "";
-  if(sEl) sEl.value = (totalSec%60) || "";
+  const totalMin = Math.round(pace*km/60);
+  const hEl = document.getElementById("goal_tempsH"), mEl = document.getElementById("goal_tempsM");
+  if(hEl) hEl.value = Math.floor(totalMin/60) || "";
+  if(mEl) mEl.value = (totalMin%60) || "";
 };
 
 // Idem pour km/mois et km/an — deux vues du même chiffre, seul km/mois
@@ -818,8 +832,7 @@ window.saveGoals = async () => {
   GOAL_SLOT_FIELDS.forEach(k=>{ const el=document.getElementById("goal_"+k); if(el) slotValue[k]=el.value; });
   const h = parseInt(document.getElementById("goal_tempsH")?.value,10)||0;
   const m = parseInt(document.getElementById("goal_tempsM")?.value,10)||0;
-  const s = parseInt(document.getElementById("goal_tempsS")?.value,10)||0;
-  const totalSec = h*3600+m*60+s;
+  const totalSec = h*3600+m*60;
   slotValue.tempsViseSec = totalSec>0 ? totalSec : "";
   const value = {
     ...goals,
@@ -2086,7 +2099,7 @@ function renderContent(){
     const isRace = slot.objectifPrincipal==="Préparer une course";
     const blocks = OBJECTIF_BLOCKS[slot.objectifPrincipal] || OBJECTIF_BLOCKS["Autre"];
     const stats = situationStats(slot.objectifPrincipal);
-    const tH=Math.floor((slot.tempsViseSec||0)/3600), tM=Math.floor(((slot.tempsViseSec||0)%3600)/60), tS=(slot.tempsViseSec||0)%60;
+    const tH=Math.floor((slot.tempsViseSec||0)/3600), tM=Math.floor(((slot.tempsViseSec||0)%3600)/60);
     const raceKm = RACE_DISTANCES_KM[slot.distanceCourse];
     const racePaceInit = (raceKm && slot.tempsViseSec) ? Math.round(slot.tempsViseSec/raceKm) : null;
     const kmAnnuelInit = slot.kmMensuel ? Math.round(slot.kmMensuel*12) : "";
@@ -2109,11 +2122,7 @@ function renderContent(){
       </div>`).join("")}
     </div>`;
 
-    el.innerHTML=`<div class="goal-slot-switch">
-      <div class="goal-slot-btn${activeGoalSlot==="principal"?" active-principal":""}" onclick="selectGoalSlot('principal')">Objectif principal</div>
-      <div class="goal-slot-btn${activeGoalSlot==="secondaire"?" active-secondaire":""}" onclick="selectGoalSlot('secondaire')">Objectif secondaire</div>
-    </div>
-
+    el.innerHTML=`<div class="goal-sticky-header">
     <div class="card">
       <div class="stitle">Ton niveau actuel</div>
       <div class="goal-level-cards" data-chipgroup="niveau">
@@ -2123,6 +2132,12 @@ function renderContent(){
         </div>`).join("")}
       </div>
       <input type="hidden" id="goal_niveau" value="${goals.niveau||""}">
+    </div>
+
+    <div class="goal-slot-switch">
+      <div class="goal-slot-btn${activeGoalSlot==="principal"?" active-principal":""}" onclick="selectGoalSlot('principal')">Objectif principal</div>
+      <div class="goal-slot-btn${activeGoalSlot==="secondaire"?" active-secondaire":""}" onclick="selectGoalSlot('secondaire')">Objectif secondaire</div>
+    </div>
     </div>
 
     <div style="${slotColorVars}">
@@ -2143,18 +2158,19 @@ function renderContent(){
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
           <div>
             <div class="chart-hint" style="margin:0 0 6px">Temps visé</div>
-            <div style="display:flex;align-items:center;gap:4px">
-              <input type="number" min="0" max="99" class="time-input" id="goal_tempsH" value="${tH||""}" placeholder="h" oninput="updateRacePaceGoal()">:
-              <input type="number" min="0" max="59" class="time-input" id="goal_tempsM" value="${tM||""}" placeholder="min" oninput="updateRacePaceGoal()">:
-              <input type="number" min="0" max="59" class="time-input" id="goal_tempsS" value="${tS||""}" placeholder="sec" oninput="updateRacePaceGoal()">
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="number" min="0" max="99" class="time-input" id="goal_tempsH" value="${tH||""}" placeholder="0" oninput="updateRacePaceGoal()">
+              <span style="font-size:12px;color:var(--text-dim)">h</span>
+              <input type="number" min="0" max="59" class="time-input" id="goal_tempsM" value="${tM||""}" placeholder="0" oninput="updateRacePaceGoal()">
+              <span style="font-size:12px;color:var(--text-dim)">min</span>
             </div>
           </div>
           <div>
             <div class="chart-hint" style="margin:0 0 6px">Allure visée</div>
             <div class="pace-stepper">
-              <button type="button" onclick="adjustRaceAllureGoal(5)">−</button>
+              <button type="button" onclick="adjustRaceAllureGoal(-5)">−</button>
               <span class="val" id="raceAllureVisee_display">${racePaceInit?fmtA(racePaceInit):"—"}</span>
-              <button type="button" onclick="adjustRaceAllureGoal(-5)">+</button>
+              <button type="button" onclick="adjustRaceAllureGoal(5)">+</button>
             </div>
             <input type="hidden" id="goal_raceAllureVisee" value="${racePaceInit||""}">
           </div>
@@ -2180,10 +2196,11 @@ function renderContent(){
     ${blocks.rythme?`<div class="card">
       <div class="stitle">Rythme visé</div>
       ${blocks.rythmeHint?`<div class="chart-hint" style="margin-top:0">${blocks.rythmeHint}</div>`:""}
-      <div class="field" style="${blocks.rythme==="freqOnly"?"margin-bottom:0":""}">
+      <div class="field" style="margin-bottom:6px">
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Séances / semaine</span>
         ${chipRow("frequence", ["1","2","3","4","5","6","7"], slot.frequence)}
       </div>
+      <div class="chart-hint" id="frequenceHint" style="margin-top:0;${blocks.rythme==="freqOnly"?"margin-bottom:0":""}">${FREQUENCE_HINTS[slot.frequence]||""}</div>
       <input type="hidden" id="goal_frequence" value="${slot.frequence||""}">
       ${blocks.rythme==="full"?`
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -2204,18 +2221,18 @@ function renderContent(){
       <div class="field">
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure EF</span>
         <div class="pace-stepper">
-          <button type="button" onclick="adjustPaceGoal('allureEfVisee',5,360)">−</button>
+          <button type="button" onclick="adjustPaceGoal('allureEfVisee',-5,360)">−</button>
           <span class="val" id="allureEfVisee_display">${slot.allureEfVisee?fmtA(Number(slot.allureEfVisee)):"—"}</span>
-          <button type="button" onclick="adjustPaceGoal('allureEfVisee',-5,360)">+</button>
+          <button type="button" onclick="adjustPaceGoal('allureEfVisee',5,360)">+</button>
         </div>
       </div>
       <input type="hidden" id="goal_allureEfVisee" value="${slot.allureEfVisee||""}">
       <div class="field" style="margin-bottom:0">
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure Work (fractionné)</span>
         <div class="pace-stepper">
-          <button type="button" onclick="adjustPaceGoal('allureWorkVisee',5,300)">−</button>
+          <button type="button" onclick="adjustPaceGoal('allureWorkVisee',-5,300)">−</button>
           <span class="val" id="allureWorkVisee_display">${slot.allureWorkVisee?fmtA(Number(slot.allureWorkVisee)):"—"}</span>
-          <button type="button" onclick="adjustPaceGoal('allureWorkVisee',-5,300)">+</button>
+          <button type="button" onclick="adjustPaceGoal('allureWorkVisee',5,300)">+</button>
         </div>
       </div>
       <input type="hidden" id="goal_allureWorkVisee" value="${slot.allureWorkVisee||""}">
