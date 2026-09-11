@@ -1423,38 +1423,49 @@ function painSliderRow(prefix, key, label, initial, lowLabel, highLabel){
     ${lowLabel?`<div class="pain-scale"><span>${lowLabel}</span><span style="text-align:right">${highLabel}</span></div>`:""}
   </div>`;
 }
-// Segments du bonhomme-bâton (viewBox 110x230), tous des <line> — même les
-// zones "ponctuelles" (genoux, via une ligne de longueur nulle + un
-// stroke-linecap rond, qui donne un simple point). Pas de prétention
-// anatomique exacte (dos/abdos, cuisse/ischios partagent une seule
-// silhouette de face, sans vue de dos séparée) — juste un découpage clair
-// et tapable, le nom de la zone s'affiche dès qu'on la touche.
-const BODY_ZONE_LINES={
-  dos:      {x1:46, y1:33,  x2:46, y2:88,  w:9},
-  abdos:    {x1:64, y1:33,  x2:64, y2:88,  w:9},
-  bassin:   {x1:38, y1:93,  x2:72, y2:93,  w:9},
-  cuisse:   {x1:43, y1:100, x2:40, y2:152, w:9},
-  ischios:  {x1:67, y1:100, x2:70, y2:152, w:9},
-  genoux:   {x1:55, y1:158, x2:55, y2:158, w:16},
-  tendons:  {x1:55, y1:166, x2:55, y2:207, w:9},
-  pied:     {x1:42, y1:213, x2:68, y2:213, w:9},
+// Capsules arrondies posées sur un contour de corps discret (viewBox
+// 170x320) — le contour donne le repère visuel ("c'est un corps"), les
+// capsules sont les vraies cibles tactiles, plus grosses et plus espacées
+// qu'un simple trait. Pas de prétention anatomique exacte (dos/abdos,
+// cuisse/ischios partagent une seule silhouette de face, sans vue de dos
+// séparée) — juste un découpage clair et tapable. Les zones symétriques
+// (genoux, tendons, pied) affichent une capsule de chaque côté mais
+// partagent la même valeur.
+const BODY_ZONE_CAPS={
+  dos:      {cx:74, cy:80,  rx:9,  ry:26},
+  abdos:    {cx:96, cy:80,  rx:9,  ry:26},
+  bassin:   {cx:85, cy:150, rx:26, ry:12},
+  cuisse:   {cx:70, cy:210, rx:10, ry:34},
+  ischios:  {cx:100,cy:210, rx:10, ry:34},
+  genoux:   {cx:85, cy:256, rx:11, ry:8,  both:true, dx:17},
+  tendons:  {cx:85, cy:284, rx:8,  ry:16, both:true, dx:18},
+  pied:     {cx:85, cy:310, rx:13, ry:6,  both:true, dx:22},
 };
+// Contour du corps (tête, bras, tronc, jambes en un seul tracé), dessiné
+// par-dessus les capsules pour rester visible quel que soit le recouvrement.
+const BODY_OUTLINE="M85,14 C74,14 66,23 66,34 C66,42 69,48 74,52 C56,58 46,72 44,96 L40,150 C39,160 42,168 48,170 C52,158 53,146 55,132 C57,116 62,102 72,92 L72,120 C68,124 66,132 66,144 L66,196 C66,204 62,210 58,214 L52,268 C50,282 52,294 58,300 L64,300 C66,290 66,278 68,264 C70,246 73,228 76,196 L94,196 C97,228 100,246 102,264 C104,278 104,290 106,300 L112,300 C118,294 120,282 118,268 L112,214 C108,210 104,204 104,196 L104,144 C104,132 102,124 98,120 L98,92 C108,102 113,116 115,132 C117,146 118,158 122,170 C128,168 131,160 130,150 L126,96 C124,72 114,58 96,52 C101,48 104,42 104,34 C104,23 96,14 85,14 Z";
 const ZONE_NEUTRAL = "#48484c";
-// Carte du corps tapable, en bonhomme-bâton : remplace la liste de curseurs
-// pour les zones (retour d'audit — "pas terrible visuellement"). Tous les
-// sliders de zone existent dans le DOM dès le rendu (juste cachés) pour que
-// readPainForm puisse les lire normalement au moment d'enregistrer, même si
-// une seule ligne est visible à la fois. La teinte de chaque zone sur le
-// schéma reflète déjà sa valeur avant même de la toucher (utile quand une
-// séance déjà notée est rouverte) ; la zone touchée s'éclaire en plus pour
-// bien voir laquelle est en cours d'édition.
+// Carte du corps tapable : remplace la liste de curseurs pour les zones
+// (retour d'audit — "pas terrible visuellement", puis "pas super clair"
+// pour le bonhomme-bâton essayé ensuite). Tous les sliders de zone existent
+// dans le DOM dès le rendu (juste cachés) pour que readPainForm puisse les
+// lire normalement au moment d'enregistrer, même si une seule ligne est
+// visible à la fois. La teinte de chaque capsule reflète déjà sa valeur
+// avant même de la toucher (utile quand une séance déjà notée est
+// rouverte) ; la zone touchée s'éclaire en plus pour bien voir laquelle est
+// en cours d'édition.
 function bodyMapHTML(prefix, initial){
   const svgZones = BODY_ZONES.map(([key,label])=>{
     const v = initial[key] ?? 0;
-    const s = BODY_ZONE_LINES[key];
-    const stroke = v>0 ? painColor(v) : ZONE_NEUTRAL;
-    return `<line class="zone" id="${prefix}_zone_${key}" x1="${s.x1}" y1="${s.y1}" x2="${s.x2}" y2="${s.y2}"
-      stroke-width="${s.w}" stroke="${stroke}" stroke-linecap="round"
+    const s = BODY_ZONE_CAPS[key];
+    const fill = v>0 ? painColor(v) : ZONE_NEUTRAL;
+    if(s.both){
+      return `<g class="zone" id="${prefix}_zone_${key}" onclick="bodyZoneTap('${prefix}','${key}')">
+        <ellipse cx="${s.cx-s.dx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" fill="${fill}"/>
+        <ellipse cx="${s.cx+s.dx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" fill="${fill}"/>
+      </g>`;
+    }
+    return `<ellipse class="zone" id="${prefix}_zone_${key}" cx="${s.cx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" fill="${fill}"
       onclick="bodyZoneTap('${prefix}','${key}')"/>`;
   }).join("");
   const rows = BODY_ZONES.map(([key,label])=>{
@@ -1467,9 +1478,9 @@ function bodyMapHTML(prefix, initial){
     </div>`;
   }).join("");
   return `<div class="body-map-wrap">
-    <svg class="body-svg" width="110" height="230" viewBox="0 0 110 230">
-      <circle cx="55" cy="18" r="13" fill="none" stroke="${ZONE_NEUTRAL}" stroke-width="4"/>
+    <svg class="body-svg" width="170" height="320" viewBox="0 0 170 320">
       ${svgZones}
+      <path d="${BODY_OUTLINE}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" pointer-events="none"/>
     </svg>
     <div class="zone-rows">
       <div class="zone-placeholder" id="${prefix}_zoneph">Touche une zone sur le schéma</div>
@@ -1494,7 +1505,11 @@ window.bodyZoneSlide = (prefix, key, val) => {
   const c = painColor(val);
   if(v){ v.textContent = val; v.style.color = c; }
   if(input) input.style.accentColor = c;
-  if(zone) zone.setAttribute("stroke", val>0 ? c : ZONE_NEUTRAL);
+  if(zone){
+    const fill = val>0 ? c : ZONE_NEUTRAL;
+    if(zone.tagName === "ellipse") zone.setAttribute("fill", fill);
+    else zone.querySelectorAll("ellipse").forEach(e=>e.setAttribute("fill", fill));
+  }
 };
 function painFormHTML(prefix, initial){
   initial = initial || {};
