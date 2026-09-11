@@ -251,6 +251,7 @@ button,input,select{font-family:inherit}
 .session-pick{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
 .session-pick:last-child{border-bottom:none}
 .session-pick .rated{color:var(--accent);font-size:11px;font-weight:600}
+.month-sep{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);padding:14px 0 4px}
 .account-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
 .account-row:last-child{border-bottom:none}
 .account-row .lbl{font-size:13px;color:var(--text-dim)}
@@ -1851,6 +1852,14 @@ function renderContent(){
       ? `L'IA se basera sur tes ${ratedCount} séance(s) notée(s).`
       : `Note au moins une séance pour que l'IA ait de quoi travailler.`;
     const allSessions = runningRuns.slice().reverse();
+    // Regroupées par mois (le plus récent en haut) pour repérer une séance
+    // plus vite qu'en scrollant une liste plate, surtout avec beaucoup
+    // d'historique.
+    let lastMonthKey = null;
+    const monthLabel = (d) => {
+      const s = d.toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    };
 
     el.innerHTML=`
       <div class="card">
@@ -1862,8 +1871,12 @@ function renderContent(){
         <div class="stitle">Tes séances</div>
         <div class="chart-hint">0 = aucune gêne, 10 = très intense. Les critères généraux reprennent ta dernière saisie ; les zones du corps repartent à 0 à chaque fois — ne note que ce qui fait mal maintenant.</div>
         ${allSessions.length===0?`<div style="font-size:13px;color:var(--text-dim)">Aucune séance de course pour l'instant.</div>`:allSessions.map(r=>{
+          const monthKey = `${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`;
+          const monthHeader = monthKey!==lastMonthKey ? `<div class="month-sep">${monthLabel(r.fullDate)}</div>` : "";
+          lastMonthKey = monthKey;
           const open = openSessionRatings.has(r.id);
           return `
+          ${monthHeader}
           <div class="session-pick" onclick="toggleSessionRating('${r.id}')">
             <span>${icon(open?"chevronDown":"chevronRight",13)} ${r.label} · ${r.time}${r.dist>0?" · "+r.dist.toFixed(2)+" km":""}</span>
             <span class="rated">${r.painRatings?"Notée ✓":"Noter"}</span>
