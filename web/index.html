@@ -679,22 +679,23 @@ window.saveSyncSinceDate = async (value) => {
 // Champs propres à un objectif (principal OU secondaire) — "niveau" et
 // "autre" restent partagés entre les deux (ils décrivent le coureur, pas
 // un objectif en particulier).
-const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","kmMensuel","frequence","frequenceAutre","allureEfVisee","allureWorkVisee","fcAllureCible","vmaConnue","vma","dureeArret","zoneConcernee"];
+const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","kmMensuel","frequence","frequenceAutre","allureEfVisee","allureWorkVisee","fcAllureCible","vmaConnue","vma","dureeArret","zoneConcernee","joursDisponibles","freins","rappelPref"];
 const RACE_DISTANCES_KM = {"5km":5,"10km":10,"15km":15,"Semi":21.0975,"Marathon":42.195};
 // Quels blocs afficher selon le type d'objectif — pour ne demander que ce
 // qui est pertinent (retour d'audit). "rythme" vaut "full" (les 3 champs),
 // "freqOnly" (juste séances/semaine) ou false. "Autre" et un objectif pas
 // encore choisi affichent tout, en secours. Pas d'"Allure cible" pour
 // "Préparer une course" : l'allure visée se règle directement dans le
-// bloc course (à côté du temps visé), doublon sinon.
+// bloc course (à côté du temps visé), doublon sinon. "regularite" ajoute
+// le bloc jours dispos/freins/rappel, pertinent seulement pour cet objectif.
 const OBJECTIF_BLOCKS = {
-  "Préparer une course":                {rythme:"full",     allure:false, blessure:false},
-  "Améliorer mon allure":               {rythme:"full",     allure:true,  blessure:false},
-  "Courir plus régulièrement":          {rythme:"freqOnly", allure:false, blessure:false},
-  "Reprendre après une pause/blessure": {rythme:"full",     allure:false, blessure:true,
+  "Préparer une course":                {rythme:"full",     allure:false, blessure:false, regularite:false},
+  "Améliorer mon allure":               {rythme:"full",     allure:true,  blessure:false, regularite:false},
+  "Courir plus régulièrement":          {rythme:"freqOnly", allure:false, blessure:false, regularite:true},
+  "Reprendre après une pause/blessure": {rythme:"full",     allure:false, blessure:true,  regularite:false,
     rythmeHint:"Optionnel, à titre indicatif — pas la peine de viser haut pendant la reprise."},
-  "Rester en forme":                    {rythme:"freqOnly", allure:false, blessure:false},
-  "Autre":                              {rythme:"full",     allure:true,  blessure:false},
+  "Rester en forme":                    {rythme:"freqOnly", allure:false, blessure:false, regularite:false},
+  "Autre":                              {rythme:"full",     allure:true,  blessure:false, regularite:false},
 };
 // Zones réutilisées telles quelles depuis le schéma corporel de l'onglet
 // Ressenti (sans le suffixe gauche/droite, hors-sujet ici).
@@ -719,6 +720,12 @@ const EQUIPEMENT_OPTIONS = ["Apple Watch","Garmin","Whoop","Strava","Aucun"];
 // "Préparer une course" : terrain de LA course visée (distinct du terrain
 // habituel du socle commun, qui décrit l'entraînement au quotidien).
 const TERRAIN_COURSE_OPTIONS = ["Plat","Vallonné","Montagneux"];
+// "Courir plus régulièrement" : jours dispos + freins identifiés + préférence
+// de rappel — pas encore de vrais rappels envoyés, juste la préférence
+// enregistrée pour une future notification.
+const JOURS_OPTIONS = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+const FREINS_OPTIONS = ["Motivation","Météo","Manque de temps","Fatigue"];
+const RAPPEL_OPTIONS = ["Aucun","Notification","Email"];
 // Semaines restantes avant la course, affichées en direct sous la date.
 function weeksUntilText(dateStr){
   if(!dateStr) return "";
@@ -805,6 +812,21 @@ window.selectChip = (field, value) => {
     const hint = document.getElementById("vmaNonHint");
     if(hint) hint.style.display = (value==="Non") ? "" : "none";
   }
+};
+// Multi-sélection générique pour les champs propres à un objectif (jours
+// disponibles, freins identifiés) — stockée en chaîne "Lun,Mer" plutôt qu'un
+// tableau, comme le reste de `goals`. Contrairement à terrain/équipement
+// (socle commun, auto-enregistrés), ces champs suivent le bouton
+// "Enregistrer" global comme les autres champs de l'objectif en cours.
+window.toggleMultiChip = (field, value) => {
+  const hidden = document.getElementById("goal_"+field);
+  let arr = hidden.value ? hidden.value.split(",") : [];
+  arr = arr.includes(value) ? arr.filter(v=>v!==value) : [...arr, value];
+  hidden.value = arr.join(",");
+  const group = document.querySelector(`[data-chipgroup="${field}"]`);
+  if(group) group.querySelectorAll("[data-value]").forEach(el=>{
+    el.classList.toggle("active", arr.includes(el.dataset.value));
+  });
 };
 // Temps visé et allure visée se calculent l'un à partir de l'autre (avec
 // la distance choisie juste au-dessus) — seul le temps est enregistré
@@ -2165,6 +2187,14 @@ function renderContent(){
     const chipRow = (field, options, current) => `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
       ${options.map(o=>`<button type="button" class="flt${o===current?" active":""}" data-value="${o}" onclick="selectChip('${field}','${o}')">${o}</button>`).join("")}
     </div>`;
+    // Même rendu que chipRow, mais plusieurs boutons peuvent être actifs à
+    // la fois (jours disponibles, freins identifiés).
+    const multiChipRow = (field, options, currentStr) => {
+      const arr = currentStr ? currentStr.split(",") : [];
+      return `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
+        ${options.map(o=>`<button type="button" class="flt${arr.includes(o)?" active":""}" data-value="${o}" onclick="toggleMultiChip('${field}','${o}')">${o}</button>`).join("")}
+      </div>`;
+    };
     // Volume déjà calculable depuis l'historique réel de séances — pas la
     // peine de le redemander à l'utilisateur comme le reste du socle commun.
     const volActuel = recentMonthlyVolume(), freqActuelle = recentWeeklyFrequency();
@@ -2348,6 +2378,20 @@ function renderContent(){
         </div>
       </div>`:`<input type="hidden" id="goal_kmMensuel" value="${slot.kmMensuel||""}">`}
     </div>`:`<input type="hidden" id="goal_frequence" value="${slot.frequence||""}"><input type="hidden" id="goal_frequenceAutre" value="${slot.frequenceAutre||""}"><input type="hidden" id="goal_kmMensuel" value="${slot.kmMensuel||""}">`}
+
+    ${blocks.regularite?`<div class="card">
+      <div class="stitle">Ta régularité</div>
+      <div class="chart-hint" style="margin-top:0">Jours disponibles</div>
+      ${multiChipRow("joursDisponibles", JOURS_OPTIONS, slot.joursDisponibles)}
+      <input type="hidden" id="goal_joursDisponibles" value="${slot.joursDisponibles||""}">
+      <div class="chart-hint" style="margin-top:14px">Ce qui te freine le plus</div>
+      ${multiChipRow("freins", FREINS_OPTIONS, slot.freins)}
+      <input type="hidden" id="goal_freins" value="${slot.freins||""}">
+      <div class="chart-hint" style="margin-top:14px">Préférence de rappel</div>
+      <div class="chart-hint" style="margin-top:0;margin-bottom:8px">Pas encore de notifications envoyées — juste ta préférence, pour plus tard.</div>
+      ${chipRow("rappelPref", RAPPEL_OPTIONS, slot.rappelPref)}
+      <input type="hidden" id="goal_rappelPref" value="${slot.rappelPref||""}">
+    </div>`:`<input type="hidden" id="goal_joursDisponibles" value="${slot.joursDisponibles||""}"><input type="hidden" id="goal_freins" value="${slot.freins||""}"><input type="hidden" id="goal_rappelPref" value="${slot.rappelPref||""}">`}
 
     ${blocks.allure?`<div class="card">
       <div class="stitle">Allure cible</div>
