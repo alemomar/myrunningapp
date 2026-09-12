@@ -1290,18 +1290,22 @@ function lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate){
 
 function heroHTML(){
   const monthS = periodStats("monthly");
-  const kmGoal = goals.kmMensuel ? Number(goals.kmMensuel) : null;
-  const weeklySessionGoal = goals.frequence ? Number(goals.frequence) : null;
+  // Depuis la refonte principal/secondaire, les champs d'objectif vivent
+  // dans goals.principal (plus au niveau racine de `goals`) — c'est
+  // l'objectif principal qui pilote la progression affichée ici, pas le
+  // slot actif dans l'onglet Objectifs (état d'affichage sans rapport).
+  const principal = goals.principal || {};
+  const kmGoal = principal.kmMensuel ? Number(principal.kmMensuel) : null;
+  const weeklySessionGoal = principal.frequence ? Number(principal.frequence) : null;
   const sessionGoal = weeklySessionGoal ? Math.round(weeklySessionGoal*4.33) : null;
-  const distGoal = goals.plusLongueDistance ? Number(goals.plusLongueDistance) : null;
 
   return `<div class="hero" style="flex-direction:column;align-items:stretch">
     <div class="hero-rings-row">
       ${ringSmHTML(monthS.dist, kmGoal, "#30d158", monthS.dist.toFixed(0), kmGoal?`/${kmGoal}km`:"km", "Km ce mois")}
       ${ringSmHTML(monthS.runs.length, sessionGoal, "#0a84ff", String(monthS.runs.length), sessionGoal?`/${sessionGoal}`:"séances", "Séances ce mois")}
-      ${ringSmHTML(monthS.longMax||0, distGoal, "#ffd60a", (monthS.longMax||0).toFixed(0), distGoal?`/${distGoal}km`:"km", "Plus longue sortie")}
+      ${ringSmHTML(monthS.longMax||0, null, "#ffd60a", (monthS.longMax||0).toFixed(0), "km", "Plus longue sortie")}
     </div>
-    ${(!kmGoal||!sessionGoal||!distGoal)?`<div class="chart-hint" style="margin-top:10px;margin-bottom:0">Objectifs incomplets — <a href="#" onclick="setTab(1);return false" style="color:var(--accent)">renseigne-les dans l'onglet Objectifs</a> pour voir ta progression.</div>`:""}
+    ${(!kmGoal||!sessionGoal)?`<div class="chart-hint" style="margin-top:10px;margin-bottom:0">Objectifs incomplets — <a href="#" onclick="setTab(2);return false" style="color:var(--accent)">renseigne-les dans l'onglet Objectifs</a> pour voir ta progression.</div>`:""}
   </div>`;
 }
 
