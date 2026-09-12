@@ -679,23 +679,24 @@ window.saveSyncSinceDate = async (value) => {
 // Champs propres à un objectif (principal OU secondaire) — "niveau" et
 // "autre" restent partagés entre les deux (ils décrivent le coureur, pas
 // un objectif en particulier).
-const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","kmMensuel","frequence","frequenceAutre","allureEfVisee","allureWorkVisee","fcAllureCible","vmaConnue","vma","dureeArret","zoneConcernee","joursDisponibles","freins","rappelPref"];
+const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","allureEfVisee","allureWorkVisee","fcAllureCible","vmaConnue","vma","dureeArret","zoneConcernee","joursDisponibles","freins","rappelPref"];
 const RACE_DISTANCES_KM = {"5km":5,"10km":10,"15km":15,"Semi":21.0975,"Marathon":42.195};
 // Quels blocs afficher selon le type d'objectif — pour ne demander que ce
-// qui est pertinent (retour d'audit). "rythme" vaut "full" (les 3 champs),
-// "freqOnly" (juste séances/semaine) ou false. "Autre" et un objectif pas
-// encore choisi affichent tout, en secours. Pas d'"Allure cible" pour
-// "Préparer une course" : l'allure visée se règle directement dans le
-// bloc course (à côté du temps visé), doublon sinon. "regularite" ajoute
-// le bloc jours dispos/freins/rappel, pertinent seulement pour cet objectif.
+// qui est pertinent (retour d'audit). "Autre" et un objectif pas encore
+// choisi affichent tout, en secours. Pas d'"Allure cible" pour "Préparer
+// une course" : l'allure visée se règle directement dans le bloc course
+// (à côté du temps visé), doublon sinon. "regularite" ajoute le bloc
+// jours dispos/freins/rappel, pertinent seulement pour cet objectif.
+// Séances/semaine et km/mois ne dépendent plus du type d'objectif — voir
+// le bloc "Volume d'entraînement" du tronc commun ci-dessous.
 const OBJECTIF_BLOCKS = {
-  "Préparer une course":                {rythme:"full",     allure:false, blessure:false, regularite:false},
-  "Améliorer mon allure":               {rythme:"full",     allure:true,  blessure:false, regularite:false},
-  "Courir plus régulièrement":          {rythme:"freqOnly", allure:false, blessure:false, regularite:true},
-  "Reprendre après une pause/blessure": {rythme:"full",     allure:false, blessure:true,  regularite:false,
-    rythmeHint:"Optionnel, à titre indicatif — pas la peine de viser haut pendant la reprise."},
-  "Rester en forme":                    {rythme:"freqOnly", allure:false, blessure:false, regularite:false},
-  "Autre":                              {rythme:"full",     allure:true,  blessure:false, regularite:false},
+  "Préparer une course":                {allure:false, blessure:false, regularite:false},
+  "Améliorer mon allure":               {allure:true,  blessure:false, regularite:false},
+  "Courir plus régulièrement":          {allure:false, blessure:false, regularite:true},
+  "Reprendre après une pause/blessure": {allure:false, blessure:true,  regularite:false,
+    volumeHint:"Optionnel, à titre indicatif — pas la peine de viser haut pendant la reprise."},
+  "Rester en forme":                    {allure:false, blessure:false, regularite:false},
+  "Autre":                              {allure:true,  blessure:false, regularite:false},
 };
 // Zones réutilisées telles quelles depuis le schéma corporel de l'onglet
 // Ressenti (sans le suffixe gauche/droite, hors-sujet ici).
@@ -794,10 +795,6 @@ window.selectChip = (field, value) => {
     el.classList.toggle("active", el.dataset.value===value);
   });
   if(field==="distanceCourse") updateRacePaceGoal();
-  if(field==="frequence"){
-    const hint = document.getElementById("frequenceHint");
-    if(hint) hint.textContent = FREQUENCE_HINTS[value]||"";
-  }
   if(field==="pbExistant"){
     const block = document.getElementById("pbTimeBlock");
     if(block) block.style.display = (value==="Oui") ? "" : "none";
@@ -941,6 +938,36 @@ window.saveEquipement = async (value) => {
     el.classList.toggle("active", arr.includes(el.dataset.value));
   });
   goals = { ...goals, equipement: arr.join(",") };
+  if(!(await upsertProfile({ goals }))) return;
+  flashSaved("profilSaved");
+};
+// Séances/semaine et km/mois sont partagés (peu importe l'objectif
+// principal/secondaire) — même logique d'auto-enregistrement au clic que
+// terrain/équipement, pour éviter de dépendre d'un bouton "Enregistrer"
+// éloigné dans la page.
+window.saveFrequence = async (value) => {
+  const group = document.querySelector('[data-chipgroup="frequence"]');
+  if(group) group.querySelectorAll("[data-value]").forEach(el=>{
+    el.classList.toggle("active", el.dataset.value===value);
+  });
+  const hint = document.getElementById("frequenceHint");
+  if(hint) hint.textContent = FREQUENCE_HINTS[value]||"";
+  goals = { ...goals, frequence: value };
+  if(!(await upsertProfile({ goals }))) return;
+  flashSaved("profilSaved");
+};
+window.saveFrequenceAutre = async (value) => {
+  const group = document.querySelector('[data-chipgroup="frequenceAutre"]');
+  if(group) group.querySelectorAll("[data-value]").forEach(el=>{
+    el.classList.toggle("active", el.dataset.value===value);
+  });
+  goals = { ...goals, frequenceAutre: value };
+  if(!(await upsertProfile({ goals }))) return;
+  flashSaved("profilSaved");
+};
+window.saveVolumeGoal = async () => {
+  const v = document.getElementById("goal_kmMensuel")?.value || "";
+  goals = { ...goals, kmMensuel: v };
   if(!(await upsertProfile({ goals }))) return;
   flashSaved("profilSaved");
 };
@@ -1290,13 +1317,11 @@ function lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate){
 
 function heroHTML(){
   const monthS = periodStats("monthly");
-  // Depuis la refonte principal/secondaire, les champs d'objectif vivent
-  // dans goals.principal (plus au niveau racine de `goals`) — c'est
-  // l'objectif principal qui pilote la progression affichée ici, pas le
-  // slot actif dans l'onglet Objectifs (état d'affichage sans rapport).
-  const principal = goals.principal || {};
-  const kmGoal = principal.kmMensuel ? Number(principal.kmMensuel) : null;
-  const weeklySessionGoal = principal.frequence ? Number(principal.frequence) : null;
+  // Séances/semaine et km/mois sont partagés (tronc commun), peu importe
+  // l'objectif principal/secondaire actif — voir "Ton profil coureur" dans
+  // l'onglet Objectifs.
+  const kmGoal = goals.kmMensuel ? Number(goals.kmMensuel) : null;
+  const weeklySessionGoal = goals.frequence ? Number(goals.frequence) : null;
   const sessionGoal = weeklySessionGoal ? Math.round(weeklySessionGoal*4.33) : null;
 
   return `<div class="hero" style="flex-direction:column;align-items:stretch">
@@ -2215,6 +2240,12 @@ function renderContent(){
       : "--accent:var(--yellow);--accent-dim:var(--yellow-dim);";
     const isRace = slot.objectifPrincipal==="Préparer une course";
     const blocks = OBJECTIF_BLOCKS[slot.objectifPrincipal] || OBJECTIF_BLOCKS["Autre"];
+    // Le volume d'entraînement (séances/semaine, km/mois) est partagé, peu
+    // importe l'objectif principal/secondaire actif — un seul volume réel
+    // par semaine, pas la peine de le dupliquer par objectif. Le petit mot
+    // "reprise en douceur" reste lié à l'OBJECTIF PRINCIPAL (celui qui pilote
+    // vraiment l'entraînement), pas au slot affiché à l'écran.
+    const volumeHint = (OBJECTIF_BLOCKS[goals.principal?.objectifPrincipal]||{}).volumeHint;
     const stats = situationStats(slot.objectifPrincipal);
     const isAmelioAllure = slot.objectifPrincipal==="Améliorer mon allure";
     const efPaceRef = isAmelioAllure ? recentEfPace() : null;
@@ -2223,7 +2254,7 @@ function renderContent(){
     const pbH=Math.floor((slot.pbSec||0)/3600), pbM=Math.floor(((slot.pbSec||0)%3600)/60);
     const raceKm = RACE_DISTANCES_KM[slot.distanceCourse];
     const racePaceInit = (raceKm && slot.tempsViseSec) ? Math.round(slot.tempsViseSec/raceKm) : null;
-    const kmAnnuelInit = slot.kmMensuel ? Math.round(slot.kmMensuel*12) : "";
+    const kmAnnuelInit = goals.kmMensuel ? Math.round(goals.kmMensuel*12) : "";
     const NIVEAUX = [["Débutant","Tu commences ou reprends"],["Intermédiaire","Tu cours régulièrement"],["Confirmé","Tu as de l'expérience en compet"]];
     // Icône par objectif — cartes plus grandes que les puces des autres
     // champs, avec un peu de vie sur l'icône choisie (pop au clic, léger
@@ -2250,7 +2281,27 @@ function renderContent(){
         <span class="lbl">Volume actuel</span>
         <span class="v">${volActuel!=null?volActuel+" km/mois":"—"}${freqActuelle!=null?" · "+freqActuelle+" séance(s)/sem.":""}</span>
       </div>`:""}
-      <div class="chart-hint" style="margin-top:${(volActuel!=null || freqActuelle!=null)?"12px":"0"}">Terrain habituel</div>
+      <div class="chart-hint" style="margin-top:${(volActuel!=null || freqActuelle!=null)?"12px":"0"}">Séances de course / semaine</div>
+      ${volumeHint?`<div class="chart-hint" style="margin-top:0;margin-bottom:8px">${volumeHint}</div>`:""}
+      <div class="filters" data-chipgroup="frequence" style="margin-bottom:0">
+        ${["1","2","3","4","5","6","7"].map(o=>`<button type="button" class="flt${o===goals.frequence?" active":""}" data-value="${o}" onclick="saveFrequence('${o}')">${o}</button>`).join("")}
+      </div>
+      <div class="chart-hint" id="frequenceHint" style="margin-top:6px">${FREQUENCE_HINTS[goals.frequence]||""}</div>
+      <div class="chart-hint" style="margin-top:14px">Renfo / mobilité / semaine</div>
+      <div class="filters" data-chipgroup="frequenceAutre" style="margin-bottom:12px">
+        ${["0","1","2","3","4","5","6","7"].map(o=>`<button type="button" class="flt${o===goals.frequenceAutre?" active":""}" data-value="${o}" onclick="saveFrequenceAutre('${o}')">${o}</button>`).join("")}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Km / mois</span>
+          <input type="number" min="1" max="1000" id="goal_kmMensuel" value="${goals.kmMensuel||""}" placeholder="ex: 120" oninput="syncKmGoal('mensuel')" onchange="saveVolumeGoal()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;min-width:0">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Km / an</span>
+          <input type="number" min="1" max="12000" id="goal_kmAnnuel" value="${kmAnnuelInit}" placeholder="ex: 1440" oninput="syncKmGoal('annuel')" onchange="saveVolumeGoal()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;min-width:0">
+        </div>
+      </div>
+      <div class="chart-hint" style="margin-top:14px">Terrain habituel</div>
       <div class="filters" data-chipgroup="terrain" style="margin-bottom:0">
         ${TERRAIN_OPTIONS.map(o=>`<button type="button" class="flt${o===goals.terrain?" active":""}" data-value="${o}" onclick="saveTerrain('${o}')">${o}</button>`).join("")}
       </div>
@@ -2357,31 +2408,6 @@ function renderContent(){
       ${chipRow("zoneConcernee", ZONE_OPTIONS, slot.zoneConcernee)}
       <input type="hidden" id="goal_zoneConcernee" value="${slot.zoneConcernee||""}">
     </div>`:""}
-
-    ${blocks.rythme?`<div class="card">
-      <div class="stitle">Rythme visé</div>
-      ${blocks.rythmeHint?`<div class="chart-hint" style="margin-top:0">${blocks.rythmeHint}</div>`:""}
-      <div class="chart-hint" style="margin-top:0">Séances de course / semaine</div>
-      ${chipRow("frequence", ["1","2","3","4","5","6","7"], slot.frequence)}
-      <div class="chart-hint" id="frequenceHint" style="margin-top:6px">${FREQUENCE_HINTS[slot.frequence]||""}</div>
-      <input type="hidden" id="goal_frequence" value="${slot.frequence||""}">
-      <div class="chart-hint" style="margin-top:14px">Renfo / mobilité / semaine</div>
-      <div style="${blocks.rythme==="freqOnly"?"margin-bottom:0":"margin-bottom:12px"}">
-        ${chipRow("frequenceAutre", ["0","1","2","3","4","5","6","7"], slot.frequenceAutre)}
-      </div>
-      <input type="hidden" id="goal_frequenceAutre" value="${slot.frequenceAutre||""}">
-      ${blocks.rythme==="full"?`
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Km / mois</span>
-          <input type="number" min="1" max="1000" id="goal_kmMensuel" value="${slot.kmMensuel||""}" placeholder="ex: 120" oninput="syncKmGoal('mensuel')" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;min-width:0">
-        </div>
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Km / an</span>
-          <input type="number" min="1" max="12000" id="goal_kmAnnuel" value="${kmAnnuelInit}" placeholder="ex: 1440" oninput="syncKmGoal('annuel')" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;min-width:0">
-        </div>
-      </div>`:`<input type="hidden" id="goal_kmMensuel" value="${slot.kmMensuel||""}">`}
-    </div>`:`<input type="hidden" id="goal_frequence" value="${slot.frequence||""}"><input type="hidden" id="goal_frequenceAutre" value="${slot.frequenceAutre||""}"><input type="hidden" id="goal_kmMensuel" value="${slot.kmMensuel||""}">`}
 
     ${blocks.regularite?`<div class="card">
       <div class="stitle">Ta régularité</div>
