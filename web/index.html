@@ -683,7 +683,7 @@ window.saveSyncSinceDate = async (value) => {
 // Champs propres à un objectif (principal OU secondaire) — "niveau" et
 // "autre" restent partagés entre les deux (ils décrivent le coureur, pas
 // un objectif en particulier).
-const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","allureEfVisee","allureWorkVisee","vmaConnue","vma","dureeArret","zoneConcernee","joursDisponibles","freins","rappelPref"];
+const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","allureEfVisee","allureWorkVisee","vmaConnue","vma","dureeArret","zoneConcernee","joursDisponibles","freins","motivation","rappelPref","runsLast3Months"];
 const RACE_DISTANCES_KM = {"5km":5,"10km":10,"15km":15,"Semi":21.0975,"Marathon":42.195};
 // Quels blocs afficher selon le type d'objectif — pour ne demander que ce
 // qui est pertinent (retour d'audit). "Autre" et un objectif pas encore
@@ -730,6 +730,7 @@ const TERRAIN_COURSE_OPTIONS = ["Plat","Vallonné","Montagneux"];
 // enregistrée pour une future notification.
 const JOURS_OPTIONS = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
 const FREINS_OPTIONS = ["Motivation","Météo","Manque de temps","Fatigue"];
+const MOTIVATION_OPTIONS = ["Santé","Bien-être mental","Perte de poids","Performance","Socialiser","Discipline/routine"];
 const RAPPEL_OPTIONS = ["Aucun","Notification","Email"];
 // Semaines restantes avant la course, affichées en direct sous la date.
 function weeksUntilText(dateStr){
@@ -2300,6 +2301,7 @@ function renderContent(){
     // vraiment l'entraînement), pas au slot affiché à l'écran.
     const volumeHint = (OBJECTIF_BLOCKS[goals.principal?.objectifPrincipal]||{}).volumeHint;
     const stats = situationStats(slot.objectifPrincipal);
+    const isReguliere = slot.objectifPrincipal==="Courir plus régulièrement";
     const isAmelioAllure = slot.objectifPrincipal==="Améliorer mon allure";
     const efPaceRef = isAmelioAllure ? recentEfPace() : null;
     const intensiveFreqRef = isAmelioAllure ? recentIntensiveFrequency() : null;
@@ -2470,7 +2472,11 @@ function renderContent(){
     ${stats.length?`<div class="card">
       <div class="stitle">Ta situation actuelle</div>
       ${stats.map(([label,val])=>`<div class="account-row"><span class="lbl">${label}</span><span class="v">${val}</span></div>`).join("")}
-    </div>`:""}
+      ${isReguliere?`<div class="field" style="margin-top:10px;margin-bottom:0">
+        <span style="font-size:12px;color:var(--text-dim)">Courses ces 3 derniers mois (estimation)</span>
+        <input type="number" min="0" max="200" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}" placeholder="ex: 20" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;text-align:right">
+      </div>`:`<input type="hidden" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}">`}
+    </div>`:`<input type="hidden" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}">`}
 
     ${blocks.blessure?`<div class="card">
       <div class="stitle">Contexte de la reprise</div>
@@ -2483,10 +2489,13 @@ function renderContent(){
     </div>`:""}
 
     ${blocks.regularite?`<div class="card">
-      <div class="stitle">Ta régularité</div>
+      <div class="stitle">Ton objectif idéal de séances</div>
       <div class="chart-hint" style="margin-top:0">Jours disponibles</div>
       ${multiChipRow("joursDisponibles", JOURS_OPTIONS, slot.joursDisponibles)}
       <input type="hidden" id="goal_joursDisponibles" value="${slot.joursDisponibles||""}">
+      <div class="chart-hint" style="margin-top:14px">Ce qui te motive le plus</div>
+      ${multiChipRow("motivation", MOTIVATION_OPTIONS, slot.motivation)}
+      <input type="hidden" id="goal_motivation" value="${slot.motivation||""}">
       <div class="chart-hint" style="margin-top:14px">Ce qui te freine le plus</div>
       ${multiChipRow("freins", FREINS_OPTIONS, slot.freins)}
       <input type="hidden" id="goal_freins" value="${slot.freins||""}">
@@ -2494,7 +2503,7 @@ function renderContent(){
       <div class="chart-hint" style="margin-top:0;margin-bottom:8px">Pas encore de notifications envoyées — juste ta préférence, pour plus tard.</div>
       ${chipRow("rappelPref", RAPPEL_OPTIONS, slot.rappelPref)}
       <input type="hidden" id="goal_rappelPref" value="${slot.rappelPref||""}">
-    </div>`:`<input type="hidden" id="goal_joursDisponibles" value="${slot.joursDisponibles||""}"><input type="hidden" id="goal_freins" value="${slot.freins||""}"><input type="hidden" id="goal_rappelPref" value="${slot.rappelPref||""}">`}
+    </div>`:`<input type="hidden" id="goal_joursDisponibles" value="${slot.joursDisponibles||""}"><input type="hidden" id="goal_motivation" value="${slot.motivation||""}"><input type="hidden" id="goal_freins" value="${slot.freins||""}"><input type="hidden" id="goal_rappelPref" value="${slot.rappelPref||""}">`}
 
     ${blocks.allure?`<div class="card">
       <div class="stitle">Allure cible</div>
