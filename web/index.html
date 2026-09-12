@@ -711,6 +711,11 @@ const FREQUENCE_HINTS = {
   "6":"Un gros volume, presque quotidien",
   "7":"Tous les jours, à fond !",
 };
+// "Socle commun" : quelques infos utiles quel que soit l'objectif, à ne
+// demander qu'une fois — âge/sexe/niveau existent déjà ailleurs (Mon
+// compte, Ton niveau actuel), pas la peine de les redemander ici.
+const TERRAIN_OPTIONS = ["Route","Trail","Tapis","Mixte"];
+const EQUIPEMENT_OPTIONS = ["Apple Watch","Garmin","Whoop","Strava","Aucun"];
 // Anciens objectifs enregistrés à plat (avant l'ajout de l'objectif
 // secondaire) : repris tels quels comme objectif "principal" au premier
 // chargement, sans réécriture en base tant que l'utilisateur n'a pas
@@ -756,6 +761,19 @@ window.selectChip = (field, value) => {
     const hint = document.getElementById("frequenceHint");
     if(hint) hint.textContent = FREQUENCE_HINTS[value]||"";
   }
+};
+// Variante multi-sélection (équipement connecté : plusieurs à la fois
+// possibles) — stockée en une chaîne "Apple Watch,Strava" plutôt qu'un
+// tableau, pour rester un simple champ texte comme le reste de `goals`.
+window.toggleMultiChip = (field, value) => {
+  const hidden = document.getElementById("goal_"+field);
+  let arr = hidden.value ? hidden.value.split(",") : [];
+  arr = arr.includes(value) ? arr.filter(v=>v!==value) : [...arr, value];
+  hidden.value = arr.join(",");
+  const group = document.querySelector(`[data-chipgroup="${field}"]`);
+  if(group) group.querySelectorAll("[data-value]").forEach(el=>{
+    el.classList.toggle("active", arr.includes(el.dataset.value));
+  });
 };
 
 // Temps visé et allure visée se calculent l'un à partir de l'autre (avec
@@ -841,6 +859,8 @@ window.saveGoals = async () => {
     [activeGoalSlot]: slotValue,
     niveau: document.getElementById("goal_niveau")?.value ?? goals.niveau,
     autre: document.getElementById("goal_autre")?.value ?? goals.autre,
+    terrain: document.getElementById("goal_terrain")?.value ?? goals.terrain,
+    equipement: document.getElementById("goal_equipement")?.value ?? goals.equipement,
   };
   if(!(await upsertProfile({ goals: value }))) return;
   goals = value;
@@ -2080,6 +2100,17 @@ function renderContent(){
     const chipRow = (field, options, current) => `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
       ${options.map(o=>`<button type="button" class="flt${o===current?" active":""}" data-value="${o}" onclick="selectChip('${field}','${o}')">${o}</button>`).join("")}
     </div>`;
+    // Même rendu que chipRow, mais plusieurs boutons peuvent être actifs à
+    // la fois (équipement connecté : on peut avoir montre + Strava).
+    const multiChipRow = (field, options, currentStr) => {
+      const arr = currentStr ? currentStr.split(",") : [];
+      return `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
+        ${options.map(o=>`<button type="button" class="flt${arr.includes(o)?" active":""}" data-value="${o}" onclick="toggleMultiChip('${field}','${o}')">${o}</button>`).join("")}
+      </div>`;
+    };
+    // Volume déjà calculable depuis l'historique réel de séances — pas la
+    // peine de le redemander à l'utilisateur comme le reste du socle commun.
+    const volActuel = recentMonthlyVolume(), freqActuelle = recentWeeklyFrequency();
     // Deux objectifs indépendants (principal/secondaire), chacun avec son
     // propre type, sa course éventuelle, son rythme et son allure cible —
     // "niveau" et "autre" restent partagés (voir GOAL_SLOT_FIELDS). La
@@ -2117,7 +2148,22 @@ function renderContent(){
       </div>`).join("")}
     </div>`;
 
-    el.innerHTML=`<div class="goal-sticky-header">
+    el.innerHTML=`<div class="card">
+      <div class="stitle">Ton profil coureur</div>
+      <div class="chart-hint" style="margin-top:0">Quelques infos utiles quel que soit l'objectif choisi, à ne renseigner qu'une fois.</div>
+      ${(volActuel!=null || freqActuelle!=null)?`<div class="account-row">
+        <span class="lbl">Volume actuel</span>
+        <span class="v">${volActuel!=null?volActuel+" km/mois":"—"}${freqActuelle!=null?" · "+freqActuelle+" séance(s)/sem.":""}</span>
+      </div>`:""}
+      <div class="chart-hint" style="margin-top:${(volActuel!=null || freqActuelle!=null)?"12px":"0"}">Terrain habituel</div>
+      ${chipRow("terrain", TERRAIN_OPTIONS, goals.terrain)}
+      <input type="hidden" id="goal_terrain" value="${goals.terrain||""}">
+      <div class="chart-hint" style="margin-top:14px">Équipement connecté</div>
+      ${multiChipRow("equipement", EQUIPEMENT_OPTIONS, goals.equipement)}
+      <input type="hidden" id="goal_equipement" value="${goals.equipement||""}">
+    </div>
+
+    <div class="goal-sticky-header">
     <div class="card">
       <div class="stitle">Ton niveau actuel</div>
       <div class="goal-level-cards" data-chipgroup="niveau">
