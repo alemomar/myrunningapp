@@ -679,7 +679,7 @@ window.saveSyncSinceDate = async (value) => {
 // Champs propres à un objectif (principal OU secondaire) — "niveau" et
 // "autre" restent partagés entre les deux (ils décrivent le coureur, pas
 // un objectif en particulier).
-const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","dateCible","kmMensuel","frequence","frequenceAutre","allureEfVisee","allureWorkVisee","dureeArret","zoneConcernee"];
+const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","kmMensuel","frequence","frequenceAutre","allureEfVisee","allureWorkVisee","dureeArret","zoneConcernee"];
 const RACE_DISTANCES_KM = {"5km":5,"10km":10,"15km":15,"Semi":21.0975,"Marathon":42.195};
 // Quels blocs afficher selon le type d'objectif — pour ne demander que ce
 // qui est pertinent (retour d'audit). "rythme" vaut "full" (les 3 champs),
@@ -716,6 +716,21 @@ const FREQUENCE_HINTS = {
 // compte, Ton niveau actuel), pas la peine de les redemander ici.
 const TERRAIN_OPTIONS = ["Route","Trail","Tapis","Mixte"];
 const EQUIPEMENT_OPTIONS = ["Apple Watch","Garmin","Whoop","Strava","Aucun"];
+// "Préparer une course" : terrain de LA course visée (distinct du terrain
+// habituel du socle commun, qui décrit l'entraînement au quotidien).
+const TERRAIN_COURSE_OPTIONS = ["Plat","Vallonné","Montagneux"];
+// Semaines restantes avant la course, affichées en direct sous la date.
+function weeksUntilText(dateStr){
+  if(!dateStr) return "";
+  const diffDays = Math.ceil((new Date(dateStr) - new Date())/86400000);
+  if(diffDays<0) return "Date déjà passée";
+  const weeks = Math.ceil(diffDays/7);
+  return weeks===0 ? "C'est cette semaine !" : `Il te reste ${weeks} semaine${weeks>1?"s":""}`;
+}
+window.updateWeeksUntil = () => {
+  const out = document.getElementById("weeksUntilOut");
+  if(out) out.textContent = weeksUntilText(document.getElementById("goal_dateCible")?.value);
+};
 // Anciens objectifs enregistrés à plat (avant l'ajout de l'objectif
 // secondaire) : repris tels quels comme objectif "principal" au premier
 // chargement, sans réécriture en base tant que l'utilisateur n'a pas
@@ -760,6 +775,14 @@ window.selectChip = (field, value) => {
   if(field==="frequence"){
     const hint = document.getElementById("frequenceHint");
     if(hint) hint.textContent = FREQUENCE_HINTS[value]||"";
+  }
+  if(field==="pbExistant"){
+    const block = document.getElementById("pbTimeBlock");
+    if(block) block.style.display = (value==="Oui") ? "" : "none";
+  }
+  if(field==="objectifChrono"){
+    const block = document.getElementById("chronoBlock");
+    if(block) block.style.display = (value==="Juste finir") ? "none" : "";
   }
 };
 // Variante multi-sélection (équipement connecté : plusieurs à la fois
@@ -854,6 +877,10 @@ window.saveGoals = async () => {
   const m = parseInt(document.getElementById("goal_tempsM")?.value,10)||0;
   const totalSec = h*3600+m*60;
   slotValue.tempsViseSec = totalSec>0 ? totalSec : "";
+  const pbH = parseInt(document.getElementById("goal_pbH")?.value,10)||0;
+  const pbM = parseInt(document.getElementById("goal_pbM")?.value,10)||0;
+  const pbTotalSec = pbH*3600+pbM*60;
+  slotValue.pbSec = pbTotalSec>0 ? pbTotalSec : "";
   const value = {
     ...goals,
     [activeGoalSlot]: slotValue,
@@ -2126,6 +2153,7 @@ function renderContent(){
     const blocks = OBJECTIF_BLOCKS[slot.objectifPrincipal] || OBJECTIF_BLOCKS["Autre"];
     const stats = situationStats(slot.objectifPrincipal);
     const tH=Math.floor((slot.tempsViseSec||0)/3600), tM=Math.floor(((slot.tempsViseSec||0)%3600)/60);
+    const pbH=Math.floor((slot.pbSec||0)/3600), pbM=Math.floor(((slot.pbSec||0)%3600)/60);
     const raceKm = RACE_DISTANCES_KM[slot.distanceCourse];
     const racePaceInit = (raceKm && slot.tempsViseSec) ? Math.round(slot.tempsViseSec/raceKm) : null;
     const kmAnnuelInit = slot.kmMensuel ? Math.round(slot.kmMensuel*12) : "";
@@ -2192,10 +2220,35 @@ function renderContent(){
         <div class="chart-hint" style="margin-top:0">Distance visée</div>
         ${chipRow("distanceCourse", ["5km","10km","15km","Semi","Marathon","Autre"], slot.distanceCourse)}
         <input type="hidden" id="goal_distanceCourse" value="${slot.distanceCourse||""}">
-        <div class="field" style="margin-top:12px;margin-bottom:0">
+
+        <div class="chart-hint" style="margin-top:14px">Terrain de la course</div>
+        ${chipRow("terrainCourse", TERRAIN_COURSE_OPTIONS, slot.terrainCourse)}
+        <input type="hidden" id="goal_terrainCourse" value="${slot.terrainCourse||""}">
+
+        <div class="field" style="margin-top:14px;margin-bottom:0">
           <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Date de la course</span>
-          <input type="date" id="goal_dateCible" value="${slot.dateCible||""}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+          <input type="date" id="goal_dateCible" value="${slot.dateCible||""}" oninput="updateWeeksUntil()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
         </div>
+        <div class="chart-hint" id="weeksUntilOut" style="margin-top:4px">${weeksUntilText(slot.dateCible)}</div>
+
+        <div class="chart-hint" style="margin-top:10px">As-tu déjà couru cette distance ?</div>
+        ${chipRow("pbExistant", ["Oui","Non"], slot.pbExistant)}
+        <input type="hidden" id="goal_pbExistant" value="${slot.pbExistant||""}">
+        <div id="pbTimeBlock" style="margin-top:10px;display:${slot.pbExistant==="Oui"?"":"none"}">
+          <div class="chart-hint" style="margin-top:0">Ton record actuel sur cette distance</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" min="0" max="99" class="time-input" id="goal_pbH" value="${pbH||""}" placeholder="0">
+            <span style="font-size:12px;color:var(--text-dim)">h</span>
+            <input type="number" min="0" max="59" class="time-input" id="goal_pbM" value="${pbM||""}" placeholder="0">
+            <span style="font-size:12px;color:var(--text-dim)">min</span>
+          </div>
+        </div>
+
+        <div class="chart-hint" style="margin-top:14px">Type d'objectif</div>
+        ${chipRow("objectifChrono", ["Viser un chrono","Juste finir"], slot.objectifChrono)}
+        <input type="hidden" id="goal_objectifChrono" value="${slot.objectifChrono||""}">
+
+        <div id="chronoBlock" style="display:${slot.objectifChrono==="Juste finir"?"none":""}">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
           <div>
             <div class="chart-hint" style="margin:0 0 6px">Temps visé</div>
@@ -2215,6 +2268,7 @@ function renderContent(){
             </div>
             <input type="hidden" id="goal_raceAllureVisee" value="${racePaceInit||""}">
           </div>
+        </div>
         </div>
       </div>
     </div>
