@@ -56,8 +56,8 @@ Vision complète transmise par Omar pour approfondir l'onglet Objectifs, au-del�
 **A. Données à collecter — scope raisonnable, suit les patterns déjà en place**
 
 - ~~Socle commun (avant même de choisir un objectif) : terrain habituel, équipement connecté (Apple Watch/Garmin/Whoop/Strava), volume actuel~~ **Fait (2026-09-12)** — carte "Ton profil coureur" en tête d'onglet. Âge/sexe/niveau volontairement pas dupliqués (déjà dans Mon compte / "Ton niveau actuel").
-- **Préparer une course** : type de course, date (semaines restantes calculées), objectif chrono vs "finisher", PB existant sur la distance, dénivelé/terrain de la course.
-- **Améliorer mon allure** : gain visé (delta plutôt que valeur absolue ?), FC à l'allure cible, fréquence fractionné/tempo actuelle, VMA connue ou test à proposer.
+- ~~**Préparer une course** : type de course, date (semaines restantes calculées), objectif chrono vs "finisher", PB existant sur la distance, dénivelé/terrain de la course.~~ **Fait (2026-09-12)**
+- ~~**Améliorer mon allure** : FC à l'allure cible, fréquence fractionné/tempo actuelle, VMA connue ou test à proposer.~~ **Fait (2026-09-12)** — allure EF de référence (calculée depuis l'historique) affichée aussi, en plus de la fréquence fractionné/tempo, FC cible et VMA.
 - **Courir plus régulièrement** : créneaux/jours disponibles, principaux freins (motivation/météo/temps/fatigue), préférence de rappel.
 - **Reprendre après une pause/blessure** : type d'interruption (blessure/maladie/indispo/sans raison — pas juste blessure), statut de la blessure (guérie/en rééducation/feu vert médical), niveau avant la pause, douleur actuelle au repos et à l'effort (au-delà de durée d'arrêt + zone déjà en place).
 - **Rester en forme** : autres activités pratiquées, motivation principale (santé/sommeil/mental/poids), et une question franche : veut-il des objectifs chiffrés du tout, ou juste du suivi passif ?
