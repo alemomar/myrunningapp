@@ -740,9 +740,26 @@ function migrateGoals(g){
   const {niveau, autre, ...rest} = g;
   return { principal: rest, secondaire: {}, niveau, autre };
 }
+// "Ton profil coureur" (terrain/équipement), "Ton niveau actuel" et "Autre
+// chose à préciser" sont partagés, indépendants de l'objectif affiché — un
+// re-rendu complet (changement d'objectif, bascule principal/secondaire)
+// regénère leur HTML depuis `goals`, donc sans ça toute saisie pas encore
+// enregistrée sur ces champs serait silencieusement écrasée par leur
+// dernière valeur sauvegardée.
+function captureSharedFields(){
+  const terrainEl = document.getElementById("goal_terrain");
+  const equipementEl = document.getElementById("goal_equipement");
+  const niveauEl = document.getElementById("goal_niveau");
+  const autreEl = document.getElementById("goal_autre");
+  if(terrainEl) goals.terrain = terrainEl.value;
+  if(equipementEl) goals.equipement = equipementEl.value;
+  if(niveauEl) goals.niveau = niveauEl.value;
+  if(autreEl) goals.autre = autreEl.value;
+}
 // Bascule l'objectif affiché/édité (principal ↔ secondaire) — un
 // re-rendu complet suffit, comme pour les onglets.
 window.selectGoalSlot = (slot) => {
+  captureSharedFields();
   activeGoalSlot = slot;
   renderContent();
 };
@@ -761,6 +778,7 @@ window.selectChip = (field, value) => {
   // de la dernière valeur sauvegardée — acceptable vu qu'un changement de
   // type change aussi ce qui est pertinent de toute façon.
   if(field==="objectifPrincipal"){
+    captureSharedFields();
     goals[activeGoalSlot] = Object.assign({}, goals[activeGoalSlot], {objectifPrincipal: value});
     renderContent();
     return;
