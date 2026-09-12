@@ -740,19 +740,16 @@ function migrateGoals(g){
   const {niveau, autre, ...rest} = g;
   return { principal: rest, secondaire: {}, niveau, autre };
 }
-// "Ton profil coureur" (terrain/équipement), "Ton niveau actuel" et "Autre
-// chose à préciser" sont partagés, indépendants de l'objectif affiché — un
-// re-rendu complet (changement d'objectif, bascule principal/secondaire)
-// regénère leur HTML depuis `goals`, donc sans ça toute saisie pas encore
-// enregistrée sur ces champs serait silencieusement écrasée par leur
-// dernière valeur sauvegardée.
+// "Ton niveau actuel" et "Autre chose à préciser" sont partagés, indépendants
+// de l'objectif affiché — un re-rendu complet (changement d'objectif, bascule
+// principal/secondaire) regénère leur HTML depuis `goals`, donc sans ça toute
+// saisie pas encore enregistrée sur ces champs serait silencieusement
+// écrasée par leur dernière valeur sauvegardée. (Terrain/équipement n'ont pas
+// ce problème : ils s'enregistrent immédiatement au clic, voir saveTerrain/
+// saveEquipement.)
 function captureSharedFields(){
-  const terrainEl = document.getElementById("goal_terrain");
-  const equipementEl = document.getElementById("goal_equipement");
   const niveauEl = document.getElementById("goal_niveau");
   const autreEl = document.getElementById("goal_autre");
-  if(terrainEl) goals.terrain = terrainEl.value;
-  if(equipementEl) goals.equipement = equipementEl.value;
   if(niveauEl) goals.niveau = niveauEl.value;
   if(autreEl) goals.autre = autreEl.value;
 }
@@ -809,20 +806,6 @@ window.selectChip = (field, value) => {
     if(hint) hint.style.display = (value==="Non") ? "" : "none";
   }
 };
-// Variante multi-sélection (équipement connecté : plusieurs à la fois
-// possibles) — stockée en une chaîne "Apple Watch,Strava" plutôt qu'un
-// tableau, pour rester un simple champ texte comme le reste de `goals`.
-window.toggleMultiChip = (field, value) => {
-  const hidden = document.getElementById("goal_"+field);
-  let arr = hidden.value ? hidden.value.split(",") : [];
-  arr = arr.includes(value) ? arr.filter(v=>v!==value) : [...arr, value];
-  hidden.value = arr.join(",");
-  const group = document.querySelector(`[data-chipgroup="${field}"]`);
-  if(group) group.querySelectorAll("[data-value]").forEach(el=>{
-    el.classList.toggle("active", arr.includes(el.dataset.value));
-  });
-};
-
 // Temps visé et allure visée se calculent l'un à partir de l'autre (avec
 // la distance choisie juste au-dessus) — seul le temps est enregistré
 // (goal_tempsH/M/S), l'allure n'est qu'une vue pratique dessus.
@@ -910,12 +893,34 @@ window.saveGoals = async () => {
     [activeGoalSlot]: slotValue,
     niveau: document.getElementById("goal_niveau")?.value ?? goals.niveau,
     autre: document.getElementById("goal_autre")?.value ?? goals.autre,
-    terrain: document.getElementById("goal_terrain")?.value ?? goals.terrain,
-    equipement: document.getElementById("goal_equipement")?.value ?? goals.equipement,
   };
   if(!(await upsertProfile({ goals: value }))) return;
   goals = value;
   flashSaved("goalsSaved");
+};
+// Terrain/équipement s'enregistrent immédiatement au clic (comme la période
+// du dashboard dans Mon compte) plutôt que via le bouton "Enregistrer" du
+// bas : ce sont des réglages simples, sans lien avec l'objectif en cours de
+// saisie, pas la peine d'attendre pour les persister.
+window.saveTerrain = async (value) => {
+  const group = document.querySelector('[data-chipgroup="terrain"]');
+  if(group) group.querySelectorAll("[data-value]").forEach(el=>{
+    el.classList.toggle("active", el.dataset.value===value);
+  });
+  goals = { ...goals, terrain: value };
+  if(!(await upsertProfile({ goals }))) return;
+  flashSaved("profilSaved");
+};
+window.saveEquipement = async (value) => {
+  const current = goals.equipement ? goals.equipement.split(",") : [];
+  const arr = current.includes(value) ? current.filter(v=>v!==value) : [...current, value];
+  const group = document.querySelector('[data-chipgroup="equipement"]');
+  if(group) group.querySelectorAll("[data-value]").forEach(el=>{
+    el.classList.toggle("active", arr.includes(el.dataset.value));
+  });
+  goals = { ...goals, equipement: arr.join(",") };
+  if(!(await upsertProfile({ goals }))) return;
+  flashSaved("profilSaved");
 };
 window.uploadAvatar = async (input) => {
   const file = input.files[0];
@@ -2160,14 +2165,6 @@ function renderContent(){
     const chipRow = (field, options, current) => `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
       ${options.map(o=>`<button type="button" class="flt${o===current?" active":""}" data-value="${o}" onclick="selectChip('${field}','${o}')">${o}</button>`).join("")}
     </div>`;
-    // Même rendu que chipRow, mais plusieurs boutons peuvent être actifs à
-    // la fois (équipement connecté : on peut avoir montre + Strava).
-    const multiChipRow = (field, options, currentStr) => {
-      const arr = currentStr ? currentStr.split(",") : [];
-      return `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
-        ${options.map(o=>`<button type="button" class="flt${arr.includes(o)?" active":""}" data-value="${o}" onclick="toggleMultiChip('${field}','${o}')">${o}</button>`).join("")}
-      </div>`;
-    };
     // Volume déjà calculable depuis l'historique réel de séances — pas la
     // peine de le redemander à l'utilisateur comme le reste du socle commun.
     const volActuel = recentMonthlyVolume(), freqActuelle = recentWeeklyFrequency();
@@ -2220,11 +2217,14 @@ function renderContent(){
         <span class="v">${volActuel!=null?volActuel+" km/mois":"—"}${freqActuelle!=null?" · "+freqActuelle+" séance(s)/sem.":""}</span>
       </div>`:""}
       <div class="chart-hint" style="margin-top:${(volActuel!=null || freqActuelle!=null)?"12px":"0"}">Terrain habituel</div>
-      ${chipRow("terrain", TERRAIN_OPTIONS, goals.terrain)}
-      <input type="hidden" id="goal_terrain" value="${goals.terrain||""}">
+      <div class="filters" data-chipgroup="terrain" style="margin-bottom:0">
+        ${TERRAIN_OPTIONS.map(o=>`<button type="button" class="flt${o===goals.terrain?" active":""}" data-value="${o}" onclick="saveTerrain('${o}')">${o}</button>`).join("")}
+      </div>
       <div class="chart-hint" style="margin-top:14px">Équipement connecté</div>
-      ${multiChipRow("equipement", EQUIPEMENT_OPTIONS, goals.equipement)}
-      <input type="hidden" id="goal_equipement" value="${goals.equipement||""}">
+      <div class="filters" data-chipgroup="equipement" style="margin-bottom:0">
+        ${EQUIPEMENT_OPTIONS.map(o=>`<button type="button" class="flt${(goals.equipement||"").split(",").includes(o)?" active":""}" data-value="${o}" onclick="saveEquipement('${o}')">${o}</button>`).join("")}
+      </div>
+      <div id="profilSaved" class="save-confirm"></div>
     </div>
 
     <div class="goal-sticky-header">
