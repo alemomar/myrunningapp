@@ -2313,11 +2313,16 @@ function renderContent(){
     // Icône par objectif — cartes plus grandes que les puces des autres
     // champs, avec un peu de vie sur l'icône choisie (pop au clic, léger
     // flottement en continu) pour que l'écran ne soit pas que du texte.
+    // "Reprendre après une pause/blessure" retiré temporairement des choix
+    // proposés (2026-09-12, demande explicite) : trop technique en l'état,
+    // à retravailler avant de le reproposer. Le reste (OBJECTIF_BLOCKS,
+    // carte "Contexte de la reprise", DUREE_OPTIONS/ZONE_OPTIONS) reste en
+    // place pour pouvoir le réactiver facilement — il suffit de rajouter la
+    // ligne ci-dessous.
     const OBJECTIF_ICONS = [
       ["Préparer une course","flag"],
       ["Améliorer mon allure","bolt"],
       ["Courir plus régulièrement","route"],
-      ["Reprendre après une pause/blessure","care"],
       ["Rester en forme","heart"],
       ["Autre","sparkle"],
     ];
