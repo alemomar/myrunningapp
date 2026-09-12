@@ -679,7 +679,7 @@ window.saveSyncSinceDate = async (value) => {
 // Champs propres à un objectif (principal OU secondaire) — "niveau" et
 // "autre" restent partagés entre les deux (ils décrivent le coureur, pas
 // un objectif en particulier).
-const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","kmMensuel","frequence","frequenceAutre","allureEfVisee","allureWorkVisee","dureeArret","zoneConcernee"];
+const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","kmMensuel","frequence","frequenceAutre","allureEfVisee","allureWorkVisee","fcAllureCible","vmaConnue","vma","dureeArret","zoneConcernee"];
 const RACE_DISTANCES_KM = {"5km":5,"10km":10,"15km":15,"Semi":21.0975,"Marathon":42.195};
 // Quels blocs afficher selon le type d'objectif — pour ne demander que ce
 // qui est pertinent (retour d'audit). "rythme" vaut "full" (les 3 champs),
@@ -783,6 +783,12 @@ window.selectChip = (field, value) => {
   if(field==="objectifChrono"){
     const block = document.getElementById("chronoBlock");
     if(block) block.style.display = (value==="Juste finir") ? "none" : "";
+  }
+  if(field==="vmaConnue"){
+    const block = document.getElementById("vmaBlock");
+    if(block) block.style.display = (value==="Oui") ? "" : "none";
+    const hint = document.getElementById("vmaNonHint");
+    if(hint) hint.style.display = (value==="Non") ? "" : "none";
   }
 };
 // Variante multi-sélection (équipement connecté : plusieurs à la fois
@@ -1077,6 +1083,15 @@ function periodStats(period){
 function recentWeeklyFrequency(){
   const start = new Date(); start.setDate(start.getDate()-28);
   const recent = runningRuns.filter(r=>dateFromRun(r)>=start);
+  return recent.length ? Math.round(recent.length/4*10)/10 : null;
+}
+function recentEfPace(){
+  const recent = efRuns.filter(r=>r.allure).slice(-5);
+  return recent.length ? Math.round(recent.reduce((a,r)=>a+r.allure,0)/recent.length) : null;
+}
+function recentIntensiveFrequency(){
+  const start = new Date(); start.setDate(start.getDate()-28);
+  const recent = runningRuns.filter(r=>dateFromRun(r)>=start && (r.type==="Fractionné"||r.type==="Seuil"));
   return recent.length ? Math.round(recent.length/4*10)/10 : null;
 }
 function daysSinceLastRun(){
@@ -2152,6 +2167,9 @@ function renderContent(){
     const isRace = slot.objectifPrincipal==="Préparer une course";
     const blocks = OBJECTIF_BLOCKS[slot.objectifPrincipal] || OBJECTIF_BLOCKS["Autre"];
     const stats = situationStats(slot.objectifPrincipal);
+    const isAmelioAllure = slot.objectifPrincipal==="Améliorer mon allure";
+    const efPaceRef = isAmelioAllure ? recentEfPace() : null;
+    const intensiveFreqRef = isAmelioAllure ? recentIntensiveFrequency() : null;
     const tH=Math.floor((slot.tempsViseSec||0)/3600), tM=Math.floor(((slot.tempsViseSec||0)%3600)/60);
     const pbH=Math.floor((slot.pbSec||0)/3600), pbM=Math.floor(((slot.pbSec||0)%3600)/60);
     const raceKm = RACE_DISTANCES_KM[slot.distanceCourse];
@@ -2316,7 +2334,11 @@ function renderContent(){
     ${blocks.allure?`<div class="card">
       <div class="stitle">Allure cible</div>
       <div class="chart-hint">Optionnel — sert de repère sur les graphs de progression (onglets Dashboard/Séances).</div>
-      <div class="field">
+      ${isAmelioAllure?`<div class="account-row">
+        <span class="lbl">Allure EF actuelle (5 dernières séances)</span>
+        <span class="v">${efPaceRef!=null?fmtA(efPaceRef)+"/km":"pas encore assez de données"}</span>
+      </div>`:""}
+      <div class="field" style="${isAmelioAllure?"margin-top:10px":""}">
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure EF</span>
         <div class="pace-stepper">
           <button type="button" onclick="adjustPaceGoal('allureEfVisee',-5,360)">−</button>
@@ -2325,7 +2347,11 @@ function renderContent(){
         </div>
       </div>
       <input type="hidden" id="goal_allureEfVisee" value="${slot.allureEfVisee||""}">
-      <div class="field" style="margin-bottom:0">
+      ${isAmelioAllure?`<div class="account-row">
+        <span class="lbl">Séances fractionné/tempo actuelles (4 dernières sem.)</span>
+        <span class="v">${intensiveFreqRef!=null?intensiveFreqRef+"/semaine":"pas encore assez de données"}</span>
+      </div>`:""}
+      <div class="field" style="margin-bottom:0;${isAmelioAllure?"margin-top:10px":""}">
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure Work (fractionné)</span>
         <div class="pace-stepper">
           <button type="button" onclick="adjustPaceGoal('allureWorkVisee',-5,300)">−</button>
@@ -2334,6 +2360,21 @@ function renderContent(){
         </div>
       </div>
       <input type="hidden" id="goal_allureWorkVisee" value="${slot.allureWorkVisee||""}">
+      ${isAmelioAllure?`
+      <div class="field" style="margin-top:12px">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">FC à l'allure cible (bpm)</span>
+        <input type="number" min="60" max="220" id="goal_fcAllureCible" value="${slot.fcAllureCible||""}" placeholder="ex: 150" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+      </div>
+      <div class="chart-hint" style="margin-top:8px">Connais-tu ta VMA ?</div>
+      ${chipRow("vmaConnue", ["Oui","Non"], slot.vmaConnue)}
+      <input type="hidden" id="goal_vmaConnue" value="${slot.vmaConnue||""}">
+      <div id="vmaBlock" style="margin-top:10px;display:${slot.vmaConnue==="Oui"?"":"none"}">
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">VMA (km/h)</span>
+          <input type="number" min="8" max="25" step="0.1" id="goal_vma" value="${slot.vma||""}" placeholder="ex: 15" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        </div>
+      </div>
+      <div id="vmaNonHint" class="chart-hint" style="margin-top:8px;display:${slot.vmaConnue==="Non"?"":"none"}">Pas de souci — un test pour l'estimer arrivera dans une prochaine étape.</div>`:`<input type="hidden" id="goal_fcAllureCible" value="${slot.fcAllureCible||""}"><input type="hidden" id="goal_vmaConnue" value="${slot.vmaConnue||""}"><input type="hidden" id="goal_vma" value="${slot.vma||""}">`}
     </div>`:`<input type="hidden" id="goal_allureEfVisee" value="${slot.allureEfVisee||""}"><input type="hidden" id="goal_allureWorkVisee" value="${slot.allureWorkVisee||""}">`}
     ${!blocks.blessure?`<input type="hidden" id="goal_dureeArret" value="${slot.dureeArret||""}"><input type="hidden" id="goal_zoneConcernee" value="${slot.zoneConcernee||""}">`:""}
     </div>
