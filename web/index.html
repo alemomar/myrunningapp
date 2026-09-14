@@ -1991,6 +1991,15 @@ function painFormHTML(prefix, initial){
 }
 
 let openHrDetail = new Set();
+// Liste "Toutes les séances" repliée par défaut (date/type/km) : dépliée au
+// clic pour voir le détail complet (édition, cardio) — évite une liste très
+// longue de cartes toutes ouvertes en permanence.
+let openManageRow = new Set();
+window.toggleManageRow = (id) => {
+  if(openManageRow.has(id)) openManageRow.delete(id);
+  else openManageRow.add(id);
+  renderContent();
+};
 // Vrai seulement au tout premier rendu du dashboard depuis l'ouverture de
 // l'app : l'animation de célébration de la carte "Dernière séance" ne doit
 // jouer qu'une fois, pas à chaque re-render (changement de filtre, etc.).
@@ -2188,15 +2197,34 @@ function renderContent(){
     // a été retirée (doublon avec le graph des zones).
     const effMaxHr = maxHr || estimatedMaxHr();
     const effRestingHr = restingHr || null;
+    // Repliée par défaut (date/type/km) et groupée par mois, comme la liste
+    // de l'onglet Ressenti — le détail complet (édition, cardio) ne
+    // s'affiche qu'au clic sur une ligne, pour rester lisible avec beaucoup
+    // d'historique.
+    let lastMonthKey = null;
+    const monthLabel = (d) => {
+      const s = d.toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    };
     el.innerHTML=`
       <div class="card">
         <div class="stitle">Toutes les séances</div>
         <div class="chart-hint">Change le type ou l'interrupteur "Suivi" pour piloter ce qui compte dans tes stats de course. "Détail cardio" affiche la courbe FC et les zones quand elles sont disponibles.</div>
         <div class="filters">${["Tous",...TYPE_OPTIONS.filter(t=>t!=="Other")].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${t}</button>`).join("")}</div>
-        ${filtered.length?filtered.slice().reverse().map(r=>manageableRow(r, effMaxHr, effRestingHr)).join(""):`<div style="font-size:13px;color:var(--text-dim);padding:12px 0">Aucune séance de ce type</div>`}
+        ${filtered.length?filtered.slice().reverse().map(r=>{
+          const monthKey = `${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`;
+          const monthHeader = monthKey!==lastMonthKey ? `<div class="month-sep">${monthLabel(r.fullDate)}</div>` : "";
+          lastMonthKey = monthKey;
+          const open = openManageRow.has(r.id);
+          return `${monthHeader}
+          <div class="session-pick" onclick="toggleManageRow('${r.id}')">
+            <span>${icon(open?"chevronDown":"chevronRight",13)} ${icon(TICON[r.type]||"activity",13)} ${r.type} · ${r.label}${r.dist>0?" · "+r.dist.toFixed(2)+" km":""}</span>
+          </div>
+          ${open?manageableRow(r, effMaxHr, effRestingHr):""}`;
+        }).join(""):`<div style="font-size:13px;color:var(--text-dim);padding:12px 0">Aucune séance de ce type</div>`}
       </div>`;
     setTimeout(()=>{
-      filtered.filter(r=>openHrDetail.has(r.id) && r.hrSeries && r.hrSeries.length>1 && effMaxHr).forEach(r=>{
+      filtered.filter(r=>openManageRow.has(r.id) && openHrDetail.has(r.id) && r.hrSeries && r.hrSeries.length>1 && effMaxHr).forEach(r=>{
         mkHrCurveChart("cHr_"+r.id, r.hrSeries);
       });
     },50);
