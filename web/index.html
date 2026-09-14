@@ -683,7 +683,7 @@ window.saveSyncSinceDate = async (value) => {
 // Champs propres à un objectif (principal OU secondaire) — "niveau" et
 // "autre" restent partagés entre les deux (ils décrivent le coureur, pas
 // un objectif en particulier).
-const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","allureEfVisee","allureWorkVisee","vmaConnue","vma","dureeArret","zoneConcernee","joursDisponibles","freins","motivation","rappelPref","runsLast3Months"];
+const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","allureEfVisee","allureWorkVisee","vmaConnue","vma","dureeArret","zoneConcernee","joursDisponibles","freins","motivation","rappelPref","runsLast3Months","autresActivites","motivationForme","objectifsChiffres"];
 const RACE_DISTANCES_KM = {"5km":5,"10km":10,"15km":15,"Semi":21.0975,"Marathon":42.195};
 // Quels blocs afficher selon le type d'objectif — pour ne demander que ce
 // qui est pertinent (retour d'audit). "Autre" et un objectif pas encore
@@ -699,7 +699,7 @@ const OBJECTIF_BLOCKS = {
   "Courir plus régulièrement":          {allure:false, blessure:false, regularite:true},
   "Reprendre après une pause/blessure": {allure:false, blessure:true,  regularite:false,
     volumeHint:"Optionnel, à titre indicatif — pas la peine de viser haut pendant la reprise."},
-  "Rester en forme":                    {allure:false, blessure:false, regularite:false},
+  "Rester en forme":                    {allure:false, blessure:false, regularite:false, bienEtre:true},
   "Autre":                              {allure:true,  blessure:false, regularite:false},
 };
 // Zones réutilisées telles quelles depuis le schéma corporel de l'onglet
@@ -730,7 +730,9 @@ const TERRAIN_COURSE_OPTIONS = ["Plat","Vallonné","Montagneux"];
 // enregistrée pour une future notification.
 const JOURS_OPTIONS = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
 const FREINS_OPTIONS = ["Motivation","Météo","Manque de temps","Fatigue"];
-const MOTIVATION_OPTIONS = ["Santé","Bien-être mental","Perte de poids","Performance","Socialiser","Discipline/routine"];
+const MOTIVATION_OPTIONS = ["Santé","Sommeil","Bien-être mental","Perte de poids","Performance","Socialiser","Discipline/routine"];
+const AUTRES_ACTIVITES_OPTIONS = ["Musculation","Yoga/Stretching","Vélo","Natation","Sports collectifs","Autre"];
+const OBJECTIFS_CHIFFRES_OPTIONS = ["Oui, des chiffres","Non, juste du suivi"];
 const RAPPEL_OPTIONS = ["Aucun","Notification","Email"];
 // Semaines restantes avant la course, affichées en direct sous la date.
 function weeksUntilText(dateStr){
@@ -2504,6 +2506,20 @@ function renderContent(){
       ${chipRow("rappelPref", RAPPEL_OPTIONS, slot.rappelPref)}
       <input type="hidden" id="goal_rappelPref" value="${slot.rappelPref||""}">
     </div>`:`<input type="hidden" id="goal_joursDisponibles" value="${slot.joursDisponibles||""}"><input type="hidden" id="goal_motivation" value="${slot.motivation||""}"><input type="hidden" id="goal_freins" value="${slot.freins||""}"><input type="hidden" id="goal_rappelPref" value="${slot.rappelPref||""}">`}
+
+    ${blocks.bienEtre?`<div class="card">
+      <div class="stitle">Ton profil bien-être</div>
+      <div class="chart-hint" style="margin-top:0">Autres activités pratiquées</div>
+      ${multiChipRow("autresActivites", AUTRES_ACTIVITES_OPTIONS, slot.autresActivites)}
+      <input type="hidden" id="goal_autresActivites" value="${slot.autresActivites||""}">
+      <div class="chart-hint" style="margin-top:14px">Ce qui te motive le plus</div>
+      ${multiChipRow("motivationForme", MOTIVATION_OPTIONS, slot.motivationForme)}
+      <input type="hidden" id="goal_motivationForme" value="${slot.motivationForme||""}">
+      <div class="chart-hint" style="margin-top:14px">Objectifs chiffrés ou suivi passif ?</div>
+      <div class="chart-hint" style="margin-top:0;margin-bottom:8px">Certains préfèrent juste courir, sans se fixer de chiffres précis — les deux approches se valent.</div>
+      ${chipRow("objectifsChiffres", OBJECTIFS_CHIFFRES_OPTIONS, slot.objectifsChiffres)}
+      <input type="hidden" id="goal_objectifsChiffres" value="${slot.objectifsChiffres||""}">
+    </div>`:`<input type="hidden" id="goal_autresActivites" value="${slot.autresActivites||""}"><input type="hidden" id="goal_motivationForme" value="${slot.motivationForme||""}"><input type="hidden" id="goal_objectifsChiffres" value="${slot.objectifsChiffres||""}">`}
 
     ${blocks.allure?`<div class="card">
       <div class="stitle">Allure cible</div>
