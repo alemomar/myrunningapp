@@ -39,12 +39,12 @@ Commentaires laissés ligne par ligne sur [le tableau d'audit produit](https://c
 - ~~Sous-bloc course : "je ne vois pas cette fonctionnalité" — vérifier si bug d'affichage~~ **Vérifié (2026-09-11)** : pas de bug, fonctionnait déjà correctement
 - ~~Allure EF/Work visée : demander la période de mesure (semaine/mois/an) avant saisie, toujours donner un équivalent annuel~~ **Fait autrement (2026-09-11/12)** : Km/mois ↔ Km/an synchronisés automatiquement dans les deux sens ; pour la course, Temps visé ↔ Allure visée synchronisés pareil à partir de la distance choisie
 
-**Séances**
-- Graph FC moyenne : utilité questionnée — envisager plutôt un rapport allure/FC
-- Répartition zones cardio : ajouter un bouton "i" explicatif, revoir le rendu visuel (pas très joli actuellement)
-- Haute intensité (zones 4-5) : ajouter la courbe basse intensité (zones 1-3) sur le même graphique
-- Polarisation : à retirer, fait doublon avec le graph des zones juste au-dessus
-- Ligne de séance gérable : vérifier si les zones cardio remontent bien sur toutes les séances ; simplifier l'affichage (date/type/km, regroupement par mois, détail au clic)
+**Séances** — **Fait (2026-09-14)**
+- ~~Graph FC moyenne : utilité questionnée — envisager plutôt un rapport allure/FC~~ Remplacé par un graph "Allure / FC" (deux axes), déplacé dans le Dashboard.
+- ~~Répartition zones cardio : ajouter un bouton "i" explicatif, revoir le rendu visuel (pas très joli actuellement)~~ Déplacé tel quel dans le Dashboard (Omar a préféré ça à un bouton "i" sur place).
+- ~~Haute intensité (zones 4-5) : ajouter la courbe basse intensité (zones 1-3) sur le même graphique~~ Déplacé tel quel dans le Dashboard (sans ajout de courbe basse intensité, Omar a juste demandé le déplacement).
+- ~~Polarisation : à retirer, fait doublon avec le graph des zones juste au-dessus~~ Retiré (weeklyZoneBreakdown + mkPolarizationChart supprimés).
+- ~~Ligne de séance gérable : vérifier si les zones cardio remontent bien sur toutes les séances ; simplifier l'affichage (date/type/km, regroupement par mois, détail au clic)~~ Vérifié (pas de bug) + liste repliée par défaut, groupée par mois, comme l'onglet Ressenti.
 
 **Mon compte**
 - Avatar/profil : envisager de fusionner l'onglet Objectifs dans Mon compte (nouvelle rubrique "Objectif")
