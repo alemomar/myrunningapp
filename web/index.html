@@ -1670,6 +1670,9 @@ function monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr){
   });
   return Object.values(byMonth).sort((a,b)=>a.sortKey-b.sortKey);
 }
+// Barres horizontales empilées (une par mois) plutôt que verticales : plus
+// lisible pour comparer plusieurs mois d'affilée (préférence Omar,
+// 2026-09-19), même donnée qu'avant (% du temps par zone).
 function mkZoneMonthlyChart(canvasId, monthly){
   const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
   const zoneColors=["#5ac8fa","#30d158","#a8e063","#ff9f0a","#ff375f"];
@@ -1682,11 +1685,12 @@ function mkZoneMonthlyChart(canvasId, monthly){
     type:'bar',
     data:{labels: monthly.map(m=>m.label), datasets},
     options:{
+      indexAxis:'y',
       responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:true, position:'bottom', labels:{color:tick,boxWidth:10,font:{size:10}}}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{label:ctx=>ctx.dataset.label+" : "+ctx.parsed.y+"%"}}},
+      plugins:{legend:{display:true, position:'bottom', labels:{color:tick,boxWidth:10,font:{size:10}}}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{label:ctx=>ctx.dataset.label+" : "+ctx.parsed.x+"%"}}},
       scales:{
-        x:{stacked:true, ticks:{color:tick,font:{size:10}}, grid:{display:false}},
-        y:{stacked:true, max:100, ticks:{color:tick,font:{size:10},callback:v=>v+"%"}, grid:{color:grid}},
+        x:{stacked:true, max:100, ticks:{color:tick,font:{size:10},callback:v=>v+"%"}, grid:{color:grid}},
+        y:{stacked:true, ticks:{color:tick,font:{size:10}}, grid:{display:false}},
       }
     }
   });
@@ -2176,7 +2180,7 @@ function renderContent(){
       </div>`:""}
       ${monthly.length>=2?`<div class="card"><div class="stitle">Répartition des zones par mois</div>
         <div class="chart-hint">% du temps passé dans chaque zone, toutes séances confondues</div>
-        <div style="position:relative;width:100%;height:220px"><canvas id="cZoneMonthly"></canvas></div>
+        <div style="position:relative;width:100%;height:${Math.max(160, monthly.length*44)}px"><canvas id="cZoneMonthly"></canvas></div>
       </div>
       <div class="card"><div class="stitle">Volume haute intensité par mois</div>
         <div class="chart-hint">Minutes passées en zones 4-5 (effort soutenu/intense)</div>
