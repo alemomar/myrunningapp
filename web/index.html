@@ -266,7 +266,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .session-pick{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
 .session-pick:last-child{border-bottom:none}
 .session-pick .rated{color:var(--accent);font-size:11px;font-weight:600}
-.month-sep{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);padding:14px 0 4px}
+.month-sep{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text);padding:18px 0 8px;margin-bottom:4px;border-bottom:1px solid var(--border)}
+.month-sep:first-child{padding-top:0}
 .account-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
 .account-row:last-child{border-bottom:none}
 .account-row .lbl{font-size:13px;color:var(--text-dim)}
@@ -1716,26 +1717,31 @@ function mkHighIntensityMonthlyChart(canvasId, monthly){
 // graphique — plus parlant qu'une simple courbe de FC isolée pour repérer
 // une efficience cardiaque qui progresse (allure qui s'améliore à FC égale
 // ou inférieure).
+// Rapport allure/FC : une seule courbe, le vrai quotient allure(s/km) ÷
+// FC(bpm) pour chaque séance — pas deux courbes séparées sur le même
+// graphique. Plus ce chiffre baisse, plus l'efficience cardiaque progresse
+// (allure qui s'améliore à FC égale, ou FC qui baisse à allure égale).
 function mkPaceFcChart(canvasId, runs){
   const withHr = runs.filter(r=>r.fc && r.allure);
   if(!withHr.length) return;
   const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const ratios = withHr.map(r=>r.allure/r.fc);
   const c = new Chart(document.getElementById(canvasId), {
     type:'line',
     data:{
       labels: withHr.map(r=>r.label),
       datasets:[
-        {label:"Allure", data:withHr.map(r=>r.allure), borderColor:"#30d158", backgroundColor:"rgba(48,209,88,0.08)", yAxisID:'y', borderWidth:2, pointRadius:3, tension:0.3},
-        {label:"FC moyenne", data:withHr.map(r=>r.fc), borderColor:"#ff375f", backgroundColor:"rgba(255,55,95,0.08)", yAxisID:'y1', borderWidth:2, pointRadius:3, tension:0.3},
+        {label:"Allure/FC", data:ratios, borderColor:"#30d158", backgroundColor:"rgba(48,209,88,0.08)", fill:true, borderWidth:2, pointBackgroundColor:"#30d158", pointRadius:3, tension:0.3},
       ]
     },
     options:{
       responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:true, position:'bottom', labels:{color:tick,boxWidth:10,font:{size:10}}}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{label:ctx=>ctx.dataset.label==="Allure"?"Allure : "+fmtA(ctx.parsed.y):"FC : "+Math.round(ctx.parsed.y)+" bpm"}}},
+      plugins:{legend:{display:false}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{
+        label:ctx=>{ const r=withHr[ctx.dataIndex]; return [`Allure/FC : ${ctx.parsed.y.toFixed(2)} s/km/bpm`, `(${fmtA(r.allure)}/km · ${Math.round(r.fc)} bpm)`]; }
+      }}},
       scales:{
         x:{ticks:{color:tick,font:{size:10},autoSkip:true,maxRotation:45}, grid:{display:false}},
-        y:{reverse:true, position:'left', ticks:{color:"#30d158",font:{size:10},callback:v=>fmtA(v)}, grid:{color:grid}},
-        y1:{position:'right', ticks:{color:"#ff375f",font:{size:10},callback:v=>v+" bpm"}, grid:{display:false}},
+        y:{reverse:true, ticks:{color:tick,font:{size:10},callback:v=>v.toFixed(1)}, grid:{color:grid}},
       }
     }
   });
@@ -2165,7 +2171,7 @@ function renderContent(){
         <div style="position:relative;width:100%;height:180px"><canvas id="cVolMini"></canvas></div>
       </div>
       ${withHr.length?`<div class="card"><div class="stitle">Allure / FC</div>
-        <div class="chart-hint">Allure EF et FC moyenne sur les mêmes séances — allure qui s'améliore à FC stable ou en baisse = bon signe d'efficience cardiaque.</div>
+        <div class="chart-hint">Allure EF ÷ FC moyenne, par séance — plus la courbe descend, plus ton efficience cardiaque progresse.</div>
         <div style="position:relative;width:100%;height:200px"><canvas id="cPaceFc"></canvas></div>
       </div>`:""}
       ${monthly.length>=2?`<div class="card"><div class="stitle">Répartition des zones par mois</div>
