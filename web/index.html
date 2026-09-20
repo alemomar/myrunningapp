@@ -162,6 +162,12 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .kpi{
   background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);
   padding:14px;display:flex;flex-direction:column;gap:8px;
+  /* Sans ça, une grille à 3 colonnes (voir kpisHTML) déborde à droite :
+     par défaut une cellule de grille ne rétrécit jamais sous la largeur de
+     son contenu le plus long (ex: "Allure dernier mois" sur une ligne),
+     même si ça dépasse largement sa part de 1fr — d'où la dernière carte
+     coupée à droite alors que la marge de gauche reste correcte. */
+  min-width:0;
 }
 .kpi-top{display:flex;align-items:center;justify-content:space-between}
 .kpi-icon{
