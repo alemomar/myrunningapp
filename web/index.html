@@ -2363,12 +2363,17 @@ function renderContent(){
     // carte "Contexte de la reprise", DUREE_OPTIONS/ZONE_OPTIONS) reste en
     // place pour pouvoir le réactiver facilement — il suffit de rajouter la
     // ligne ci-dessous.
+    // "Autre" retiré définitivement (2026-09-20, demande explicite, dans le
+    // cadre du chantier Programme) : on reste sur les 4 objectifs cadrés
+    // plutôt qu'un objectif libre difficile à router vers une logique de
+    // génération de calendrier. OBJECTIF_BLOCKS["Autre"] reste néanmoins le
+    // fallback interne pour un objectif pas encore choisi (voir usage plus
+    // bas) — ne pas le supprimer de OBJECTIF_BLOCKS.
     const OBJECTIF_ICONS = [
       ["Préparer une course","flag"],
       ["Améliorer mon allure","bolt"],
       ["Courir plus régulièrement","route"],
       ["Rester en forme","heart"],
-      ["Autre","sparkle"],
     ];
     const objectifCards = (current) => `<div class="goal-principal-cards" data-chipgroup="objectifPrincipal">
       ${OBJECTIF_ICONS.map(([label,ic])=>`<div class="goal-principal-card${label===current?" active":""}" data-value="${label}" onclick="selectChip('objectifPrincipal','${label}')">
