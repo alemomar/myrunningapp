@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>MyRunningApp</title>
 <!-- PWA : permet d'ajouter l'app à l'écran d'accueil iOS/Android, ouverture
      en plein écran sans barre de navigateur (2026-09-20). -->
@@ -1394,7 +1394,7 @@ function heroHTML(){
     <div class="hero-rings-row">
       ${ringSmHTML(monthS.dist, kmGoal, "#30d158", monthS.dist.toFixed(0), kmGoal?`/${kmGoal}km`:"km", "Km ce mois")}
       ${ringSmHTML(monthS.runs.length, sessionGoal, "#0a84ff", String(monthS.runs.length), sessionGoal?`/${sessionGoal}`:"séances", "Séances ce mois")}
-      ${ringSmHTML(monthS.longMax||0, null, "#ffd60a", (monthS.longMax||0).toFixed(0), "km", "Plus longue sortie")}
+      ${ringSmHTML(monthS.time||0, null, "#ffd60a", Math.floor((monthS.time||0)/3600)+"h"+String(Math.round(((monthS.time||0)%3600)/60)).padStart(2,"0"), "", "Temps de course")}
     </div>
     ${(!kmGoal||!sessionGoal)?`<div class="chart-hint" style="margin-top:10px;margin-bottom:0">Objectifs incomplets — <a href="#" onclick="setTab(2);return false" style="color:var(--accent)">renseigne-les dans l'onglet Objectifs</a> pour voir ta progression.</div>`:""}
   </div>`;
@@ -1411,7 +1411,6 @@ function kpisHTML(){
   // d'inclusion par défaut (EF/Long/Fractionné/Récup/Course), modifiable par
   // séance via le toggle "Inclure dans les stats".
   const yearDist = runningRuns.filter(r=>dateFromRun(r)>=yearStart && r.dist>0).reduce((a,r)=>a+r.dist,0);
-  const monthS = periodStats("monthly");
   const avgOf = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : null;
 
   const today=new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1491,10 +1490,8 @@ function kpisHTML(){
   const fracCompare = adaptivePaceCompare(fracRuns, r=>{ const ip=getIntervalPaces(r); return ip&&ip.work?ip.work:null; }, efSpan);
 
   const longRunsAll = runningRuns.filter(r=>r.type==="Long");
-  const seuilRunsAll = runningRuns.filter(r=>r.type==="Seuil");
   const avgFcLong = avgOf(longRunsAll.filter(r=>r.fc).map(r=>r.fc));
   const avgFcEf = avgOf(efRuns.filter(r=>r.fc).map(r=>r.fc));
-  const avgFcSeuil = avgOf(seuilRunsAll.filter(r=>r.fc).map(r=>r.fc));
   const avgFcFracWork = avgOf(fracRuns.filter(r=>r.paceSeries && r.hrSeries).map(r=>computeWorkAvgHr(r.paceSeries, r.hrSeries)).filter(v=>v!=null));
 
   // Regroupées par type de donnée plutôt qu'en une seule grille mélangée.
@@ -1509,16 +1506,10 @@ function kpisHTML(){
     ["Allure Fractionné",
       adaptivePaceCards(fracCompare, "Allure moyenne (encore peu de recul)", ["#ff375f","#ffd60a","#30d158"]),
     ],
-    ["Activité",[
-      [String(s.runs.length),"Séances "+periodLbl,"runner","#0a84ff"],
-      [fmtDur(s.time),"Temps de course "+periodLbl,"clock","#64d2ff"],
-      [monthS.dist.toFixed(2)+" km","Km ce mois-ci","route","#30d158"],
-    ]],
     ["Cardio",[
       [maxHr?maxHr+" bpm":"—","FC max","heart","#ff375f"],
       [avgFcEf?avgFcEf+" bpm":"—","FC moy. EF","heart","#30d158"],
       [avgFcLong?avgFcLong+" bpm":"—","FC moy. Long","heart","#0a84ff"],
-      [avgFcSeuil?avgFcSeuil+" bpm":"—","FC moy. Seuil","heart","#ff453a"],
       [avgFcFracWork?avgFcFracWork+" bpm":"—","FC moy. Work Fractionné","heart","#ff9f0a"],
     ]],
   ];
@@ -1544,6 +1535,10 @@ function renderTabs(){
 window.setTab=i=>{destroyCharts();activeTab=i;persistActiveTab();renderTabs();renderContent();window.scrollTo({top:0,behavior:"smooth"});};
 window.setFilter=f=>{activeFilter=f;destroyCharts();renderContent();};
 
+// `intenseDist` = distance des séances Fractionné/Seuil de la période —
+// sert à colorer les barres du graph Volume selon le niveau d'intensité
+// (voir intensityColor), plutôt qu'une seule couleur unie qui ne dit rien
+// de la nature de l'effort ce mois-là.
 function weeklyVol(){
   const w={};
   runningRuns.forEach(r=>{
@@ -1551,8 +1546,9 @@ function weeklyVol(){
     const dt=new Date(2000,m-1,d),mon=new Date(dt);
     mon.setDate(dt.getDate()-dt.getDay()+(dt.getDay()===0?-6:1));
     const k=mon.getDate()+"/"+(mon.getMonth()+1);
-    if(!w[k])w[k]={label:k,dist:0};
+    if(!w[k])w[k]={label:k,dist:0,intenseDist:0};
     w[k].dist=+(w[k].dist+r.dist).toFixed(2);
+    if(r.type==="Fractionné"||r.type==="Seuil") w[k].intenseDist=+(w[k].intenseDist+r.dist).toFixed(2);
   });
   return Object.values(w);
 }
@@ -1562,10 +1558,18 @@ function monthlyVol(){
   runningRuns.forEach(r=>{
     const d=dateFromRun(r);
     const k=d.getFullYear()*12+d.getMonth();
-    if(!w[k])w[k]={label:MONTHS[d.getMonth()],dist:0,order:k};
+    if(!w[k])w[k]={label:MONTHS[d.getMonth()],dist:0,intenseDist:0,order:k};
     w[k].dist=+(w[k].dist+r.dist).toFixed(2);
+    if(r.type==="Fractionné"||r.type==="Seuil") w[k].intenseDist=+(w[k].intenseDist+r.dist).toFixed(2);
   });
   return Object.values(w).sort((a,b)=>a.order-b.order);
+}
+// Vert = quasi pas d'intensif, orange = une dose modérée, rouge = grosse
+// part de fractionné/seuil sur la période — un simple ratio distance
+// intense/distance totale, pas besoin de FC pour que ça marche pour tous.
+function intensityColor(r){
+  const pct = r.dist ? r.intenseDist/r.dist : 0;
+  return pct>=0.3 ? "#ff375f" : pct>=0.12 ? "#ff9f0a" : "#30d158";
 }
 
 // Points sans ligne reliée + droite de tendance projetée sur 3 mois.
@@ -2181,10 +2185,11 @@ function renderContent(){
         </div>`:""}
       </div>
       <div class="card"><div class="stitle">Volume ${isMonthly?"mensuel":"hebdomadaire"} (km)</div>
+        <div class="chart-hint">Couleur = part de fractionné/seuil sur la période : <span style="color:#30d158">peu</span> · <span style="color:#ff9f0a">modéré</span> · <span style="color:#ff375f">beaucoup</span></div>
         <div style="position:relative;width:100%;height:180px"><canvas id="cVolMini"></canvas></div>
       </div>
-      ${withHr.length?`<div class="card"><div class="stitle">Allure / FC</div>
-        <div class="chart-hint">Allure EF ÷ FC moyenne, par séance — plus la courbe descend, plus ton efficience cardiaque progresse.</div>
+      ${withHr.length?`<div class="card"><div class="stitle">Efficience cardiaque</div>
+        <div class="chart-hint">Allure EF ÷ FC moyenne, par séance — plus la courbe monte, plus ton efficience cardiaque progresse.</div>
         <div style="position:relative;width:100%;height:200px"><canvas id="cPaceFc"></canvas></div>
       </div>`:""}
       ${monthly.length>=2?`<div class="card"><div class="stitle">Répartition des zones par mois</div>
@@ -2196,9 +2201,9 @@ function renderContent(){
         <div style="position:relative;width:100%;height:180px"><canvas id="cHiMonthly"></canvas></div>
       </div>`:""}`;
     setTimeout(()=>{
-      mkPaceTrendChart("cEFmini", efRuns, true, 60);
-      if(hasFrac) mkFractionneChart("cFracMini", fracRuns, 60);
-      mkChart("cVolMini",{type:"bar",data:{labels:vol.map(r=>r.label),datasets:[{label:"km",data:vol.map(r=>r.dist),backgroundColor:"#30d158",borderRadius:6}]},plugins:[barValueLabelsPlugin],options:{scales:{x:{ticks:{autoSkip:false,maxRotation:45}}},plugins:{tooltip:{callbacks:{label:ctx=>ctx.raw+" km"}}}}});
+      mkPaceTrendChart("cEFmini", efRuns, true, 21);
+      if(hasFrac) mkFractionneChart("cFracMini", fracRuns, 21);
+      mkChart("cVolMini",{type:"bar",data:{labels:vol.map(r=>r.label),datasets:[{label:"km",data:vol.map(r=>r.dist),backgroundColor:vol.map(intensityColor),borderRadius:6}]},plugins:[barValueLabelsPlugin],options:{scales:{x:{ticks:{autoSkip:false,maxRotation:45}}},plugins:{tooltip:{callbacks:{label:ctx=>ctx.raw+" km"}}}}});
       if(lastRunExpanded && lastRun && lastRun.hrSeries && lastRun.hrSeries.length>1 && effMaxHr) mkHrCurveChart("cHr_"+lastRun.id, lastRun.hrSeries);
       if(withHr.length) mkPaceFcChart("cPaceFc", efRuns);
       if(monthly.length>=2){
