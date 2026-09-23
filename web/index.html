@@ -2382,15 +2382,25 @@ window.moveSessionToDate = async (id, newDateStr) => {
 // intention de glisser-déposer).
 let progDrag = null;
 let progSuppressClick = false;
+// Le geste est suivi via des listeners posés sur `document` (pointermove/up/
+// cancel), PAS via setPointerCapture sur la carte d'origine : sur Safari
+// iOS, la capture de pointeur en tactile n'est pas fiable — dès que le
+// doigt quitte la carte, les événements peuvent partir vers l'élément situé
+// dessous (qui n'a pas de handler), et le drop ne se déclenche alors jamais
+// (constaté : la carte s'arme bien après l'appui long, mais rien ne bouge
+// ensuite). Des listeners globaux reçoivent le geste quoi qu'il en soit.
 function progDragStart(e, id){
   if(e.pointerType==="mouse" && e.button!==0) return;
+  if(progDrag) progDragCancel(); // geste précédent mal terminé (rare) : on repart propre
   progDrag = { id, pointerId:e.pointerId, el:e.currentTarget, startX:e.clientX, startY:e.clientY, armed:false, ghost:null, timer:null };
   progDrag.timer = setTimeout(progArmDrag, 500);
+  document.addEventListener("pointermove", progDragMove, {passive:false});
+  document.addEventListener("pointerup", progDragEnd);
+  document.addEventListener("pointercancel", progDragCancel);
 }
 function progArmDrag(){
   if(!progDrag) return;
   progDrag.armed = true;
-  try{ progDrag.el.setPointerCapture(progDrag.pointerId); }catch(err){}
   progDrag.el.style.touchAction = "none";
   progDrag.el.classList.add("prog-armed");
   if(navigator.vibrate) navigator.vibrate(12);
@@ -2407,11 +2417,14 @@ function progArmDrag(){
   progDrag.offsetY = progDrag.startY - r.top;
 }
 function progDragMove(e){
-  if(!progDrag) return;
+  if(!progDrag || e.pointerId!==progDrag.pointerId) return;
   if(!progDrag.armed){
     if(Math.hypot(e.clientX-progDrag.startX, e.clientY-progDrag.startY) > 12){
       clearTimeout(progDrag.timer);
       progDrag = null;
+      document.removeEventListener("pointermove", progDragMove);
+      document.removeEventListener("pointerup", progDragEnd);
+      document.removeEventListener("pointercancel", progDragCancel);
     }
     return;
   }
@@ -2426,7 +2439,10 @@ function progDragMove(e){
   if(col) col.classList.add("dragover");
 }
 function progDragEnd(e){
-  if(!progDrag) return;
+  if(!progDrag || e.pointerId!==progDrag.pointerId) return;
+  document.removeEventListener("pointermove", progDragMove);
+  document.removeEventListener("pointerup", progDragEnd);
+  document.removeEventListener("pointercancel", progDragCancel);
   clearTimeout(progDrag.timer);
   if(!progDrag.armed){ progDrag = null; return; }
   progDrag.ghost?.remove();
@@ -2442,12 +2458,16 @@ function progDragEnd(e){
   setTimeout(()=>{ progSuppressClick = false; }, 300);
   if(targetDate) window.moveSessionToDate(id, targetDate);
 }
-function progDragCancel(){
-  if(!progDrag) return;
+function progDragCancel(e){
+  if(!progDrag || (e && e.pointerId!==progDrag.pointerId)) return;
+  document.removeEventListener("pointermove", progDragMove);
+  document.removeEventListener("pointerup", progDragEnd);
+  document.removeEventListener("pointercancel", progDragCancel);
   clearTimeout(progDrag.timer);
   progDrag.ghost?.remove();
   progDrag.el.classList.remove("prog-armed");
   progDrag.el.style.touchAction = "";
+  document.querySelectorAll(".prog-daycol.dragover,.prog-monthcell.dragover").forEach(c=>c.classList.remove("dragover"));
   progDrag = null;
 }
 // Remplace une séance par une version ajustée SANS jamais supprimer
@@ -2607,7 +2627,7 @@ function programDayColHTML(date){
   const selected = programSelectedDate===dateStr;
   const draggable = session && session.status==="planned";
   const c = session ? (TC[session.type]||TC.Other) : null;
-  const dragAttrs = draggable ? `onpointerdown="progDragStart(event,'${session.id}')" onpointermove="progDragMove(event)" onpointerup="progDragEnd(event)" onpointercancel="progDragCancel(event)"` : "";
+  const dragAttrs = draggable ? `onpointerdown="progDragStart(event,'${session.id}')"` : "";
   return `<div class="prog-daycol${isToday?" today":""}${selected?" selected":""}" data-date="${dateStr}">
     <div class="prog-daycol-hdr">${date.toLocaleDateString('fr-FR',{weekday:'short'})}<b>${date.getDate()}</b></div>
     ${session
@@ -2637,7 +2657,7 @@ function programMonthCellHTML(date, monthDate){
   const selected = programSelectedDate===dateStr;
   const draggable = session && session.status==="planned";
   const c = session ? (TC[session.type]||TC.Other) : null;
-  const dragAttrs = draggable ? `onpointerdown="progDragStart(event,'${session.id}')" onpointermove="progDragMove(event)" onpointerup="progDragEnd(event)" onpointercancel="progDragCancel(event)"` : "";
+  const dragAttrs = draggable ? `onpointerdown="progDragStart(event,'${session.id}')"` : "";
   return `<div class="prog-monthcell${isToday?" today":""}${inMonth?"":" outmonth"}${selected?" selected":""}" data-date="${dateStr}" onclick="progSelectDay('${dateStr}')">
     <div class="prog-monthcell-daynum">${date.getDate()}</div>
     ${session?`<div class="prog-monthcell-dot" style="background:${c}" ${dragAttrs} title="${session.title}"></div>`:""}
