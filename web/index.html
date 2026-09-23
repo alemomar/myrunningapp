@@ -283,6 +283,36 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .session-pick .rated{color:var(--accent);font-size:11px;font-weight:600}
 .month-sep{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text);padding:18px 0 8px;margin-bottom:4px;border-bottom:1px solid var(--border)}
 .month-sep:first-child{padding-top:0}
+
+/* Programme : calendrier semaine (colonnes) / mois (grille), drag and
+   drop d'une séance déclenché par un appui long (~0,5s), volontairement
+   PAS en drag-and-drop HTML5 natif (dragstart/dragover) : ce dernier ne
+   fonctionne pas de façon fiable au doigt sur mobile/Safari, or l'usage
+   principal de l'app est la PWA iPhone. Implémenté avec les Pointer
+   Events (unifie souris/tactile), voir progDragStart/Move/End. */
+.prog-board{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+.prog-daycol{flex:0 0 76px;display:flex;flex-direction:column;align-items:center;border-radius:12px;padding:6px 4px;border:1px solid transparent;transition:background .15s,border-color .15s}
+.prog-daycol.selected{background:var(--card-2)}
+.prog-daycol.dragover{background:var(--accent-dim);border-color:var(--accent)}
+.prog-daycol-hdr{font-size:11px;color:var(--text-dim);text-align:center;text-transform:capitalize;line-height:1.4;margin-bottom:6px}
+.prog-daycol-hdr b{display:block;font-size:14px;font-weight:700;color:var(--text)}
+.prog-daycol.today .prog-daycol-hdr b{color:var(--accent)}
+.prog-card-mini{width:100%;min-height:64px;box-sizing:border-box;border-radius:10px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 2px;cursor:pointer;position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.prog-card-mini.rest{background:var(--card-2);color:var(--text-dim);font-size:11px;border-style:dashed}
+.prog-card-mini-lbl{font-size:10px;font-weight:600;color:var(--text);text-align:center;line-height:1.3}
+.prog-card-mini-check{position:absolute;top:3px;right:5px;font-size:10px;color:var(--accent);font-weight:700}
+.prog-card-mini.prog-armed{transform:scale(1.08);box-shadow:0 8px 20px rgba(0,0,0,0.35);z-index:5}
+.prog-ghost{position:fixed;z-index:999;pointer-events:none;opacity:0.92;transform:scale(1.08);box-shadow:0 10px 24px rgba(0,0,0,0.4);border-radius:10px;box-sizing:border-box}
+.prog-monthgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.prog-monthgrid-hdr{font-size:10px;color:var(--text-dim);text-align:center;text-transform:uppercase;letter-spacing:.03em;padding-bottom:4px}
+.prog-monthcell{aspect-ratio:1;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;border:1px solid transparent;box-sizing:border-box}
+.prog-monthcell.outmonth{opacity:0.32}
+.prog-monthcell.today .prog-monthcell-daynum{color:var(--accent);font-weight:700}
+.prog-monthcell.selected{background:var(--card-2)}
+.prog-monthcell.dragover{background:var(--accent-dim);border-color:var(--accent)}
+.prog-monthcell-daynum{font-size:12px;color:var(--text)}
+.prog-monthcell-dot{width:9px;height:9px;border-radius:50%;user-select:none;-webkit-touch-callout:none}
+.prog-monthcell-dot.prog-armed{transform:scale(1.5);box-shadow:0 4px 10px rgba(0,0,0,0.4)}
 .account-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
 .account-row:last-child{border-bottom:none}
 .account-row .lbl{font-size:13px;color:var(--text-dim)}
@@ -510,6 +540,7 @@ let openSessionRatings = new Set();
 let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
 let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
 let openConstraintForm = null; // id de la séance en cours d'ajustement via "Ce n'est pas adapté"
+let programSelectedDate = null; // jour affiché dans le panneau de détail sous le calendrier
 // Refonte complète du check-in douleur (retour d'audit : trop lourd à
 // remplir, confus, pas terrible visuellement). Zones simplifiées — plus de
 // distinction gauche/droite (l'utilisateur ne la voulait plus, ça double le
@@ -2312,12 +2343,113 @@ window.toggleNotAdapted = (id) => {
 window.setProgramView = (mode) => {
   programViewMode = mode;
   programWeekOffset = 0; // repart de la semaine/mois courant en changeant de vue
+  programSelectedDate = null;
   renderContent();
 };
 window.programNavWeek = (delta) => {
   programWeekOffset += delta;
+  programSelectedDate = null;
   renderContent();
 };
+window.progSelectDay = (dateStr) => {
+  if(progSuppressClick) return; // clic fantôme juste après un drop, à ignorer
+  programSelectedDate = programSelectedDate===dateStr ? null : dateStr;
+  renderContent();
+};
+// Déplace une séance à une nouvelle date (glisser-déposer) — simple UPDATE
+// (pas le pattern "supersede", contrairement à regenerateSession : ici le
+// contenu de la séance ne change pas, seule sa date change, donc rien à
+// tracer côté contenu). Refuse si le jour cible a déjà une séance active,
+// pour ne jamais en masquer une silencieusement (programDayColHTML/
+// programMonthCellHTML n'affichent qu'une séance par jour).
+window.moveSessionToDate = async (id, newDateStr) => {
+  const s = plannedSessions.find(p=>p.id===id);
+  if(!s || s.planned_date===newDateStr) return;
+  const occupied = plannedSessions.some(p=>p.id!==id && p.planned_date===newDateStr && (p.status==="planned"||p.status==="done"));
+  if(occupied){ alert("Ce jour a déjà une séance — décale ou remplace-la d'abord."); return; }
+  const monday = mondayOf(new Date(newDateStr+"T00:00:00"));
+  const { error } = await supa.from("planned_sessions").update({planned_date:newDateStr, week_start_date:localDateStr(monday), updated_at:new Date().toISOString()}).eq("id", id);
+  if(error){ alert("Erreur : "+error.message); return; }
+  await loadData(); renderContent();
+};
+
+// Glisser-déposer par appui long (~0,5s), via Pointer Events plutôt que le
+// drag-and-drop HTML5 natif — ce dernier n'est pas fiable au doigt sur
+// mobile/Safari (usage principal de l'app), voir commentaire CSS .prog-board.
+// Un appui court reste un simple tap (progSelectDay, via onclick) : le
+// minuteur n'arme le drag qu'après le délai, et un déplacement trop rapide
+// avant ce délai annule (c'est un scroll horizontal du calendrier, pas une
+// intention de glisser-déposer).
+let progDrag = null;
+let progSuppressClick = false;
+function progDragStart(e, id){
+  if(e.pointerType==="mouse" && e.button!==0) return;
+  progDrag = { id, pointerId:e.pointerId, el:e.currentTarget, startX:e.clientX, startY:e.clientY, armed:false, ghost:null, timer:null };
+  progDrag.timer = setTimeout(progArmDrag, 500);
+}
+function progArmDrag(){
+  if(!progDrag) return;
+  progDrag.armed = true;
+  try{ progDrag.el.setPointerCapture(progDrag.pointerId); }catch(err){}
+  progDrag.el.style.touchAction = "none";
+  progDrag.el.classList.add("prog-armed");
+  if(navigator.vibrate) navigator.vibrate(12);
+  const r = progDrag.el.getBoundingClientRect();
+  const ghost = progDrag.el.cloneNode(true);
+  ghost.className = progDrag.el.className.replace("prog-armed","") + " prog-ghost";
+  ghost.style.width = r.width+"px";
+  ghost.style.height = r.height+"px";
+  ghost.style.left = r.left+"px";
+  ghost.style.top = r.top+"px";
+  document.body.appendChild(ghost);
+  progDrag.ghost = ghost;
+  progDrag.offsetX = progDrag.startX - r.left;
+  progDrag.offsetY = progDrag.startY - r.top;
+}
+function progDragMove(e){
+  if(!progDrag) return;
+  if(!progDrag.armed){
+    if(Math.hypot(e.clientX-progDrag.startX, e.clientY-progDrag.startY) > 12){
+      clearTimeout(progDrag.timer);
+      progDrag = null;
+    }
+    return;
+  }
+  e.preventDefault();
+  progDrag.ghost.style.left = (e.clientX - progDrag.offsetX)+"px";
+  progDrag.ghost.style.top = (e.clientY - progDrag.offsetY)+"px";
+  progDrag.ghost.style.display = "none";
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  progDrag.ghost.style.display = "";
+  document.querySelectorAll(".prog-daycol.dragover,.prog-monthcell.dragover").forEach(c=>c.classList.remove("dragover"));
+  const col = under?.closest(".prog-daycol,.prog-monthcell");
+  if(col) col.classList.add("dragover");
+}
+function progDragEnd(e){
+  if(!progDrag) return;
+  clearTimeout(progDrag.timer);
+  if(!progDrag.armed){ progDrag = null; return; }
+  progDrag.ghost?.remove();
+  document.querySelectorAll(".prog-daycol.dragover,.prog-monthcell.dragover").forEach(c=>c.classList.remove("dragover"));
+  progDrag.el.classList.remove("prog-armed");
+  progDrag.el.style.touchAction = "";
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const col = under?.closest(".prog-daycol,.prog-monthcell");
+  const targetDate = col?.dataset.date;
+  const id = progDrag.id;
+  progDrag = null;
+  progSuppressClick = true; // évite qu'un clic fantôme après le drop ne rouvre/ferme le panneau
+  setTimeout(()=>{ progSuppressClick = false; }, 300);
+  if(targetDate) window.moveSessionToDate(id, targetDate);
+}
+function progDragCancel(){
+  if(!progDrag) return;
+  clearTimeout(progDrag.timer);
+  progDrag.ghost?.remove();
+  progDrag.el.classList.remove("prog-armed");
+  progDrag.el.style.touchAction = "";
+  progDrag = null;
+}
 // Remplace une séance par une version ajustée SANS jamais supprimer
 // l'ancienne (pattern "supersede", voir migration_019) : l'ancienne passe
 // replaced/superseded_by_id, la nouvelle porte replaces_session_id — la
@@ -2463,20 +2595,80 @@ function programNavHeaderHTML(label){
   </div>`;
 }
 
-function programDayRowHTML(date){
+// Vue semaine = un tableau de colonnes jour par jour (façon Google Agenda
+// vue semaine, sans grille d'heures : une séance de course n'a pas besoin
+// d'heure précise). Chaque carte séance est glissable (appui long, voir
+// progDragStart) vers une autre colonne pour la replanifier ; un tap court
+// sélectionne le jour et affiche son détail dans programSelectedDayPanelHTML.
+function programDayColHTML(date){
   const dateStr = localDateStr(date);
   const session = plannedSessions.find(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
-  return `<div style="margin-bottom:10px">
-    <div class="chart-hint" style="margin-top:0;margin-bottom:4px;text-transform:capitalize">${dayLabelShort(date)}</div>
-    ${session?programSessionCardHTML(session,date):`<div class="manage-row" style="opacity:0.5"><div class="manage-top"><div class="session-dot" style="background:var(--card-2);color:var(--text-dim)">${icon("care",18)}</div><div class="manage-date"><div style="font-weight:600">Repos</div></div></div></div>`}
+  const isToday = dateStr===localDateStr(new Date());
+  const selected = programSelectedDate===dateStr;
+  const draggable = session && session.status==="planned";
+  const c = session ? (TC[session.type]||TC.Other) : null;
+  const dragAttrs = draggable ? `onpointerdown="progDragStart(event,'${session.id}')" onpointermove="progDragMove(event)" onpointerup="progDragEnd(event)" onpointercancel="progDragCancel(event)"` : "";
+  return `<div class="prog-daycol${isToday?" today":""}${selected?" selected":""}" data-date="${dateStr}">
+    <div class="prog-daycol-hdr">${date.toLocaleDateString('fr-FR',{weekday:'short'})}<b>${date.getDate()}</b></div>
+    ${session
+      ? `<div class="prog-card-mini" style="background:${c}1c;border-color:${c}55" ${dragAttrs} onclick="progSelectDay('${dateStr}')">
+          <div style="color:${c}">${icon(TICON[session.type]||"activity",16)}</div>
+          <div class="prog-card-mini-lbl">${session.target_distance_km?session.target_distance_km+" km":(PACE_ZONE_LABEL[session.pace_zone]||"")}</div>
+          ${session.status==="done"?`<div class="prog-card-mini-check">✓</div>`:""}
+        </div>`
+      : `<div class="prog-card-mini rest" onclick="progSelectDay('${dateStr}')">Repos</div>`}
+  </div>`;
+}
+function programWeekBoardHTML(monday){
+  const days = Array.from({length:7}, (_,i)=>addDays(monday,i));
+  return `<div class="prog-board">${days.map(programDayColHTML).join("")}</div>`;
+}
+
+// Vue mois = vraie grille calendaire (semaines en lignes, jours en
+// colonnes), chaque jour avec un point coloré si une séance y est
+// planifiée — glissable vers un autre jour de la grille comme en vue
+// semaine. Les jours hors du mois affiché (début/fin de grille) restent
+// des cibles de dépôt valides (ex. déplacer une séance du 30 vers le 1er).
+function programMonthCellHTML(date, monthDate){
+  const dateStr = localDateStr(date);
+  const session = plannedSessions.find(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
+  const inMonth = date.getMonth()===monthDate.getMonth();
+  const isToday = dateStr===localDateStr(new Date());
+  const selected = programSelectedDate===dateStr;
+  const draggable = session && session.status==="planned";
+  const c = session ? (TC[session.type]||TC.Other) : null;
+  const dragAttrs = draggable ? `onpointerdown="progDragStart(event,'${session.id}')" onpointermove="progDragMove(event)" onpointerup="progDragEnd(event)" onpointercancel="progDragCancel(event)"` : "";
+  return `<div class="prog-monthcell${isToday?" today":""}${inMonth?"":" outmonth"}${selected?" selected":""}" data-date="${dateStr}" onclick="progSelectDay('${dateStr}')">
+    <div class="prog-monthcell-daynum">${date.getDate()}</div>
+    ${session?`<div class="prog-monthcell-dot" style="background:${c}" ${dragAttrs} title="${session.title}"></div>`:""}
+  </div>`;
+}
+function programMonthGridHTML(monthDate){
+  const firstOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const lastOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth()+1, 0);
+  const gridStart = mondayOf(firstOfMonth);
+  const gridEnd = addDays(mondayOf(lastOfMonth), 6);
+  const days = [];
+  for(let cursor=new Date(gridStart); cursor<=gridEnd; cursor=addDays(cursor,1)) days.push(new Date(cursor));
+  const dowLabels = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+  return `<div class="prog-monthgrid">
+    ${dowLabels.map(d=>`<div class="prog-monthgrid-hdr">${d}</div>`).join("")}
+    ${days.map(d=>programMonthCellHTML(d, monthDate)).join("")}
   </div>`;
 }
 
-function programWeekBlockHTML(monday, collapsedTitle){
-  const days = Array.from({length:7}, (_,i)=>addDays(monday,i));
-  const inner = days.map(programDayRowHTML).join("");
-  if(!collapsedTitle) return inner;
-  return `<div class="stitle" style="margin-top:14px">${collapsedTitle}</div>${inner}`;
+// Panneau de détail du jour sélectionné (tap sur une colonne/cellule) —
+// affiche la carte séance complète (justification + actions) sous le
+// calendrier, plutôt que dans des cartes empilées : les colonnes/cellules
+// restent compactes pour laisser de la place au glisser-déposer.
+function programSelectedDayPanelHTML(){
+  if(!programSelectedDate) return "";
+  const date = new Date(programSelectedDate+"T00:00:00");
+  const session = plannedSessions.find(p=>p.planned_date===programSelectedDate && (p.status==="planned"||p.status==="done"));
+  return `<div class="card" style="margin-top:10px">
+    <div class="chart-hint" style="margin-top:0;margin-bottom:4px;text-transform:capitalize">${dayLabelShort(date)}</div>
+    ${session?programSessionCardHTML(session,date):`<div class="chart-hint" style="margin-top:0">Repos — aucune séance planifiée.</div>`}
+  </div>`;
 }
 function addDays(base,n){ const d=new Date(base); d.setDate(d.getDate()+n); return d; }
 
@@ -3082,22 +3274,21 @@ function renderContent(){
       ${programViewMode==="week"?(()=>{
         const monday = addDays(mondayOf(new Date()), programWeekOffset*7);
         const hasWeek = plannedSessions.some(p=>p.week_start_date===localDateStr(monday) && p.status!=="replaced");
+        const weekDates = Array.from({length:7},(_,i)=>localDateStr(addDays(monday,i)));
+        if(programSelectedDate===null && weekDates.includes(localDateStr(new Date()))) programSelectedDate = localDateStr(new Date());
         return `<div class="card">
           ${programNavHeaderHTML(`${monday.toLocaleDateString('fr-FR',{day:'numeric',month:'long'})} – ${addDays(monday,6).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}`)}
-          ${hasWeek?programWeekBlockHTML(monday):`<div class="chart-hint" style="margin-top:0">Pas encore de séances générées pour cette semaine.</div><button class="btn-primary" style="margin-top:10px" onclick="generateProgram(new Date('${monday.toISOString()}'))">Générer cette semaine</button>`}
-        </div>`;
+          ${hasWeek?programWeekBoardHTML(monday):`<div class="chart-hint" style="margin-top:0">Pas encore de séances générées pour cette semaine.</div><button class="btn-primary" style="margin-top:10px" onclick="generateProgram(new Date('${monday.toISOString()}'))">Générer cette semaine</button>`}
+        </div>${hasWeek?programSelectedDayPanelHTML():""}`;
       })():(()=>{
-        const monthDate = new Date(); monthDate.setMonth(monthDate.getMonth()+programWeekOffset);
-        const firstOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-        const lastOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth()+1, 0);
-        let cursor = mondayOf(firstOfMonth);
-        const weeks = [];
-        while(cursor<=lastOfMonth){ weeks.push(new Date(cursor)); cursor = addDays(cursor,7); }
+        const monthDate = new Date(); monthDate.setDate(1); monthDate.setMonth(monthDate.getMonth()+programWeekOffset);
+        const today = new Date();
+        if(programSelectedDate===null && monthDate.getFullYear()===today.getFullYear() && monthDate.getMonth()===today.getMonth()) programSelectedDate = localDateStr(today);
         const monthLabel = monthDate.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
         return `<div class="card">
           ${programNavHeaderHTML(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}
-          ${weeks.map(m=>programWeekBlockHTML(m, `Semaine du ${m.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}`)).join("")}
-        </div>`;
+          ${programMonthGridHTML(monthDate)}
+        </div>${programSelectedDayPanelHTML()}`;
       })()}`:""}
     `;
     applyProgramAdjustments();
