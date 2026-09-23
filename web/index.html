@@ -1033,6 +1033,19 @@ window.saveEquipement = async (value) => {
   if(!(await upsertProfile({ goals }))) return;
   flashSaved("profilSaved");
 };
+// Jours indisponibles : tronc commun (utilisé par l'onglet Programme pour
+// éviter de reposer la même question) — même pattern que terrain/équipement.
+window.saveJoursIndisponibles = async (value) => {
+  const current = goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : [];
+  const arr = current.includes(value) ? current.filter(v=>v!==value) : [...current, value];
+  const group = document.querySelector('[data-chipgroup="joursIndisponibles"]');
+  if(group) group.querySelectorAll("[data-value]").forEach(el=>{
+    el.classList.toggle("active", arr.includes(el.dataset.value));
+  });
+  goals = { ...goals, joursIndisponibles: arr.join(",") };
+  if(!(await upsertProfile({ goals }))) return;
+  flashSaved("profilSaved");
+};
 // Séances/semaine et km/mois sont partagés (peu importe l'objectif
 // principal/secondaire) — même logique d'auto-enregistrement au clic que
 // terrain/équipement, pour éviter de dépendre d'un bouton "Enregistrer"
@@ -2229,8 +2242,8 @@ window.generateProgram = async (mondayDate, opts) => {
   if(!profile){ if(!opts.silent) alert("Renseigne d'abord un temps de référence (ci-dessus) pour générer ton programme."); return; }
   const { structure, avoidQualityReason } = computeProgramInputs();
   const weeklyKm = goals.kmMensuel ? Number(goals.kmMensuel)/4.33 : 20;
-  const frequency = Number(programSettings.frequency) || Number(goals.frequence) || 3;
-  const unavailable = (programSettings.unavailableDays || []).map(Number);
+  const frequency = Number(goals.frequence) || 3;
+  const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
   const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d));
   const generated = generateWeekSessions({ profile, structure, weeklyKm, frequency, availableDayIndexes, avoidQualityReason });
   if(!generated.length){ if(!opts.silent) alert("Pas assez d'informations pour générer un programme — vérifie tes objectifs et tes disponibilités ci-dessus."); return; }
@@ -2256,16 +2269,17 @@ window.generateProgram = async (mondayDate, opts) => {
   if(!opts.silent){ renderContent(); flashSaved("programSaved"); } else { renderContent(); }
 };
 
+// Séances/semaine et jours indisponibles vivent désormais dans Objectifs
+// ("Ton profil coureur", tronc commun) — plus besoin de les redemander ici,
+// ce formulaire ne sert plus qu'au repli temps de référence (VDOT) quand
+// aucun PB/VMA n'est trouvé dans Objectifs.
 window.saveProgramSettings = async () => {
-  const frequency = parseInt(document.getElementById("prog_frequency")?.value, 10) || null;
-  const unavailableDaysRaw = document.getElementById("prog_unavailableDays")?.value || "";
-  const unavailableDays = unavailableDaysRaw ? unavailableDaysRaw.split(",").map(Number) : [];
   const refDistanceSel = document.getElementById("prog_refDistance")?.value;
   const refH = parseInt(document.getElementById("prog_refH")?.value,10)||0;
   const refM = parseInt(document.getElementById("prog_refM")?.value,10)||0;
   const refTimeSec = (refH*3600+refM*60) || programSettings.refTimeSec || null;
   const refDistanceKm = refDistanceSel ? RACE_DISTANCES_KM[refDistanceSel] : programSettings.refDistanceKm || null;
-  const value = { ...programSettings, frequency, unavailableDays, refDistanceKm, refTimeSec };
+  const value = { ...programSettings, refDistanceKm, refTimeSec };
   if(!(await upsertProfile({ program_settings: value }))) return;
   programSettings = value;
   flashSaved("programSettingsSaved");
@@ -2346,7 +2360,7 @@ let programAdjustmentChecked = false;
 async function applyProgramAdjustments(){
   if(programAdjustmentChecked) return;
   const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
-  if(!profile || !programSettings.frequency) return; // pas encore prêt : on retentera au prochain rendu
+  if(!profile) return; // pas encore prêt : on retentera au prochain rendu
   programAdjustmentChecked = true;
 
   const thisMonday = mondayOf(new Date());
@@ -2368,46 +2382,25 @@ async function applyProgramAdjustments(){
   }
 }
 
-// Handlers dédiés au formulaire Programme — volontairement indépendants de
-// selectChip/toggleMultiChip (Objectifs) qui déclenchent désormais un
-// saveGoals() automatique : les réutiliser ici sauvegarderait par erreur
-// l'onglet Objectifs au lieu de rien faire pour ces champs-ci.
-window.progSelectFrequency = (n) => {
-  const hidden = document.getElementById("prog_frequency");
-  if(hidden) hidden.value = n;
-  document.querySelectorAll('[data-chipgroup="prog_frequency"] [data-value]').forEach(el=>el.classList.toggle("active", el.dataset.value===String(n)));
-};
-window.progToggleUnavailableDay = (i) => {
-  const hidden = document.getElementById("prog_unavailableDays");
-  let arr = hidden.value ? hidden.value.split(",") : [];
-  arr = arr.includes(String(i)) ? arr.filter(v=>v!==String(i)) : [...arr, String(i)];
-  hidden.value = arr.join(",");
-  const group = document.querySelector('[data-chipgroup="unavailableDays"]');
-  if(group) group.querySelectorAll("[data-value]").forEach(el=>el.classList.toggle("active", arr.includes(el.dataset.value)));
-};
+// Handler dédié au formulaire Programme (repli temps de référence
+// uniquement désormais) — volontairement indépendant de selectChip
+// (Objectifs) qui déclenche un saveGoals() automatique : le réutiliser ici
+// sauvegarderait par erreur l'onglet Objectifs.
 window.progSelectRefDistance = (d) => {
   const hidden = document.getElementById("prog_refDistance");
   if(hidden) hidden.value = d;
   document.querySelectorAll('[data-chipgroup="prog_refDistance"] [data-value]').forEach(el=>el.classList.toggle("active", el.dataset.value===d));
 };
 
+// Séances/semaine et jours indisponibles viennent maintenant d'Objectifs
+// ("Ton profil coureur") — ce formulaire ne sert plus qu'au repli temps de
+// référence (VDOT), et seulement quand aucun PB/VMA n'est trouvé. Rien à
+// afficher/configurer ici une fois le profil résolu.
 function programSettingsFormHTML(profile){
-  const days = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
-  const unavailable = (programSettings.unavailableDays||[]).map(String);
+  if(profile) return "";
   return `<div class="card">
-    <div class="stitle">Réglages du programme</div>
-    <div class="chart-hint" style="margin-top:0">Séances de course disponibles / semaine</div>
-    <div class="filters" data-chipgroup="prog_frequency" style="margin-bottom:0">
-      ${["1","2","3","4","5","6","7"].map(n=>`<button type="button" class="flt${Number(n)===Number(programSettings.frequency||goals.frequence)?" active":""}" data-value="${n}" onclick="progSelectFrequency('${n}')">${n}</button>`).join("")}
-    </div>
-    <input type="hidden" id="prog_frequency" value="${programSettings.frequency||goals.frequence||""}">
-    <div class="chart-hint" style="margin-top:14px">Jours indisponibles</div>
-    <div class="filters" data-chipgroup="unavailableDays" style="margin-bottom:0">
-      ${days.map((d,i)=>`<button type="button" class="flt${unavailable.includes(String(i))?" active":""}" data-value="${i}" onclick="progToggleUnavailableDay(${i})">${d}</button>`).join("")}
-    </div>
-    <input type="hidden" id="prog_unavailableDays" value="${unavailable.join(",")}">
-    ${!profile?`
-    <div class="chart-hint" style="margin-top:14px">Pas d'objectif "Préparer une course" avec record, ni de VMA renseignée — indique un temps de référence récent pour calculer tes allures :</div>
+    <div class="stitle">Temps de référence</div>
+    <div class="chart-hint" style="margin-top:0">Pas d'objectif "Préparer une course" avec record, ni de VMA renseignée dans Objectifs — indique un temps de référence récent pour calculer tes allures :</div>
     <div class="chart-hint" style="margin-top:8px;margin-bottom:0">Distance</div>
     <div class="filters" data-chipgroup="prog_refDistance" style="margin-bottom:0">
       ${Object.keys(RACE_DISTANCES_KM).map(d=>`<button type="button" class="flt" data-value="${d}" onclick="progSelectRefDistance('${d}')">${d}</button>`).join("")}
@@ -2419,7 +2412,7 @@ function programSettingsFormHTML(profile){
         <input type="number" min="0" max="99" class="time-input" id="prog_refH" placeholder="0"> <span style="font-size:12px;color:var(--text-dim)">h</span>
         <input type="number" min="0" max="59" class="time-input" id="prog_refM" placeholder="0"> <span style="font-size:12px;color:var(--text-dim)">min</span>
       </div>
-    </div>`:""}
+    </div>
     <button class="btn-primary" style="margin-top:14px" onclick="saveProgramSettings()">Enregistrer</button>
     <div id="programSettingsSaved" class="save-confirm"></div>
   </div>`;
@@ -2748,6 +2741,10 @@ function renderContent(){
       <div class="filters" data-chipgroup="equipement" style="margin-bottom:0">
         ${EQUIPEMENT_OPTIONS.map(o=>`<button type="button" class="flt${(goals.equipement||"").split(",").includes(o)?" active":""}" data-value="${o}" onclick="saveEquipement('${o}')">${o}</button>`).join("")}
       </div>
+      <div class="chart-hint" style="margin-top:14px">Jours indisponibles pour courir</div>
+      <div class="filters" data-chipgroup="joursIndisponibles" style="margin-bottom:0">
+        ${JOURS_OPTIONS.map((d,i)=>`<button type="button" class="flt${(goals.joursIndisponibles||"").split(",").includes(String(i))?" active":""}" data-value="${i}" onclick="saveJoursIndisponibles('${i}')">${d}</button>`).join("")}
+      </div>
       <div id="profilSaved" class="save-confirm"></div>
     </div>
 
@@ -3068,7 +3065,7 @@ function renderContent(){
     // Programme : formulaire de réglages tant que le profil coureur (VDOT)
     // ou la fréquence dispo n'est pas connu, calendrier généré ensuite.
     const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
-    const ready = !!profile && !!programSettings.frequency;
+    const ready = !!profile;
     el.innerHTML = `
       <div class="card">
         <div class="stitle">Programme</div>
