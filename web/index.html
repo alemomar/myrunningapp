@@ -537,6 +537,15 @@ const WELLBEING_EXTRA=[
   ["mental","Mental","Bien dans ma tête, motivé","Difficile de me motiver"],
   ["respiration","Respiration","Je respire très facilement","Beaucoup de difficulté à respirer"],
 ];
+// RPE (Borg CR-10) : séparé de WELLBEING_EXTRA à dessein — contrairement à
+// fatigue/mental/respiration, qui varient peu d'une séance à l'autre et se
+// préremplissent depuis la dernière notation, la difficulté perçue est
+// propre à CHAQUE séance et ne doit jamais se préremplir (voir
+// prefillRatings, qui ne boucle que sur WELLBEING_EXTRA). Sert au calcul
+// Session-RPE (charge = durée × RPE) du futur onglet Programme.
+const SESSION_RPE=[
+  ["rpe","Difficulté perçue (RPE)","Repos total","Effort maximal"],
+];
 const TABS=[
   {label:"Dashboard", icon:"bars"},
   {label:"Ressenti", icon:"sparkle"},
@@ -1133,7 +1142,7 @@ window.deleteRun = async (id, label) => {
 };
 function readPainForm(prefix){
   const ratings={};
-  [...WELLBEING_EXTRA, ...BODY_ZONES].forEach(([key])=>{ ratings[key]=parseInt(document.getElementById(`${prefix}_${key}`).value,10); });
+  [...SESSION_RPE, ...WELLBEING_EXTRA, ...BODY_ZONES].forEach(([key])=>{ ratings[key]=parseInt(document.getElementById(`${prefix}_${key}`).value,10); });
   return ratings;
 }
 // Valeurs de la dernière séance notée (plus de check-in général indépendant
@@ -2013,6 +2022,7 @@ window.bodyZoneSlide = (prefix, key, val) => {
 function painFormHTML(prefix, initial){
   initial = initial || {};
   return `
+    ${SESSION_RPE.map(([key,label,lo,hi])=>painSliderRow(prefix,key,label,initial,lo,hi)).join("")}
     ${WELLBEING_EXTRA.map(([key,label,lo,hi])=>painSliderRow(prefix,key,label,initial,lo,hi)).join("")}
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);margin:14px 0 4px">Douleurs par zone</div>
     ${bodyMapHTML(prefix, initial)}
