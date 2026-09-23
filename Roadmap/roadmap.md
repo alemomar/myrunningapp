@@ -4,9 +4,12 @@ Idées de fonctionnalités futures, priorisées. Chaque entrée : contexte rapid
 
 ## P1 — Prochaines (valeur claire, scope déjà cadré)
 
-### IA du Plan personnalisé
-Croiser les données de l'onglet Objectifs et les check-ins douleur pour proposer un plan d'entraînement calendaire, avec des conseils spécifiques (exos pour diminuer les douleurs, améliorer la foulée, la vitesse, le cardio...).
-Nécessite une nouvelle brique backend (appel LLM côté serveur, pas depuis le navigateur, pour ne pas exposer de clé API — probablement une Supabase Edge Function).
+### ~~IA du Plan personnalisé~~ → Onglet Programme (2026-09-23)
+~~Croiser les données de l'onglet Objectifs et les check-ins douleur pour proposer un plan d'entraînement calendaire...~~ **Fait, sous une forme différente de celle envisagée ici** : plutôt qu'un appel LLM (qui aurait nécessité une brique backend dédiée, Supabase Edge Function), le calendrier est généré par un **moteur déterministe** (VDOT/Daniels, polarisation 80/20, Session-RPE, ACWR, règle de progression +10%/décharge) — pas de nouvelle infra serveur nécessaire, moteur testable unitairement (`web/logic.js` + `web/test.html`).
+
+Livré : nouvel onglet **Programme**, calendrier semaine/mois généré à partir des Objectifs + du ressenti récent (RPE de séance ajouté à Ressenti, `runs.pain_ratings.rpe`), table `planned_sessions` (migration `db/migration_019_planned_sessions.sql`), actions par séance (valider/décaler/remplacer par easy/marquer fait/"Ce n'est pas adapté"), ajustement automatique léger (charge élevée ACWR, douleur répétée, fatigue/mental dégradés → jamais de suppression silencieuse, toujours une justification affichée et l'ancienne version conservée en base).
+
+À vérifier en conditions réelles (testé jusqu'ici avec un mock Supabase en mémoire, pas encore avec de vraies données/séances synchronisées) : cohérence du calendrier généré sur plusieurs semaines, pertinence des allures VDOT (percentages de zones approximés depuis des calculateurs publics, pas la table originale de Daniels — à recaler si les allures semblent décalées), comportement de la boucle d'ajustement sur la durée.
 
 ### Ouvrir l'app à des amis pour la tester
 **(2026-09-09)** Remplace la décision du 5 sept ci-dessous (P3 "Hébergement public") — la question s'est reposée directement, à traiter maintenant plutôt qu'après validation MVP.
