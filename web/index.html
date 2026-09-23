@@ -425,6 +425,7 @@ const ICONS = {
   chevronRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
   chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`,
+  calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>`,
 };
 function icon(name,size=18){ return ICONS[name].replace("<svg ",`<svg width="${size}" height="${size}" `); }
 
@@ -496,7 +497,7 @@ document.getElementById("authSubmit").onclick = async () => {
 function initialActiveTab(){
   try{
     const saved = Number(localStorage.getItem("mra_activeTab"));
-    return (Number.isInteger(saved) && saved>=0 && saved<=4) ? saved : 0;
+    return (Number.isInteger(saved) && saved>=0 && saved<=5) ? saved : 0;
   }catch(e){ return 0; }
 }
 function persistActiveTab(){
@@ -507,6 +508,8 @@ let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = 
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let openSessionRatings = new Set();
 let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
+let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
+let openConstraintForm = null; // id de la séance en cours d'ajustement via "Ce n'est pas adapté"
 // Refonte complète du check-in douleur (retour d'audit : trop lourd à
 // remplir, confus, pas terrible visuellement). Zones simplifiées — plus de
 // distinction gauche/droite (l'utilisateur ne la voulait plus, ça double le
@@ -552,6 +555,7 @@ const TABS=[
   {label:"Objectifs", icon:"target"},
   {label:"Séances", icon:"list"},
   {label:"Mon compte", icon:"user"},
+  {label:"Programme", icon:"calendar"},
 ];
 
 async function loadData() {
@@ -570,7 +574,7 @@ async function loadData() {
   // user_id. Sans ce garde-fou, tout le profil retombe à vide (profile
   // devient undefined) et ça donne l'impression que rien n'a jamais été
   // enregistré, alors que les écritures individuelles fonctionnent très bien.
-  const { data: profile, error: profileError } = await supa.from("profiles").select("sync_since_date, goals, max_hr, resting_hr, resting_hr_updated_at, resting_hr_is_manual, vo2_max, vo2_max_updated_at, vo2_max_is_manual, avatar_url, pseudo, age, gender, cities, dashboard_period").maybeSingle();
+  const { data: profile, error: profileError } = await supa.from("profiles").select("sync_since_date, goals, max_hr, resting_hr, resting_hr_updated_at, resting_hr_is_manual, vo2_max, vo2_max_updated_at, vo2_max_is_manual, avatar_url, pseudo, age, gender, cities, dashboard_period, program_settings").maybeSingle();
   if(profileError){
     console.error("Erreur de chargement du profil :", profileError);
     alert("Erreur de chargement du profil : "+profileError.message+"\n\nTes réglages (Mon compte, Objectifs) risquent d'apparaître vides même s'ils sont bien enregistrés. Contacte-moi avec ce message.");
@@ -590,6 +594,13 @@ async function loadData() {
   gender = profile?.gender || "";
   cities = profile?.cities || [];
   dashboardPeriod = profile?.dashboard_period || "monthly";
+  programSettings = profile?.program_settings || {};
+
+  const { data: plannedData, error: plannedError } = await supa.from("planned_sessions").select("*").order("planned_date", { ascending: true });
+  if(plannedError){
+    console.error("Erreur de chargement du programme :", plannedError);
+  }
+  plannedSessions = plannedData || [];
 }
 
 // Formule 220-âge par défaut : plus fiable que le pic FC observé en
@@ -2161,11 +2172,326 @@ function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
   ${open?hrDetailHTML(r, effMaxHr, effRestingHr):""}`;
 }
 
+/* ============================================================
+   Onglet Programme — calendrier de séances généré (moteur en logic.js).
+   ============================================================ */
+
+const PACE_ZONE_LABEL = { easy:"Easy", marathon:"Marathon", threshold:"Seuil", interval:"Fractionné", repetition:"Répétition" };
+function sessionRunType(paceZone){
+  if(paceZone==="interval"||paceZone==="repetition") return "Fractionné";
+  if(paceZone==="threshold") return "Seuil";
+  return "EF";
+}
+function mondayOf(date){
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  d.setDate(d.getDate() - d.getDay() + (d.getDay()===0?-6:1));
+  return d;
+}
+// `date.toISOString().slice(0,10)` convertit d'abord en UTC — pour
+// n'importe quel fuseau en avance sur UTC (Europe/Paris compris), ça
+// décale silencieusement la date d'un jour près de minuit. Toujours
+// utiliser ce formateur (année/mois/jour EN LOCAL) pour planned_date /
+// week_start_date, jamais toISOString() sur une date sans heure.
+function localDateStr(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function addDaysStr(base, n){ const d=new Date(base); d.setDate(d.getDate()+n); return localDateStr(d); }
+function dayLabelShort(date){ return date.toLocaleDateString('fr-FR',{weekday:'short', day:'numeric', month:'short'}); }
+
+// Regroupe les entrées objectif principal/secondaire + charge récente
+// (ACWR) + ressenti récent (douleur répétée, fatigue/mental) en une
+// structure hebdo ajustée — utilisé à la fois pour générer une semaine et
+// pour décider si la prochaine séance planifiée doit être ajustée.
+function computeProgramInputs(){
+  const principalType = goals.principal?.objectifPrincipal;
+  const secondaryType = goals.secondaire?.objectifPrincipal;
+  let structure = weeklyStructureForObjective(principalType, secondaryType);
+  const loadSessions = runningRuns.filter(r=>r.painRatings?.rpe!=null).map(r=>({ date: dateFromRun(r), durationMin: (r.durationSec||0)/60, rpe: r.painRatings.rpe }));
+  const dailySeries = buildDailyLoadSeries(loadSessions);
+  const { acwr } = acwrAt(dailySeries, new Date());
+  structure = applyAcwrAdjustment(structure, acwr);
+  const recentRatings = runningRuns.filter(r=>r.painRatings).slice(-2).map(r=>r.painRatings);
+  const zoneKeys = BODY_ZONES.map(z=>z[0]);
+  const painZone = detectRepeatedPain(recentRatings, zoneKeys);
+  const degraded = detectDegradedWellbeing(recentRatings);
+  let avoidQualityReason = null;
+  if(painZone) avoidQualityReason = `douleur répétée (${BODY_ZONES.find(z=>z[0]===painZone)?.[1]||painZone})`;
+  else if(structure.reason==="acwr_high") avoidQualityReason = "charge d'entraînement élevée (ACWR au-dessus de 1,3)";
+  else if(degraded) avoidQualityReason = "fatigue/mental dégradés sur ta dernière notation";
+  return { structure, avoidQualityReason, acwr };
+}
+
+// Génère et persiste une semaine (lundi `mondayDate`) — n'écrase jamais une
+// semaine déjà générée (vérifié par l'appelant). `opts.silent` : pas
+// d'alerte/confirmation visuelle, utilisé pour la génération paresseuse
+// automatique (semaine courante/suivante à l'ouverture de l'onglet).
+window.generateProgram = async (mondayDate, opts) => {
+  opts = opts || {};
+  const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+  if(!profile){ if(!opts.silent) alert("Renseigne d'abord un temps de référence (ci-dessus) pour générer ton programme."); return; }
+  const { structure, avoidQualityReason } = computeProgramInputs();
+  const weeklyKm = goals.kmMensuel ? Number(goals.kmMensuel)/4.33 : 20;
+  const frequency = Number(programSettings.frequency) || Number(goals.frequence) || 3;
+  const unavailable = (programSettings.unavailableDays || []).map(Number);
+  const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d));
+  const generated = generateWeekSessions({ profile, structure, weeklyKm, frequency, availableDayIndexes, avoidQualityReason });
+  if(!generated.length){ if(!opts.silent) alert("Pas assez d'informations pour générer un programme — vérifie tes objectifs et tes disponibilités ci-dessus."); return; }
+  const { data:{user} } = await supa.auth.getUser();
+  if(!user) return;
+  const mondayStr = localDateStr(mondayDate);
+  const rows = generated.map(s => ({
+    user_id:user.id,
+    planned_date: addDaysStr(mondayDate, s.dayIndex),
+    week_start_date: mondayStr,
+    type: sessionRunType(s.paceZone),
+    pace_zone: s.paceZone,
+    title: s.type==="Qualité" ? "Séance qualité" : "Sortie easy",
+    target_distance_km: s.distanceKm,
+    target_pace_sec_per_km: s.targetPaceSecPerKm,
+    rationale: s.rationale,
+    status:"planned", source:"generated",
+    generation_reason: avoidQualityReason ? "pain_repeat_or_wellbeing" : (structure.reason||null),
+  }));
+  const { error } = await supa.from("planned_sessions").insert(rows);
+  if(error){ if(!opts.silent) alert("Erreur de génération : "+error.message); return; }
+  await loadData();
+  if(!opts.silent){ renderContent(); flashSaved("programSaved"); } else { renderContent(); }
+};
+
+window.saveProgramSettings = async () => {
+  const frequency = parseInt(document.getElementById("prog_frequency")?.value, 10) || null;
+  const unavailableDaysRaw = document.getElementById("prog_unavailableDays")?.value || "";
+  const unavailableDays = unavailableDaysRaw ? unavailableDaysRaw.split(",").map(Number) : [];
+  const refDistanceSel = document.getElementById("prog_refDistance")?.value;
+  const refH = parseInt(document.getElementById("prog_refH")?.value,10)||0;
+  const refM = parseInt(document.getElementById("prog_refM")?.value,10)||0;
+  const refTimeSec = (refH*3600+refM*60) || programSettings.refTimeSec || null;
+  const refDistanceKm = refDistanceSel ? RACE_DISTANCES_KM[refDistanceSel] : programSettings.refDistanceKm || null;
+  const value = { ...programSettings, frequency, unavailableDays, refDistanceKm, refTimeSec };
+  if(!(await upsertProfile({ program_settings: value }))) return;
+  programSettings = value;
+  flashSaved("programSettingsSaved");
+  renderContent();
+};
+
+window.validateSession = async (id) => {
+  const { error } = await supa.from("planned_sessions").update({user_confirmed:true, updated_at:new Date().toISOString()}).eq("id", id);
+  if(error){ alert("Erreur : "+error.message); return; }
+  await loadData(); renderContent();
+};
+window.shiftSession = async (id, deltaDays) => {
+  const s = plannedSessions.find(p=>p.id===id);
+  if(!s) return;
+  const newDate = new Date(s.planned_date+"T00:00:00"); newDate.setDate(newDate.getDate()+deltaDays);
+  const { error } = await supa.from("planned_sessions").update({planned_date:localDateStr(newDate), updated_at:new Date().toISOString()}).eq("id", id);
+  if(error){ alert("Erreur : "+error.message); return; }
+  await loadData(); renderContent();
+};
+window.markSessionDone = async (id) => {
+  const { error } = await supa.from("planned_sessions").update({status:"done", updated_at:new Date().toISOString()}).eq("id", id);
+  if(error){ alert("Erreur : "+error.message); return; }
+  await loadData();
+  setTab(1); // bascule vers Ressenti pour noter la séance qui vient d'être faite
+};
+window.toggleNotAdapted = (id) => {
+  openConstraintForm = openConstraintForm===id ? null : id;
+  renderContent();
+};
+window.setProgramView = (mode) => {
+  programViewMode = mode;
+  programWeekOffset = 0; // repart de la semaine/mois courant en changeant de vue
+  renderContent();
+};
+window.programNavWeek = (delta) => {
+  programWeekOffset += delta;
+  renderContent();
+};
+// Remplace une séance par une version ajustée SANS jamais supprimer
+// l'ancienne (pattern "supersede", voir migration_019) : l'ancienne passe
+// replaced/superseded_by_id, la nouvelle porte replaces_session_id — la
+// justification affichée explique toujours pourquoi le changement a eu
+// lieu, jamais de suppression silencieuse.
+window.regenerateSession = async (id, reason) => {
+  const old = plannedSessions.find(p=>p.id===id);
+  if(!old) return;
+  const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+  if(!profile) return;
+  const zones = paceZonesFromVdot(computeVdot(profile.distanceKm, profile.timeSec));
+  const softer = reason!=="Manque de temps"; // "Manque de temps" raccourcit sans changer d'intensité, les autres motifs basculent en easy
+  const newZone = softer ? "easy" : old.pace_zone;
+  const { data:{user} } = await supa.auth.getUser();
+  const { data: inserted, error: insErr } = await supa.from("planned_sessions").insert({
+    user_id:user.id, planned_date:old.planned_date, week_start_date:old.week_start_date,
+    type: sessionRunType(newZone), pace_zone:newZone,
+    title: softer ? "Sortie easy (ajustée)" : old.title,
+    target_distance_km: softer ? Math.round(old.target_distance_km*0.7*10)/10 : Math.round(old.target_distance_km*0.8*10)/10,
+    target_pace_sec_per_km: zones[newZone],
+    rationale: `Régénérée à ta demande — motif : ${reason}.`,
+    status:"planned", source:"manual_edit", generation_reason:"user_constraint",
+    replaces_session_id: old.id,
+  }).select().single();
+  if(insErr){ alert("Erreur : "+insErr.message); return; }
+  await supa.from("planned_sessions").update({status:"replaced", superseded_by_id:inserted.id, updated_at:new Date().toISOString()}).eq("id", old.id);
+  openConstraintForm = null;
+  await loadData(); renderContent();
+};
+window.replaceWithEasy = (id) => window.regenerateSession(id, "Remplacer par une séance easy");
+
+// Boucle d'ajustement légère (voir plan) : pas de cron possible dans une
+// SPA statique — tout se réévalue à l'ouverture de l'onglet. Génère
+// paresseusement les semaines manquantes (courante, et suivante si on est
+// dimanche) et ajuste automatiquement la toute prochaine séance planifiée
+// si le ressenti récent le justifie — jamais silencieusement : la carte
+// affiche toujours la raison, et l'ancienne version reste consultable
+// (status='replaced', jamais supprimée).
+let programAdjustmentChecked = false;
+async function applyProgramAdjustments(){
+  if(programAdjustmentChecked) return;
+  const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+  if(!profile || !programSettings.frequency) return; // pas encore prêt : on retentera au prochain rendu
+  programAdjustmentChecked = true;
+
+  const thisMonday = mondayOf(new Date());
+  const hasThisWeek = plannedSessions.some(p=>p.week_start_date===localDateStr(thisMonday) && p.status!=="replaced");
+  if(!hasThisWeek) await window.generateProgram(thisMonday, {silent:true});
+
+  if(new Date().getDay()===0){ // dimanche : dernier jour de la semaine ISO -> replanifie la suivante
+    const nextMonday = addDaysStr(thisMonday, 7);
+    const hasNextWeek = plannedSessions.some(p=>p.week_start_date===nextMonday && p.status!=="replaced");
+    if(!hasNextWeek) await window.generateProgram(new Date(nextMonday+"T00:00:00"), {silent:true});
+  }
+
+  const todayStr = localDateStr(new Date());
+  const next = plannedSessions.filter(p=>p.status==="planned" && p.planned_date>=todayStr).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0];
+  if(!next || next.pace_zone==="easy") return; // rien à assouplir sur une séance déjà easy
+  const { avoidQualityReason } = computeProgramInputs();
+  if(avoidQualityReason && next.generation_reason!=="user_constraint" && next.generation_reason!=="pain_repeat_or_wellbeing" && next.generation_reason!=="acwr_high"){
+    await window.regenerateSession(next.id, `Ajusté automatiquement — ${avoidQualityReason}`);
+  }
+}
+
+// Handlers dédiés au formulaire Programme — volontairement indépendants de
+// selectChip/toggleMultiChip (Objectifs) qui déclenchent désormais un
+// saveGoals() automatique : les réutiliser ici sauvegarderait par erreur
+// l'onglet Objectifs au lieu de rien faire pour ces champs-ci.
+window.progSelectFrequency = (n) => {
+  const hidden = document.getElementById("prog_frequency");
+  if(hidden) hidden.value = n;
+  document.querySelectorAll('[data-chipgroup="prog_frequency"] [data-value]').forEach(el=>el.classList.toggle("active", el.dataset.value===String(n)));
+};
+window.progToggleUnavailableDay = (i) => {
+  const hidden = document.getElementById("prog_unavailableDays");
+  let arr = hidden.value ? hidden.value.split(",") : [];
+  arr = arr.includes(String(i)) ? arr.filter(v=>v!==String(i)) : [...arr, String(i)];
+  hidden.value = arr.join(",");
+  const group = document.querySelector('[data-chipgroup="unavailableDays"]');
+  if(group) group.querySelectorAll("[data-value]").forEach(el=>el.classList.toggle("active", arr.includes(el.dataset.value)));
+};
+window.progSelectRefDistance = (d) => {
+  const hidden = document.getElementById("prog_refDistance");
+  if(hidden) hidden.value = d;
+  document.querySelectorAll('[data-chipgroup="prog_refDistance"] [data-value]').forEach(el=>el.classList.toggle("active", el.dataset.value===d));
+};
+
+function programSettingsFormHTML(profile){
+  const days = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+  const unavailable = (programSettings.unavailableDays||[]).map(String);
+  return `<div class="card">
+    <div class="stitle">Réglages du programme</div>
+    <div class="chart-hint" style="margin-top:0">Séances de course disponibles / semaine</div>
+    <div class="filters" data-chipgroup="prog_frequency" style="margin-bottom:0">
+      ${["1","2","3","4","5","6","7"].map(n=>`<button type="button" class="flt${Number(n)===Number(programSettings.frequency||goals.frequence)?" active":""}" data-value="${n}" onclick="progSelectFrequency('${n}')">${n}</button>`).join("")}
+    </div>
+    <input type="hidden" id="prog_frequency" value="${programSettings.frequency||goals.frequence||""}">
+    <div class="chart-hint" style="margin-top:14px">Jours indisponibles</div>
+    <div class="filters" data-chipgroup="unavailableDays" style="margin-bottom:0">
+      ${days.map((d,i)=>`<button type="button" class="flt${unavailable.includes(String(i))?" active":""}" data-value="${i}" onclick="progToggleUnavailableDay(${i})">${d}</button>`).join("")}
+    </div>
+    <input type="hidden" id="prog_unavailableDays" value="${unavailable.join(",")}">
+    ${!profile?`
+    <div class="chart-hint" style="margin-top:14px">Pas d'objectif "Préparer une course" avec record, ni de VMA renseignée — indique un temps de référence récent pour calculer tes allures :</div>
+    <div class="chart-hint" style="margin-top:8px;margin-bottom:0">Distance</div>
+    <div class="filters" data-chipgroup="prog_refDistance" style="margin-bottom:0">
+      ${Object.keys(RACE_DISTANCES_KM).map(d=>`<button type="button" class="flt" data-value="${d}" onclick="progSelectRefDistance('${d}')">${d}</button>`).join("")}
+    </div>
+    <input type="hidden" id="prog_refDistance" value="">
+    <div class="field" style="margin-top:10px;margin-bottom:0">
+      <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Temps réalisé</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input type="number" min="0" max="99" class="time-input" id="prog_refH" placeholder="0"> <span style="font-size:12px;color:var(--text-dim)">h</span>
+        <input type="number" min="0" max="59" class="time-input" id="prog_refM" placeholder="0"> <span style="font-size:12px;color:var(--text-dim)">min</span>
+      </div>
+    </div>`:""}
+    <button class="btn-primary" style="margin-top:14px" onclick="saveProgramSettings()">Enregistrer</button>
+    <div id="programSettingsSaved" class="save-confirm"></div>
+  </div>`;
+}
+
+function programSessionCardHTML(session, date){
+  const c = TC[session.type]||TC.Other;
+  const zoneLabel = PACE_ZONE_LABEL[session.pace_zone]||session.pace_zone;
+  const done = session.status==="done";
+  const constraintOpen = openConstraintForm===session.id;
+  return `<div class="manage-row" style="opacity:${done?0.6:1}">
+    <div class="manage-top">
+      <div class="session-dot" style="background:${c}22;color:${c}">${icon(TICON[session.type]||"activity",18)}</div>
+      <div class="manage-date">
+        <div style="font-weight:600">${session.title}${done?" ✓":""}</div>
+        <div style="font-size:12px;color:var(--text-dim)">${zoneLabel}${session.target_distance_km?` · ${session.target_distance_km} km`:""}${session.target_pace_sec_per_km?` · ${fmtA(session.target_pace_sec_per_km)}/km`:""}</div>
+      </div>
+    </div>
+    <div class="chart-hint" style="margin-top:8px;margin-bottom:0">${session.rationale}</div>
+    ${!done?`<div class="filters" style="margin-top:10px;margin-bottom:0">
+      <button class="flt${session.user_confirmed?" active":""}" onclick="validateSession('${session.id}')">${session.user_confirmed?"✓ Validée":"Valider"}</button>
+      <button class="flt" onclick="shiftSession('${session.id}',1)">Décaler +1j</button>
+      ${session.pace_zone!=="easy"?`<button class="flt" onclick="replaceWithEasy('${session.id}')">Remplacer par easy</button>`:""}
+      <button class="flt" onclick="markSessionDone('${session.id}')">Marquer fait</button>
+    </div>
+    <div class="session-pick" style="margin-top:6px" onclick="toggleNotAdapted('${session.id}')">
+      <span>${icon(constraintOpen?"chevronDown":"chevronRight",13)} Ce n'est pas adapté</span>
+    </div>
+    ${constraintOpen?`<div style="padding:8px 0 4px">
+      <div class="chart-hint" style="margin-top:0">Pourquoi ?</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        ${["Trop dur","Manque de temps","Douleur","Autre"].map(r=>`<button class="flt" onclick="regenerateSession('${session.id}','${r}')">${r}</button>`).join("")}
+      </div>
+    </div>`:""}`:""}
+  </div>`;
+}
+
+// En-tête de nav semaine/mois : boutons ronds compacts (comme .pace-stepper)
+// plutôt que .btn-secondary (width:100%, prévu pour des boutons pleine
+// largeur) qui forçait un retour à la ligne moche sur mobile ; texte en
+// style normal plutôt que .stitle (uppercase) pour rester lisible sur une
+// plage de dates.
+function programNavHeaderHTML(label){
+  return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <button onclick="programNavWeek(-1)" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--card-2);color:var(--text);font-size:15px;cursor:pointer;flex-shrink:0">←</button>
+    <span style="font-size:14px;font-weight:600;text-align:center;flex:1;padding:0 8px">${label}</span>
+    <button onclick="programNavWeek(1)" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--card-2);color:var(--text);font-size:15px;cursor:pointer;flex-shrink:0">→</button>
+  </div>`;
+}
+
+function programDayRowHTML(date){
+  const dateStr = localDateStr(date);
+  const session = plannedSessions.find(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
+  return `<div style="margin-bottom:10px">
+    <div class="chart-hint" style="margin-top:0;margin-bottom:4px;text-transform:capitalize">${dayLabelShort(date)}</div>
+    ${session?programSessionCardHTML(session,date):`<div class="manage-row" style="opacity:0.5"><div class="manage-top"><div class="session-dot" style="background:var(--card-2);color:var(--text-dim)">${icon("care",18)}</div><div class="manage-date"><div style="font-weight:600">Repos</div></div></div></div>`}
+  </div>`;
+}
+
+function programWeekBlockHTML(monday, collapsedTitle){
+  const days = Array.from({length:7}, (_,i)=>addDays(monday,i));
+  const inner = days.map(programDayRowHTML).join("");
+  if(!collapsedTitle) return inner;
+  return `<div class="stitle" style="margin-top:14px">${collapsedTitle}</div>${inner}`;
+}
+function addDays(base,n){ const d=new Date(base); d.setDate(d.getDate()+n); return d; }
+
 function renderContent(){
   const el=document.getElementById("content");
   const filtered=activeFilter==="Tous"?RUNS:RUNS.filter(r=>r.type===activeFilter);
 
-  if (RUNS.length===0 && activeTab!==4){
+  if (RUNS.length===0 && activeTab!==4 && activeTab!==5){
     el.innerHTML=`<div class="card">${emptyState("Aucune séance pour l'instant","Première fois ? Ouvre l'app pour choisir depuis quelle date importer, puis synchronise.",true)}</div>`;
     return;
   }
@@ -2736,6 +3062,48 @@ function renderContent(){
       <div class="card">
         <button class="btn-danger" onclick="logout()">Déconnexion</button>
       </div>`;
+  }
+
+  else if(activeTab===5){
+    // Programme : formulaire de réglages tant que le profil coureur (VDOT)
+    // ou la fréquence dispo n'est pas connu, calendrier généré ensuite.
+    const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+    const ready = !!profile && !!programSettings.frequency;
+    el.innerHTML = `
+      <div class="card">
+        <div class="stitle">Programme</div>
+        <div class="chart-hint" style="margin-top:0">Calendrier de séances généré à partir de tes objectifs, ton profil coureur et ton ressenti récent — reste modifiable séance par séance.</div>
+      </div>
+      ${programSettingsFormHTML(profile)}
+      ${ready?`
+      <div class="card">
+        <div class="filters" style="margin-bottom:0">
+          <button class="flt${programViewMode==="week"?" active":""}" onclick="setProgramView('week')">Semaine</button>
+          <button class="flt${programViewMode==="month"?" active":""}" onclick="setProgramView('month')">Mois</button>
+        </div>
+      </div>
+      ${programViewMode==="week"?(()=>{
+        const monday = addDays(mondayOf(new Date()), programWeekOffset*7);
+        const hasWeek = plannedSessions.some(p=>p.week_start_date===localDateStr(monday) && p.status!=="replaced");
+        return `<div class="card">
+          ${programNavHeaderHTML(`${monday.toLocaleDateString('fr-FR',{day:'numeric',month:'long'})} – ${addDays(monday,6).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}`)}
+          ${hasWeek?programWeekBlockHTML(monday):`<div class="chart-hint" style="margin-top:0">Pas encore de séances générées pour cette semaine.</div><button class="btn-primary" style="margin-top:10px" onclick="generateProgram(new Date('${monday.toISOString()}'))">Générer cette semaine</button>`}
+        </div>`;
+      })():(()=>{
+        const monthDate = new Date(); monthDate.setMonth(monthDate.getMonth()+programWeekOffset);
+        const firstOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+        const lastOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth()+1, 0);
+        let cursor = mondayOf(firstOfMonth);
+        const weeks = [];
+        while(cursor<=lastOfMonth){ weeks.push(new Date(cursor)); cursor = addDays(cursor,7); }
+        const monthLabel = monthDate.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+        return `<div class="card">
+          ${programNavHeaderHTML(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}
+          ${weeks.map(m=>programWeekBlockHTML(m, `Semaine du ${m.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}`)).join("")}
+        </div>`;
+      })()}`:""}
+    `;
+    applyProgramAdjustments();
   }
 }
 
