@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=13"></script>
+<script src="logic.js?v=15"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -288,6 +288,134 @@ try {
 
   const auto = getIntervalPaces({fracWorkManual: null, fracRecoveryManual: null, paceSeries: null});
   assertEqual("getIntervalPaces : sans override ni pace_series -> null", auto, null);
+}
+
+// --- Moteur Programme : VDOT / zones d'allure ---
+{
+  // 10K en 45:00 -> VDOT ~44-45 attendu (référence connue, cohérente avec
+  // les calculateurs VDOT publics).
+  const vdot = computeVdot(10, 45*60);
+  assertClose("computeVdot : 10K en 45:00 -> VDOT ~45", vdot, 45, 2);
+
+  // Round-trip vo2AtVelocity / velocityForVo2 : l'inverse doit redonner la
+  // vitesse de départ (vérifie que la résolution du polynôme est correcte).
+  const v0 = 300; // m/min
+  assertClose("velocityForVo2 : round-trip avec vo2AtVelocity", velocityForVo2(vo2AtVelocity(v0)), v0, 0.01);
+
+  // Zones d'allure : doivent être strictement croissantes en vitesse (donc
+  // décroissantes en sec/km) de easy -> repetition, quel que soit le VDOT.
+  const zones = paceZonesFromVdot(vdot);
+  assertEqual("paceZonesFromVdot : ordre easy > marathon > threshold > interval > repetition (sec/km)",
+    zones.easy > zones.marathon && zones.marathon > zones.threshold && zones.threshold > zones.interval && zones.interval > zones.repetition,
+    true);
+}
+
+// --- resolveRunnerProfile : priorité PB objectif > VMA objectif > repli ---
+{
+  const RACE_DISTANCES_KM = {"10km":10, "Semi":21.0975};
+  const goalsWithPb = { principal: { objectifPrincipal:"Préparer une course", distanceCourse:"10km", pbExistant:"Oui", pbSec:2700 } };
+  const pbProfile = resolveRunnerProfile(goalsWithPb, null, RACE_DISTANCES_KM);
+  assertEqual("resolveRunnerProfile : PB réel priorisé (source)", pbProfile.source, "goal_pb");
+  assertEqual("resolveRunnerProfile : PB réel priorisé (distance/temps)", [pbProfile.distanceKm, pbProfile.timeSec], [10, 2700]);
+
+  const goalsWithVma = { principal: { objectifPrincipal:"Améliorer mon allure", vmaConnue:"Oui", vma:15 } };
+  const vmaProfile = resolveRunnerProfile(goalsWithVma, null, RACE_DISTANCES_KM);
+  assertEqual("resolveRunnerProfile : repli sur VMA si pas de PB (source)", vmaProfile.source, "goal_vma");
+
+  const fallbackProfile = resolveRunnerProfile({}, {refDistanceKm:5, refTimeSec:1500}, RACE_DISTANCES_KM);
+  assertEqual("resolveRunnerProfile : repli programSettings si rien côté Objectifs", fallbackProfile.source, "program_fallback");
+
+  assertEqual("resolveRunnerProfile : null si aucune source disponible", resolveRunnerProfile({}, null, RACE_DISTANCES_KM), null);
+}
+
+// --- Session-RPE (Foster 2001) ---
+{
+  assertEqual("sessionLoad : 60min x RPE 7 = 420", sessionLoad(60, 7), 420);
+  assertEqual("sessionLoad : sans durée ou RPE -> 0", sessionLoad(null, 7), 0);
+}
+
+// --- buildDailyLoadSeries : agrégation par jour calendaire ---
+{
+  const d = (n) => new Date(2026,0,n);
+  const sessions = [
+    {date:d(1), durationMin:60, rpe:5},   // 300
+    {date:d(1), durationMin:30, rpe:6},   // 180 -> même jour, cumulé à 480
+    {date:d(3), durationMin:45, rpe:4},   // 180
+  ];
+  const series = buildDailyLoadSeries(sessions);
+  assertEqual("buildDailyLoadSeries : 2 séances même jour cumulées", series.find(s=>s.date.getDate()===1).load, 480);
+  assertEqual("buildDailyLoadSeries : nombre de jours distincts", series.length, 2);
+}
+
+// --- ACWR (Gabbett 2016) ---
+{
+  const target = new Date(2026,0,28);
+  // Charge constante 300/jour sur 28 jours -> aigu(7j)=2100, chronique(28j/4)=2100 -> ACWR=1
+  const flatSeries = Array.from({length:28}, (_,i) => ({date:new Date(2026,0,i+1), load:300}));
+  const flat = acwrAt(flatSeries, target);
+  assertClose("acwrAt : charge constante -> ACWR ~1", flat.acwr, 1, 0.01);
+
+  // Pic soudain sur les 7 derniers jours (charge x3) -> ACWR nettement >1.3
+  const spikeSeries = flatSeries.map((d,i) => i>=21 ? {...d, load:900} : d);
+  const spike = acwrAt(spikeSeries, target);
+  assertEqual("acwrAt : pic récent -> ACWR > 1.3 (zone à risque)", spike.acwr > 1.3, true);
+
+  assertEqual("acwrAt : pas de charge chronique -> acwr null", acwrAt([], target).acwr, null);
+}
+
+// --- detectRepeatedPain / detectDegradedWellbeing ---
+{
+  const history = [
+    {genoux_g:6, dos:1, fatigue:3, mental:2},
+    {genoux_g:5, dos:0, fatigue:8, mental:7},
+  ];
+  assertEqual("detectRepeatedPain : zone douloureuse 2x de suite détectée", detectRepeatedPain(history, ["genoux_g","dos"], 4), "genoux_g");
+  assertEqual("detectRepeatedPain : pas de répétition -> null", detectRepeatedPain([{dos:6,genoux_g:0},{dos:0,genoux_g:6}], ["dos","genoux_g"], 4), null);
+  assertEqual("detectRepeatedPain : historique trop court -> null", detectRepeatedPain([{dos:8}], ["dos"], 4), null);
+
+  assertEqual("detectDegradedWellbeing : fatigue/mental élevés -> true", detectDegradedWellbeing(history), true);
+  assertEqual("detectDegradedWellbeing : ressenti correct -> false", detectDegradedWellbeing([{fatigue:2,mental:1}]), false);
+}
+
+// --- weeklyStructureForObjective ---
+{
+  const course = weeklyStructureForObjective("Préparer une course");
+  assertEqual("weeklyStructureForObjective : 'Préparer une course' -> 80/20", [course.easyPct, course.qualityPct], [0.80, 0.20]);
+
+  const combo = weeklyStructureForObjective("Préparer une course", "Rester en forme");
+  assertClose("weeklyStructureForObjective : 2 objectifs -> moyenne pondérée (easyPct)", combo.easyPct, (0.80+0.95)/2, 0.001);
+  assertEqual("weeklyStructureForObjective : 2 objectifs -> priorités combinées", combo.priorities, ["race","maintenance"]);
+}
+
+// --- applyAcwrAdjustment ---
+{
+  const base = { easyPct:0.80, qualityPct:0.20, priorities:["race"] };
+  const high = applyAcwrAdjustment(base, 1.6);
+  assertEqual("applyAcwrAdjustment : ACWR élevé -> tout en easy, raison explicite", [high.easyPct, high.qualityPct, high.reason], [1, 0, "acwr_high"]);
+
+  const low = applyAcwrAdjustment(base, 0.6);
+  assertEqual("applyAcwrAdjustment : ACWR bas -> progression autorisée (structure inchangée)", [low.easyPct, low.qualityPct, low.reason], [0.80, 0.20, "acwr_low_may_progress"]);
+
+  const normal = applyAcwrAdjustment(base, 1.0);
+  assertEqual("applyAcwrAdjustment : ACWR dans la cible -> pas d'ajustement", normal.reason, null);
+}
+
+// --- generateWeekSessions : invariants du calendrier généré ---
+{
+  const profile = { distanceKm:10, timeSec:2700 }; // VDOT ~45
+  const structure = { easyPct:0.80, qualityPct:0.20, priorities:["race"] };
+  const sessions = generateWeekSessions({ profile, structure, weeklyKm:40, frequency:4, availableDayIndexes:[0,1,2,3,4,5,6] });
+  assertEqual("generateWeekSessions : génère bien 4 séances pour frequency=4", sessions.length, 4);
+  assertEqual("generateWeekSessions : au plus 2 séances qualité/semaine", sessions.filter(s=>s.type==="Qualité").length <= 2, true);
+  assertEqual("generateWeekSessions : chaque séance a une justification non vide", sessions.every(s=>s.rationale && s.rationale.length>0), true);
+  const totalKm = sessions.reduce((a,s)=>a+s.distanceKm,0);
+  assertClose("generateWeekSessions : volume total proche de weeklyKm=40", totalKm, 40, 5);
+
+  const avoided = generateWeekSessions({ profile, structure, weeklyKm:40, frequency:4, availableDayIndexes:[0,1,2,3,4,5,6], avoidQualityReason:"douleur genoux_g répétée" });
+  assertEqual("generateWeekSessions : avoidQualityReason -> aucune séance qualité", avoided.filter(s=>s.type==="Qualité").length, 0);
+
+  const noProfile = generateWeekSessions({ profile:null, structure, weeklyKm:40, frequency:4, availableDayIndexes:[0,1,2,3,4,5,6] });
+  assertEqual("generateWeekSessions : sans profil résolu -> calendrier vide (pas d'erreur)", noProfile, []);
 }
 
 // --- fmtA / fmtDur ---

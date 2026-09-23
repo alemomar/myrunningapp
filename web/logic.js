@@ -391,3 +391,275 @@ function getIntervalPaces(run){
   if(fromLaps) return fromLaps;
   return run.paceSeries ? computeIntervalPaces(run.paceSeries) : null;
 }
+
+/* ============================================================
+   Moteur "Programme" — référentiel scientifique running.
+   Fonctions pures uniquement (pas d'accès à RUNS/DOM/Supabase),
+   pour rester testables isolément dans test.html comme le reste
+   de ce fichier. Chaque bloc cite sa source.
+   ============================================================ */
+
+/* ---------- VDOT / Daniels' Running Formula ----------
+   Source : Daniels & Gilbert (1979), "Oxygen power: representing a
+   mathematical connection between measures of aerobic power and running
+   performance", Medicine and Science in Sports 11(2) — mêmes formules
+   reprises dans Daniels' Running Formula (J. Daniels, Human Kinetics). */
+
+// VO2 (ml/kg/min) requis pour courir à la vitesse v (m/min).
+function vo2AtVelocity(v){ return -4.60 + 0.182258*v + 0.000104*v*v; }
+
+// Fraction de VO2max mobilisable en effort maximal soutenu pendant t minutes.
+function pctVo2MaxForDuration(t){
+  return 0.8 + 0.1894393*Math.exp(-0.012778*t) + 0.2989558*Math.exp(-0.1932605*t);
+}
+
+// VDOT à partir d'une perf de référence (distance en km, temps en secondes).
+function computeVdot(distanceKm, timeSec){
+  if(!distanceKm || !timeSec) return null;
+  const t = timeSec/60;
+  const v = (distanceKm*1000)/t;
+  return vo2AtVelocity(v) / pctVo2MaxForDuration(t);
+}
+
+// Inverse de vo2AtVelocity : vitesse (m/min) atteignant un VO2 cible.
+// Racine positive de 0.000104v² + 0.182258v − (4.60+vo2) = 0.
+function velocityForVo2(vo2Target){
+  const a=0.000104, b=0.182258, c=-(4.60+vo2Target);
+  return (-b + Math.sqrt(b*b - 4*a*c)) / (2*a);
+}
+
+// Pourcentages de VDOT par zone — recoupés sur plusieurs calculateurs
+// Daniels publics (convergent sur ces valeurs), approximation du tableau
+// original par zones plutôt qu'une formule fermée officiellement publiée.
+const VDOT_ZONE_PCT = { easy:0.70, marathon:0.84, threshold:0.88, interval:0.98, repetition:1.05 };
+
+// Zones d'allure (sec/km) à partir d'un VDOT.
+function paceZonesFromVdot(vdot){
+  const zones = {};
+  for(const [key,pct] of Object.entries(VDOT_ZONE_PCT)){
+    zones[key] = Math.round(60000 / velocityForVo2(vdot*pct)); // 60000 m / (m/min) = sec/km
+  }
+  return zones;
+}
+
+// Résout la source de référence pour le moteur VDOT, par ordre de priorité,
+// SANS dupliquer la donnée (rien n'est recopié tant qu'une valeur existe
+// côté Objectifs — si l'utilisateur met à jour son PB, il prend le dessus
+// automatiquement au prochain calcul) :
+// 1. PB réel de l'objectif "Préparer une course" (perf réelle, la plus
+//    fiable — jamais tempsViseSec, qui est un OBJECTIF, pas une perf).
+// 2. VMA de l'objectif "Améliorer mon allure" (traitée comme un effort de
+//    référence ~6min, protocole standard de test VMA).
+// 3. Repli sur programSettings (saisi dans le formulaire initial Programme
+//    si rien n'existe côté Objectifs).
+// `raceDistancesKm` = table des distances (ex: RACE_DISTANCES_KM d'index.html),
+// passée en paramètre pour garder cette fonction indépendante d'index.html.
+function resolveRunnerProfile(goals, programSettings, raceDistancesKm){
+  const slots = [goals?.principal, goals?.secondaire].filter(Boolean);
+  for(const slot of slots){
+    if(slot.objectifPrincipal==="Préparer une course" && slot.pbExistant==="Oui" && slot.pbSec && slot.distanceCourse){
+      const km = raceDistancesKm[slot.distanceCourse];
+      if(km) return { distanceKm: km, timeSec: Number(slot.pbSec), source:"goal_pb" };
+    }
+  }
+  for(const slot of slots){
+    if(slot.objectifPrincipal==="Améliorer mon allure" && slot.vmaConnue==="Oui" && slot.vma){
+      // VMA en km/h ≈ vitesse tenable ~6min (protocole de test VMA standard).
+      return { distanceKm: Number(slot.vma)*(6/60), timeSec: 360, source:"goal_vma" };
+    }
+  }
+  if(programSettings?.refDistanceKm && programSettings?.refTimeSec){
+    return { distanceKm: Number(programSettings.refDistanceKm), timeSec: Number(programSettings.refTimeSec), source:"program_fallback" };
+  }
+  return null;
+}
+
+/* ---------- Session-RPE ----------
+   Source : Foster et al. (2001), "A new approach to monitoring exercise
+   training", Journal of Strength and Conditioning Research 15(1). */
+
+// Charge de séance = durée (min) × RPE (Borg CR-10, 0-10).
+function sessionLoad(durationMin, rpe){
+  if(!durationMin || rpe==null) return 0;
+  return durationMin * rpe;
+}
+
+// `sessions` : [{date:Date, durationMin, rpe}] déjà extraits par l'appelant
+// (qui a accès à dateFromRun/parsing de `dur` — cette fonction reste pure,
+// pas de dépendance à la forme exacte d'un run). Agrège la charge par jour
+// calendaire (plusieurs séances le même jour = charges additionnées).
+function buildDailyLoadSeries(sessions){
+  const byDay = {};
+  sessions.forEach(s=>{
+    if(!s.date || s.rpe==null) return;
+    const key = s.date.toISOString().slice(0,10);
+    if(!byDay[key]) byDay[key] = { date: new Date(s.date.getFullYear(),s.date.getMonth(),s.date.getDate()), load: 0 };
+    byDay[key].load += sessionLoad(s.durationMin, s.rpe);
+  });
+  return Object.values(byDay).sort((a,b)=>a.date-b.date);
+}
+
+/* ---------- ACWR (Acute:Chronic Workload Ratio) ----------
+   Source : Gabbett (2016), "The training-injury prevention paradox: should
+   athletes be training smarter and harder?", British Journal of Sports
+   Medicine 50(5). Cible 0.8-1.3, risque accru au-delà de 1.5. Méthode
+   "coupled" : charge aiguë = somme des 7 derniers jours, charge chronique =
+   moyenne hebdomadaire sur les 28 derniers jours (somme/4). */
+function acwrAt(dailySeries, targetDate){
+  const inWindow = (days) => {
+    const from = new Date(targetDate); from.setDate(from.getDate()-(days-1));
+    return dailySeries.filter(d=>d.date>=from && d.date<=targetDate).reduce((a,d)=>a+d.load,0);
+  };
+  const acute7j = inWindow(7);
+  const chronic28j = inWindow(28)/4;
+  return { acute7j, chronic28j, acwr: chronic28j>0 ? acute7j/chronic28j : null };
+}
+
+/* ---------- Douleur/gêne répétée ----------
+   Règle donnée par l'utilisateur (pas une source externe) : une même zone
+   signalée ≥ seuil sur les 2 dernières séances NOTÉES d'affilée déclenche un
+   remplacement de la prochaine séance qualité. `ratingsHistory` : liste de
+   `pain_ratings` (objets plats zone→0-10), la plus récente en dernier. */
+function detectRepeatedPain(ratingsHistory, zoneKeys, threshold=4){
+  if(!ratingsHistory || ratingsHistory.length<2) return null;
+  const [prev, last] = ratingsHistory.slice(-2);
+  for(const zone of zoneKeys){
+    if((prev[zone]||0)>=threshold && (last[zone]||0)>=threshold) return zone;
+  }
+  return null;
+}
+
+// Fatigue/mental dégradés = dernière notation au-dessus du seuil (échelle
+// 0-10, 10=pire) — reflète l'état ACTUEL, pas une moyenne qui diluerait un
+// mauvais ressenti récent avec une séance antérieure correcte. Signal pour
+// réduire l'intensité prévue, jamais pour supprimer une séance silencieusement.
+function detectDegradedWellbeing(ratingsHistory, threshold=6){
+  if(!ratingsHistory || ratingsHistory.length<1) return false;
+  const last = ratingsHistory[ratingsHistory.length-1];
+  return (last.fatigue||0)>=threshold || (last.mental||0)>=threshold;
+}
+
+/* ---------- Structure macro par objectif ----------
+   Répartition Easy/qualité de départ par type d'objectif (base : polarisé
+   80/20, Seiler & Kjerland 2006, "Quantifying training intensity
+   distribution in elite endurance athletes", ajustée par priorité) ; si 2
+   objectifs sont actifs, moyenne pondérée des deux structures. */
+const OBJECTIVE_STRUCTURE = {
+  "Préparer une course":       { easyPct:0.80, qualityPct:0.20, priority:"race" },
+  "Améliorer mon allure":      { easyPct:0.70, qualityPct:0.30, priority:"quality" },
+  "Courir plus régulièrement": { easyPct:0.90, qualityPct:0.10, priority:"frequency" },
+  "Rester en forme":           { easyPct:0.95, qualityPct:0.05, priority:"maintenance" },
+  "Autre":                     { easyPct:0.80, qualityPct:0.20, priority:"general" },
+};
+function weeklyStructureForObjective(objectifType, secondaryType){
+  const a = OBJECTIVE_STRUCTURE[objectifType] || OBJECTIVE_STRUCTURE["Autre"];
+  if(!secondaryType || secondaryType===objectifType) return { ...a, priorities:[a.priority] };
+  const b = OBJECTIVE_STRUCTURE[secondaryType] || OBJECTIVE_STRUCTURE["Autre"];
+  return {
+    easyPct: (a.easyPct+b.easyPct)/2,
+    qualityPct: (a.qualityPct+b.qualityPct)/2,
+    priorities: [a.priority, b.priority],
+  };
+}
+
+/* ---------- Progression ----------
+   Règle empirique standard (consensus large en préparation running, pas une
+   source unique) : +10% de volume hebdo max d'une semaine sur l'autre,
+   semaine de décharge toutes les 3-4 semaines. */
+function maxProgressedVolume(previousWeekKm){
+  return previousWeekKm ? previousWeekKm*1.10 : null;
+}
+function isDeloadWeek(weekIndexSinceStart){
+  return weekIndexSinceStart>0 && weekIndexSinceStart%4===0;
+}
+
+/* ---------- Ajustement selon la charge (ACWR) ----------
+   ACWR>1.3 → réduit volume/intensité (bascule de la qualité vers l'easy,
+   plafonne le volume) et insère une récupération. ACWR<0.8 (plusieurs
+   semaines, vérifié par l'appelant) → autorise une progression de volume.
+   Jamais de suppression silencieuse : la structure change, avec une raison
+   explicite toujours renvoyée. */
+function applyAcwrAdjustment(structure, acwr){
+  if(acwr==null) return { ...structure, reason:null };
+  if(acwr>1.3){
+    return { easyPct:1, qualityPct:0, priorities:structure.priorities, reason:"acwr_high", insertRecovery:true };
+  }
+  if(acwr<0.8){
+    return { ...structure, reason:"acwr_low_may_progress" };
+  }
+  return { ...structure, reason:null };
+}
+
+/* ---------- Génération du calendrier de séances ----------
+   Compose les blocs ci-dessus en un calendrier concret pour une semaine.
+   `params` :
+   - profile: {distanceKm,timeSec} (résolu via resolveRunnerProfile)
+   - structure: résultat de weeklyStructureForObjective (+ ajustement ACWR/
+     douleur/fatigue appliqué par l'appelant AVANT de passer ici)
+   - weeklyKm: volume hebdo cible (dérivé de goals.kmMensuel/4.33, ou
+     progression/décharge)
+   - frequency: nombre de séances de course/semaine
+   - availableDayIndexes: jours dispo (0=lundi..6=dimanche)
+   - avoidQualityZone/avoidQualityReason: si non-null, aucune séance qualité
+     cette semaine (remplacée par easy), motif affiché à l'utilisateur
+   Chaque séance renvoyée porte une `rationale` courte expliquant le lien
+   objectif/ressenti — jamais un simple numéro de zone sans explication. */
+function generateWeekSessions(params){
+  const { profile, structure, weeklyKm, frequency, availableDayIndexes, avoidQualityReason } = params;
+  if(!profile || !frequency || frequency<1) return [];
+  const zones = paceZonesFromVdot(computeVdot(profile.distanceKm, profile.timeSec));
+  const days = (availableDayIndexes && availableDayIndexes.length ? availableDayIndexes : [0,1,2,3,4,5,6]).slice().sort((a,b)=>a-b);
+  const n = Math.min(frequency, days.length || frequency);
+
+  // Pas de séance qualité en dessous de 3 séances/semaine (trop peu de
+  // volume pour l'isoler sans écraser le easy), ni si la semaine est
+  // marquée "à éviter" (douleur répétée / ACWR haut / fatigue dégradée).
+  // Plafonné à 2/semaine même à fréquence élevée (pratique courante,
+  // éviter d'enchaîner trop de séances dures).
+  const qualityN = avoidQualityReason ? 0 : (n>=3 ? Math.max(0, Math.min(2, Math.round(n * structure.qualityPct))) : 0);
+  const easyN = n - qualityN;
+
+  // Répartit les jours dispo de façon régulière sur la semaine (espacement
+  // maximal) plutôt que les N premiers jours, pour ne pas coller deux
+  // séances qualité/dur d'affilée sans le vouloir.
+  const spread = Array.from({length:n}, (_,i) => days[Math.round(i*(days.length-1)/Math.max(1,n-1))]);
+  const uniqueDays = [...new Set(spread)];
+  while(uniqueDays.length<n && uniqueDays.length<days.length){
+    for(const d of days){ if(!uniqueDays.includes(d)){ uniqueDays.push(d); break; } }
+  }
+  uniqueDays.sort((a,b)=>a-b);
+
+  // Distance : la/les séance(s) qualité pèsent un volume fixe modeste
+  // (~20% du volume hebdo chacune, plafonné), le reste se répartit à parts
+  // égales sur les séances easy — garde un total proche de weeklyKm.
+  const qualityKmEach = qualityN ? Math.min(weeklyKm*0.20, 12) : 0;
+  const remainingKm = Math.max(0, weeklyKm - qualityKmEach*qualityN);
+  const easyKmEach = easyN ? remainingKm/easyN : 0;
+
+  const sessions = [];
+  for(let i=0;i<n;i++){
+    const isQuality = i<qualityN;
+    const dayIndex = uniqueDays[i];
+    if(isQuality){
+      const zoneKey = structure.priorities?.includes("quality") ? "interval" : "threshold";
+      sessions.push({
+        dayIndex, type:"Qualité", paceZone: zoneKey,
+        distanceKm: Math.round(qualityKmEach*10)/10,
+        targetPaceSecPerKm: zones[zoneKey],
+        rationale: `Séance qualité (zone ${zoneKey}) — priorité liée à ton objectif.`,
+      });
+    } else {
+      sessions.push({
+        dayIndex, type:"Easy", paceZone:"easy",
+        distanceKm: Math.round(easyKmEach*10)/10,
+        targetPaceSecPerKm: zones.easy,
+        rationale: structure.reason==="acwr_high"
+          ? "Séance easy — volume/intensité réduits cette semaine (charge d'entraînement élevée détectée)."
+          : avoidQualityReason
+            ? `Séance easy — remplace une séance qualité (${avoidQualityReason}).`
+            : "Séance easy — base aérobie (règle 80/20).",
+      });
+    }
+  }
+  return sessions;
+}
