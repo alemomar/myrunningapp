@@ -284,46 +284,39 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .month-sep{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text);padding:18px 0 8px;margin-bottom:4px;border-bottom:1px solid var(--border)}
 .month-sep:first-child{padding-top:0}
 
-/* Programme : calendrier semaine (colonnes) / mois (grille), drag and
-   drop d'une séance déclenché par un appui long (~0,5s), volontairement
-   PAS en drag-and-drop HTML5 natif (dragstart/dragover) : ce dernier ne
-   fonctionne pas de façon fiable au doigt sur mobile/Safari, or l'usage
-   principal de l'app est la PWA iPhone. Implémenté avec les Pointer
-   Events (unifie souris/tactile), voir progDragStart/Move/End.
+/* Programme : calendrier semaine (colonnes) / mois (empilement de
+   plateaux-semaine, un par semaine du mois affiché) — les 7 jours
+   tiennent toujours sans swipe horizontal (colonnes à largeur égale,
+   `.prog-board` ne scrolle plus). Drag and drop d'une séance déclenché
+   par un appui long (~0,5s), volontairement PAS en drag-and-drop HTML5
+   natif (dragstart/dragover) : ce dernier ne fonctionne pas de façon
+   fiable au doigt sur mobile/Safari, or l'usage principal de l'app est
+   la PWA iPhone. Implémenté avec les Pointer Events (unifie souris/
+   tactile), voir progDragStart/Move/End.
    .prog-card-mini.draggable (uniquement les cartes séance, pas les cases
    "Repos") a `touch-action:none` STATIQUE (pas posé en JS à l'armement) :
    Safari iOS décide dès le premier contact si le doigt peut déclencher un
    scroll natif, et l'imposer plus tard en JS n'a aucun effet sur le geste
    déjà en cours — sans ça, dès que le doigt bouge vers un autre jour, iOS
    bascule en scroll natif et annule le pointeur (pointercancel), donc la
-   carte s'arme mais ne se déplace jamais. Conséquence acceptée : on ne
-   peut pas déclencher le scroll horizontal du plateau en balayant depuis
-   une carte séance elle-même (mais ça marche depuis l'en-tête du jour ou
-   une case "Repos", qui gardent touch-action normal). */
-.prog-board{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
-.prog-daycol{flex:0 0 76px;display:flex;flex-direction:column;align-items:center;border-radius:12px;padding:6px 4px;border:1px solid transparent;transition:background .15s,border-color .15s}
+   carte s'arme mais ne se déplace jamais. */
+.prog-board{display:flex;gap:3px}
+.prog-daycol{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;border-radius:10px;padding:4px 1px;border:1px solid transparent;transition:background .15s,border-color .15s}
+.prog-daycol.outmonth{opacity:0.35}
 .prog-daycol.selected{background:var(--card-2)}
 .prog-daycol.dragover{background:var(--accent-dim);border-color:var(--accent)}
-.prog-daycol-hdr{font-size:11px;color:var(--text-dim);text-align:center;text-transform:capitalize;line-height:1.4;margin-bottom:6px}
-.prog-daycol-hdr b{display:block;font-size:14px;font-weight:700;color:var(--text)}
+.prog-daycol-hdr{font-size:9px;color:var(--text-dim);text-align:center;text-transform:uppercase;line-height:1.3;margin-bottom:4px}
+.prog-daycol-hdr b{display:block;font-size:13px;font-weight:700;color:var(--text)}
 .prog-daycol.today .prog-daycol-hdr b{color:var(--accent)}
-.prog-card-mini{width:100%;min-height:64px;box-sizing:border-box;border-radius:10px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 2px;cursor:pointer;position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.prog-card-mini{width:100%;min-height:46px;box-sizing:border-box;border-radius:9px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:5px 1px;cursor:pointer;position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .prog-card-mini.draggable{touch-action:none}
-.prog-card-mini.rest{background:var(--card-2);color:var(--text-dim);font-size:11px;border-style:dashed}
-.prog-card-mini-lbl{font-size:10px;font-weight:600;color:var(--text);text-align:center;line-height:1.3}
-.prog-card-mini-check{position:absolute;top:3px;right:5px;font-size:10px;color:var(--accent);font-weight:700}
-.prog-card-mini.prog-armed{transform:scale(1.08);box-shadow:0 8px 20px rgba(0,0,0,0.35);z-index:5}
-.prog-ghost{position:fixed;z-index:999;pointer-events:none;opacity:0.92;transform:scale(1.08);box-shadow:0 10px 24px rgba(0,0,0,0.4);border-radius:10px;box-sizing:border-box}
-.prog-monthgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.prog-monthgrid-hdr{font-size:10px;color:var(--text-dim);text-align:center;text-transform:uppercase;letter-spacing:.03em;padding-bottom:4px}
-.prog-monthcell{aspect-ratio:1;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;border:1px solid transparent;box-sizing:border-box}
-.prog-monthcell.outmonth{opacity:0.32}
-.prog-monthcell.today .prog-monthcell-daynum{color:var(--accent);font-weight:700}
-.prog-monthcell.selected{background:var(--card-2)}
-.prog-monthcell.dragover{background:var(--accent-dim);border-color:var(--accent)}
-.prog-monthcell-daynum{font-size:12px;color:var(--text)}
-.prog-monthcell-dot{width:9px;height:9px;border-radius:50%;user-select:none;-webkit-touch-callout:none;touch-action:none}
-.prog-monthcell-dot.prog-armed{transform:scale(1.5);box-shadow:0 4px 10px rgba(0,0,0,0.4)}
+.prog-card-mini.rest{background:var(--card-2);color:var(--text-dim);font-size:9px;border-style:dashed}
+.prog-card-mini-lbl{font-size:8px;font-weight:600;color:var(--text);text-align:center;line-height:1.2}
+.prog-card-mini-check{position:absolute;top:2px;right:3px;font-size:9px;color:var(--accent);font-weight:700}
+.prog-card-mini.prog-armed{transform:scale(1.12);box-shadow:0 8px 20px rgba(0,0,0,0.35);z-index:5}
+.prog-ghost{position:fixed;z-index:999;pointer-events:none;opacity:0.92;transform:scale(1.12);box-shadow:0 10px 24px rgba(0,0,0,0.4);border-radius:9px;box-sizing:border-box}
+.prog-week-label{font-size:11px;font-weight:600;color:var(--text-dim);margin:14px 0 6px}
+.prog-week-label:first-child{margin-top:0}
 .account-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
 .account-row:last-child{border-bottom:none}
 .account-row .lbl{font-size:13px;color:var(--text-dim)}
@@ -2427,8 +2420,8 @@ window.progSelectDay = (dateStr) => {
 // (pas le pattern "supersede", contrairement à regenerateSession : ici le
 // contenu de la séance ne change pas, seule sa date change, donc rien à
 // tracer côté contenu). Refuse si le jour cible a déjà une séance active,
-// pour ne jamais en masquer une silencieusement (programDayColHTML/
-// programMonthCellHTML n'affichent qu'une séance par jour).
+// pour ne jamais en masquer une silencieusement (programDayColHTML
+// n'affiche qu'une séance par jour).
 window.moveSessionToDate = async (id, newDateStr) => {
   const s = plannedSessions.find(p=>p.id===id);
   if(!s || s.planned_date===newDateStr) return;
@@ -2501,8 +2494,8 @@ function progDragMove(e){
   progDrag.ghost.style.display = "none";
   const under = document.elementFromPoint(e.clientX, e.clientY);
   progDrag.ghost.style.display = "";
-  document.querySelectorAll(".prog-daycol.dragover,.prog-monthcell.dragover").forEach(c=>c.classList.remove("dragover"));
-  const col = under?.closest(".prog-daycol,.prog-monthcell");
+  document.querySelectorAll(".prog-daycol.dragover").forEach(c=>c.classList.remove("dragover"));
+  const col = under?.closest(".prog-daycol");
   if(col) col.classList.add("dragover");
 }
 function progDragEnd(e){
@@ -2513,11 +2506,11 @@ function progDragEnd(e){
   clearTimeout(progDrag.timer);
   if(!progDrag.armed){ progDrag = null; return; }
   progDrag.ghost?.remove();
-  document.querySelectorAll(".prog-daycol.dragover,.prog-monthcell.dragover").forEach(c=>c.classList.remove("dragover"));
+  document.querySelectorAll(".prog-daycol.dragover").forEach(c=>c.classList.remove("dragover"));
   progDrag.el.classList.remove("prog-armed");
   progDrag.el.style.touchAction = "";
   const under = document.elementFromPoint(e.clientX, e.clientY);
-  const col = under?.closest(".prog-daycol,.prog-monthcell");
+  const col = under?.closest(".prog-daycol");
   const targetDate = col?.dataset.date;
   const id = progDrag.id;
   progDrag = null;
@@ -2534,7 +2527,7 @@ function progDragCancel(e){
   progDrag.ghost?.remove();
   progDrag.el.classList.remove("prog-armed");
   progDrag.el.style.touchAction = "";
-  document.querySelectorAll(".prog-daycol.dragover,.prog-monthcell.dragover").forEach(c=>c.classList.remove("dragover"));
+  document.querySelectorAll(".prog-daycol.dragover").forEach(c=>c.classList.remove("dragover"));
   progDrag = null;
 }
 // Remplace une séance par une version ajustée SANS jamais supprimer
@@ -2707,64 +2700,50 @@ function programNavHeaderHTML(label){
 
 // Vue semaine = un tableau de colonnes jour par jour (façon Google Agenda
 // vue semaine, sans grille d'heures : une séance de course n'a pas besoin
-// d'heure précise). Chaque carte séance est glissable (appui long, voir
-// progDragStart) vers une autre colonne pour la replanifier ; un tap court
-// sélectionne le jour et affiche son détail dans programSelectedDayPanelHTML.
-function programDayColHTML(date){
+// d'heure précise), les 7 colonnes tenant toujours sans swipe horizontal.
+// Chaque carte séance est glissable (appui long, voir progDragStart) vers
+// une autre colonne pour la replanifier ; un tap court sélectionne le jour
+// et affiche son détail dans programSelectedDayPanelHTML. `monthDate`
+// optionnel (vue mois uniquement) : estompe les jours hors du mois affiché.
+function programDayColHTML(date, monthDate){
   const dateStr = localDateStr(date);
   const session = plannedSessions.find(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
   const isToday = dateStr===localDateStr(new Date());
   const selected = programSelectedDate===dateStr;
+  const outmonth = monthDate && date.getMonth()!==monthDate.getMonth();
   const draggable = session && session.status==="planned";
   const c = session ? (TC[session.type]||TC.Other) : null;
   const dragAttrs = draggable ? `onpointerdown="progDragStart(event,'${session.id}')"` : "";
-  return `<div class="prog-daycol${isToday?" today":""}${selected?" selected":""}" data-date="${dateStr}">
-    <div class="prog-daycol-hdr">${date.toLocaleDateString('fr-FR',{weekday:'short'})}<b>${date.getDate()}</b></div>
+  return `<div class="prog-daycol${isToday?" today":""}${selected?" selected":""}${outmonth?" outmonth":""}" data-date="${dateStr}">
+    <div class="prog-daycol-hdr">${date.toLocaleDateString('fr-FR',{weekday:'short'}).slice(0,2)}<b>${date.getDate()}</b></div>
     ${session
       ? `<div class="prog-card-mini${draggable?" draggable":""}" style="background:${c}1c;border-color:${c}55" ${dragAttrs} onclick="progSelectDay('${dateStr}')">
-          <div style="color:${c}">${icon(TICON[session.type]||"activity",16)}</div>
-          <div class="prog-card-mini-lbl">${session.target_distance_km?session.target_distance_km+" km":(PACE_ZONE_LABEL[session.pace_zone]||"")}</div>
+          <div style="color:${c}">${icon(TICON[session.type]||"activity",14)}</div>
+          <div class="prog-card-mini-lbl">${session.target_distance_km?session.target_distance_km+"km":(PACE_ZONE_LABEL[session.pace_zone]||"")}</div>
           ${session.status==="done"?`<div class="prog-card-mini-check">✓</div>`:""}
         </div>`
       : `<div class="prog-card-mini rest" onclick="progSelectDay('${dateStr}')">Repos</div>`}
   </div>`;
 }
-function programWeekBoardHTML(monday){
+function programWeekBoardHTML(monday, monthDate){
   const days = Array.from({length:7}, (_,i)=>addDays(monday,i));
-  return `<div class="prog-board">${days.map(programDayColHTML).join("")}</div>`;
+  return `<div class="prog-board">${days.map(d=>programDayColHTML(d, monthDate)).join("")}</div>`;
 }
 
-// Vue mois = vraie grille calendaire (semaines en lignes, jours en
-// colonnes), chaque jour avec un point coloré si une séance y est
-// planifiée — glissable vers un autre jour de la grille comme en vue
-// semaine. Les jours hors du mois affiché (début/fin de grille) restent
-// des cibles de dépôt valides (ex. déplacer une séance du 30 vers le 1er).
-function programMonthCellHTML(date, monthDate){
-  const dateStr = localDateStr(date);
-  const session = plannedSessions.find(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
-  const inMonth = date.getMonth()===monthDate.getMonth();
-  const isToday = dateStr===localDateStr(new Date());
-  const selected = programSelectedDate===dateStr;
-  const draggable = session && session.status==="planned";
-  const c = session ? (TC[session.type]||TC.Other) : null;
-  const dragAttrs = draggable ? `onpointerdown="progDragStart(event,'${session.id}')"` : "";
-  return `<div class="prog-monthcell${isToday?" today":""}${inMonth?"":" outmonth"}${selected?" selected":""}" data-date="${dateStr}" onclick="progSelectDay('${dateStr}')">
-    <div class="prog-monthcell-daynum">${date.getDate()}</div>
-    ${session?`<div class="prog-monthcell-dot" style="background:${c}" ${dragAttrs} title="${session.title}"></div>`:""}
-  </div>`;
-}
-function programMonthGridHTML(monthDate){
+// Vue mois = empilement des mêmes plateaux-semaine (une rangée de 7
+// colonnes par semaine du mois affiché), plutôt qu'une grille séparée à
+// petits points colorés — les jours hors du mois (début/fin de la
+// première/dernière semaine) restent affichés en estompé mais restent des
+// cibles de dépôt valides (ex. déplacer une séance du 30 vers le 1er).
+function programMonthStackHTML(monthDate){
   const firstOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
   const lastOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth()+1, 0);
-  const gridStart = mondayOf(firstOfMonth);
-  const gridEnd = addDays(mondayOf(lastOfMonth), 6);
-  const days = [];
-  for(let cursor=new Date(gridStart); cursor<=gridEnd; cursor=addDays(cursor,1)) days.push(new Date(cursor));
-  const dowLabels = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
-  return `<div class="prog-monthgrid">
-    ${dowLabels.map(d=>`<div class="prog-monthgrid-hdr">${d}</div>`).join("")}
-    ${days.map(d=>programMonthCellHTML(d, monthDate)).join("")}
-  </div>`;
+  const weeks = [];
+  for(let cursor=mondayOf(firstOfMonth); cursor<=lastOfMonth; cursor=addDays(cursor,7)) weeks.push(new Date(cursor));
+  return weeks.map(w=>`
+    <div class="prog-week-label">Semaine du ${w.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div>
+    ${programWeekBoardHTML(w, monthDate)}
+  `).join("");
 }
 
 // Panneau de détail du jour sélectionné (tap sur une colonne/cellule) —
@@ -3397,7 +3376,7 @@ function renderContent(){
         const monthLabel = monthDate.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
         return `<div class="card">
           ${programNavHeaderHTML(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}
-          ${programMonthGridHTML(monthDate)}
+          ${programMonthStackHTML(monthDate)}
         </div>${programSelectedDayPanelHTML()}`;
       })()}`:""}
     `;
