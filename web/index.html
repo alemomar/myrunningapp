@@ -290,15 +290,16 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
    fonctionne pas de façon fiable au doigt sur mobile/Safari, or l'usage
    principal de l'app est la PWA iPhone. Implémenté avec les Pointer
    Events (unifie souris/tactile), voir progDragStart/Move/End.
-   .prog-card-mini a `touch-action:none` STATIQUE (pas posé en JS à
-   l'armement) : Safari iOS décide dès le premier contact si le doigt peut
-   déclencher un scroll natif, et l'imposer plus tard en JS n'a aucun
-   effet sur le geste déjà en cours — sans ça, dès que le doigt bouge vers
-   un autre jour, iOS bascule en scroll natif et annule le pointeur
-   (pointercancel), donc la carte s'arme mais ne se déplace jamais.
-   Conséquence acceptée : on ne peut plus déclencher le scroll horizontal
-   du plateau en balayant depuis une carte elle-même, seulement depuis
-   l'en-tête du jour ou une case "Repos" (touch-action normal ailleurs). */
+   .prog-card-mini.draggable (uniquement les cartes séance, pas les cases
+   "Repos") a `touch-action:none` STATIQUE (pas posé en JS à l'armement) :
+   Safari iOS décide dès le premier contact si le doigt peut déclencher un
+   scroll natif, et l'imposer plus tard en JS n'a aucun effet sur le geste
+   déjà en cours — sans ça, dès que le doigt bouge vers un autre jour, iOS
+   bascule en scroll natif et annule le pointeur (pointercancel), donc la
+   carte s'arme mais ne se déplace jamais. Conséquence acceptée : on ne
+   peut pas déclencher le scroll horizontal du plateau en balayant depuis
+   une carte séance elle-même (mais ça marche depuis l'en-tête du jour ou
+   une case "Repos", qui gardent touch-action normal). */
 .prog-board{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
 .prog-daycol{flex:0 0 76px;display:flex;flex-direction:column;align-items:center;border-radius:12px;padding:6px 4px;border:1px solid transparent;transition:background .15s,border-color .15s}
 .prog-daycol.selected{background:var(--card-2)}
@@ -306,7 +307,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .prog-daycol-hdr{font-size:11px;color:var(--text-dim);text-align:center;text-transform:capitalize;line-height:1.4;margin-bottom:6px}
 .prog-daycol-hdr b{display:block;font-size:14px;font-weight:700;color:var(--text)}
 .prog-daycol.today .prog-daycol-hdr b{color:var(--accent)}
-.prog-card-mini{width:100%;min-height:64px;box-sizing:border-box;border-radius:10px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 2px;cursor:pointer;position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
+.prog-card-mini{width:100%;min-height:64px;box-sizing:border-box;border-radius:10px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 2px;cursor:pointer;position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.prog-card-mini.draggable{touch-action:none}
 .prog-card-mini.rest{background:var(--card-2);color:var(--text-dim);font-size:11px;border-style:dashed}
 .prog-card-mini-lbl{font-size:10px;font-weight:600;color:var(--text);text-align:center;line-height:1.3}
 .prog-card-mini-check{position:absolute;top:3px;right:5px;font-size:10px;color:var(--accent);font-weight:700}
@@ -549,6 +551,7 @@ let openSessionRatings = new Set();
 let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
 let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
 let openConstraintForm = null; // id de la séance en cours d'ajustement via "Ce n'est pas adapté"
+let openEditForm = null; // id de la séance en cours d'édition manuelle (distance/allure)
 let programSelectedDate = null; // jour affiché dans le panneau de détail sous le calendrier
 // Refonte complète du check-in douleur (retour d'audit : trop lourd à
 // remplir, confus, pas terrible visuellement). Zones simplifiées — plus de
@@ -2230,6 +2233,29 @@ function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
    ============================================================ */
 
 const PACE_ZONE_LABEL = { easy:"Easy", marathon:"Marathon", threshold:"Seuil", interval:"Fractionné", repetition:"Répétition" };
+// Explique à l'utilisateur ce que représente concrètement l'allure visée
+// (pas juste l'afficher) — % de la vitesse VDOT, cf. VDOT_ZONE_PCT dans
+// logic.js, et à quoi sert ce rythme dans l'entraînement.
+const PACE_ZONE_EXPLAIN = {
+  easy: "rythme confortable (~70% de ta vitesse VDOT) qui construit ta base aérobie sans te fatiguer — l'essentiel du volume doit rester à cette allure (règle 80/20).",
+  marathon: "rythme soutenable sur une longue durée (~84% de ta vitesse VDOT) — utile pour t'habituer à tenir un effort long à allure régulière.",
+  threshold: "rythme « confortablement difficile », juste sous ton seuil lactique (~88% de ta vitesse VDOT) — améliore ta capacité à tenir un effort soutenu.",
+  interval: "rythme proche de ta VO2max (~98% de ta vitesse VDOT) — développe ta puissance aérobie, travaillé par répétitions courtes avec récupération.",
+  repetition: "rythme plus rapide que ton allure de course (~105% de ta vitesse VDOT) — travaille ta vitesse et ton économie de course.",
+};
+function programProfileSourceLabel(profile){
+  if(!profile) return "";
+  if(profile.source==="goal_pb") return "ton record personnel renseigné dans Objectifs";
+  if(profile.source==="goal_vma") return "ta VMA renseignée dans Objectifs";
+  return "le temps de référence que tu as saisi";
+}
+function programPaceExplanationHTML(session){
+  const zoneText = PACE_ZONE_EXPLAIN[session.pace_zone];
+  if(!zoneText) return "";
+  const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+  const srcLabel = programProfileSourceLabel(profile);
+  return `<div class="chart-hint" style="margin-top:6px;margin-bottom:0">Allure ${PACE_ZONE_LABEL[session.pace_zone]||""} : ${zoneText}${srcLabel?` Calculée à partir de ${srcLabel}.`:""}</div>`;
+}
 function sessionRunType(paceZone){
   if(paceZone==="interval"||paceZone==="repetition") return "Fractionné";
   if(paceZone==="threshold") return "Seuil";
@@ -2339,16 +2365,48 @@ window.shiftSession = async (id, deltaDays) => {
   if(error){ alert("Erreur : "+error.message); return; }
   await loadData(); renderContent();
 };
-window.markSessionDone = async (id) => {
-  const { error } = await supa.from("planned_sessions").update({status:"done", updated_at:new Date().toISOString()}).eq("id", id);
-  if(error){ alert("Erreur : "+error.message); return; }
-  await loadData();
-  setTab(1); // bascule vers Ressenti pour noter la séance qui vient d'être faite
-};
 window.toggleNotAdapted = (id) => {
   openConstraintForm = openConstraintForm===id ? null : id;
   renderContent();
 };
+window.toggleEditSession = (id) => {
+  openEditForm = openEditForm===id ? null : id;
+  renderContent();
+};
+// Édition manuelle directe (distance/allure) — simple UPDATE comme
+// valider/décaler, pas le pattern "supersede" : c'est l'utilisateur qui
+// choisit sa propre valeur, ce n'est pas le moteur qui "régénère" pour un
+// motif à tracer.
+window.saveSessionEdit = async (id) => {
+  const distanceKm = parseFloat(document.getElementById("edit_distance_"+id)?.value);
+  const paceMin = parseInt(document.getElementById("edit_paceMin_"+id)?.value, 10);
+  const paceSec = parseInt(document.getElementById("edit_paceSec_"+id)?.value, 10);
+  const patch = { source:"manual_edit", updated_at:new Date().toISOString() };
+  if(!isNaN(distanceKm) && distanceKm>0) patch.target_distance_km = distanceKm;
+  if(!isNaN(paceMin) || !isNaN(paceSec)){
+    const sec = (paceMin||0)*60 + (paceSec||0);
+    if(sec>0) patch.target_pace_sec_per_km = sec;
+  }
+  const { error } = await supa.from("planned_sessions").update(patch).eq("id", id);
+  if(error){ alert("Erreur : "+error.message); return; }
+  openEditForm = null;
+  await loadData(); renderContent();
+};
+// Une séance planifiée passe automatiquement à "faite" dès qu'une séance
+// réelle synchronisée (HealthKit) existe le même jour — inutile de
+// demander confirmation à l'utilisateur, la synchro fait foi. Le ressenti
+// est déjà proposé ailleurs (bannière séance non notée), pas besoin de le
+// redéclencher ici.
+async function reconcilePlannedSessions(){
+  const todo = plannedSessions.filter(p=>p.status==="planned" && RUNS.some(r=>localDateStr(dateFromRun(r))===p.planned_date));
+  if(!todo.length) return;
+  for(const p of todo){
+    const match = RUNS.find(r=>localDateStr(dateFromRun(r))===p.planned_date);
+    await supa.from("planned_sessions").update({status:"done", linked_run_id:match.id, updated_at:new Date().toISOString()}).eq("id", p.id);
+    p.status = "done"; p.linked_run_id = match.id;
+  }
+  renderContent();
+}
 window.setProgramView = (mode) => {
   programViewMode = mode;
   programWeekOffset = 0; // repart de la semaine/mois courant en changeant de vue
@@ -2584,6 +2642,9 @@ function programSessionCardHTML(session, date){
   const zoneLabel = PACE_ZONE_LABEL[session.pace_zone]||session.pace_zone;
   const done = session.status==="done";
   const constraintOpen = openConstraintForm===session.id;
+  const editOpen = openEditForm===session.id;
+  const paceMin = session.target_pace_sec_per_km ? Math.floor(session.target_pace_sec_per_km/60) : "";
+  const paceSec = session.target_pace_sec_per_km ? Math.round(session.target_pace_sec_per_km%60) : "";
   return `<div class="manage-row" style="opacity:${done?0.6:1}">
     <div class="manage-top">
       <div class="session-dot" style="background:${c}22;color:${c}">${icon(TICON[session.type]||"activity",18)}</div>
@@ -2593,12 +2654,32 @@ function programSessionCardHTML(session, date){
       </div>
     </div>
     <div class="chart-hint" style="margin-top:8px;margin-bottom:0">${session.rationale}</div>
+    ${programPaceExplanationHTML(session)}
     ${!done?`<div class="filters" style="margin-top:10px;margin-bottom:0">
       <button class="flt${session.user_confirmed?" active":""}" onclick="validateSession('${session.id}')">${session.user_confirmed?"✓ Validée":"Valider"}</button>
       <button class="flt" onclick="shiftSession('${session.id}',1)">Décaler +1j</button>
       ${session.pace_zone!=="easy"?`<button class="flt" onclick="replaceWithEasy('${session.id}')">Remplacer par easy</button>`:""}
-      <button class="flt" onclick="markSessionDone('${session.id}')">Marquer fait</button>
+      <button class="flt" onclick="toggleEditSession('${session.id}')">Modifier</button>
     </div>
+    ${editOpen?`<div style="padding:8px 0 4px">
+      <div class="chart-hint" style="margin-top:0">Modifier la séance</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:flex-end">
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim)">Distance</span>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="number" min="0" step="0.1" class="time-input" style="width:56px" id="edit_distance_${session.id}" value="${session.target_distance_km||""}"> <span style="font-size:12px;color:var(--text-dim)">km</span>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim)">Allure</span>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="number" min="0" max="59" class="time-input" id="edit_paceMin_${session.id}" value="${paceMin}"> <span style="font-size:12px;color:var(--text-dim)">'</span>
+            <input type="number" min="0" max="59" class="time-input" id="edit_paceSec_${session.id}" value="${paceSec}"> <span style="font-size:12px;color:var(--text-dim)">''/km</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn-primary" style="margin-top:10px" onclick="saveSessionEdit('${session.id}')">Enregistrer</button>
+    </div>`:""}
     <div class="session-pick" style="margin-top:6px" onclick="toggleNotAdapted('${session.id}')">
       <span>${icon(constraintOpen?"chevronDown":"chevronRight",13)} Ce n'est pas adapté</span>
     </div>
@@ -2640,7 +2721,7 @@ function programDayColHTML(date){
   return `<div class="prog-daycol${isToday?" today":""}${selected?" selected":""}" data-date="${dateStr}">
     <div class="prog-daycol-hdr">${date.toLocaleDateString('fr-FR',{weekday:'short'})}<b>${date.getDate()}</b></div>
     ${session
-      ? `<div class="prog-card-mini" style="background:${c}1c;border-color:${c}55" ${dragAttrs} onclick="progSelectDay('${dateStr}')">
+      ? `<div class="prog-card-mini${draggable?" draggable":""}" style="background:${c}1c;border-color:${c}55" ${dragAttrs} onclick="progSelectDay('${dateStr}')">
           <div style="color:${c}">${icon(TICON[session.type]||"activity",16)}</div>
           <div class="prog-card-mini-lbl">${session.target_distance_km?session.target_distance_km+" km":(PACE_ZONE_LABEL[session.pace_zone]||"")}</div>
           ${session.status==="done"?`<div class="prog-card-mini-check">✓</div>`:""}
@@ -3321,6 +3402,7 @@ function renderContent(){
       })()}`:""}
     `;
     applyProgramAdjustments();
+    reconcilePlannedSessions();
   }
 }
 
