@@ -417,7 +417,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=16"></script>
+<script src="logic.js?v=17"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2315,7 +2315,7 @@ window.generateProgram = async (mondayDate, opts) => {
   const { data:{user} } = await supa.auth.getUser();
   if(!user) return;
   const mondayStr = localDateStr(mondayDate);
-  const rows = generated.map(s => ({
+  const runningRows = generated.map(s => ({
     user_id:user.id,
     planned_date: addDaysStr(mondayDate, s.dayIndex),
     week_start_date: mondayStr,
@@ -2328,6 +2328,20 @@ window.generateProgram = async (mondayDate, opts) => {
     status:"planned", source:"generated",
     generation_reason: avoidQualityReason ? "pain_repeat_or_wellbeing" : (structure.reason||null),
   }));
+  // Séances complémentaires (renfo/mobilité/yoga) sur les jours restants,
+  // en plus des séances de course — voir generateCrossTrainingSessions.
+  const usedDayIndexes = generated.map(s=>s.dayIndex);
+  const frequencyAutre = Number(goals.frequenceAutre) || 0;
+  const crossTraining = generateCrossTrainingSessions(frequencyAutre, usedDayIndexes, weekIndex);
+  const crossRows = crossTraining.map(s => ({
+    user_id:user.id,
+    planned_date: addDaysStr(mondayDate, s.dayIndex),
+    week_start_date: mondayStr,
+    type: s.type, pace_zone: null, title: s.type,
+    rationale: s.rationale,
+    status:"planned", source:"generated",
+  }));
+  const rows = [...runningRows, ...crossRows];
   const { error } = await supa.from("planned_sessions").insert(rows);
   if(error){ if(!opts.silent) alert("Erreur de génération : "+error.message); return; }
   await loadData();
@@ -2625,7 +2639,10 @@ async function applyProgramAdjustments(){
   }
 
   const todayStr = localDateStr(new Date());
-  const next = plannedSessions.filter(p=>p.status==="planned" && p.planned_date>=todayStr).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0];
+  // pace_zone truthy uniquement : les séances complémentaires (renfo/
+  // mobilité/yoga, pace_zone=null) ne sont pas soumises à l'ajustement
+  // ACWR/douleur, qui suppose une allure de course (regenerateSession).
+  const next = plannedSessions.filter(p=>p.status==="planned" && p.pace_zone && p.planned_date>=todayStr).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0];
   if(!next || next.pace_zone==="easy") return; // rien à assouplir sur une séance déjà easy
   const { avoidQualityReason } = computeProgramInputs();
   if(avoidQualityReason && next.generation_reason!=="user_constraint" && next.generation_reason!=="pain_repeat_or_wellbeing" && next.generation_reason!=="acwr_high"){

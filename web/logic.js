@@ -682,3 +682,42 @@ function generateWeekSessions(params){
   }
   return sessions;
 }
+
+/* ---------- Séances complémentaires (renfo / mobilité / yoga) ----------
+   Ce ne sont pas des séances de course : pas d'allure, pas de VDOT, pas
+   soumises à l'ajustement ACWR/douleur (qui suppose une allure — voir
+   applyProgramAdjustments côté index.html, qui filtre explicitement sur
+   pace_zone truthy pour ne jamais leur appliquer regenerateSession).
+   Volontairement basique pour cette première itération : pas de
+   suggestion d'exercices précis (ex: quels mouvements de renfo), qui
+   nécessiterait un référentiel dédié — seulement le TYPE de séance et sa
+   justification, à affiner dans un second temps si besoin. */
+const CROSS_TRAINING_TYPES = ["Renfo", "Mobilité", "Yoga"];
+const CROSS_TRAINING_RATIONALE = {
+  "Renfo": "Renforcement musculaire — prévient les blessures et complète ta charge de course sans ajouter d'impact.",
+  "Mobilité": "Mobilité articulaire — entretient l'amplitude de mouvement et facilite la récupération entre les sorties.",
+  "Yoga": "Respiration et souplesse — favorise la récupération active et la gestion du stress d'entraînement.",
+};
+// `usedDayIndexes` : jours déjà pris par une séance de course cette
+// semaine (generateWeekSessions) — le complémentaire se place uniquement
+// sur les jours restants, jamais le même jour qu'une course (garde le
+// modèle "une séance par jour" utilisé partout ailleurs dans l'app).
+// `weekIndex` : fait tourner le TYPE d'une semaine sur l'autre (et d'une
+// séance à l'autre la même semaine), pour ne jamais répéter indéfiniment
+// le même type.
+function generateCrossTrainingSessions(frequencyAutre, usedDayIndexes, weekIndex){
+  if(!frequencyAutre || frequencyAutre<1) return [];
+  const available = [0,1,2,3,4,5,6].filter(d=>!usedDayIndexes.includes(d));
+  const n = Math.min(frequencyAutre, available.length);
+  if(n<1) return [];
+  const spread = Array.from({length:n}, (_,i) => available[Math.round(i*(available.length-1)/Math.max(1,n-1))]);
+  const uniqueDays = [...new Set(spread)];
+  while(uniqueDays.length<n && uniqueDays.length<available.length){
+    for(const d of available){ if(!uniqueDays.includes(d)){ uniqueDays.push(d); break; } }
+  }
+  uniqueDays.sort((a,b)=>a-b);
+  return uniqueDays.map((dayIndex, i) => {
+    const type = CROSS_TRAINING_TYPES[(weekIndex+i)%CROSS_TRAINING_TYPES.length];
+    return { dayIndex, type, rationale: CROSS_TRAINING_RATIONALE[type] };
+  });
+}

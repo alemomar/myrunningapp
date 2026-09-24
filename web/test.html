@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=16"></script>
+<script src="logic.js?v=17"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -440,6 +440,28 @@ try {
   const zoneB = weekB.find(s=>s.type==="Qualité").paceZone;
   assertEqual("generateWeekSessions : 1 séance qualité -> alterne Seuil/Fractionné semaine paire vs impaire", zoneA!==zoneB, true);
   assertEqual("generateWeekSessions : les deux zones alternées sont bien threshold/interval", [zoneA,zoneB].sort(), ["interval","threshold"]);
+}
+
+// --- generateCrossTrainingSessions : séances complémentaires (renfo/mobilité/yoga) ---
+{
+  assertEqual("generateCrossTrainingSessions : fréquence 0 -> aucune séance", generateCrossTrainingSessions(0, [0,2,4], 0), []);
+
+  const used = [0,2,4]; // lundi/mercredi/vendredi déjà pris par la course
+  const cross = generateCrossTrainingSessions(2, used, 0);
+  assertEqual("generateCrossTrainingSessions : génère bien 2 séances pour frequencyAutre=2", cross.length, 2);
+  assertEqual("generateCrossTrainingSessions : jamais le même jour qu'une séance de course", cross.every(s=>!used.includes(s.dayIndex)), true);
+  assertEqual("generateCrossTrainingSessions : chaque séance a un type connu (Renfo/Mobilité/Yoga)", cross.every(s=>["Renfo","Mobilité","Yoga"].includes(s.type)), true);
+  assertEqual("generateCrossTrainingSessions : chaque séance a une justification non vide", cross.every(s=>s.rationale && s.rationale.length>0), true);
+
+  // Plafonné par les jours réellement disponibles (jamais 2 séances sur 1 seul jour restant).
+  const oneSlotLeft = [0,1,2,3,4,5]; // seul dimanche (6) reste libre
+  const overbooked = generateCrossTrainingSessions(3, oneSlotLeft, 0);
+  assertEqual("generateCrossTrainingSessions : plafonné aux jours vraiment disponibles", overbooked.length, 1);
+
+  // Alterne le type d'une semaine sur l'autre (weekIndex) -> pas toujours le même.
+  const weekX = generateCrossTrainingSessions(1, [0,2,4], 0)[0].type;
+  const weekY = generateCrossTrainingSessions(1, [0,2,4], 1)[0].type;
+  assertEqual("generateCrossTrainingSessions : le type alterne selon weekIndex", weekX!==weekY, true);
 }
 
 // --- fmtA / fmtDur ---
