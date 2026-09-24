@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=15"></script>
+<script src="logic.js?v=16"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -416,6 +416,30 @@ try {
 
   const noProfile = generateWeekSessions({ profile:null, structure, weeklyKm:40, frequency:4, availableDayIndexes:[0,1,2,3,4,5,6] });
   assertEqual("generateWeekSessions : sans profil résolu -> calendrier vide (pas d'erreur)", noProfile, []);
+}
+
+// --- generateWeekSessions : mix Seuil/Fractionné (bug remonté : jamais de
+// Fractionné en dehors de l'objectif "Améliorer mon allure", et jamais de
+// Seuil pour cet objectif — plus aucun mélange ni alternance) ---
+{
+  const profile = { distanceKm:10, timeSec:2700 };
+  // 2 séances qualité/semaine (frequency=6, qualityPct=0.30 -> round(6*0.3)=2)
+  // -> les deux zones doivent être représentées la même semaine.
+  const structureRace = { easyPct:0.80, qualityPct:0.30, priorities:["race"] };
+  const sessions2 = generateWeekSessions({ profile, structure:structureRace, weeklyKm:50, frequency:6, availableDayIndexes:[0,1,2,3,4,5,6] });
+  const zones2 = sessions2.filter(s=>s.type==="Qualité").map(s=>s.paceZone).sort();
+  assertEqual("generateWeekSessions : 2 séances qualité/semaine -> un Seuil et un Fractionné", zones2, ["interval","threshold"]);
+
+  // 1 seule séance qualité/semaine (frequency=4, qualityPct=0.20 -> round(4*0.2)=1)
+  // -> doit alterner Seuil/Fractionné d'une semaine sur l'autre (weekIndex
+  // pair vs impair), jamais bloqué sur le même type indéfiniment.
+  const structureOther = { easyPct:0.80, qualityPct:0.20, priorities:["frequency"] };
+  const weekA = generateWeekSessions({ profile, structure:structureOther, weeklyKm:30, frequency:4, availableDayIndexes:[0,1,2,3,4,5,6], weekIndex:0 });
+  const weekB = generateWeekSessions({ profile, structure:structureOther, weeklyKm:30, frequency:4, availableDayIndexes:[0,1,2,3,4,5,6], weekIndex:1 });
+  const zoneA = weekA.find(s=>s.type==="Qualité").paceZone;
+  const zoneB = weekB.find(s=>s.type==="Qualité").paceZone;
+  assertEqual("generateWeekSessions : 1 séance qualité -> alterne Seuil/Fractionné semaine paire vs impaire", zoneA!==zoneB, true);
+  assertEqual("generateWeekSessions : les deux zones alternées sont bien threshold/interval", [zoneA,zoneB].sort(), ["interval","threshold"]);
 }
 
 // --- fmtA / fmtDur ---

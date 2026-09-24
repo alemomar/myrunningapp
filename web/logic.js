@@ -602,10 +602,29 @@ function applyAcwrAdjustment(structure, acwr){
    - availableDayIndexes: jours dispo (0=lundi..6=dimanche)
    - avoidQualityZone/avoidQualityReason: si non-null, aucune séance qualité
      cette semaine (remplacée par easy), motif affiché à l'utilisateur
+   - weekIndex: entier croissant d'une semaine sur l'autre (ex: nombre de
+     semaines écoulées depuis une origine fixe) — sert uniquement à alterner
+     Seuil/Fractionné d'une semaine sur l'autre quand une seule séance
+     qualité est prévue (voir qualityZoneForSlot ci-dessous). Optionnel,
+     défaut 0 (comportement stable pour les appels/tests qui l'ignorent).
    Chaque séance renvoyée porte une `rationale` courte expliquant le lien
    objectif/ressenti — jamais un simple numéro de zone sans explication. */
+// AVANT ce correctif, la séance qualité était TOUJOURS "threshold" (Seuil),
+// sauf pour l'objectif "Améliorer mon allure" où c'était TOUJOURS
+// "interval" (Fractionné) — jamais de mélange, jamais d'alternance : un
+// utilisateur avec un autre objectif ne voyait donc JAMAIS de Fractionné,
+// semaine après semaine (bug remonté : "pourquoi jamais de fractionné/
+// renfo ces 2 prochaines semaines ?"). Corrigé : 2 séances qualité/semaine
+// -> une de chaque type ; 1 seule -> alterne par semaine (biaisé vers
+// l'objectif prioritaire mais jamais exclusif).
+function qualityZoneForSlot(structure, slotIndex, qualityN, weekIndex){
+  if(qualityN>=2) return slotIndex===0 ? "threshold" : "interval";
+  const emphasizeInterval = structure.priorities?.includes("quality");
+  const altWeek = (weekIndex||0)%2===0;
+  return emphasizeInterval ? (altWeek?"interval":"threshold") : (altWeek?"threshold":"interval");
+}
 function generateWeekSessions(params){
-  const { profile, structure, weeklyKm, frequency, availableDayIndexes, avoidQualityReason } = params;
+  const { profile, structure, weeklyKm, frequency, availableDayIndexes, avoidQualityReason, weekIndex } = params;
   if(!profile || !frequency || frequency<1) return [];
   const zones = paceZonesFromVdot(computeVdot(profile.distanceKm, profile.timeSec));
   const days = (availableDayIndexes && availableDayIndexes.length ? availableDayIndexes : [0,1,2,3,4,5,6]).slice().sort((a,b)=>a-b);
@@ -641,7 +660,7 @@ function generateWeekSessions(params){
     const isQuality = i<qualityN;
     const dayIndex = uniqueDays[i];
     if(isQuality){
-      const zoneKey = structure.priorities?.includes("quality") ? "interval" : "threshold";
+      const zoneKey = qualityZoneForSlot(structure, i, qualityN, weekIndex);
       sessions.push({
         dayIndex, type:"Qualité", paceZone: zoneKey,
         distanceKm: Math.round(qualityKmEach*10)/10,

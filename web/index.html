@@ -417,7 +417,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=15"></script>
+<script src="logic.js?v=16"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -545,6 +545,7 @@ let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
 let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
 let openConstraintForm = null; // id de la séance en cours d'ajustement via "Ce n'est pas adapté"
 let openEditForm = null; // id de la séance en cours d'édition manuelle (distance/allure)
+let openAddForm = null; // date (YYYY-MM-DD) du jour pour lequel le formulaire d'ajout manuel est ouvert
 let programSelectedDate = null; // jour affiché dans le panneau de détail sous le calendrier
 // Refonte complète du check-in douleur (retour d'audit : trop lourd à
 // remplir, confus, pas terrible visuellement). Zones simplifiées — plus de
@@ -2304,7 +2305,12 @@ window.generateProgram = async (mondayDate, opts) => {
   const frequency = Number(goals.frequence) || 3;
   const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
   const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d));
-  const generated = generateWeekSessions({ profile, structure, weeklyKm, frequency, availableDayIndexes, avoidQualityReason });
+  // Semaines consécutives -> weekIndex consécutifs (mondayDate est toujours
+  // un lundi minuit local, l'écart est exactement 7j en ms) : sert à
+  // alterner Seuil/Fractionné d'une semaine sur l'autre, voir
+  // qualityZoneForSlot dans logic.js.
+  const weekIndex = Math.floor(mondayDate.getTime()/(7*24*3600*1000));
+  const generated = generateWeekSessions({ profile, structure, weeklyKm, frequency, availableDayIndexes, avoidQualityReason, weekIndex });
   if(!generated.length){ if(!opts.silent) alert("Pas assez d'informations pour générer un programme — vérifie tes objectifs et tes disponibilités ci-dessus."); return; }
   const { data:{user} } = await supa.auth.getUser();
   if(!user) return;
@@ -2383,6 +2389,39 @@ window.saveSessionEdit = async (id) => {
   const { error } = await supa.from("planned_sessions").update(patch).eq("id", id);
   if(error){ alert("Erreur : "+error.message); return; }
   openEditForm = null;
+  await loadData(); renderContent();
+};
+window.toggleAddForm = (dateStr) => {
+  openAddForm = openAddForm===dateStr ? null : dateStr;
+  renderContent();
+};
+// Ajout manuel très basique (bouton "+" sur un jour "Repos") : tous les
+// champs sauf le type sont optionnels. Reste au pattern un-seul-jour-une-
+// séance déjà utilisé partout ailleurs (drag, génération...) — refuse sur
+// un jour déjà occupé plutôt que d'empiler silencieusement une 2e séance
+// que l'affichage ne montrerait pas (programDayColHTML ne prend que la
+// première séance active du jour).
+window.addManualSession = async (dateStr) => {
+  const type = document.getElementById("addSession_type")?.value || "EF";
+  const distanceKm = parseFloat(document.getElementById("addSession_distance")?.value);
+  const durationMin = parseFloat(document.getElementById("addSession_duration")?.value);
+  const notes = document.getElementById("addSession_notes")?.value?.trim();
+  const occupied = plannedSessions.some(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
+  if(occupied){ alert("Ce jour a déjà une séance — modifie-la plutôt que d'en ajouter une seconde."); return; }
+  const { data:{user} } = await supa.auth.getUser();
+  if(!user) return;
+  const monday = mondayOf(new Date(dateStr+"T00:00:00"));
+  const row = {
+    user_id:user.id, planned_date:dateStr, week_start_date:localDateStr(monday),
+    type, pace_zone:null, title:type, description: notes||null,
+    target_distance_km: (!isNaN(distanceKm) && distanceKm>0) ? distanceKm : null,
+    target_duration_min: (!isNaN(durationMin) && durationMin>0) ? durationMin : null,
+    rationale:"Ajoutée manuellement.",
+    status:"planned", source:"manual_add",
+  };
+  const { error } = await supa.from("planned_sessions").insert(row);
+  if(error){ alert("Erreur : "+error.message); return; }
+  openAddForm = null;
   await loadData(); renderContent();
 };
 // Une séance planifiée passe automatiquement à "faite" dès qu'une séance
@@ -2632,7 +2671,7 @@ function programSettingsFormHTML(profile){
 
 function programSessionCardHTML(session, date){
   const c = TC[session.type]||TC.Other;
-  const zoneLabel = PACE_ZONE_LABEL[session.pace_zone]||session.pace_zone;
+  const zoneLabel = session.pace_zone ? (PACE_ZONE_LABEL[session.pace_zone]||session.pace_zone) : session.type;
   const done = session.status==="done";
   const constraintOpen = openConstraintForm===session.id;
   const editOpen = openEditForm===session.id;
@@ -2651,7 +2690,7 @@ function programSessionCardHTML(session, date){
     ${!done?`<div class="filters" style="margin-top:10px;margin-bottom:0">
       <button class="flt${session.user_confirmed?" active":""}" onclick="validateSession('${session.id}')">${session.user_confirmed?"✓ Validée":"Valider"}</button>
       <button class="flt" onclick="shiftSession('${session.id}',1)">Décaler +1j</button>
-      ${session.pace_zone!=="easy"?`<button class="flt" onclick="replaceWithEasy('${session.id}')">Remplacer par easy</button>`:""}
+      ${session.pace_zone && session.pace_zone!=="easy"?`<button class="flt" onclick="replaceWithEasy('${session.id}')">Remplacer par easy</button>`:""}
       <button class="flt" onclick="toggleEditSession('${session.id}')">Modifier</button>
     </div>
     ${editOpen?`<div style="padding:8px 0 4px">
@@ -2673,7 +2712,7 @@ function programSessionCardHTML(session, date){
       </div>
       <button class="btn-primary" style="margin-top:10px" onclick="saveSessionEdit('${session.id}')">Enregistrer</button>
     </div>`:""}
-    <div class="session-pick" style="margin-top:6px" onclick="toggleNotAdapted('${session.id}')">
+    ${session.pace_zone?`<div class="session-pick" style="margin-top:6px" onclick="toggleNotAdapted('${session.id}')">
       <span>${icon(constraintOpen?"chevronDown":"chevronRight",13)} Ce n'est pas adapté</span>
     </div>
     ${constraintOpen?`<div style="padding:8px 0 4px">
@@ -2681,7 +2720,7 @@ function programSessionCardHTML(session, date){
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
         ${["Trop dur","Manque de temps","Douleur","Autre"].map(r=>`<button class="flt" onclick="regenerateSession('${session.id}','${r}')">${r}</button>`).join("")}
       </div>
-    </div>`:""}`:""}
+    </div>`:""}`:""}`:""}
   </div>`;
 }
 
@@ -2754,9 +2793,47 @@ function programSelectedDayPanelHTML(){
   if(!programSelectedDate) return "";
   const date = new Date(programSelectedDate+"T00:00:00");
   const session = plannedSessions.find(p=>p.planned_date===programSelectedDate && (p.status==="planned"||p.status==="done"));
+  const addOpen = openAddForm===programSelectedDate;
   return `<div class="card" style="margin-top:10px">
     <div class="chart-hint" style="margin-top:0;margin-bottom:4px;text-transform:capitalize">${dayLabelShort(date)}</div>
-    ${session?programSessionCardHTML(session,date):`<div class="chart-hint" style="margin-top:0">Repos — aucune séance planifiée.</div>`}
+    ${session?programSessionCardHTML(session,date):`
+      <div class="chart-hint" style="margin-top:0">Repos — aucune séance planifiée.</div>
+      <button class="flt" style="margin-top:10px" onclick="toggleAddForm('${programSelectedDate}')">${addOpen?"Annuler":"+ Ajouter une séance"}</button>
+      ${addOpen?programAddFormHTML(programSelectedDate):""}
+    `}
+  </div>`;
+}
+// Formulaire d'ajout manuel très basique : seul le type est requis (repli
+// EF), tout le reste est optionnel. Réutilise TYPE_OPTIONS/le sélecteur
+// déjà utilisé pour les séances loguées (Séances) — même vocabulaire de
+// types partout dans l'app (course ET renfo/mobilité/yoga y figurent déjà).
+function programAddFormHTML(dateStr){
+  return `<div style="margin-top:10px">
+    <div class="field" style="margin-bottom:8px">
+      <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Type</span>
+      <select class="type-select" id="addSession_type">
+        ${TYPE_OPTIONS.map(t=>`<option value="${t}">${t}</option>`).join("")}
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="field" style="margin-bottom:0">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Distance</span>
+        <div style="display:flex;align-items:center;gap:4px">
+          <input type="number" min="0" step="0.1" class="time-input" style="width:56px" id="addSession_distance"> <span style="font-size:12px;color:var(--text-dim)">km</span>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Durée</span>
+        <div style="display:flex;align-items:center;gap:4px">
+          <input type="number" min="0" class="time-input" id="addSession_duration"> <span style="font-size:12px;color:var(--text-dim)">min</span>
+        </div>
+      </div>
+    </div>
+    <div class="field" style="margin-top:0">
+      <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Note</span>
+      <input type="text" id="addSession_notes" placeholder="Optionnel" style="width:100%;background:transparent;border:none;color:var(--text);font-size:14px;font-family:inherit">
+    </div>
+    <button class="btn-primary" style="margin-top:4px" onclick="addManualSession('${dateStr}')">Ajouter</button>
   </div>`;
 }
 function addDays(base,n){ const d=new Date(base); d.setDate(d.getDate()+n); return d; }
