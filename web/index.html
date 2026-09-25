@@ -560,7 +560,6 @@ let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let openSessionRatings = new Set();
 let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
 let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
-let openConstraintForm = null; // id de la séance en cours d'ajustement via "Ce n'est pas adapté"
 let openEditForm = null; // id de la séance en cours d'édition manuelle (distance/allure)
 let openAddForm = null; // date (YYYY-MM-DD) du jour pour lequel le formulaire d'ajout manuel est ouvert
 let programSelectedDate = null; // jour affiché dans le panneau de détail sous le calendrier
@@ -2248,7 +2247,7 @@ function programProfileSourceLabel(profile){
   if(!profile) return "";
   if(profile.source==="goal_pb") return "ton record personnel renseigné dans Objectifs";
   if(profile.source==="goal_vma") return "ta VMA renseignée dans Objectifs";
-  return "le temps de référence que tu as saisi";
+  return "ton temps de référence saisi"; // pas "le temps de référence que tu as saisi" : "à partir de le..." est une faute (élision manquante), corrigé en "à partir de ton..."
 }
 // Explique l'allure visée en langage clair (ZONE_FRIENDLY, logic.js) — pas
 // de jargon non expliqué (VDOT, %...), pensé pour un débutant.
@@ -2438,23 +2437,6 @@ window.saveProgramSettings = async () => {
   renderContent();
 };
 
-window.validateSession = async (id) => {
-  const { error } = await supa.from("planned_sessions").update({user_confirmed:true, updated_at:new Date().toISOString()}).eq("id", id);
-  if(error){ alert("Erreur : "+error.message); return; }
-  await loadData(); renderContent();
-};
-window.shiftSession = async (id, deltaDays) => {
-  const s = plannedSessions.find(p=>p.id===id);
-  if(!s) return;
-  const newDate = new Date(s.planned_date+"T00:00:00"); newDate.setDate(newDate.getDate()+deltaDays);
-  const { error } = await supa.from("planned_sessions").update({planned_date:localDateStr(newDate), updated_at:new Date().toISOString()}).eq("id", id);
-  if(error){ alert("Erreur : "+error.message); return; }
-  await loadData(); renderContent();
-};
-window.toggleNotAdapted = (id) => {
-  openConstraintForm = openConstraintForm===id ? null : id;
-  renderContent();
-};
 window.toggleEditSession = (id) => {
   openEditForm = openEditForm===id ? null : id;
   renderContent();
@@ -2723,7 +2705,6 @@ window.regenerateSession = async (id, reason, auto) => {
   }).select().single();
   if(insErr){ alert("Erreur : "+insErr.message); return; }
   await supa.from("planned_sessions").update({status:"replaced", superseded_by_id:inserted.id, updated_at:new Date().toISOString()}).eq("id", old.id);
-  openConstraintForm = null;
   await loadData(); renderContent();
 };
 window.replaceWithEasy = (id) => window.regenerateSession(id, "Remplacer par une séance easy");
@@ -2742,14 +2723,22 @@ async function applyProgramAdjustments(){
   if(!profile) return; // pas encore prêt : on retentera au prochain rendu
   programAdjustmentChecked = true;
 
-  // Les 4 prochaines semaines (courante incluse) sont toujours tenues à
-  // jour, pas seulement la courante — sert la vue Mois (qui les affiche
-  // toutes en un empilement) et permet de voir/planifier à l'avance sans
-  // attendre le dimanche. generateProgram est additif/idempotent : appeler
-  // sur une semaine déjà complète ne fait rien (silencieux).
+  // Les 4 prochaines semaines (courante incluse) sont générées si elles
+  // n'ont JAMAIS été touchées (aucune ligne planned_sessions du tout,
+  // même "skipped") — sert la vue Mois (qui les affiche toutes en un
+  // empilement) et permet de voir/planifier à l'avance sans attendre le
+  // dimanche. Ne complète PAS une semaine où l'utilisateur a déjà
+  // supprimé une séance : generateProgram compte les séances actives
+  // (planned/done) pour décider quoi ajouter, donc une semaine "vidée à la
+  // main" redeviendrait automatiquement pleine au prochain chargement si
+  // on l'appelait ici (bug constaté : une séance supprimée réapparaissait
+  // toute seule). Compléter volontairement reste possible via le bouton
+  // "Compléter cette semaine", déclenché explicitement par l'utilisateur.
   const thisMonday = mondayOf(new Date());
   for(let w=0; w<4; w++){
-    await window.generateProgram(addDays(thisMonday, w*7), {silent:true});
+    const monday = addDays(thisMonday, w*7);
+    const everTouched = plannedSessions.some(p=>p.week_start_date===localDateStr(monday));
+    if(!everTouched) await window.generateProgram(monday, {silent:true});
   }
 
   const todayStr = localDateStr(new Date());
@@ -2804,7 +2793,6 @@ function programSessionCardHTML(session, date){
   const c = TC[session.type]||TC.Other;
   const zoneLabel = session.pace_zone ? (PACE_ZONE_LABEL[session.pace_zone]||session.pace_zone) : session.type;
   const done = session.status==="done";
-  const constraintOpen = openConstraintForm===session.id;
   const editOpen = openEditForm===session.id;
   const paceMin = session.target_pace_sec_per_km ? Math.floor(session.target_pace_sec_per_km/60) : "";
   const paceSec = session.target_pace_sec_per_km ? Math.round(session.target_pace_sec_per_km%60) : "";
@@ -2819,8 +2807,6 @@ function programSessionCardHTML(session, date){
     <div class="chart-hint" style="margin-top:8px;margin-bottom:0">${session.rationale}</div>
     ${programPaceExplanationHTML(session)}
     ${!done?`<div class="filters" style="margin-top:10px;margin-bottom:0">
-      <button class="flt${session.user_confirmed?" active":""}" onclick="validateSession('${session.id}')">${session.user_confirmed?"✓ Validée":"Valider"}</button>
-      <button class="flt" onclick="shiftSession('${session.id}',1)">Décaler +1j</button>
       ${session.pace_zone && session.pace_zone!=="easy"?`<button class="flt" onclick="replaceWithEasy('${session.id}')">Remplacer par easy</button>`:""}
       <button class="flt" onclick="toggleEditSession('${session.id}')">Modifier</button>
       <button class="flt" style="color:var(--red)" onclick="deleteSession('${session.id}')">Supprimer</button>
@@ -2854,16 +2840,7 @@ function programSessionCardHTML(session, date){
         </div>
       </div>
       <button class="btn-primary" style="margin-top:10px" onclick="saveSessionEdit('${session.id}')">Enregistrer</button>
-    </div>`:""}
-    ${session.pace_zone?`<div class="session-pick" style="margin-top:6px" onclick="toggleNotAdapted('${session.id}')">
-      <span>${icon(constraintOpen?"chevronDown":"chevronRight",13)} Ce n'est pas adapté</span>
-    </div>
-    ${constraintOpen?`<div style="padding:8px 0 4px">
-      <div class="chart-hint" style="margin-top:0">Pourquoi ?</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
-        ${["Trop dur","Manque de temps","Douleur","Autre"].map(r=>`<button class="flt" onclick="regenerateSession('${session.id}','${r}')">${r}</button>`).join("")}
-      </div>
-    </div>`:""}`:""}`:""}
+    </div>`:""}`:""}
   </div>`;
 }
 
