@@ -2469,11 +2469,23 @@ window.saveSessionEdit = async (id) => {
   // déduire fiablement une nouvelle zone d'allure à partir d'un simple
   // libellé de type (ex: passer de "Fractionné" à "Renfo") — la séance
   // devient une séance "personnalisée" sans allure algorithmique, comme
-  // une séance ajoutée manuellement.
-  if(newType && session && newType!==session.type){ patch.type = newType; patch.title = newType; patch.pace_zone = null; }
+  // une séance ajoutée manuellement. La justification affichée ET la
+  // distance/allure calculées restent sinon celles de l'ANCIEN type (bug
+  // constaté : passer de Mobilité à Renfo gardait le texte "mobilité", et
+  // passer d'une course à du yoga gardait sa distance/allure, qui n'ont
+  // plus de sens pour ce nouveau type). Pour un nouveau type non-course,
+  // on ignore volontairement les champs distance/allure du formulaire
+  // (même s'ils affichent encore les anciennes valeurs préremplies) : les
+  // lire les aurait réappliquées telles quelles juste en dessous.
+  const clearingForNonRunning = !!(newType && session && newType!==session.type && NON_RUNNING_TYPES.includes(newType));
+  if(newType && session && newType!==session.type){
+    patch.type = newType; patch.title = newType; patch.pace_zone = null;
+    patch.rationale = CROSS_TRAINING_RATIONALE[newType] || `Séance de ${newType}, modifiée manuellement.`;
+    if(clearingForNonRunning){ patch.target_distance_km = null; patch.target_pace_sec_per_km = null; }
+  }
   if(session) warnIfDayBeforeRun(session.planned_date, newType||session.type);
-  if(!isNaN(distanceKm) && distanceKm>0) patch.target_distance_km = distanceKm;
-  if(!isNaN(paceMin) || !isNaN(paceSec)){
+  if(!clearingForNonRunning && !isNaN(distanceKm) && distanceKm>0) patch.target_distance_km = distanceKm;
+  if(!clearingForNonRunning && (!isNaN(paceMin) || !isNaN(paceSec))){
     const sec = (paceMin||0)*60 + (paceSec||0);
     if(sec>0) patch.target_pace_sec_per_km = sec;
   }
@@ -2771,7 +2783,7 @@ function programSettingsFormHTML(profile){
   if(profile) return "";
   return `<div class="card">
     <div class="stitle">Temps de référence</div>
-    <div class="chart-hint" style="margin-top:0">Pas d'objectif "Préparer une course" avec record, ni de VMA renseignée dans Objectifs — indique un temps de référence récent pour calculer tes allures :</div>
+    <div class="chart-hint" style="margin-top:0">Pour calculer tes allures personnalisées, indique une performance récente : le temps que tu mets à parcourir une distance donnée, à l'entraînement ou en course (par exemple ton chrono sur un 10 km, même approximatif). Plus ce chrono reflète ton niveau actuel, plus les allures calculées seront justes. Tu n'as pas besoin de refaire cette saisie si tu renseignes un record ou une VMA dans Objectifs, ça prendra le relais automatiquement.</div>
     <div class="chart-hint" style="margin-top:8px;margin-bottom:0">Distance</div>
     <div class="filters" data-chipgroup="prog_refDistance" style="margin-bottom:0">
       ${Object.keys(RACE_DISTANCES_KM).map(d=>`<button type="button" class="flt" data-value="${d}" onclick="progSelectRefDistance('${d}')">${d}</button>`).join("")}
