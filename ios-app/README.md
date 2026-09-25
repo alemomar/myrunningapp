@@ -14,10 +14,17 @@
 3. **+ Capability** → cherche **HealthKit** → ajoute-le
 4. Toujours dans **Signing & Capabilities**, vérifie qu'un **Team** (ton Apple ID personnel) est sélectionné dans "Signing"
 
-## 3. Ajouter la description d'usage (obligatoire pour Apple)
+## 3. Ajouter les descriptions d'usage (obligatoire pour Apple)
 
 1. Ouvre le fichier **Info** (ou `Info.plist` selon la version d'Xcode)
 2. Ajoute une clé **Privacy - Health Share Usage Description** avec la valeur : `Utilisé pour synchroniser tes séances de course vers ton dashboard personnel.`
+3. Ajoute aussi une clé **Privacy - Health Update Usage Description** avec la même valeur — Apple l'exige dès que la capability HealthKit est activée, même si l'app ne fait que lire les données (détecté à l'upload sur App Store Connect, pas en local).
+
+## 3bis. Ajouter une icône d'app (obligatoire pour l'upload App Store Connect)
+
+1. Dans le projet Xcode, ouvre `Assets.xcassets` → `AppIcon`
+2. Fais glisser `ios-app/AppIcon-1024.png` (fourni dans ce dossier, dérivé de l'icône du site web) dans l'unique emplacement 1024×1024
+3. Sans ça, l'upload échoue avec "Missing Info.plist value ... CFBundleIconName" et "Missing required icon file"
 
 ## 4. Remplacer les fichiers du projet
 
