@@ -733,6 +733,52 @@ function staleSyncBanner(){
   </div>`;
 }
 
+// Tuto de première utilisation : une bulle par onglet, affichée une seule
+// fois (mémorisée par appareil, comme mra_activeTab). Pas de bulle pour
+// "compte", ce sont des réglages, pas un endroit à découvrir.
+const TUTORIAL_BUBBLES = {
+  dashboard: "C'est ta vue d'ensemble : tes dernières séances, tes stats clés. Elles arrivent ici automatiquement si tu utilises RunSync (synchro Apple Santé), ou tu peux aussi les ajouter à la main.",
+  objectifs: "Commence par ici ! Dis-nous ce que tu vises (une course, ta régularité, ton allure...) — c'est ce qui sert de base pour te générer un programme personnalisé.",
+  programme: "Ton calendrier de séances, généré automatiquement à partir de tes objectifs. Chaque séance t'explique pourquoi elle est là. Tu peux la déplacer, la modifier ou la supprimer à tout moment.",
+  ressenti: "Après une séance, note comment tu t'es senti (fatigue, douleurs...). Ça permet d'ajuster ton programme si besoin — par exemple, alléger une semaine si tu es fatigué.",
+  seances: "L'historique complet de tout ce que tu as couru, séance par séance.",
+};
+function seenTutorialBubbles(){
+  try { return JSON.parse(localStorage.getItem("mra_tutorialSeen")||"[]"); } catch(e){ return []; }
+}
+function markTutorialBubbleSeen(tabKey){
+  const list = seenTutorialBubbles();
+  if(!list.includes(tabKey)){
+    list.push(tabKey);
+    try{ localStorage.setItem("mra_tutorialSeen", JSON.stringify(list)); }catch(e){}
+  }
+}
+function tutorialBubbleHTML(tabKey){
+  const text = TUTORIAL_BUBBLES[tabKey];
+  if(!text || seenTutorialBubbles().includes(tabKey)) return "";
+  return `<div class="card" id="tutorialBubble" style="border-color:rgba(94,92,230,0.4);background:rgba(94,92,230,0.08)">
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">${text}</div>
+    <button class="btn-secondary" onclick="dismissTutorialBubble('${tabKey}')">Compris</button>
+  </div>`;
+}
+window.dismissTutorialBubble = (tabKey) => {
+  const el = document.getElementById("tutorialBubble");
+  if(el){
+    el.style.maxHeight = el.offsetHeight+"px";
+    requestAnimationFrame(()=>{
+      el.style.transition = "max-height .3s ease, opacity .3s ease, margin .3s ease, padding .3s ease";
+      el.style.opacity = "0";
+      el.style.maxHeight = "0px";
+      el.style.marginBottom = "0px";
+      el.style.paddingTop = "0px";
+      el.style.paddingBottom = "0px";
+      el.style.overflow = "hidden";
+    });
+    setTimeout(()=>el.remove(), 320);
+  }
+  markTutorialBubbleSeen(tabKey);
+};
+
 // Wrappers centralisant la gestion d'erreur réseau : sans ça, un upsert qui
 // échoue silencieusement donne l'impression que rien n'est enregistré (cause
 // du bug remonté sur Mon compte — plus jamais de write non vérifié).
@@ -2988,7 +3034,16 @@ function programAddFormHTML(dateStr){
 }
 function addDays(base,n){ const d=new Date(base); d.setDate(d.getDate()+n); return d; }
 
+// Wrapper autour de renderContentInner : celle-ci a plusieurs "return"
+// anticipés par onglet (empty state, etc.), donc prépendre la bulle de tuto
+// après coup ici évite de dupliquer cette logique dans chaque branche.
 function renderContent(){
+  renderContentInner();
+  const el = document.getElementById("content");
+  const bubble = tutorialBubbleHTML(activeTab);
+  if(bubble && el) el.innerHTML = bubble + el.innerHTML;
+}
+function renderContentInner(){
   const el=document.getElementById("content");
   const filtered=activeFilter==="Tous"?RUNS:RUNS.filter(r=>r.type===activeFilter);
 
