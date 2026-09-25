@@ -7,7 +7,7 @@ private let intentLogger = Logger(subsystem: "com.omaralem.RunSync", category: "
 // programmée), sans avoir besoin d'ouvrir l'app.
 struct SyncWorkoutsIntent: AppIntent {
     static var title: LocalizedStringResource = "Synchroniser mes courses"
-    static var description = IntentDescription("Envoie les séances récentes d'Apple Santé vers le dashboard.")
+    static var description = IntentDescription("Envoie les séances récentes de Santé vers le dashboard.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         intentLogger.notice("[intent] perform() appelé")
