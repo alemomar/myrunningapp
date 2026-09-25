@@ -417,7 +417,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=17"></script>
+<script src="logic.js?v=18"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -432,6 +432,11 @@ const TICON={
   "Kiné":"care", Pilates:"ring", Other:"activity"
 };
 const TYPE_OPTIONS=["EF","Long","Fractionné","Seuil","Récup","Course","Marche","Renfo","Yoga","Mobilité","Souplesse","Kiné","Pilates","Other"];
+// Sous-ensemble de TYPE_OPTIONS proposé pour PLANIFIER une séance (bouton
+// "+ Ajouter") — Marche et Récup retirés à la demande : ce ne sont pas des
+// séances qu'on planifie à l'avance dans ce contexte. TYPE_OPTIONS reste
+// inchangé pour Séances (classer une activité réellement synchronisée).
+const PROGRAM_TYPE_OPTIONS = TYPE_OPTIONS.filter(t=>t!=="Marche" && t!=="Récup");
 const MONTHS=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
 
 const ICONS = {
@@ -527,15 +532,27 @@ document.getElementById("authSubmit").onclick = async () => {
 /* ---------- Dashboard ---------- */
 // Le dernier onglet consulté est mémorisé en local (par appareil) pour
 // qu'un rechargement de page reste sur place plutôt que de repartir sur
-// le Dashboard à chaque fois.
+// le Dashboard à chaque fois. Identifié par une clé stable (pas un index
+// numérique dans TABS) : un index se serait décalé silencieusement vers
+// le mauvais onglet le jour où TABS serait réordonné (ex: Programme passé
+// en 2e position) — déjà arrivé une fois, corrigé une bonne fois pour
+// toutes. OLD_TAB_INDEX_TO_KEY migre l'ancien format (index numérique,
+// utilisateurs existants) vers la clé correspondante à l'ORDRE D'ORIGINE
+// des onglets, pas leur position actuelle.
+const VALID_TAB_KEYS = ["dashboard","programme","ressenti","objectifs","seances","compte"];
+const OLD_TAB_INDEX_TO_KEY = ["dashboard","ressenti","objectifs","seances","compte","programme"];
 function initialActiveTab(){
   try{
-    const saved = Number(localStorage.getItem("mra_activeTab"));
-    return (Number.isInteger(saved) && saved>=0 && saved<=5) ? saved : 0;
-  }catch(e){ return 0; }
+    const saved = localStorage.getItem("mra_activeTab");
+    if(saved==null) return "dashboard";
+    if(VALID_TAB_KEYS.includes(saved)) return saved;
+    const idx = Number(saved);
+    if(Number.isInteger(idx) && OLD_TAB_INDEX_TO_KEY[idx]) return OLD_TAB_INDEX_TO_KEY[idx];
+    return "dashboard";
+  }catch(e){ return "dashboard"; }
 }
 function persistActiveTab(){
-  try{ localStorage.setItem("mra_activeTab", String(activeTab)); }catch(e){}
+  try{ localStorage.setItem("mra_activeTab", activeTab); }catch(e){}
 }
 let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=initialActiveTab(), activeFilter="Tous", charts=[], activeGoalSlot="principal";
 let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = null, restingHrUpdatedAt = null, restingHrIsManual = false, avatarUrl = null;
@@ -587,12 +604,12 @@ const SESSION_RPE=[
   ["rpe","Difficulté perçue (RPE)","Repos total","Effort maximal"],
 ];
 const TABS=[
-  {label:"Dashboard", icon:"bars"},
-  {label:"Ressenti", icon:"sparkle"},
-  {label:"Objectifs", icon:"target"},
-  {label:"Séances", icon:"list"},
-  {label:"Mon compte", icon:"user"},
-  {label:"Programme", icon:"calendar"},
+  {key:"dashboard", label:"Dashboard", icon:"bars"},
+  {key:"programme", label:"Programme", icon:"calendar"},
+  {key:"ressenti", label:"Ressenti", icon:"sparkle"},
+  {key:"objectifs", label:"Objectifs", icon:"target"},
+  {key:"seances", label:"Séances", icon:"list"},
+  {key:"compte", label:"Mon compte", icon:"user"},
 ];
 
 async function loadData() {
@@ -1472,7 +1489,7 @@ function heroHTML(){
       ${ringSmHTML(monthS.runs.length, sessionGoal, "#0a84ff", String(monthS.runs.length), sessionGoal?`/${sessionGoal}`:"séances", "Séances ce mois")}
       ${ringSmHTML(monthS.time||0, null, "#ffd60a", Math.floor((monthS.time||0)/3600)+"h"+String(Math.round(((monthS.time||0)%3600)/60)).padStart(2,"0"), "", "Temps de course")}
     </div>
-    ${(!kmGoal||!sessionGoal)?`<div class="chart-hint" style="margin-top:10px;margin-bottom:0">Objectifs incomplets — <a href="#" onclick="setTab(2);return false" style="color:var(--accent)">renseigne-les dans l'onglet Objectifs</a> pour voir ta progression.</div>`:""}
+    ${(!kmGoal||!sessionGoal)?`<div class="chart-hint" style="margin-top:10px;margin-bottom:0">Objectifs incomplets — <a href="#" onclick="setTab('objectifs');return false" style="color:var(--accent)">renseigne-les dans l'onglet Objectifs</a> pour voir ta progression.</div>`:""}
   </div>`;
 }
 
@@ -1603,8 +1620,8 @@ function kpisHTML(){
 
 function destroyCharts(){charts.forEach(c=>c.destroy());charts=[];}
 function renderTabs(){
-  document.getElementById("tabs").innerHTML=TABS.map((t,i)=>`
-    <button class="tab-btn${i===activeTab?" active":""}" onclick="setTab(${i})">
+  document.getElementById("tabs").innerHTML=TABS.map(t=>`
+    <button class="tab-btn${t.key===activeTab?" active":""}" onclick="setTab('${t.key}')">
       ${icon(t.icon,20)}<span>${t.label}</span>
     </button>`).join("");
 }
@@ -2296,56 +2313,102 @@ function computeProgramInputs(){
 // semaine déjà générée (vérifié par l'appelant). `opts.silent` : pas
 // d'alerte/confirmation visuelle, utilisé pour la génération paresseuse
 // automatique (semaine courante/suivante à l'ouverture de l'onglet).
+// Explique pourquoi CE jour précisément (pas juste pourquoi ce type de
+// séance) — complète le rationale déjà produit par le moteur (logic.js).
+// Reflète honnêtement l'algo réel : répartition régulière sur les jours
+// disponibles + jamais le même jour qu'une autre séance de course.
+const DAY_NAMES_FR = ["lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"];
+function dayPlacementNote(dayIndex, isQuality, isCrossTraining){
+  const day = DAY_NAMES_FR[dayIndex];
+  if(isCrossTraining) return ` Placée le ${day}, un jour sans course, pour ne pas cumuler fatigue de course et renforcement le même jour.`;
+  if(isQuality) return ` Placée le ${day} parmi tes jours disponibles pour courir, en laissant de la récupération de part et d'autre plutôt que d'enchaîner deux séances exigeantes.`;
+  return ` Placée le ${day}, répartie avec tes autres sorties pour étaler l'effort sur la semaine.`;
+}
+
+// Génère et persiste une semaine — ADDITIF/idempotent : n'écrase ni ne
+// duplique jamais ce qui existe déjà, complète seulement ce qui manque
+// (course et/ou complémentaire pris séparément). Permet de planifier une
+// semaine à l'avance sans attendre qu'elle soit vide, et de rappeler
+// "compléter" une semaine qui n'a par exemple que des séances de course
+// sans avoir à tout supprimer d'abord.
+// Verrou en mémoire par semaine : la génération auto en tâche de fond
+// (applyProgramAdjustments, jusqu'à 4 semaines à l'ouverture de l'onglet)
+// et un clic manuel peuvent viser la même semaine en même temps — sans ce
+// verrou, les deux liraient "rien à compléter" avant que l'un des deux
+// n'ait fini d'écrire, et dupliqueraient les séances complémentaires.
+let programGenerationInFlight = new Set();
 window.generateProgram = async (mondayDate, opts) => {
   opts = opts || {};
+  const mondayStr = localDateStr(mondayDate);
+  if(programGenerationInFlight.has(mondayStr)) return;
+  programGenerationInFlight.add(mondayStr);
+  try{
   const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
   if(!profile){ if(!opts.silent) alert("Renseigne d'abord un temps de référence (ci-dessus) pour générer ton programme."); return; }
+  const existing = plannedSessions.filter(p=>p.week_start_date===mondayStr && (p.status==="planned"||p.status==="done"));
+  const dayIndexOf = (dateStr) => Math.round((new Date(dateStr+"T00:00:00") - mondayDate) / 86400000);
+  const existingDayIndexes = existing.map(p=>dayIndexOf(p.planned_date));
+  const hasRunning = existing.some(p=>p.pace_zone);
+  const hasCross = existing.some(p=>!p.pace_zone);
+  if(hasRunning && hasCross){ if(!opts.silent) alert("Cette semaine a déjà un programme complet — supprime une séance si tu veux la remplacer."); return; }
+
   const { structure, avoidQualityReason } = computeProgramInputs();
   const weeklyKm = goals.kmMensuel ? Number(goals.kmMensuel)/4.33 : 20;
   const frequency = Number(goals.frequence) || 3;
   const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
-  const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d));
   // Semaines consécutives -> weekIndex consécutifs (mondayDate est toujours
   // un lundi minuit local, l'écart est exactement 7j en ms) : sert à
   // alterner Seuil/Fractionné d'une semaine sur l'autre, voir
   // qualityZoneForSlot dans logic.js.
   const weekIndex = Math.floor(mondayDate.getTime()/(7*24*3600*1000));
-  const generated = generateWeekSessions({ profile, structure, weeklyKm, frequency, availableDayIndexes, avoidQualityReason, weekIndex });
-  if(!generated.length){ if(!opts.silent) alert("Pas assez d'informations pour générer un programme — vérifie tes objectifs et tes disponibilités ci-dessus."); return; }
   const { data:{user} } = await supa.auth.getUser();
   if(!user) return;
-  const mondayStr = localDateStr(mondayDate);
-  const runningRows = generated.map(s => ({
-    user_id:user.id,
-    planned_date: addDaysStr(mondayDate, s.dayIndex),
-    week_start_date: mondayStr,
-    type: sessionRunType(s.paceZone),
-    pace_zone: s.paceZone,
-    title: s.type==="Qualité" ? "Séance qualité" : "Sortie easy",
-    target_distance_km: s.distanceKm,
-    target_pace_sec_per_km: s.targetPaceSecPerKm,
-    rationale: s.rationale,
-    status:"planned", source:"generated",
-    generation_reason: avoidQualityReason ? "pain_repeat_or_wellbeing" : (structure.reason||null),
-  }));
-  // Séances complémentaires (renfo/mobilité/yoga) sur les jours restants,
-  // en plus des séances de course — voir generateCrossTrainingSessions.
-  const usedDayIndexes = generated.map(s=>s.dayIndex);
-  const frequencyAutre = Number(goals.frequenceAutre) || 0;
-  const crossTraining = generateCrossTrainingSessions(frequencyAutre, usedDayIndexes, weekIndex);
-  const crossRows = crossTraining.map(s => ({
-    user_id:user.id,
-    planned_date: addDaysStr(mondayDate, s.dayIndex),
-    week_start_date: mondayStr,
-    type: s.type, pace_zone: null, title: s.type,
-    rationale: s.rationale,
-    status:"planned", source:"generated",
-  }));
+
+  let generated = [];
+  let runningRows = [];
+  if(!hasRunning){
+    const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d) && !existingDayIndexes.includes(d));
+    generated = generateWeekSessions({ profile, structure, weeklyKm, frequency, availableDayIndexes, avoidQualityReason, weekIndex });
+    runningRows = generated.map(s => ({
+      user_id:user.id,
+      planned_date: addDaysStr(mondayDate, s.dayIndex),
+      week_start_date: mondayStr,
+      type: sessionRunType(s.paceZone),
+      pace_zone: s.paceZone,
+      title: s.type==="Qualité" ? "Séance qualité" : "Sortie easy",
+      target_distance_km: s.distanceKm,
+      target_pace_sec_per_km: s.targetPaceSecPerKm,
+      rationale: s.rationale + dayPlacementNote(s.dayIndex, s.type==="Qualité", false),
+      status:"planned", source:"generated",
+      generation_reason: avoidQualityReason ? "pain_repeat_or_wellbeing" : (structure.reason||null),
+    }));
+  }
+
+  let crossRows = [];
+  if(!hasCross){
+    // Séances complémentaires (renfo/mobilité/yoga) sur les jours restants
+    // — jamais le même jour qu'une course, existante ou fraîchement
+    // générée ci-dessus. Voir generateCrossTrainingSessions.
+    const usedDayIndexes = [...existingDayIndexes, ...generated.map(s=>s.dayIndex)];
+    const frequencyAutre = Number(goals.frequenceAutre) || 0;
+    const crossTraining = generateCrossTrainingSessions(frequencyAutre, usedDayIndexes, weekIndex);
+    crossRows = crossTraining.map(s => ({
+      user_id:user.id,
+      planned_date: addDaysStr(mondayDate, s.dayIndex),
+      week_start_date: mondayStr,
+      type: s.type, pace_zone: null, title: s.type,
+      rationale: s.rationale + dayPlacementNote(s.dayIndex, false, true),
+      status:"planned", source:"generated",
+    }));
+  }
+
   const rows = [...runningRows, ...crossRows];
+  if(!rows.length){ if(!opts.silent) alert("Pas assez d'informations pour générer un programme — vérifie tes objectifs et tes disponibilités ci-dessus."); return; }
   const { error } = await supa.from("planned_sessions").insert(rows);
   if(error){ if(!opts.silent) alert("Erreur de génération : "+error.message); return; }
   await loadData();
   if(!opts.silent){ renderContent(); flashSaved("programSaved"); } else { renderContent(); }
+  } finally { programGenerationInFlight.delete(mondayStr); }
 };
 
 // Séances/semaine et jours indisponibles vivent désormais dans Objectifs
@@ -2394,7 +2457,8 @@ window.saveSessionEdit = async (id) => {
   const distanceKm = parseFloat(document.getElementById("edit_distance_"+id)?.value);
   const paceMin = parseInt(document.getElementById("edit_paceMin_"+id)?.value, 10);
   const paceSec = parseInt(document.getElementById("edit_paceSec_"+id)?.value, 10);
-  const patch = { source:"manual_edit", updated_at:new Date().toISOString() };
+  const reminderTime = document.getElementById("edit_reminderTime_"+id)?.value;
+  const patch = { source:"manual_edit", updated_at:new Date().toISOString(), reminder_time: reminderTime || null };
   if(!isNaN(distanceKm) && distanceKm>0) patch.target_distance_km = distanceKm;
   if(!isNaN(paceMin) || !isNaN(paceSec)){
     const sec = (paceMin||0)*60 + (paceSec||0);
@@ -2431,6 +2495,7 @@ window.addManualSession = async (dateStr) => {
   const type = document.getElementById("addSession_type")?.value || "EF";
   const distanceKm = parseFloat(document.getElementById("addSession_distance")?.value);
   const durationMin = parseFloat(document.getElementById("addSession_duration")?.value);
+  const reminderTime = document.getElementById("addSession_reminderTime")?.value;
   const notes = document.getElementById("addSession_notes")?.value?.trim();
   const occupied = plannedSessions.some(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
   if(occupied){ alert("Ce jour a déjà une séance — modifie-la plutôt que d'en ajouter une seconde."); return; }
@@ -2442,6 +2507,7 @@ window.addManualSession = async (dateStr) => {
     type, pace_zone:null, title:type, description: notes||null,
     target_distance_km: (!isNaN(distanceKm) && distanceKm>0) ? distanceKm : null,
     target_duration_min: (!isNaN(durationMin) && durationMin>0) ? durationMin : null,
+    reminder_time: reminderTime || null,
     rationale:"Ajoutée manuellement.",
     status:"planned", source:"manual_add",
   };
@@ -2640,14 +2706,14 @@ async function applyProgramAdjustments(){
   if(!profile) return; // pas encore prêt : on retentera au prochain rendu
   programAdjustmentChecked = true;
 
+  // Les 4 prochaines semaines (courante incluse) sont toujours tenues à
+  // jour, pas seulement la courante — sert la vue Mois (qui les affiche
+  // toutes en un empilement) et permet de voir/planifier à l'avance sans
+  // attendre le dimanche. generateProgram est additif/idempotent : appeler
+  // sur une semaine déjà complète ne fait rien (silencieux).
   const thisMonday = mondayOf(new Date());
-  const hasThisWeek = plannedSessions.some(p=>p.week_start_date===localDateStr(thisMonday) && (p.status==="planned"||p.status==="done"));
-  if(!hasThisWeek) await window.generateProgram(thisMonday, {silent:true});
-
-  if(new Date().getDay()===0){ // dimanche : dernier jour de la semaine ISO -> replanifie la suivante
-    const nextMonday = addDaysStr(thisMonday, 7);
-    const hasNextWeek = plannedSessions.some(p=>p.week_start_date===nextMonday && (p.status==="planned"||p.status==="done"));
-    if(!hasNextWeek) await window.generateProgram(new Date(nextMonday+"T00:00:00"), {silent:true});
+  for(let w=0; w<4; w++){
+    await window.generateProgram(addDays(thisMonday, w*7), {silent:true});
   }
 
   const todayStr = localDateStr(new Date());
@@ -2711,7 +2777,7 @@ function programSessionCardHTML(session, date){
       <div class="session-dot" style="background:${c}22;color:${c}">${icon(TICON[session.type]||"activity",18)}</div>
       <div class="manage-date">
         <div style="font-weight:600">${session.title}${done?" ✓":""}</div>
-        <div style="font-size:12px;color:var(--text-dim)">${zoneLabel}${session.target_distance_km?` · ${session.target_distance_km} km`:""}${session.target_pace_sec_per_km?` · ${fmtA(session.target_pace_sec_per_km)}/km`:""}</div>
+        <div style="font-size:12px;color:var(--text-dim)">${zoneLabel}${session.target_distance_km?` · ${session.target_distance_km} km`:""}${session.target_pace_sec_per_km?` · ${fmtA(session.target_pace_sec_per_km)}/km`:""}${session.reminder_time?` · ⏰ ${session.reminder_time.slice(0,5)}`:""}</div>
       </div>
     </div>
     <div class="chart-hint" style="margin-top:8px;margin-bottom:0">${session.rationale}</div>
@@ -2738,6 +2804,10 @@ function programSessionCardHTML(session, date){
             <input type="number" min="0" max="59" class="time-input" id="edit_paceMin_${session.id}" value="${paceMin}"> <span style="font-size:12px;color:var(--text-dim)">'</span>
             <input type="number" min="0" max="59" class="time-input" id="edit_paceSec_${session.id}" value="${paceSec}"> <span style="font-size:12px;color:var(--text-dim)">''/km</span>
           </div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim)">Rappel</span>
+          <input type="time" id="edit_reminderTime_${session.id}" value="${session.reminder_time?session.reminder_time.slice(0,5):""}" style="background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:8px;font-family:inherit">
         </div>
       </div>
       <button class="btn-primary" style="margin-top:10px" onclick="saveSessionEdit('${session.id}')">Enregistrer</button>
@@ -2837,13 +2907,22 @@ function programSelectedDayPanelHTML(){
 // EF), tout le reste est optionnel. Réutilise TYPE_OPTIONS/le sélecteur
 // déjà utilisé pour les séances loguées (Séances) — même vocabulaire de
 // types partout dans l'app (course ET renfo/mobilité/yoga y figurent déjà).
+// Sélecteur de type avec logo (pas un <select> natif : les <option> ne
+// peuvent pas afficher d'icône, surtout sur le picker natif iOS) — chips
+// réutilisant TC/TICON, comme partout ailleurs dans l'app.
+window.progSelectAddType = (t) => {
+  const hidden = document.getElementById("addSession_type");
+  if(hidden) hidden.value = t;
+  document.querySelectorAll('[data-chipgroup="addSession_type_group"] [data-value]').forEach(el=>el.classList.toggle("active", el.dataset.value===t));
+};
 function programAddFormHTML(dateStr){
   return `<div style="margin-top:10px">
-    <div class="field" style="margin-bottom:8px">
-      <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Type</span>
-      <select class="type-select" id="addSession_type">
-        ${TYPE_OPTIONS.map(t=>`<option value="${t}">${t}</option>`).join("")}
-      </select>
+    <div style="margin-bottom:10px">
+      <span style="font-size:12px;color:var(--text-dim);white-space:nowrap;display:block;margin-bottom:6px">Type</span>
+      <div class="filters" data-chipgroup="addSession_type_group" style="margin-bottom:0">
+        ${PROGRAM_TYPE_OPTIONS.map(t=>`<button type="button" class="flt${t==="EF"?" active":""}" data-value="${t}" onclick="progSelectAddType('${t}')" style="display:inline-flex;align-items:center;gap:5px"><span style="color:${TC[t]||TC.Other};display:flex">${icon(TICON[t]||"activity",13)}</span>${t}</button>`).join("")}
+      </div>
+      <input type="hidden" id="addSession_type" value="EF">
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <div class="field" style="margin-bottom:0">
@@ -2857,6 +2936,10 @@ function programAddFormHTML(dateStr){
         <div style="display:flex;align-items:center;gap:4px">
           <input type="number" min="0" class="time-input" id="addSession_duration"> <span style="font-size:12px;color:var(--text-dim)">min</span>
         </div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Rappel</span>
+        <input type="time" id="addSession_reminderTime" style="background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:8px;font-family:inherit">
       </div>
     </div>
     <div class="field" style="margin-top:0">
@@ -2872,12 +2955,12 @@ function renderContent(){
   const el=document.getElementById("content");
   const filtered=activeFilter==="Tous"?RUNS:RUNS.filter(r=>r.type===activeFilter);
 
-  if (RUNS.length===0 && activeTab!==4 && activeTab!==5){
+  if (RUNS.length===0 && activeTab!=="compte" && activeTab!=="programme"){
     el.innerHTML=`<div class="card">${emptyState("Aucune séance pour l'instant","Première fois ? Ouvre l'app pour choisir depuis quelle date importer, puis synchronise.",true)}</div>`;
     return;
   }
 
-  if(activeTab===0){
+  if(activeTab==="dashboard"){
     // Dashboard : seul endroit avec l'anneau, les KPIs et les graphiques globaux
     if(runningRuns.length===0){ el.innerHTML=heroHTML()+kpisHTML()+`<div class="card">${emptyState("Aucune séance de course incluse","Va dans Séances pour inclure tes courses dans le suivi.",true)}</div>`; return; }
     const isMonthly = dashboardPeriod==="monthly";
@@ -2936,7 +3019,7 @@ function renderContent(){
     },50);
   }
 
-  else if(activeTab===3){
+  else if(activeTab==="seances"){
     // Séances : fusion Séances + Cardio — plus de doublon entre deux listes
     // cliquables séparées. Détail FC/zones intégré à chaque ligne (au lieu
     // d'une liste "cardio" à part). Les graphs globaux (FC/allure, zones,
@@ -2977,7 +3060,7 @@ function renderContent(){
     },50);
   }
 
-  else if(activeTab===1){
+  else if(activeTab==="ressenti"){
     const ratedCount = runningRuns.filter(r=>r.painRatings).length;
     const usingMode = ratedCount>0
       ? `L'IA se basera sur tes ${ratedCount} séance(s) notée(s).`
@@ -3024,7 +3107,7 @@ function renderContent(){
     `;
   }
 
-  else if(activeTab===2){
+  else if(activeTab==="objectifs"){
     const ta = (id,val)=>`<textarea id="${id}" onchange="saveGoals()" style="width:100%;min-height:80px;background:var(--card-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;padding:12px;resize:vertical">${val||""}</textarea>`;
     const chipRow = (field, options, current) => `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
       ${options.map(o=>`<button type="button" class="flt${o===current?" active":""}" data-value="${o}" onclick="selectChip('${field}','${o}')">${o}</button>`).join("")}
@@ -3334,7 +3417,7 @@ function renderContent(){
     </div>`;
   }
 
-  else if(activeTab===4){
+  else if(activeTab==="compte"){
     const estMaxHr = estimatedMaxHr();
     el.innerHTML=`
       <div class="card">
@@ -3449,7 +3532,7 @@ function renderContent(){
       </div>`;
   }
 
-  else if(activeTab===5){
+  else if(activeTab==="programme"){
     // Programme : formulaire de réglages tant que le profil coureur (VDOT)
     // ou la fréquence dispo n'est pas connu, calendrier généré ensuite.
     const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
@@ -3469,13 +3552,18 @@ function renderContent(){
       </div>
       ${programViewMode==="week"?(()=>{
         const monday = addDays(mondayOf(new Date()), programWeekOffset*7);
-        const hasWeek = plannedSessions.some(p=>p.week_start_date===localDateStr(monday) && (p.status==="planned"||p.status==="done"));
+        const weekSessions = plannedSessions.filter(p=>p.week_start_date===localDateStr(monday) && (p.status==="planned"||p.status==="done"));
+        const hasRunning = weekSessions.some(p=>p.pace_zone);
+        const hasCross = weekSessions.some(p=>!p.pace_zone);
+        const complete = hasRunning && hasCross;
+        const genLabel = (!hasRunning && !hasCross) ? "Générer cette semaine" : "Compléter cette semaine";
         const weekDates = Array.from({length:7},(_,i)=>localDateStr(addDays(monday,i)));
         if(programSelectedDate===null && weekDates.includes(localDateStr(new Date()))) programSelectedDate = localDateStr(new Date());
         return `<div class="card">
           ${programNavHeaderHTML(`${monday.toLocaleDateString('fr-FR',{day:'numeric',month:'long'})} – ${addDays(monday,6).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}`)}
-          ${hasWeek?programWeekBoardHTML(monday):`<div class="chart-hint" style="margin-top:0">Pas encore de séances générées pour cette semaine.</div><button class="btn-primary" style="margin-top:10px" onclick="generateProgram(new Date('${monday.toISOString()}'))">Générer cette semaine</button>`}
-        </div>${hasWeek?programSelectedDayPanelHTML():""}`;
+          ${programWeekBoardHTML(monday)}
+          ${complete?"":`<button class="btn-primary" style="margin-top:10px" onclick="generateProgram(new Date('${monday.toISOString()}'))">${genLabel}</button>`}
+        </div>${programSelectedDayPanelHTML()}`;
       })():(()=>{
         const monthDate = new Date(); monthDate.setDate(1); monthDate.setMonth(monthDate.getMonth()+programWeekOffset);
         const today = new Date();

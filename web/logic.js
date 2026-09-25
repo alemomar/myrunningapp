@@ -661,11 +661,20 @@ function generateWeekSessions(params){
     const dayIndex = uniqueDays[i];
     if(isQuality){
       const zoneKey = qualityZoneForSlot(structure, i, qualityN, weekIndex);
+      const zoneLabelFr = zoneKey==="interval" ? "Fractionné" : zoneKey==="threshold" ? "Seuil" : zoneKey;
+      // Explique pourquoi CETTE zone précisément (pas juste "qualité") :
+      // les deux stimulus la même semaine si qualityN>=2, sinon pourquoi
+      // ça alterne d'une semaine sur l'autre (voir qualityZoneForSlot).
+      const mixNote = qualityN>=2
+        ? (zoneKey==="threshold"
+            ? " Cette semaine comprend aussi une séance Fractionné : les deux zones qualité sont couvertes la même semaine."
+            : " Cette semaine comprend aussi une séance Seuil : les deux zones qualité sont couvertes la même semaine.")
+        : " Alternée avec l'autre zone qualité d'une semaine sur l'autre, pour ne jamais répéter indéfiniment le même stimulus.";
       sessions.push({
         dayIndex, type:"Qualité", paceZone: zoneKey,
         distanceKm: Math.round(qualityKmEach*10)/10,
         targetPaceSecPerKm: zones[zoneKey],
-        rationale: `Séance qualité (zone ${zoneKey}) — priorité liée à ton objectif.`,
+        rationale: `Séance qualité en zone ${zoneLabelFr} — priorité liée à ton objectif.${mixNote}`,
       });
     } else {
       sessions.push({
