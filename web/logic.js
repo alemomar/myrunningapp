@@ -433,6 +433,19 @@ function velocityForVo2(vo2Target){
 // original par zones plutôt qu'une formule fermée officiellement publiée.
 const VDOT_ZONE_PCT = { easy:0.70, marathon:0.84, threshold:0.88, interval:0.98, repetition:1.05 };
 
+// Description de chaque zone en langage clair, pensée pour un débutant :
+// pas de jargon non expliqué (VDOT, ACWR...), des phrases complètes.
+// Réutilisée à la fois pour la justification de la séance (ci-dessous) et
+// pour l'explication d'allure côté UI (programPaceExplanationHTML,
+// index.html) — une seule description à tenir à jour.
+const ZONE_FRIENDLY = {
+  easy: { name:"Easy", what:"un rythme confortable, où tu peux parler sans être essoufflé", why:"Elle construit ton endurance de fond en douceur, sans te fatiguer — c'est le type de séance le plus fréquent dans un bon programme d'entraînement." },
+  threshold: { name:"Seuil", what:"un rythme soutenu mais tenable, juste avant que l'effort devienne vraiment difficile", why:"Elle t'entraîne à repousser le moment où tu commences à t'essouffler, pour tenir plus longtemps à une bonne allure." },
+  interval: { name:"Fractionné", what:"des efforts courts et rapides, entrecoupés de phases de récupération", why:"Elle développe ta vitesse et ta capacité à encaisser un effort intense." },
+  repetition: { name:"Répétition", what:"un rythme plus rapide que ton allure de course, sur de courtes distances avec une récupération complète entre chaque", why:"Elle améliore ta vitesse pure et ta technique de course." },
+  marathon: { name:"Marathon", what:"le rythme que tu pourrais tenir sur la distance d'un marathon", why:"Elle t'habitue à courir longtemps à une allure stable, sans à-coups." },
+};
+
 // Zones d'allure (sec/km) à partir d'un VDOT.
 function paceZonesFromVdot(vdot){
   const zones = {};
@@ -661,31 +674,32 @@ function generateWeekSessions(params){
     const dayIndex = uniqueDays[i];
     if(isQuality){
       const zoneKey = qualityZoneForSlot(structure, i, qualityN, weekIndex);
-      const zoneLabelFr = zoneKey==="interval" ? "Fractionné" : zoneKey==="threshold" ? "Seuil" : zoneKey;
+      const zf = ZONE_FRIENDLY[zoneKey];
       // Explique pourquoi CETTE zone précisément (pas juste "qualité") :
       // les deux stimulus la même semaine si qualityN>=2, sinon pourquoi
       // ça alterne d'une semaine sur l'autre (voir qualityZoneForSlot).
       const mixNote = qualityN>=2
         ? (zoneKey==="threshold"
-            ? " Cette semaine comprend aussi une séance Fractionné : les deux zones qualité sont couvertes la même semaine."
-            : " Cette semaine comprend aussi une séance Seuil : les deux zones qualité sont couvertes la même semaine.")
-        : " Alternée avec l'autre zone qualité d'une semaine sur l'autre, pour ne jamais répéter indéfiniment le même stimulus.";
+            ? " Cette semaine, tu as aussi une séance de Fractionné : les deux types d'effort intense sont travaillés."
+            : " Cette semaine, tu as aussi une séance de Seuil : les deux types d'effort intense sont travaillés.")
+        : " La prochaine fois, ce sera l'autre type d'effort intense, pour varier les stimulations.";
       sessions.push({
         dayIndex, type:"Qualité", paceZone: zoneKey,
         distanceKm: Math.round(qualityKmEach*10)/10,
         targetPaceSecPerKm: zones[zoneKey],
-        rationale: `Séance qualité en zone ${zoneLabelFr} — priorité liée à ton objectif.${mixNote}`,
+        rationale: `Cette séance est en ${zf.name} : ${zf.what}. ${zf.why} C'est la séance la plus exigeante de la semaine, en lien avec ton objectif actuel.${mixNote}`,
       });
     } else {
+      const zf = ZONE_FRIENDLY.easy;
+      let why;
+      if(structure.reason==="acwr_high") why = "Le volume et l'intensité sont réduits cette semaine, car ta charge d'entraînement récente a beaucoup augmenté — mieux vaut souffler un peu maintenant pour éviter la blessure ou la fatigue excessive.";
+      else if(avoidQualityReason) why = `Elle remplace une séance plus intense initialement prévue, à cause d'${avoidQualityReason} — mieux vaut lever le pied plutôt que forcer.`;
+      else why = zf.why;
       sessions.push({
         dayIndex, type:"Easy", paceZone:"easy",
         distanceKm: Math.round(easyKmEach*10)/10,
         targetPaceSecPerKm: zones.easy,
-        rationale: structure.reason==="acwr_high"
-          ? "Séance easy — volume/intensité réduits cette semaine (charge d'entraînement élevée détectée)."
-          : avoidQualityReason
-            ? `Séance easy — remplace une séance qualité (${avoidQualityReason}).`
-            : "Séance easy — base aérobie (règle 80/20).",
+        rationale: `Cette séance est en ${zf.name} : ${zf.what}. ${why}`,
       });
     }
   }
@@ -703,9 +717,9 @@ function generateWeekSessions(params){
    justification, à affiner dans un second temps si besoin. */
 const CROSS_TRAINING_TYPES = ["Renfo", "Mobilité", "Yoga"];
 const CROSS_TRAINING_RATIONALE = {
-  "Renfo": "Renforcement musculaire — prévient les blessures et complète ta charge de course sans ajouter d'impact.",
-  "Mobilité": "Mobilité articulaire — entretient l'amplitude de mouvement et facilite la récupération entre les sorties.",
-  "Yoga": "Respiration et souplesse — favorise la récupération active et la gestion du stress d'entraînement.",
+  "Renfo": "Cette séance de renforcement musculaire t'aide à prévenir les blessures et complète ta charge de course sans ajouter d'impact au sol.",
+  "Mobilité": "Cette séance de mobilité entretient l'amplitude de tes mouvements et facilite ta récupération entre deux sorties de course.",
+  "Yoga": "Cette séance de yoga t'aide à récupérer activement et à gérer le stress lié à l'entraînement, grâce au travail de la respiration et de la souplesse.",
 };
 // `usedDayIndexes` : jours déjà pris par une séance de course cette
 // semaine (generateWeekSessions) — le complémentaire se place uniquement

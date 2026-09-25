@@ -417,7 +417,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=18"></script>
+<script src="logic.js?v=19"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2244,28 +2244,20 @@ function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
    ============================================================ */
 
 const PACE_ZONE_LABEL = { easy:"Easy", marathon:"Marathon", threshold:"Seuil", interval:"Fractionné", repetition:"Répétition" };
-// Explique à l'utilisateur ce que représente concrètement l'allure visée
-// (pas juste l'afficher) — % de la vitesse VDOT, cf. VDOT_ZONE_PCT dans
-// logic.js, et à quoi sert ce rythme dans l'entraînement.
-const PACE_ZONE_EXPLAIN = {
-  easy: "rythme confortable (~70% de ta vitesse VDOT) qui construit ta base aérobie sans te fatiguer — l'essentiel du volume doit rester à cette allure (règle 80/20).",
-  marathon: "rythme soutenable sur une longue durée (~84% de ta vitesse VDOT) — utile pour t'habituer à tenir un effort long à allure régulière.",
-  threshold: "rythme « confortablement difficile », juste sous ton seuil lactique (~88% de ta vitesse VDOT) — améliore ta capacité à tenir un effort soutenu.",
-  interval: "rythme proche de ta VO2max (~98% de ta vitesse VDOT) — développe ta puissance aérobie, travaillé par répétitions courtes avec récupération.",
-  repetition: "rythme plus rapide que ton allure de course (~105% de ta vitesse VDOT) — travaille ta vitesse et ton économie de course.",
-};
 function programProfileSourceLabel(profile){
   if(!profile) return "";
   if(profile.source==="goal_pb") return "ton record personnel renseigné dans Objectifs";
   if(profile.source==="goal_vma") return "ta VMA renseignée dans Objectifs";
   return "le temps de référence que tu as saisi";
 }
+// Explique l'allure visée en langage clair (ZONE_FRIENDLY, logic.js) — pas
+// de jargon non expliqué (VDOT, %...), pensé pour un débutant.
 function programPaceExplanationHTML(session){
-  const zoneText = PACE_ZONE_EXPLAIN[session.pace_zone];
-  if(!zoneText) return "";
+  const zf = ZONE_FRIENDLY[session.pace_zone];
+  if(!zf) return "";
   const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
   const srcLabel = programProfileSourceLabel(profile);
-  return `<div class="chart-hint" style="margin-top:6px;margin-bottom:0">Allure ${PACE_ZONE_LABEL[session.pace_zone]||""} : ${zoneText}${srcLabel?` Calculée à partir de ${srcLabel}.`:""}</div>`;
+  return `<div class="chart-hint" style="margin-top:6px;margin-bottom:0">Ton allure ${zf.name} correspond à ${zf.what}${srcLabel?`, calculée à partir de ${srcLabel}`:""}.</div>`;
 }
 function sessionRunType(paceZone){
   if(paceZone==="interval"||paceZone==="repetition") return "Fractionné";
@@ -2302,10 +2294,13 @@ function computeProgramInputs(){
   const zoneKeys = BODY_ZONES.map(z=>z[0]);
   const painZone = detectRepeatedPain(recentRatings, zoneKeys);
   const degraded = detectDegradedWellbeing(recentRatings);
+  // Phrases pensées pour commencer naturellement après "à cause d'" (voir
+  // le rationale "easy" dans logic.js) : pas de jargon (ACWR) exposé tel
+  // quel à l'utilisateur.
   let avoidQualityReason = null;
-  if(painZone) avoidQualityReason = `douleur répétée (${BODY_ZONES.find(z=>z[0]===painZone)?.[1]||painZone})`;
-  else if(structure.reason==="acwr_high") avoidQualityReason = "charge d'entraînement élevée (ACWR au-dessus de 1,3)";
-  else if(degraded) avoidQualityReason = "fatigue/mental dégradés sur ta dernière notation";
+  if(painZone) avoidQualityReason = `une douleur répétée au niveau de ${(BODY_ZONES.find(z=>z[0]===painZone)?.[1]||painZone).toLowerCase()}`;
+  else if(structure.reason==="acwr_high") avoidQualityReason = "une charge d'entraînement qui a beaucoup augmenté récemment";
+  else if(degraded) avoidQualityReason = "une fatigue ou un état d'esprit plus bas que d'habitude, d'après ta dernière notation";
   return { structure, avoidQualityReason, acwr };
 }
 
@@ -2320,9 +2315,9 @@ function computeProgramInputs(){
 const DAY_NAMES_FR = ["lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"];
 function dayPlacementNote(dayIndex, isQuality, isCrossTraining){
   const day = DAY_NAMES_FR[dayIndex];
-  if(isCrossTraining) return ` Placée le ${day}, un jour sans course, pour ne pas cumuler fatigue de course et renforcement le même jour.`;
-  if(isQuality) return ` Placée le ${day} parmi tes jours disponibles pour courir, en laissant de la récupération de part et d'autre plutôt que d'enchaîner deux séances exigeantes.`;
-  return ` Placée le ${day}, répartie avec tes autres sorties pour étaler l'effort sur la semaine.`;
+  if(isCrossTraining) return ` Elle est placée le ${day}, un jour sans course, pour éviter de cumuler la fatigue de la course et celle du renforcement le même jour.`;
+  if(isQuality) return ` Elle est placée le ${day}, l'un de tes jours disponibles pour courir, avec du repos avant et après plutôt que d'enchaîner deux séances difficiles.`;
+  return ` Elle est placée le ${day}, répartie avec tes autres sorties pour étaler l'effort sur la semaine plutôt que de tout regrouper.`;
 }
 
 // Génère et persiste une semaine — ADDITIF/idempotent : n'écrase ni ne
@@ -2348,13 +2343,20 @@ window.generateProgram = async (mondayDate, opts) => {
   const existing = plannedSessions.filter(p=>p.week_start_date===mondayStr && (p.status==="planned"||p.status==="done"));
   const dayIndexOf = (dateStr) => Math.round((new Date(dateStr+"T00:00:00") - mondayDate) / 86400000);
   const existingDayIndexes = existing.map(p=>dayIndexOf(p.planned_date));
-  const hasRunning = existing.some(p=>p.pace_zone);
-  const hasCross = existing.some(p=>!p.pace_zone);
-  if(hasRunning && hasCross){ if(!opts.silent) alert("Cette semaine a déjà un programme complet — supprime une séance si tu veux la remplacer."); return; }
+  // Comparé au NOMBRE cible (goals.frequence/frequenceAutre), pas juste à
+  // "en existe-t-il au moins une" : sinon une seule séance ajoutée à la
+  // main (ex: 1 renfo alors que 2/semaine sont visées) faisait croire la
+  // semaine "complète" et masquait le bouton pour ajouter le reste.
+  const desiredRunning = Number(goals.frequence) || 3;
+  const desiredCross = Number(goals.frequenceAutre) || 0;
+  const actualRunning = existing.filter(p=>p.pace_zone).length;
+  const actualCross = existing.filter(p=>!p.pace_zone).length;
+  const missingRunning = Math.max(0, desiredRunning - actualRunning);
+  const missingCross = Math.max(0, desiredCross - actualCross);
+  if(missingRunning<=0 && missingCross<=0){ if(!opts.silent) alert("Cette semaine a déjà un programme complet — supprime une séance si tu veux en régénérer une nouvelle."); return; }
 
   const { structure, avoidQualityReason } = computeProgramInputs();
   const weeklyKm = goals.kmMensuel ? Number(goals.kmMensuel)/4.33 : 20;
-  const frequency = Number(goals.frequence) || 3;
   const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
   // Semaines consécutives -> weekIndex consécutifs (mondayDate est toujours
   // un lundi minuit local, l'écart est exactement 7j en ms) : sert à
@@ -2366,9 +2368,9 @@ window.generateProgram = async (mondayDate, opts) => {
 
   let generated = [];
   let runningRows = [];
-  if(!hasRunning){
+  if(missingRunning>0){
     const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d) && !existingDayIndexes.includes(d));
-    generated = generateWeekSessions({ profile, structure, weeklyKm, frequency, availableDayIndexes, avoidQualityReason, weekIndex });
+    generated = generateWeekSessions({ profile, structure, weeklyKm, frequency:missingRunning, availableDayIndexes, avoidQualityReason, weekIndex });
     runningRows = generated.map(s => ({
       user_id:user.id,
       planned_date: addDaysStr(mondayDate, s.dayIndex),
@@ -2385,13 +2387,12 @@ window.generateProgram = async (mondayDate, opts) => {
   }
 
   let crossRows = [];
-  if(!hasCross){
+  if(missingCross>0){
     // Séances complémentaires (renfo/mobilité/yoga) sur les jours restants
     // — jamais le même jour qu'une course, existante ou fraîchement
     // générée ci-dessus. Voir generateCrossTrainingSessions.
     const usedDayIndexes = [...existingDayIndexes, ...generated.map(s=>s.dayIndex)];
-    const frequencyAutre = Number(goals.frequenceAutre) || 0;
-    const crossTraining = generateCrossTrainingSessions(frequencyAutre, usedDayIndexes, weekIndex);
+    const crossTraining = generateCrossTrainingSessions(missingCross, usedDayIndexes, weekIndex);
     crossRows = crossTraining.map(s => ({
       user_id:user.id,
       planned_date: addDaysStr(mondayDate, s.dayIndex),
@@ -2454,11 +2455,19 @@ window.toggleEditSession = (id) => {
 // choisit sa propre valeur, ce n'est pas le moteur qui "régénère" pour un
 // motif à tracer.
 window.saveSessionEdit = async (id) => {
+  const session = plannedSessions.find(p=>p.id===id);
+  const newType = document.getElementById("edit_type_"+id)?.value;
   const distanceKm = parseFloat(document.getElementById("edit_distance_"+id)?.value);
   const paceMin = parseInt(document.getElementById("edit_paceMin_"+id)?.value, 10);
   const paceSec = parseInt(document.getElementById("edit_paceSec_"+id)?.value, 10);
   const reminderTime = document.getElementById("edit_reminderTime_"+id)?.value;
   const patch = { source:"manual_edit", updated_at:new Date().toISOString(), reminder_time: reminderTime || null };
+  // Changer le type retire l'allure calculée (pace_zone) : on ne peut pas
+  // déduire fiablement une nouvelle zone d'allure à partir d'un simple
+  // libellé de type (ex: passer de "Fractionné" à "Renfo") — la séance
+  // devient une séance "personnalisée" sans allure algorithmique, comme
+  // une séance ajoutée manuellement.
+  if(newType && session && newType!==session.type){ patch.type = newType; patch.title = newType; patch.pace_zone = null; }
   if(!isNaN(distanceKm) && distanceKm>0) patch.target_distance_km = distanceKm;
   if(!isNaN(paceMin) || !isNaN(paceSec)){
     const sec = (paceMin||0)*60 + (paceSec||0);
@@ -2666,7 +2675,7 @@ function progDragCancel(e){
 // replaced/superseded_by_id, la nouvelle porte replaces_session_id — la
 // justification affichée explique toujours pourquoi le changement a eu
 // lieu, jamais de suppression silencieuse.
-window.regenerateSession = async (id, reason) => {
+window.regenerateSession = async (id, reason, auto) => {
   const old = plannedSessions.find(p=>p.id===id);
   if(!old) return;
   const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
@@ -2675,13 +2684,17 @@ window.regenerateSession = async (id, reason) => {
   const softer = reason!=="Manque de temps"; // "Manque de temps" raccourcit sans changer d'intensité, les autres motifs basculent en easy
   const newZone = softer ? "easy" : old.pace_zone;
   const { data:{user} } = await supa.auth.getUser();
+  const changeDesc = softer ? "remplacée par une version plus facile" : "raccourcie";
+  const rationale = auto
+    ? `Cette séance a été ${changeDesc} automatiquement, car ${reason}. Tu peux la modifier si elle ne te convient pas.`
+    : `Cette séance a été ${changeDesc} à ta demande, car tu avais indiqué : « ${reason} ».`;
   const { data: inserted, error: insErr } = await supa.from("planned_sessions").insert({
     user_id:user.id, planned_date:old.planned_date, week_start_date:old.week_start_date,
     type: sessionRunType(newZone), pace_zone:newZone,
     title: softer ? "Sortie easy (ajustée)" : old.title,
     target_distance_km: softer ? Math.round(old.target_distance_km*0.7*10)/10 : Math.round(old.target_distance_km*0.8*10)/10,
     target_pace_sec_per_km: zones[newZone],
-    rationale: `Régénérée à ta demande — motif : ${reason}.`,
+    rationale,
     status:"planned", source:"manual_edit", generation_reason:"user_constraint",
     replaces_session_id: old.id,
   }).select().single();
@@ -2724,7 +2737,7 @@ async function applyProgramAdjustments(){
   if(!next || next.pace_zone==="easy") return; // rien à assouplir sur une séance déjà easy
   const { avoidQualityReason } = computeProgramInputs();
   if(avoidQualityReason && next.generation_reason!=="user_constraint" && next.generation_reason!=="pain_repeat_or_wellbeing" && next.generation_reason!=="acwr_high"){
-    await window.regenerateSession(next.id, `Ajusté automatiquement — ${avoidQualityReason}`);
+    await window.regenerateSession(next.id, avoidQualityReason, true);
   }
 }
 
@@ -2791,22 +2804,29 @@ function programSessionCardHTML(session, date){
     </div>
     ${editOpen?`<div style="padding:8px 0 4px">
       <div class="chart-hint" style="margin-top:0">Modifier la séance</div>
+      <div style="margin-top:8px;margin-bottom:10px">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap;display:block;margin-bottom:6px">Type</span>
+        <div class="filters" data-chipgroup="editType_${session.id}" style="margin-bottom:0">
+          ${PROGRAM_TYPE_OPTIONS.map(t=>`<button type="button" class="flt${t===session.type?" active":""}" data-value="${t}" onclick="progSelectEditType('${session.id}','${t}')" style="display:inline-flex;align-items:center;gap:5px"><span style="color:${TC[t]||TC.Other};display:flex">${icon(TICON[t]||"activity",13)}</span>${t}</button>`).join("")}
+        </div>
+        <input type="hidden" id="edit_type_${session.id}" value="${session.type}">
+      </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:flex-end">
         <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim)">Distance</span>
+          <span style="font-size:12px;color:var(--text-dim)">Distance (optionnel)</span>
           <div style="display:flex;align-items:center;gap:4px">
             <input type="number" min="0" step="0.1" class="time-input" style="width:56px" id="edit_distance_${session.id}" value="${session.target_distance_km||""}"> <span style="font-size:12px;color:var(--text-dim)">km</span>
           </div>
         </div>
         <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim)">Allure</span>
+          <span style="font-size:12px;color:var(--text-dim)">Allure (optionnel)</span>
           <div style="display:flex;align-items:center;gap:4px">
             <input type="number" min="0" max="59" class="time-input" id="edit_paceMin_${session.id}" value="${paceMin}"> <span style="font-size:12px;color:var(--text-dim)">'</span>
             <input type="number" min="0" max="59" class="time-input" id="edit_paceSec_${session.id}" value="${paceSec}"> <span style="font-size:12px;color:var(--text-dim)">''/km</span>
           </div>
         </div>
         <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim)">Rappel</span>
+          <span style="font-size:12px;color:var(--text-dim)">Rappel (optionnel)</span>
           <input type="time" id="edit_reminderTime_${session.id}" value="${session.reminder_time?session.reminder_time.slice(0,5):""}" style="background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:8px;font-family:inherit">
         </div>
       </div>
@@ -2915,6 +2935,11 @@ window.progSelectAddType = (t) => {
   if(hidden) hidden.value = t;
   document.querySelectorAll('[data-chipgroup="addSession_type_group"] [data-value]').forEach(el=>el.classList.toggle("active", el.dataset.value===t));
 };
+window.progSelectEditType = (id, t) => {
+  const hidden = document.getElementById("edit_type_"+id);
+  if(hidden) hidden.value = t;
+  document.querySelectorAll(`[data-chipgroup="editType_${id}"] [data-value]`).forEach(el=>el.classList.toggle("active", el.dataset.value===t));
+};
 function programAddFormHTML(dateStr){
   return `<div style="margin-top:10px">
     <div style="margin-bottom:10px">
@@ -2926,19 +2951,19 @@ function programAddFormHTML(dateStr){
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <div class="field" style="margin-bottom:0">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Distance</span>
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Distance (optionnel)</span>
         <div style="display:flex;align-items:center;gap:4px">
           <input type="number" min="0" step="0.1" class="time-input" style="width:56px" id="addSession_distance"> <span style="font-size:12px;color:var(--text-dim)">km</span>
         </div>
       </div>
       <div class="field" style="margin-bottom:0">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Durée</span>
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Durée (optionnel)</span>
         <div style="display:flex;align-items:center;gap:4px">
           <input type="number" min="0" class="time-input" id="addSession_duration"> <span style="font-size:12px;color:var(--text-dim)">min</span>
         </div>
       </div>
       <div class="field" style="margin-bottom:0">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Rappel</span>
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Rappel (optionnel)</span>
         <input type="time" id="addSession_reminderTime" style="background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:8px;font-family:inherit">
       </div>
     </div>
@@ -3553,10 +3578,10 @@ function renderContent(){
       ${programViewMode==="week"?(()=>{
         const monday = addDays(mondayOf(new Date()), programWeekOffset*7);
         const weekSessions = plannedSessions.filter(p=>p.week_start_date===localDateStr(monday) && (p.status==="planned"||p.status==="done"));
-        const hasRunning = weekSessions.some(p=>p.pace_zone);
-        const hasCross = weekSessions.some(p=>!p.pace_zone);
-        const complete = hasRunning && hasCross;
-        const genLabel = (!hasRunning && !hasCross) ? "Générer cette semaine" : "Compléter cette semaine";
+        const actualRunning = weekSessions.filter(p=>p.pace_zone).length;
+        const actualCross = weekSessions.filter(p=>!p.pace_zone).length;
+        const complete = actualRunning>=(Number(goals.frequence)||3) && actualCross>=(Number(goals.frequenceAutre)||0);
+        const genLabel = (actualRunning===0 && actualCross===0) ? "Générer cette semaine" : "Compléter cette semaine";
         const weekDates = Array.from({length:7},(_,i)=>localDateStr(addDays(monday,i)));
         if(programSelectedDate===null && weekDates.includes(localDateStr(new Date()))) programSelectedDate = localDateStr(new Date());
         return `<div class="card">
