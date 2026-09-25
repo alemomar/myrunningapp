@@ -2405,6 +2405,18 @@ window.saveSessionEdit = async (id) => {
   openEditForm = null;
   await loadData(); renderContent();
 };
+// Retire une séance du calendrier — status='skipped' plutôt qu'un vrai
+// DELETE, cohérent avec le reste du Programme (jamais de suppression
+// silencieuse ni de perte d'historique, voir le pattern "supersede" de
+// regenerateSession). 'skipped' n'apparaît dans aucune vue active
+// (programDayColHTML/programMonthCellHTML filtrent sur planned/done), le
+// jour redevient donc "Repos".
+window.deleteSession = async (id) => {
+  if(!confirm("Retirer cette séance du calendrier ?")) return;
+  const { error } = await supa.from("planned_sessions").update({status:"skipped", updated_at:new Date().toISOString()}).eq("id", id);
+  if(error){ alert("Erreur : "+error.message); return; }
+  await loadData(); renderContent();
+};
 window.toggleAddForm = (dateStr) => {
   openAddForm = openAddForm===dateStr ? null : dateStr;
   renderContent();
@@ -2629,12 +2641,12 @@ async function applyProgramAdjustments(){
   programAdjustmentChecked = true;
 
   const thisMonday = mondayOf(new Date());
-  const hasThisWeek = plannedSessions.some(p=>p.week_start_date===localDateStr(thisMonday) && p.status!=="replaced");
+  const hasThisWeek = plannedSessions.some(p=>p.week_start_date===localDateStr(thisMonday) && (p.status==="planned"||p.status==="done"));
   if(!hasThisWeek) await window.generateProgram(thisMonday, {silent:true});
 
   if(new Date().getDay()===0){ // dimanche : dernier jour de la semaine ISO -> replanifie la suivante
     const nextMonday = addDaysStr(thisMonday, 7);
-    const hasNextWeek = plannedSessions.some(p=>p.week_start_date===nextMonday && p.status!=="replaced");
+    const hasNextWeek = plannedSessions.some(p=>p.week_start_date===nextMonday && (p.status==="planned"||p.status==="done"));
     if(!hasNextWeek) await window.generateProgram(new Date(nextMonday+"T00:00:00"), {silent:true});
   }
 
@@ -2709,6 +2721,7 @@ function programSessionCardHTML(session, date){
       <button class="flt" onclick="shiftSession('${session.id}',1)">Décaler +1j</button>
       ${session.pace_zone && session.pace_zone!=="easy"?`<button class="flt" onclick="replaceWithEasy('${session.id}')">Remplacer par easy</button>`:""}
       <button class="flt" onclick="toggleEditSession('${session.id}')">Modifier</button>
+      <button class="flt" style="color:var(--red)" onclick="deleteSession('${session.id}')">Supprimer</button>
     </div>
     ${editOpen?`<div style="padding:8px 0 4px">
       <div class="chart-hint" style="margin-top:0">Modifier la séance</div>
@@ -3456,7 +3469,7 @@ function renderContent(){
       </div>
       ${programViewMode==="week"?(()=>{
         const monday = addDays(mondayOf(new Date()), programWeekOffset*7);
-        const hasWeek = plannedSessions.some(p=>p.week_start_date===localDateStr(monday) && p.status!=="replaced");
+        const hasWeek = plannedSessions.some(p=>p.week_start_date===localDateStr(monday) && (p.status==="planned"||p.status==="done"));
         const weekDates = Array.from({length:7},(_,i)=>localDateStr(addDays(monday,i)));
         if(programSelectedDate===null && weekDates.includes(localDateStr(new Date()))) programSelectedDate = localDateStr(new Date());
         return `<div class="card">
