@@ -417,7 +417,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=19"></script>
+<script src="logic.js?v=20"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2315,7 +2315,7 @@ function computeProgramInputs(){
 const DAY_NAMES_FR = ["lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"];
 function dayPlacementNote(dayIndex, isQuality, isCrossTraining){
   const day = DAY_NAMES_FR[dayIndex];
-  if(isCrossTraining) return ` Elle est placée le ${day}, un jour sans course, pour éviter de cumuler la fatigue de la course et celle du renforcement le même jour.`;
+  if(isCrossTraining) return ` Elle est placée le ${day}, un jour sans course et sans course prévue le lendemain, pour éviter de cumuler la fatigue de la course avec celle du renforcement, et pour ne pas arriver à ta prochaine course avec des courbatures.`;
   if(isQuality) return ` Elle est placée le ${day}, l'un de tes jours disponibles pour courir, avec du repos avant et après plutôt que d'enchaîner deux séances difficiles.`;
   return ` Elle est placée le ${day}, répartie avec tes autres sorties pour étaler l'effort sur la semaine plutôt que de tout regrouper.`;
 }
@@ -2389,10 +2389,19 @@ window.generateProgram = async (mondayDate, opts) => {
   let crossRows = [];
   if(missingCross>0){
     // Séances complémentaires (renfo/mobilité/yoga) sur les jours restants
-    // — jamais le même jour qu'une course, existante ou fraîchement
-    // générée ci-dessus. Voir generateCrossTrainingSessions.
+    // — jamais le même jour qu'une course (existante ou fraîchement
+    // générée ci-dessus), et jamais non plus la VEILLE d'une course, peu
+    // importe son type (retour utilisateur : courbatures/risque de
+    // blessure le lendemain). Le dimanche de cette semaine compte aussi
+    // s'il précède une course déjà planifiée le lundi suivant.
     const usedDayIndexes = [...existingDayIndexes, ...generated.map(s=>s.dayIndex)];
-    const crossTraining = generateCrossTrainingSessions(missingCross, usedDayIndexes, weekIndex);
+    const existingRunningDayIndexes = existing.filter(p=>p.pace_zone).map(p=>dayIndexOf(p.planned_date));
+    const allRunningDayIndexes = [...existingRunningDayIndexes, ...generated.map(s=>s.dayIndex)];
+    const dayBeforeRunning = allRunningDayIndexes.map(d=>d-1).filter(d=>d>=0);
+    const nextMondayStr = addDaysStr(mondayDate, 7);
+    const hasRunningNextMonday = plannedSessions.some(p=>p.planned_date===nextMondayStr && p.pace_zone && (p.status==="planned"||p.status==="done"));
+    const avoidDayIndexes = [...dayBeforeRunning, ...(hasRunningNextMonday ? [6] : [])];
+    const crossTraining = generateCrossTrainingSessions(missingCross, usedDayIndexes, weekIndex, avoidDayIndexes);
     crossRows = crossTraining.map(s => ({
       user_id:user.id,
       planned_date: addDaysStr(mondayDate, s.dayIndex),
@@ -2454,6 +2463,18 @@ window.toggleEditSession = (id) => {
 // valider/décaler, pas le pattern "supersede" : c'est l'utilisateur qui
 // choisit sa propre valeur, ce n'est pas le moteur qui "régénère" pour un
 // motif à tracer.
+// Types qui ne sont pas une séance de course — sert à avertir (pas
+// bloquer) quand l'utilisateur place LUI-MÊME une de ces séances la
+// veille d'une course déjà planifiée (retour utilisateur : courbatures/
+// risque de blessure le lendemain). Le moteur de génération applique déjà
+// cette règle automatiquement, voir avoidDayIndexes dans generateProgram.
+const NON_RUNNING_TYPES = ["Renfo","Mobilité","Yoga","Souplesse","Kiné","Pilates","Other"];
+function warnIfDayBeforeRun(dateStr, type){
+  if(!NON_RUNNING_TYPES.includes(type)) return;
+  const nextDateStr = addDaysStr(new Date(dateStr+"T00:00:00"), 1);
+  const hasRunNextDay = plannedSessions.some(p=>p.planned_date===nextDateStr && p.pace_zone && (p.status==="planned"||p.status==="done"));
+  if(hasRunNextDay) alert("⚠️ Attention aux courbatures et au risque de blessure : tu as une course prévue le lendemain de cette séance.");
+}
 window.saveSessionEdit = async (id) => {
   const session = plannedSessions.find(p=>p.id===id);
   const newType = document.getElementById("edit_type_"+id)?.value;
@@ -2468,6 +2489,7 @@ window.saveSessionEdit = async (id) => {
   // devient une séance "personnalisée" sans allure algorithmique, comme
   // une séance ajoutée manuellement.
   if(newType && session && newType!==session.type){ patch.type = newType; patch.title = newType; patch.pace_zone = null; }
+  if(session) warnIfDayBeforeRun(session.planned_date, newType||session.type);
   if(!isNaN(distanceKm) && distanceKm>0) patch.target_distance_km = distanceKm;
   if(!isNaN(paceMin) || !isNaN(paceSec)){
     const sec = (paceMin||0)*60 + (paceSec||0);
@@ -2508,6 +2530,7 @@ window.addManualSession = async (dateStr) => {
   const notes = document.getElementById("addSession_notes")?.value?.trim();
   const occupied = plannedSessions.some(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
   if(occupied){ alert("Ce jour a déjà une séance — modifie-la plutôt que d'en ajouter une seconde."); return; }
+  warnIfDayBeforeRun(dateStr, type);
   const { data:{user} } = await supa.auth.getUser();
   if(!user) return;
   const monday = mondayOf(new Date(dateStr+"T00:00:00"));

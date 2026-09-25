@@ -728,9 +728,19 @@ const CROSS_TRAINING_RATIONALE = {
 // `weekIndex` : fait tourner le TYPE d'une semaine sur l'autre (et d'une
 // séance à l'autre la même semaine), pour ne jamais répéter indéfiniment
 // le même type.
-function generateCrossTrainingSessions(frequencyAutre, usedDayIndexes, weekIndex){
+// `avoidDayIndexes` (0-6, optionnel) : jours à exclure EN PLUS de
+// usedDayIndexes — sert à ne jamais placer une séance complémentaire la
+// veille d'une course, peu importe son type (retour utilisateur : les
+// courbatures de la veille dégradent la course du lendemain). Calculé par
+// l'appelant (index.html), qui a la visibilité sur la semaine suivante
+// pour couvrir aussi le dimanche de cette semaine -> lundi de la suivante.
+// Pas une règle sourcée comme les autres (VDOT/80-20/sRPE/ACWR) : c'est un
+// consensus de terrain sur les courbatures (DOMS) plutôt qu'une étude
+// unique citable, assumé comme un choix pragmatique.
+function generateCrossTrainingSessions(frequencyAutre, usedDayIndexes, weekIndex, avoidDayIndexes){
   if(!frequencyAutre || frequencyAutre<1) return [];
-  const available = [0,1,2,3,4,5,6].filter(d=>!usedDayIndexes.includes(d));
+  const excluded = new Set([...usedDayIndexes, ...(avoidDayIndexes||[])]);
+  const available = [0,1,2,3,4,5,6].filter(d=>!excluded.has(d));
   const n = Math.min(frequencyAutre, available.length);
   if(n<1) return [];
   const spread = Array.from({length:n}, (_,i) => available[Math.round(i*(available.length-1)/Math.max(1,n-1))]);

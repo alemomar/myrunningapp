@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=19"></script>
+<script src="logic.js?v=20"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -462,6 +462,13 @@ try {
   const weekX = generateCrossTrainingSessions(1, [0,2,4], 0)[0].type;
   const weekY = generateCrossTrainingSessions(1, [0,2,4], 1)[0].type;
   assertEqual("generateCrossTrainingSessions : le type alterne selon weekIndex", weekX!==weekY, true);
+
+  // Jamais la veille d'une course (retour utilisateur : courbatures) : une
+  // course le mercredi (2) -> le mardi (1) doit être exclu même s'il est
+  // libre, en plus du mercredi lui-même.
+  const avoidVeille = generateCrossTrainingSessions(3, [2], 0, [1]);
+  assertEqual("generateCrossTrainingSessions : jamais la veille d'une course (avoidDayIndexes)", avoidVeille.some(s=>s.dayIndex===1), false);
+  assertEqual("generateCrossTrainingSessions : les autres jours restent disponibles malgré avoidDayIndexes", avoidVeille.length, 3);
 }
 
 // --- fmtA / fmtDur ---
