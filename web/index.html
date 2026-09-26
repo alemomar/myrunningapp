@@ -910,6 +910,18 @@ window.selectGoalSlot = (slot) => {
   activeGoalSlot = slot;
   renderContent();
 };
+// Bascule l'existence même d'un objectif secondaire (pas juste son
+// affichage) : un utilisateur n'ayant qu'un seul objectif ne doit pas voir
+// un 2e onglet. Les données déjà saisies dans "secondaire" ne sont pas
+// effacées en désactivant — juste ignorées (voir computeProgramInputs) —
+// pour pouvoir les retrouver si l'utilisateur réactive plus tard.
+window.toggleSecondaryGoal = async (enabled) => {
+  captureSharedFields();
+  goals = { ...goals, secondaireEnabled: enabled };
+  if(!enabled) activeGoalSlot = "principal";
+  if(!(await upsertProfile({ goals }))) return;
+  renderContent();
+};
 
 // Sélection à puces générique (objectif principal, distance de course,
 // séances/semaine, niveau) : met à jour un input caché + l'état visuel
@@ -1651,6 +1663,9 @@ function kpisHTML(){
       [avgFcFracWork?avgFcFracWork+" bpm":"—","FC moy. Work Fractionné","heart","#ff9f0a"],
     ]],
   ];
+  // Les blocs Allure (EF/Fractionné) affichent une valeur "X'XX/km" plus
+  // longue que les autres KPI (distance, bpm...) — taille réduite pour
+  // qu'elle tienne sans être compressée dans la carte.
   return groups.map(([label,items])=>`
     <div class="stitle" style="padding:0 20px;margin-bottom:8px">${label}</div>
     <div class="kpi-grid" style="margin-top:-6px${items.length===3?';grid-template-columns:repeat(3,1fr)':''}">${items.map(([v,l,ic,c])=>`
@@ -1658,7 +1673,7 @@ function kpisHTML(){
         <div class="kpi-top">
           <div class="kpi-icon" style="background:${c}22;color:${c}">${icon(ic,15)}</div>
         </div>
-        <div class="kpi-val">${v}</div>
+        <div class="kpi-val"${label.startsWith("Allure")?' style="font-size:16px"':''}>${v}</div>
         <div class="kpi-lbl">${l}</div>
       </div>`).join("")}</div>`).join("");
 }
@@ -1708,6 +1723,17 @@ function monthlyVol(){
 function intensityColor(r){
   const pct = r.dist ? r.intenseDist/r.dist : 0;
   return pct>=0.3 ? "#ff375f" : pct>=0.12 ? "#ff9f0a" : "#30d158";
+}
+// Couleur du volume MENSUEL comparé à l'objectif km/mois (goals.kmMensuel) :
+// jaune tant qu'on est loin en dessous, vert dans la cible, orange/rouge en
+// cas de dépassement. Gris si aucun objectif n'est renseigné (rien à comparer).
+function monthlyGoalColor(dist, kmGoal){
+  if(!kmGoal) return "#98989f";
+  const pct = dist/kmGoal*100;
+  if(pct>150) return "#ff375f";
+  if(pct>120) return "#ff9f0a";
+  if(pct>=70) return "#30d158";
+  return "#ffd60a";
 }
 
 // Points sans ligne reliée + droite de tendance projetée sur 3 mois.
@@ -2162,6 +2188,16 @@ window.toggleManageRow = (id) => {
   else openManageRow.add(id);
   renderContent();
 };
+// Mois repliés par défaut (sauf le plus récent) dans "Toutes les séances" :
+// null tant que non initialisé, pour ne calculer le mois le plus récent à
+// ouvrir qu'une fois, sans écraser les choix de l'utilisateur aux rendus
+// suivants (changement de filtre, ouverture d'une séance...).
+let openMonths = null;
+window.toggleMonthGroup = (key) => {
+  if(openMonths.has(key)) openMonths.delete(key);
+  else openMonths.add(key);
+  renderContent();
+};
 // Vrai seulement au tout premier rendu du dashboard depuis l'ouverture de
 // l'app : l'animation de célébration de la carte "Dernière séance" ne doit
 // jouer qu'une fois, pas à chaque re-render (changement de filtre, etc.).
@@ -2329,7 +2365,8 @@ function dayLabelShort(date){ return date.toLocaleDateString('fr-FR',{weekday:'s
 // pour décider si la prochaine séance planifiée doit être ajustée.
 function computeProgramInputs(){
   const principalType = goals.principal?.objectifPrincipal;
-  const secondaryType = goals.secondaire?.objectifPrincipal;
+  const secondaireEnabled = goals.secondaireEnabled!==undefined ? !!goals.secondaireEnabled : !!(goals.secondaire?.objectifPrincipal);
+  const secondaryType = secondaireEnabled ? goals.secondaire?.objectifPrincipal : null;
   let structure = weeklyStructureForObjective(principalType, secondaryType);
   const loadSessions = runningRuns.filter(r=>r.painRatings?.rpe!=null).map(r=>({ date: dateFromRun(r), durationMin: (r.durationSec||0)/60, rpe: r.painRatings.rpe }));
   const dailySeries = buildDailyLoadSeries(loadSessions);
@@ -3083,7 +3120,10 @@ function renderContentInner(){
         </div>`:""}
       </div>
       <div class="card"><div class="stitle">Volume ${isMonthly?"mensuel":"hebdomadaire"} (km)</div>
-        <div class="chart-hint">Couleur = part de fractionné/seuil sur la période : <span style="color:#30d158">peu</span> · <span style="color:#ff9f0a">modéré</span> · <span style="color:#ff375f">beaucoup</span></div>
+        <div class="chart-hint">${isMonthly&&goals.kmMensuel
+          ?`Couleur = vs objectif de ${goals.kmMensuel} km/mois : <span style="color:#ffd60a">trop bas</span> · <span style="color:#30d158">dans la cible</span> · <span style="color:#ff9f0a">au-dessus</span> · <span style="color:#ff375f">largement dépassé</span>`
+          :isMonthly?`Renseigne un objectif km/mois dans Objectifs pour colorer ce graph par rapport à ta cible.`
+          :`Couleur = part de fractionné/seuil sur la période : <span style="color:#30d158">peu</span> · <span style="color:#ff9f0a">modéré</span> · <span style="color:#ff375f">beaucoup</span>`}</div>
         <div style="position:relative;width:100%;height:180px"><canvas id="cVolMini"></canvas></div>
       </div>
       ${withHr.length?`<div class="card"><div class="stitle">Efficience cardiaque</div>
@@ -3101,7 +3141,7 @@ function renderContentInner(){
     setTimeout(()=>{
       mkPaceTrendChart("cEFmini", efRuns, true, 21);
       if(hasFrac) mkFractionneChart("cFracMini", fracRuns, 21);
-      mkChart("cVolMini",{type:"bar",data:{labels:vol.map(r=>r.label),datasets:[{label:"km",data:vol.map(r=>r.dist),backgroundColor:vol.map(intensityColor),borderRadius:6}]},plugins:[barValueLabelsPlugin],options:{scales:{x:{ticks:{autoSkip:false,maxRotation:45}}},plugins:{tooltip:{callbacks:{label:ctx=>ctx.raw+" km"}}}}});
+      mkChart("cVolMini",{type:"bar",data:{labels:vol.map(r=>r.label),datasets:[{label:"km",data:vol.map(r=>r.dist),backgroundColor:isMonthly?vol.map(r=>monthlyGoalColor(r.dist, goals.kmMensuel?Number(goals.kmMensuel):null)):vol.map(intensityColor),borderRadius:6}]},plugins:[barValueLabelsPlugin],options:{scales:{x:{ticks:{autoSkip:false,maxRotation:45}}},plugins:{tooltip:{callbacks:{label:ctx=>ctx.raw+" km"}}}}});
       if(lastRunExpanded && lastRun && lastRun.hrSeries && lastRun.hrSeries.length>1 && effMaxHr) mkHrCurveChart("cHr_"+lastRun.id, lastRun.hrSeries);
       if(withHr.length) mkPaceFcChart("cPaceFc", efRuns);
       if(monthly.length>=2){
@@ -3123,26 +3163,41 @@ function renderContentInner(){
     // de l'onglet Ressenti — le détail complet (édition, cardio) ne
     // s'affiche qu'au clic sur une ligne, pour rester lisible avec beaucoup
     // d'historique.
-    let lastMonthKey = null;
     const monthLabel = (d) => {
       const s = d.toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
       return s.charAt(0).toUpperCase() + s.slice(1);
     };
+    // Regroupées par mois (repliables) plutôt qu'une seule longue liste :
+    // avec beaucoup d'historique, tout afficher rendait la page interminable.
+    const monthGroups = [];
+    filtered.slice().reverse().forEach(r=>{
+      const key = `${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`;
+      let group = monthGroups[monthGroups.length-1];
+      if(!group || group.key!==key){
+        group = {key, label:monthLabel(r.fullDate), sessions:[]};
+        monthGroups.push(group);
+      }
+      group.sessions.push(r);
+    });
+    if(openMonths===null) openMonths = new Set(monthGroups.length?[monthGroups[0].key]:[]);
     el.innerHTML=`
       <div class="card">
         <div class="stitle">Toutes les séances</div>
         <div class="chart-hint">Change le type ou l'interrupteur "Suivi" pour piloter ce qui compte dans tes stats de course. "Détail cardio" affiche la courbe FC et les zones quand elles sont disponibles.</div>
         <div class="filters">${["Tous",...TYPE_OPTIONS.filter(t=>t!=="Other")].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${t}</button>`).join("")}</div>
-        ${filtered.length?filtered.slice().reverse().map(r=>{
-          const monthKey = `${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`;
-          const monthHeader = monthKey!==lastMonthKey ? `<div class="month-sep">${monthLabel(r.fullDate)}</div>` : "";
-          lastMonthKey = monthKey;
-          const open = openManageRow.has(r.id);
-          return `${monthHeader}
-          <div class="session-pick" onclick="toggleManageRow('${r.id}')">
-            <span>${icon(open?"chevronDown":"chevronRight",13)} ${icon(TICON[r.type]||"activity",13)} ${r.type} · ${r.label}${r.dist>0?" · "+r.dist.toFixed(2)+" km":""}</span>
+        ${monthGroups.length?monthGroups.map(g=>{
+          const monthOpen = openMonths.has(g.key);
+          return `<div class="month-sep" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleMonthGroup('${g.key}')">
+            <span>${icon(monthOpen?"chevronDown":"chevronRight",12)} ${g.label}</span>
+            <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-dim);font-size:11px">${g.sessions.length} séance${g.sessions.length>1?"s":""}</span>
           </div>
-          ${open?manageableRow(r, effMaxHr, effRestingHr):""}`;
+          ${monthOpen?g.sessions.map(r=>{
+            const open = openManageRow.has(r.id);
+            return `<div class="session-pick" onclick="toggleManageRow('${r.id}')">
+              <span>${icon(open?"chevronDown":"chevronRight",13)} ${icon(TICON[r.type]||"activity",13)} ${r.type} · ${r.label}${r.dist>0?" · "+r.dist.toFixed(2)+" km":""}</span>
+            </div>
+            ${open?manageableRow(r, effMaxHr, effRestingHr):""}`;
+          }).join(""):""}`;
         }).join(""):`<div style="font-size:13px;color:var(--text-dim);padding:12px 0">Aucune séance de ce type</div>`}
       </div>`;
     setTimeout(()=>{
@@ -3222,6 +3277,12 @@ function renderContentInner(){
     // secondaire) vient d'une surcharge locale de --accent/--accent-dim :
     // le reste du CSS (puces, cartes, bouton) s'appuie déjà sur ces
     // variables, pas besoin de dupliquer les règles.
+    // Activable/désactivable : les utilisateurs n'ayant qu'un seul objectif
+    // n'ont pas besoin de voir un 2e onglet vide. Par défaut activé pour les
+    // utilisateurs existants qui avaient déjà rempli un objectif secondaire
+    // (pas de régression), désactivé sinon.
+    const secondaireEnabled = goals.secondaireEnabled!==undefined ? !!goals.secondaireEnabled : !!(goals.secondaire?.objectifPrincipal);
+    if(!secondaireEnabled && activeGoalSlot==="secondaire") activeGoalSlot="principal";
     const slot = goals[activeGoalSlot] || {};
     const slotColorVars = activeGoalSlot==="secondaire"
       ? "--accent:var(--purple);--accent-dim:var(--purple-dim);"
@@ -3270,7 +3331,7 @@ function renderContentInner(){
     </div>`;
 
     el.innerHTML=`<div class="card">
-      <div class="stitle">Ton profil coureur</div>
+      <div class="stitle" style="font-size:18px;text-transform:none;letter-spacing:0;color:var(--text);margin-bottom:4px">Ton profil coureur</div>
       <div class="chart-hint" style="margin-top:0">Quelques infos utiles quel que soit l'objectif choisi, à ne renseigner qu'une fois.</div>
       ${(volActuel!=null || freqActuelle!=null)?`<div class="account-row">
         <span class="lbl">Volume actuel</span>
@@ -3323,10 +3384,15 @@ function renderContentInner(){
       <input type="hidden" id="goal_niveau" value="${goals.niveau||""}">
     </div>
 
+    ${secondaireEnabled?`
     <div class="goal-slot-switch">
       <div class="goal-slot-btn${activeGoalSlot==="principal"?" active-principal":""}" onclick="selectGoalSlot('principal')">Objectif principal</div>
       <div class="goal-slot-btn${activeGoalSlot==="secondaire"?" active-secondaire":""}" onclick="selectGoalSlot('secondaire')">Objectif secondaire</div>
     </div>
+    <div style="text-align:center;margin-top:8px">
+      <button type="button" class="btn-secondary" style="font-size:12px;padding:6px 12px;margin-top:0" onclick="toggleSecondaryGoal(false)">Retirer l'objectif secondaire</button>
+    </div>`:`
+    <button type="button" class="btn-secondary" style="width:100%" onclick="toggleSecondaryGoal(true)">+ Ajouter un objectif secondaire</button>`}
     </div>
 
     <div style="${slotColorVars}">
