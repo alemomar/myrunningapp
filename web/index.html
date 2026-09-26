@@ -199,6 +199,12 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
   background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);
   padding:18px;margin-bottom:14px;
 }
+.tutorial-modal-backdrop{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,0.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:center;padding:24px;
+}
+.tutorial-modal-card{max-width:340px;width:100%;margin-bottom:0;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
 .stitle{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--text-dim);margin-bottom:14px;text-transform:uppercase}
 .chart-hint{font-size:12px;color:var(--text-faint);margin-top:-8px;margin-bottom:12px}
 
@@ -756,25 +762,19 @@ function markTutorialBubbleSeen(tabKey){
 function tutorialBubbleHTML(tabKey){
   const text = TUTORIAL_BUBBLES[tabKey];
   if(!text || seenTutorialBubbles().includes(tabKey)) return "";
-  return `<div class="card" id="tutorialBubble" style="border-color:rgba(94,92,230,0.4);background:rgba(94,92,230,0.08)">
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">${text}</div>
-    <button class="btn-secondary" onclick="dismissTutorialBubble('${tabKey}')">Compris</button>
+  return `<div class="tutorial-modal-backdrop" id="tutorialBubble" onclick="dismissTutorialBubble('${tabKey}')">
+    <div class="card tutorial-modal-card" style="border-color:rgba(94,92,230,0.4)" onclick="event.stopPropagation()">
+      <div style="font-size:14px;line-height:1.5;margin-bottom:16px">${text}</div>
+      <button class="btn-primary" style="margin-top:0" onclick="dismissTutorialBubble('${tabKey}')">Compris</button>
+    </div>
   </div>`;
 }
 window.dismissTutorialBubble = (tabKey) => {
   const el = document.getElementById("tutorialBubble");
   if(el){
-    el.style.maxHeight = el.offsetHeight+"px";
-    requestAnimationFrame(()=>{
-      el.style.transition = "max-height .3s ease, opacity .3s ease, margin .3s ease, padding .3s ease";
-      el.style.opacity = "0";
-      el.style.maxHeight = "0px";
-      el.style.marginBottom = "0px";
-      el.style.paddingTop = "0px";
-      el.style.paddingBottom = "0px";
-      el.style.overflow = "hidden";
-    });
-    setTimeout(()=>el.remove(), 320);
+    el.style.transition = "opacity .2s ease";
+    el.style.opacity = "0";
+    setTimeout(()=>el.remove(), 200);
   }
   markTutorialBubbleSeen(tabKey);
 };
