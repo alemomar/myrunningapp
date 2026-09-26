@@ -3331,7 +3331,7 @@ function renderContentInner(){
     </div>`;
 
     el.innerHTML=`<div class="card">
-      <div class="stitle" style="font-size:18px;text-transform:none;letter-spacing:0;color:var(--text);margin-bottom:4px">Ton profil coureur</div>
+      <div class="stitle" style="font-size:18px;text-transform:none;letter-spacing:0;color:var(--accent);margin-bottom:4px">Ton profil coureur</div>
       <div class="chart-hint" style="margin-top:0">Quelques infos utiles quel que soit l'objectif choisi, à ne renseigner qu'une fois.</div>
       ${(volActuel!=null || freqActuelle!=null)?`<div class="account-row">
         <span class="lbl">Volume actuel</span>
@@ -3397,7 +3397,7 @@ function renderContentInner(){
 
     <div style="${slotColorVars}">
     <div class="card">
-      <div class="stitle">${activeGoalSlot==="principal"?"Objectif principal":"Objectif secondaire"}</div>
+      <div class="stitle" style="color:var(--accent)">${activeGoalSlot==="principal"?"Objectif principal":"Objectif secondaire"}</div>
       <div class="chart-hint">Sert de base au futur plan personnalisé par IA (onglet Ressenti) et conditionne les questions suivantes.</div>
       ${objectifCards(slot.objectifPrincipal)}
       <input type="hidden" id="goal_objectifPrincipal" value="${slot.objectifPrincipal||""}">
