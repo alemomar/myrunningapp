@@ -16,7 +16,7 @@ Tout ce qui suit part du principe que tu repars d'un Mac neuf, sans rien d'insta
 
 ### 1. Récupérer le code
 
-Le code est sauvegardé sur GitHub, en privé : **https://github.com/alemomar/myrunningapp**
+Le code est sauvegardé sur GitHub, **en public** (dépôt privé envisagé plus tard, voir la section Sécurité plus bas) : **https://github.com/alemomar/myrunningapp**
 
 ```bash
 git clone https://github.com/alemomar/myrunningapp.git
@@ -39,7 +39,7 @@ Le seul cas où tu as besoin des sauvegardes locales (`backups/`), c'est si la b
 
 - Les sauvegardes sont dans `backups/<date>/*.json` (30 derniers jours, 2x/jour)
 - Comme ce dossier est dans Google Drive, il est accessible depuis n'importe quel Mac connecté à ton compte Google, même si l'ancien Mac est perdu
-- Pour ré-importer des données dans Supabase depuis un fichier JSON de sauvegarde, il faudra écrire un petit script d'import (pas encore fait — à faire seulement si ce cas arrive vraiment, pas la peine de le préparer à l'avance)
+- Pour ré-importer des données dans Supabase depuis une sauvegarde, utilise `backend/restore_supabase.py` — voir [backend/README.md](backend/README.md) pour la procédure complète (testée et validée)
 
 ### 3. Reconfigurer les clés / secrets
 
@@ -103,22 +103,24 @@ Sur un Mac neuf, ces outils ne sont pas là par défaut et ont été installés 
 ## Dernière sauvegarde
 
 <!-- BACKUP_STATUS_START -->
-Dernière exécution : **09/09/2026 à 21:13**
+Dernière exécution : **27/09/2026 à 19:23**
 
-- `runs` : 172 ligne(s)
-- `profiles` : 1 ligne(s)
-- `pain_checkins` : 8 ligne(s)
+- `runs` : 185 ligne(s)
+- `profiles` : 2 ligne(s)
+- `planned_sessions` : 36 ligne(s)
 <!-- BACKUP_STATUS_END -->
 
 Cette section est mise à jour automatiquement par `backend/backup_supabase.py` à chaque exécution (2x/jour, 3h et 14h). Ne pas éditer à la main entre les marqueurs — ce serait écrasé au prochain passage.
 
 ---
 
-## Sécurité — état actuel (à jour au 8 septembre 2026)
+## Sécurité — état actuel (à jour au 27 septembre 2026)
 
-- ✅ Code versionné avec Git, sauvegardé sur GitHub (dépôt privé)
-- ✅ Row Level Security activé et vérifié sur toutes les tables Supabase (`runs`, `profiles`, `pain_checkins`) — chaque utilisateur ne voit que ses propres données, même si la clé publique est exposée dans le code
-- ✅ Sauvegarde automatique de la base (2x/jour, 30 jours d'historique, dans `backups/` synchronisé Google Drive)
+- ⚠️ Dépôt **public** sur GitHub (pas privé) — décision explicitement différée jusqu'à ce que l'app soit testée par plein de monde, voir le cahier des charges v2 (6.1.1). Aucun secret trouvé dans le code ni l'historique git (clé Supabase exposée = clé publique "anon", protégée par RLS, faite pour être publique).
+- ✅ Row Level Security activé **et testé en conditions réelles** (connexion avec un 2e compte réel, aucune donnée d'un autre utilisateur visible) sur `runs`, `profiles`, `planned_sessions`
+- ✅ Confirmation d'email obligatoire, mot de passe 8 caractères minimum, protection contre les mots de passe compromis (HaveIBeenPwned), limitation des tentatives de connexion (30/5min/IP) — réglages Supabase Authentication
+- ✅ Sauvegarde automatique de la base (2x/jour, 30 jours d'historique, dans `backups/` synchronisé Google Drive), couvre `runs`, `profiles`, `planned_sessions`
+- ✅ Script de restauration (`backend/restore_supabase.py`) écrit et testé avec succès (restauration bit à bit identique à la sauvegarde, sur des tables temporaires, sans toucher aux vraies données)
 - ✅ Clé secrète du script de sauvegarde stockée hors du repo, permissions restreintes (`chmod 600`), jamais committée (`.gitignore`)
+- ✅ Photos de profil : bucket public en lecture (décision assumée pour l'instant), upload désactivé côté app en attendant un stockage privé
 - ⬜ 2FA sur le compte GitHub — pas encore fait, recommandé
-- ⬜ Script de ré-import automatique des sauvegardes JSON — pas fait (à faire seulement si besoin réel un jour)

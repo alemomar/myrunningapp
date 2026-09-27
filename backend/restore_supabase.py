@@ -8,7 +8,7 @@ relancer la restauration plusieurs fois ne pose pas de problème).
 Usage :
   python3 restore_supabase.py <timestamp> [--suffix _suffix] [--tables t1,t2]
 
-Par défaut, restaure dans les vraies tables (runs, profiles, pain_checkins,
+Par défaut, restaure dans les vraies tables (runs, profiles,
 planned_sessions). Avec --suffix, restaure dans des tables de même nom mais
 suffixées (ex: --suffix _restore_test -> runs_restore_test) : sert à tester
 la restauration sans toucher aux vraies données. Ces tables suffixées
@@ -27,7 +27,7 @@ import urllib.request
 from pathlib import Path
 
 SUPABASE_URL = "https://iwzlxizgppghjpnasawy.supabase.co"
-DEFAULT_TABLES = ["runs", "profiles", "pain_checkins", "planned_sessions"]
+DEFAULT_TABLES = ["runs", "profiles", "planned_sessions"]
 # Clé primaire réelle de chaque table (profiles n'a pas de colonne "id" —
 # sa PK est user_id) : nécessaire pour que l'upsert cible la bonne colonne.
 PRIMARY_KEYS = {"profiles": "user_id"}

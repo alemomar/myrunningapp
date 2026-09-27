@@ -22,7 +22,9 @@ SUPABASE_URL = "https://iwzlxizgppghjpnasawy.supabase.co"
 # planned_sessions ajoutée le 2026-09-27 : absente depuis la création de
 # l'onglet Programme (migration_019), jamais mise à jour ici depuis — tout
 # le calendrier généré n'était donc pas sauvegardé.
-TABLES = ["runs", "profiles", "pain_checkins", "planned_sessions"]
+# pain_checkins retirée le 2026-09-27 (migration_021) : table morte,
+# supprimée du schéma, plus rien à en sauvegarder.
+TABLES = ["runs", "profiles", "planned_sessions"]
 BACKUP_KEEP = 60
 
 # Chemin fixe (pas dérivé de __file__) : le script tourne depuis une copie

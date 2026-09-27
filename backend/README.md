@@ -2,7 +2,7 @@
 
 ## Sauvegarde et restauration Supabase
 
-`backup_supabase.py` exporte `runs`, `profiles`, `pain_checkins` et
+`backup_supabase.py` exporte `runs`, `profiles` et
 `planned_sessions` en JSON dans `backups/<horodatage>/`, deux fois par jour
 (tâche planifiée sur ce Mac). `restore_supabase.py` fait l'inverse : il
 réinjecte le contenu d'un dossier de sauvegarde dans Supabase, table par
@@ -27,7 +27,6 @@ après tout changement du schéma Supabase) :
    ```sql
    create table if not exists public.runs_restore_test (like public.runs including all);
    create table if not exists public.profiles_restore_test (like public.profiles including all);
-   create table if not exists public.pain_checkins_restore_test (like public.pain_checkins including all);
    create table if not exists public.planned_sessions_restore_test (like public.planned_sessions including all);
    ```
 2. Restaurer dedans :
@@ -39,14 +38,15 @@ après tout changement du schéma Supabase) :
    ```sql
    drop table if exists public.runs_restore_test;
    drop table if exists public.profiles_restore_test;
-   drop table if exists public.pain_checkins_restore_test;
    drop table if exists public.planned_sessions_restore_test;
    ```
 
-Testé et validé le 27/09/2026 : les 4 tables restaurées correspondaient
-exactement à la sauvegarde (même nombre de lignes, contenu identique). Ce
-test a révélé et corrigé un bug (`profiles` a `user_id` comme clé primaire,
-pas `id` — `restore_supabase.py` gère maintenant les deux).
+Testé et validé le 27/09/2026 (à l'époque avec 4 tables, `pain_checkins`
+retirée depuis par la migration_021_cleanup_dead_columns.sql) : les tables
+restaurées correspondaient exactement à la sauvegarde (même nombre de
+lignes, contenu identique). Ce test a révélé et corrigé un bug (`profiles`
+a `user_id` comme clé primaire, pas `id` — `restore_supabase.py` gère
+maintenant les deux).
 
 Clé requise dans `~/.config/myrunningapp/backup.env` :
 `SUPABASE_SERVICE_ROLE_KEY=...` (jamais dans le dépôt).
