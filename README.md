@@ -5,7 +5,7 @@ App perso de suivi de course à pied : app iOS (RunSync) qui synchronise HealthK
 - `ios-app/` — app iOS Swift, voir [ios-app/README.md](ios-app/README.md)
 - `web/` — dashboard (`index.html` + `logic.js`)
 - `db/` — schéma + migrations SQL Supabase, voir [db/README.md](db/README.md)
-- `backend/` — script de sauvegarde automatique + ancien backend Google Apps Script (obsolète, remplacé par la sync directe HealthKit → Supabase), voir [backend/README.md](backend/README.md)
+- `backend/` — scripts de sauvegarde/restauration Supabase, voir [backend/README.md](backend/README.md)
 - `backups/` — sauvegardes JSON automatiques de la base (non versionné, voir plus bas)
 
 ---
