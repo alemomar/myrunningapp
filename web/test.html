@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=21"></script>
+<script src="logic.js?v=22"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -375,6 +375,47 @@ try {
 
   assertEqual("detectDegradedWellbeing : fatigue/mental élevés -> true", detectDegradedWellbeing(history), true);
   assertEqual("detectDegradedWellbeing : ressenti correct -> false", detectDegradedWellbeing([{fatigue:2,mental:1}]), false);
+}
+
+// --- classifyRunType ---
+{
+  // Réutilise le pattern fractionné déjà validé ci-dessus.
+  function mkIntervalSeries2(cyclePeriod, amplitude, totalDur){
+    const pts=[];
+    for(let t=0;t<=totalDur;t+=15){
+      const phase=(t%cyclePeriod)/cyclePeriod;
+      pts.push({t, hr: Math.round(155 + Math.sin(phase*2*Math.PI-Math.PI/2)*amplitude)});
+    }
+    return pts;
+  }
+  const fractionneSeries = mkIntervalSeries2(250, 25, 2000);
+  assertEqual("classifyRunType : pattern fractionné -> Fractionné", classifyRunType(8, fractionneSeries, 191, 60).type, "Fractionné");
+  assertEqual("classifyRunType : priorité Fractionné avant Long (même >10km)", classifyRunType(15, fractionneSeries, 191, 60).type, "Fractionné");
+
+  // 30min à 90% FC max (zone 4) : Seuil, même sous 10km.
+  const seuilSeries = [];
+  for(let t=0;t<=1800;t+=15) seuilSeries.push({t, hr:172});
+  assertEqual("classifyRunType : zones 3-5 majoritaires -> Seuil", classifyRunType(6, seuilSeries, 191, 60).type, "Seuil");
+
+  // >10km, sans données FC -> Long malgré tout (pas besoin de FC pour cette règle).
+  assertEqual("classifyRunType : distance >10km sans FC -> Long", classifyRunType(12, null, 191, 60).type, "Long");
+
+  // 30min à 145bpm (zone 2) : EF qualitatif.
+  const efCleanSeries = [];
+  for(let t=0;t<=1800;t+=15) efCleanSeries.push({t, hr:145});
+  const efClean = classifyRunType(6, efCleanSeries, 191, 60);
+  assertEqual("classifyRunType : zones 1-2 majoritaires -> EF qualitatif", [efClean.type, efClean.qualitatif], ["EF", true]);
+
+  // Mélange zone 2 (55%) / zone 4 (45%) : ni Seuil (<=50% en 3-5) ni EF propre (<70% en 1-2).
+  const efMessySeries = [];
+  for(let t=0;t<=1100;t+=15) efMessySeries.push({t, hr:145});
+  for(let t=1115;t<=2000;t+=15) efMessySeries.push({t, hr:170});
+  const efMessy = classifyRunType(6, efMessySeries, 191, 60);
+  assertEqual("classifyRunType : séance hétérogène -> EF non qualitatif", [efMessy.type, efMessy.qualitatif], ["EF", false]);
+
+  // Pas de données FC du tout -> EF, mais qualitatif inconnu (null), pas false.
+  const efUnknown = classifyRunType(6, null, 191, 60);
+  assertEqual("classifyRunType : pas de FC -> EF, qualitatif inconnu (null)", [efUnknown.type, efUnknown.qualitatif], ["EF", null]);
 }
 
 // --- detectLevelFromHistory ---

@@ -487,6 +487,34 @@ function resolveRunnerProfile(goals, programSettings, raceDistancesKm){
   return null;
 }
 
+/* ---------- Classification automatique du type de course ----------
+   Corrige la règle d'origine côté iOS (RunSync/Models.swift, guessType),
+   trop grossière (Running > 10km -> Long, sinon EF, aucune détection de
+   Seuil) : plein de séances Seuil ou Long se retrouvaient classées EF par
+   défaut. Cette classification vit désormais côté web (seul endroit avec
+   accès aux zones cardio) et remplace la proposition initiale de RunSync.
+   Règles validées avec l'utilisateur, par ordre de priorité :
+   1. Fractionné : looksLikeFractionne(hrSeries) (oscillations de FC).
+   2. Seuil : zones 3+4+5 combinées > 50% du temps (looksLikeSeuil).
+   3. Long : distance > 10km.
+   4. EF : sinon — "qualitatif" (zones 1+2 combinées > 70% du temps) ou pas
+      (allure/effort moins homogène) ; `qualitatif` vaut `null` si pas assez
+      de données FC pour juger (à ne pas confondre avec `false`, qui veut
+      dire "on sait que ce n'est pas un EF propre"). Un EF non qualitatif
+      reste un EF (pas de reclassement), mais doit être signalé comme tel
+      dans l'affichage plutôt que présenté comme un footing propre. */
+function classifyRunType(distanceKm, hrSeries, maxHr, restingHr){
+  if(looksLikeFractionne(hrSeries)) return {type:"Fractionné", qualitatif:true};
+  if(looksLikeSeuil(hrSeries, maxHr, restingHr)) return {type:"Seuil", qualitatif:true};
+  if(distanceKm>10) return {type:"Long", qualitatif:true};
+  if(!hrSeries || hrSeries.length<10 || !maxHr) return {type:"EF", qualitatif:null};
+  const {secs} = computeHrZoneSeconds(hrSeries, maxHr, restingHr);
+  const total = secs.reduce((a,b)=>a+b,0);
+  if(total<300) return {type:"EF", qualitatif:null};
+  const lowZone = secs[0]+secs[1];
+  return {type:"EF", qualitatif: lowZone/total > 0.7};
+}
+
 /* ---------- Détection du niveau depuis l'historique (onboarding, 4.1.b.1) ----------
    CDC v2, 4.1 : "analyse de l'historique si au moins 6 courses sur les 8
    dernières semaines [...] sinon questionnaire [...] puis test guidé".
