@@ -69,6 +69,27 @@ final class AuthService {
         AuthService.currentSession = Session(accessToken: decoded.accessToken, refreshToken: decoded.refreshToken, userId: decoded.user.id)
     }
 
+    // Ne connecte JAMAIS automatiquement après l'inscription : la confirmation
+    // d'email est obligatoire côté Supabase (réglage Authentication), donc la
+    // réponse ne contient pas de session tant que le lien reçu par email n'a
+    // pas été cliqué. Même comportement que le dashboard web (voir
+    // web/index.html, authSubmit).
+    func signUp(email: String, password: String) async throws {
+        let url = URL(string: "\(Config.supabaseURL)/auth/v1/signup")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(Config.supabaseAnonKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["email": email, "password": password])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let fields = try? JSONDecoder().decode([String: String].self, from: data)
+            let message = fields?["error_description"] ?? fields?["msg"]
+            throw AuthError.invalidCredentials(message ?? "Impossible de créer le compte")
+        }
+    }
+
     // Les jetons d'accès Supabase expirent (1h par défaut). On rafraîchit
     // systématiquement avant une sync plutôt que de suivre une date d'expiration.
     // Renvoie false si le jeton de rafraîchissement lui-même n'est plus valide

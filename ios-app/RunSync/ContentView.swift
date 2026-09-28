@@ -39,7 +39,9 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var error: String?
+    @State private var infoMessage: String?
     @State private var isLoading = false
+    @State private var isSignUpMode = false
     let onSignedIn: () -> Void
 
     var body: some View {
@@ -55,20 +57,32 @@ struct LoginView: View {
                 .textFieldStyle(.roundedBorder)
 
             SecureField("Mot de passe", text: $password)
-                .textContentType(.password)
+                .textContentType(isSignUpMode ? .newPassword : .password)
                 .textFieldStyle(.roundedBorder)
 
             if let error {
                 Text(error).foregroundStyle(.red).font(.footnote)
             }
+            if let infoMessage {
+                Text(infoMessage).foregroundStyle(.green).font(.footnote)
+            }
 
             Button {
-                Task { await signIn() }
+                Task { isSignUpMode ? await signUp() : await signIn() }
             } label: {
-                if isLoading { ProgressView() } else { Text("Se connecter") }
+                if isLoading { ProgressView() } else { Text(isSignUpMode ? "Créer le compte" : "Se connecter") }
             }
             .buttonStyle(.borderedProminent)
             .disabled(isLoading || email.isEmpty || password.isEmpty)
+
+            Button {
+                isSignUpMode.toggle()
+                error = nil
+                infoMessage = nil
+            } label: {
+                Text(isSignUpMode ? "Déjà un compte ? Se connecter" : "Pas de compte ? Créer un compte")
+                    .font(.footnote)
+            }
         }
         .padding()
     }
@@ -79,6 +93,22 @@ struct LoginView: View {
         do {
             try await AuthService().signIn(email: email, password: password)
             onSignedIn()
+        } catch {
+            self.error = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    // Ne connecte jamais automatiquement (voir AuthService.signUp) : on
+    // repasse en mode connexion pour que l'utilisateur revienne une fois son
+    // email confirmé, avec le même message que le dashboard web.
+    private func signUp() async {
+        isLoading = true
+        error = nil
+        do {
+            try await AuthService().signUp(email: email, password: password)
+            isSignUpMode = false
+            infoMessage = "Compte créé — vérifie tes emails si une confirmation est demandée, puis connecte-toi."
         } catch {
             self.error = error.localizedDescription
         }
