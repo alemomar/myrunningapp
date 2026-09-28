@@ -487,6 +487,34 @@ function resolveRunnerProfile(goals, programSettings, raceDistancesKm){
   return null;
 }
 
+/* ---------- Détection du niveau depuis l'historique (onboarding, 4.1.b.1) ----------
+   CDC v2, 4.1 : "analyse de l'historique si au moins 6 courses sur les 8
+   dernières semaines [...] sinon questionnaire [...] puis test guidé".
+   Cette fonction ne couvre QUE le premier cas (détection automatique) et
+   ne renvoie qu'un niveau qualitatif (Débutant/Intermédiaire/Confirmé) —
+   décision prise avec l'utilisateur de rester prudent et de ne PAS en
+   déduire un chrono de référence pour les allures (resolveRunnerProfile
+   reste la seule source pour ça, une estimation depuis du footing non-
+   maximal fausserait les allures calculées).
+   Seuils choisis avec l'utilisateur (arbitraires, à ajuster avec des
+   retours réels) : moins de 6 courses sur 8 semaines = pas assez de recul
+   pour détecter (renvoie null, la cascade passe au questionnaire) ; 6 à 9
+   courses = Débutant (pratique encore occasionnelle) ; 16 courses et 120
+   km ou plus sur la période = Confirmé (~2 courses/semaine et ~15 km/
+   semaine) ; les cas entre les deux = Intermédiaire.
+   `runs` : [{date:Date, distanceKm}] déjà filtrés par l'appelant (courses
+   incluses aux stats uniquement, comme `runningRuns` côté index.html). */
+function detectLevelFromHistory(runs, now){
+  const from = new Date(now); from.setDate(from.getDate()-56);
+  const recent = (runs||[]).filter(r=>r.date>=from && r.date<=now);
+  const count = recent.length;
+  if(count<6) return null;
+  const totalKm = recent.reduce((a,r)=>a+(r.distanceKm||0),0);
+  if(count>=16 && totalKm>=120) return "Confirmé";
+  if(count<=9) return "Débutant";
+  return "Intermédiaire";
+}
+
 /* ---------- Session-RPE ----------
    Source : Foster et al. (2001), "A new approach to monitoring exercise
    training", Journal of Strength and Conditioning Research 15(1). */

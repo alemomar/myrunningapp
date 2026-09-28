@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=20"></script>
+<script src="logic.js?v=21"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -375,6 +375,23 @@ try {
 
   assertEqual("detectDegradedWellbeing : fatigue/mental élevés -> true", detectDegradedWellbeing(history), true);
   assertEqual("detectDegradedWellbeing : ressenti correct -> false", detectDegradedWellbeing([{fatigue:2,mental:1}]), false);
+}
+
+// --- detectLevelFromHistory ---
+{
+  const now = new Date(2026, 8, 28); // référence fixe, indépendante de la date du jour
+  const daysAgo = n => { const d = new Date(now); d.setDate(d.getDate()-n); return d; };
+  const runsOf = n => Array.from({length:n}, (_,i) => ({ date: daysAgo(i*3), distanceKm: 5 }));
+
+  assertEqual("detectLevelFromHistory : moins de 6 courses sur 8 semaines -> null", detectLevelFromHistory(runsOf(5), now), null);
+  assertEqual("detectLevelFromHistory : 6 à 9 courses -> Débutant", detectLevelFromHistory(runsOf(7), now), "Débutant");
+  assertEqual("detectLevelFromHistory : entre les deux -> Intermédiaire", detectLevelFromHistory(runsOf(12), now), "Intermédiaire");
+  assertEqual("detectLevelFromHistory : 16 courses mais volume trop faible -> Intermédiaire",
+    detectLevelFromHistory(Array.from({length:16},(_,i)=>({date:daysAgo(i*3), distanceKm:3})), now), "Intermédiaire");
+  assertEqual("detectLevelFromHistory : 16 courses et 120km ou plus -> Confirmé",
+    detectLevelFromHistory(Array.from({length:16},(_,i)=>({date:daysAgo(i*3), distanceKm:8})), now), "Confirmé");
+  assertEqual("detectLevelFromHistory : course hors fenêtre de 8 semaines ignorée",
+    detectLevelFromHistory([...runsOf(5), {date:daysAgo(60), distanceKm:5}], now), null);
 }
 
 // --- weeklyStructureForObjective ---
