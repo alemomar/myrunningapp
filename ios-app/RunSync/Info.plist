@@ -11,5 +11,10 @@
 			</array>
 		</dict>
 	</array>
+	<!-- RunSync n'utilise que du HTTPS standard (URLSession vers Supabase),
+	     aucun chiffrement fait maison -> exempté de la conformité export.
+	     Évite qu'App Store Connect repose la question à chaque build. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
