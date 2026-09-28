@@ -11,19 +11,8 @@ final class ProfileService {
         return f
     }()
 
-    // Cache local : évite un aller-retour réseau à chaque sync pour relire une
-    // valeur qu'on a nous-même écrite. Sur le chemin critique d'une automatisation
-    // Shortcuts silencieuse, iOS ne laisse qu'environ 1s avant de tuer le
-    // processus (voir SyncService.syncRecentWorkouts) — un GET réseau de plus
-    // ici suffit à dépasser ce budget.
-    private static let cacheKey = "runsync.syncSinceDateCache"
-
-    // nil = pas encore configuré par l'utilisateur (ni en cache, ni côté serveur)
+    // nil = pas encore configuré par l'utilisateur
     func fetchSyncSinceDate(session: Session) async -> Date? {
-        if let cached = UserDefaults.standard.object(forKey: Self.cacheKey) as? Date {
-            return cached
-        }
-
         var request = URLRequest(url: URL(string: "\(Config.supabaseURL)/rest/v1/profiles?user_id=eq.\(session.userId)&select=sync_since_date")!)
         request.setValue(Config.supabaseAnonKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
@@ -34,9 +23,7 @@ final class ProfileService {
               let dateString = rows.first?["sync_since_date"] else {
             return nil
         }
-        let date = Self.isoDate.date(from: dateString)
-        UserDefaults.standard.set(date, forKey: Self.cacheKey)
-        return date
+        return Self.isoDate.date(from: dateString)
     }
 
     func setSyncSinceDate(session: Session, date: Date) async throws {
@@ -54,7 +41,6 @@ final class ProfileService {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw SyncServiceError.badResponse(String(data: data, encoding: .utf8) ?? "réponse invalide")
         }
-        UserDefaults.standard.set(date, forKey: Self.cacheKey)
     }
 
     struct RestingHrInfo {

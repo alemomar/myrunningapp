@@ -88,7 +88,7 @@ Sur un nouveau Mac :
 
 ### 5. Réinstaller l'app iOS
 
-Suis les étapes du [ios-app/README.md](ios-app/README.md) — il faut recréer le projet Xcode et y glisser les fichiers `.swift` (le projet Xcode lui-même, avec ses réglages de build, n'est pas versionné, seulement le code source).
+Le vrai projet Xcode est versionné dans `ios-app/` depuis le 28/09/2026 — ouvre directement `ios-app/RunSync.xcodeproj`. Suis les étapes du [ios-app/README.md](ios-app/README.md) pour la signature et l'installation.
 
 ### Outils à réinstaller
 

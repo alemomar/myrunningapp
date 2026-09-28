@@ -69,24 +69,13 @@ final class AuthService {
         AuthService.currentSession = Session(accessToken: decoded.accessToken, refreshToken: decoded.refreshToken, userId: decoded.user.id)
     }
 
-    // Les jetons d'accès Supabase expirent (1h par défaut). On ne rafraîchit
-    // que si le dernier rafraîchissement date de plus de 45 min : un appel
-    // réseau systématique à chaque sync coûte un aller-retour complet, ce qui
-    // est déjà presque tout le budget d'exécution accordé par iOS à une
-    // automatisation Shortcuts silencieuse (~1s avant d'être tuée, voir
-    // SyncService.syncRecentWorkouts).
+    // Les jetons d'accès Supabase expirent (1h par défaut). On rafraîchit
+    // systématiquement avant une sync plutôt que de suivre une date d'expiration.
     // Renvoie false si le jeton de rafraîchissement lui-même n'est plus valide
     // (auquel cas il faut se reconnecter, pas réessayer indéfiniment).
-    private static let lastRefreshKey = "runsync.lastTokenRefresh"
-
     @discardableResult
     func refreshIfPossible() async -> Bool {
         guard let session = AuthService.currentSession else { return false }
-
-        if let last = UserDefaults.standard.object(forKey: Self.lastRefreshKey) as? Date,
-           Date().timeIntervalSince(last) < 45 * 60 {
-            return true
-        }
 
         let url = URL(string: "\(Config.supabaseURL)/auth/v1/token?grant_type=refresh_token")!
         var request = URLRequest(url: url)
@@ -101,7 +90,6 @@ final class AuthService {
             return false
         }
         AuthService.currentSession = Session(accessToken: decoded.accessToken, refreshToken: decoded.refreshToken, userId: decoded.user.id)
-        UserDefaults.standard.set(Date(), forKey: Self.lastRefreshKey)
         return true
     }
 }

@@ -1,64 +1,52 @@
-# App iOS — sync HealthKit → dashboard
+# App iOS RunSync — sync HealthKit → dashboard
 
-## 1. Créer le projet dans Xcode
+Depuis le 28/09/2026, le vrai projet Xcode est versionné directement dans
+ce dossier (`RunSync.xcodeproj` + `RunSync/`) — plus besoin de recréer un
+projet à la main ni de glisser des fichiers un par un. HealthKit, les
+descriptions de confidentialité et l'icône d'app sont déjà configurés
+dans le projet.
 
-1. Ouvre Xcode → **Create New Project**
-2. Choisis **iOS** → **App** → Next
-3. Nom du produit : `RunSync` (ou ce que tu veux), interface **SwiftUI**, langage **Swift**
-4. Enregistre-le n'importe où sur ton Mac (pas besoin que ce soit dans ce dossier Google Drive)
+## 1. Ouvrir le projet
 
-## 2. Activer HealthKit
+1. Clone ce dépôt (ou récupère-le à jour si tu l'as déjà).
+2. Ouvre `ios-app/RunSync.xcodeproj` directement dans Xcode.
 
-1. Clique sur le nom du projet en haut de la liste de fichiers à gauche
-2. Onglet **Signing & Capabilities**
-3. **+ Capability** → cherche **HealthKit** → ajoute-le
-4. Toujours dans **Signing & Capabilities**, vérifie qu'un **Team** (ton Apple ID personnel) est sélectionné dans "Signing"
+## 2. Vérifier la signature (première fois sur un nouveau Mac)
 
-## 3. Ajouter les descriptions d'usage (obligatoire pour Apple)
+1. Clique sur le nom du projet en haut de la liste de fichiers à gauche.
+2. Onglet **Signing & Capabilities**.
+3. Dans **Team**, sélectionne ton propre compte (le compte lié au projet
+   à l'origine n'est pas transférable automatiquement) — voir le README
+   principal du dépôt si tu dois reconfigurer un compte Apple Developer
+   depuis zéro.
 
-1. Ouvre le fichier **Info** (ou `Info.plist` selon la version d'Xcode)
-2. Ajoute une clé **Privacy - Health Share Usage Description** avec la valeur : `Utilisé pour synchroniser tes séances de course vers ton dashboard personnel.`
-3. Ajoute aussi une clé **Privacy - Health Update Usage Description** avec la même valeur — Apple l'exige dès que la capability HealthKit est activée, même si l'app ne fait que lire les données (détecté à l'upload sur App Store Connect, pas en local).
+## 3. Build & installer sur ton iPhone
 
-## 3bis. Ajouter une icône d'app (obligatoire pour l'upload App Store Connect)
+1. Branche ton iPhone en USB (ou assure-toi qu'il est sur le même wifi avec le déverrouillage sans fil activé).
+2. En haut d'Xcode, choisis ton iPhone comme destination (au lieu d'un simulateur ou "Any iOS Device" qui sert à l'archive TestFlight).
+3. Clique sur ▶️ (Run).
+4. Sur ton iPhone, la première fois : **Réglages → Général → VPN et gestion de l'appareil** → fais confiance à ton certificat développeur.
+5. Relance l'app depuis ton iPhone.
 
-1. Dans le projet Xcode, ouvre `Assets.xcassets` → `AppIcon`
-2. Fais glisser `ios-app/AppIcon-1024.png` (fourni dans ce dossier, dérivé de l'icône du site web) dans l'unique emplacement 1024×1024
-3. Sans ça, l'upload échoue avec "Missing Info.plist value ... CFBundleIconName" et "Missing required icon file"
+## 4. Premier test
 
-## 4. Remplacer les fichiers du projet
+1. Ouvre l'app, appuie sur **"Synchroniser mes courses"**.
+2. iOS va te demander l'autorisation d'accéder à Santé — accepte (coche au moins Entraînements, Fréquence cardiaque, Distance, Calories, Nombre de pas).
+3. Vérifie le message affiché, puis va voir sur le dashboard web (`web/index.html`) que les séances sont bien arrivées — RunSync envoie directement à Supabase, plus de Google Sheet intermédiaire (ancien pipeline retiré le 28/09/2026).
 
-Supprime le fichier `ContentView.swift` et le fichier `RunSyncApp.swift` (ou `NomDuProjetApp.swift`) créés par défaut par Xcode, puis fais glisser tous les fichiers de ce dossier `ios-app/` dans le projet Xcode (clic droit sur le dossier du projet → **Add Files to "RunSync"...**) :
+## 5. Synchro automatique en arrière-plan (pas besoin de Shortcuts)
 
-- `Config.swift`
-- `Models.swift`
-- `HealthKitManager.swift`
-- `BackgroundSyncManager.swift`
-- `SyncService.swift`
-- `ContentView.swift`
-- `RunSyncApp.swift`
-- `SyncWorkoutsIntent.swift`
-
-## 5. Build & installer sur ton iPhone
-
-1. Branche ton iPhone en USB (ou assure-toi qu'il est sur le même wifi avec le déverrouillage sans fil activé)
-2. En haut d'Xcode, choisis ton iPhone comme destination (au lieu d'un simulateur)
-3. Clique sur ▶️ (Run)
-4. Sur ton iPhone, la première fois : **Réglages → Général → VPN et gestion de l'appareil** → fais confiance à ton certificat développeur
-5. Relance l'app depuis ton iPhone
-
-## 6. Premier test
-
-1. Ouvre l'app, appuie sur **"Synchroniser mes courses"**
-2. iOS va te demander l'autorisation d'accéder à Santé — accepte (coche au moins Entraînements, Fréquence cardiaque, Distance, Calories, Nombre de pas)
-3. Vérifie le message affiché, puis va voir dans ta Google Sheet ("Running Data - Omar") que les séances sont bien arrivées dans l'onglet **Runs**
-
-## 7. Synchro automatique en arrière-plan (pas besoin de Shortcuts)
-
-Depuis septembre 2026, l'app se synchronise **automatiquement dès qu'une nouvelle séance apparaît dans Santé**, via `BackgroundSyncManager.swift` (HealthKit `HKObserverQuery` + `enableBackgroundDelivery`). Pas d'automatisation Shortcuts à configurer — ça s'enregistre tout seul à chaque lancement de l'app (`RunSyncApp.init()`).
+L'app se synchronise **automatiquement dès qu'une nouvelle séance apparaît dans Santé**, via `BackgroundSyncManager.swift` (HealthKit `HKObserverQuery` + `enableBackgroundDelivery`). Pas d'automatisation Shortcuts à configurer — ça s'enregistre tout seul à chaque lancement de l'app (`RunSyncApp.init()`).
 
 **Pourquoi pas Shortcuts** : testé et abandonné — une automatisation Shortcuts silencieuse ("Automatisation personnelle" sans "Demander avant l'exécution") ne dispose que d'environ **1 seconde** de budget d'exécution avant qu'iOS ne tue le process (`LNContextErrorDomain` code 2022, confirmé par logs Console.app) — bien trop court pour HealthKit + réseau. `HKObserverQuery` dispose d'une fenêtre bien plus généreuse, prévue par Apple pour ce cas d'usage exact.
 
 **Vérifier que ça fonctionne** : Console.app → filtre `com.omaralem.RunSync` → chercher `[background]` après une nouvelle séance enregistrée dans Santé.
 
 **Si tu veux quand même une synchro à heure fixe en plus** (filet de sécurité), le bouton "Forcer une synchronisation" dans l'app fait ça manuellement.
+
+## Distribution TestFlight
+
+Pour envoyer un nouveau build aux testeurs : Xcode → destination "Any iOS
+Device (arm64)" → **Product → Archive** → dans l'Organizer, **Distribute
+App → App Store Connect → Upload**. Voir App Store Connect → TestFlight
+pour le suivi de la revue et l'ajout de testeurs.

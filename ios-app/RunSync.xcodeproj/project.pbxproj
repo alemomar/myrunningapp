@@ -1,0 +1,331 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		07C604F4C75C4CCB9D50C0C3 /* RunningAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04351D6F485B40D798566251 /* RunningAnimationView.swift */; };
+		0D48BC5C3BA54BDA8DFFDDD9 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02E4610CEA8540B7BE00EC1B /* AuthService.swift */; };
+		2768C78C09CD4F20B3CB2AF2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE752CC0A6924671963EE04C /* ContentView.swift */; };
+		2D52B53A11D4498F8B31C896 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD088921B5CC4EA7B9C2EBB5 /* Models.swift */; };
+		477443936BBA4F3E9CEB5899 /* SyncWorkoutsIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F346190AE240450EB77F6873 /* SyncWorkoutsIntent.swift */; };
+		489FF51127BA4941BDADA051 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B6943963C9847BEA1061664 /* Config.swift */; };
+		5C268EA5B5884FD4962E3C4D /* RunSyncApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27748970E9704731B29DFD42 /* RunSyncApp.swift */; };
+		700D81C3305087FC00228E61 /* BackgroundSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700D81C2305087FC00228E61 /* BackgroundSyncManager.swift */; };
+		778AFC6CD3E04399AC69EF12 /* SyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50665868EACB464980139C80 /* SyncCoordinator.swift */; };
+		77FF2CC1CF5D493FA1924EEF /* SyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E420785BE244F6B373F071 /* SyncService.swift */; };
+		A155B7F7CA474AA7B45CCDE4 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8656B37B7AD48C68DFC857C /* HealthKitManager.swift */; };
+		C0D074D5074843098964DCCE /* ProfileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03976A00A5D64E08A214F8E8 /* ProfileService.swift */; };
+		FB9CAC019FE44ABC8197313C /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62EDB7F84C624CCCAE71FA24 /* HealthKit.framework */; };
+		38320B5539CA6ED0231FD2B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AFB146D99ED24C7823390FA9 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		02E4610CEA8540B7BE00EC1B /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		03976A00A5D64E08A214F8E8 /* ProfileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileService.swift; sourceTree = "<group>"; };
+		04351D6F485B40D798566251 /* RunningAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunningAnimationView.swift; sourceTree = "<group>"; };
+		23E420785BE244F6B373F071 /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
+		24968408623A43AE8353F7F0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		27748970E9704731B29DFD42 /* RunSyncApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunSyncApp.swift; sourceTree = "<group>"; };
+		2B6943963C9847BEA1061664 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		32C0D425DE3841EF8D42B038 /* RunSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RunSync.entitlements; sourceTree = "<group>"; };
+		50665868EACB464980139C80 /* SyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncCoordinator.swift; sourceTree = "<group>"; };
+		62EDB7F84C624CCCAE71FA24 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		700D81C2305087FC00228E61 /* BackgroundSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundSyncManager.swift; sourceTree = "<group>"; };
+		B8656B37B7AD48C68DFC857C /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
+		BE752CC0A6924671963EE04C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		C3CDDFE0CE4F4A049EC6557E /* RunSync.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RunSync.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CD088921B5CC4EA7B9C2EBB5 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		F346190AE240450EB77F6873 /* SyncWorkoutsIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncWorkoutsIntent.swift; sourceTree = "<group>"; };
+		AFB146D99ED24C7823390FA9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E11FA3039E414550866B5891 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FB9CAC019FE44ABC8197313C /* HealthKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		64276519CD7E49F99CB282A8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				62EDB7F84C624CCCAE71FA24 /* HealthKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		CAA56D8422E848FDBC90785B /* RunSync */ = {
+			isa = PBXGroup;
+			children = (
+				700D81C2305087FC00228E61 /* BackgroundSyncManager.swift */,
+				27748970E9704731B29DFD42 /* RunSyncApp.swift */,
+				BE752CC0A6924671963EE04C /* ContentView.swift */,
+				B8656B37B7AD48C68DFC857C /* HealthKitManager.swift */,
+				23E420785BE244F6B373F071 /* SyncService.swift */,
+				CD088921B5CC4EA7B9C2EBB5 /* Models.swift */,
+				2B6943963C9847BEA1061664 /* Config.swift */,
+				F346190AE240450EB77F6873 /* SyncWorkoutsIntent.swift */,
+				02E4610CEA8540B7BE00EC1B /* AuthService.swift */,
+				50665868EACB464980139C80 /* SyncCoordinator.swift */,
+				03976A00A5D64E08A214F8E8 /* ProfileService.swift */,
+				04351D6F485B40D798566251 /* RunningAnimationView.swift */,
+				24968408623A43AE8353F7F0 /* Info.plist */,
+				32C0D425DE3841EF8D42B038 /* RunSync.entitlements */,
+				AFB146D99ED24C7823390FA9 /* Assets.xcassets */,
+			);
+			path = RunSync;
+			sourceTree = "<group>";
+		};
+		E1E9E0AABB4644DEA4EBEC1B = {
+			isa = PBXGroup;
+			children = (
+				CAA56D8422E848FDBC90785B /* RunSync */,
+				64276519CD7E49F99CB282A8 /* Frameworks */,
+				FDA3297609F3488B84AB1951 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		FDA3297609F3488B84AB1951 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C3CDDFE0CE4F4A049EC6557E /* RunSync.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A4A348B6A96A4734A74DF1A1 /* RunSync */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3C9CE315133C4683ABA33C29 /* Build configuration list for PBXNativeTarget "RunSync" */;
+			buildPhases = (
+				043F8642AC864D67B8B5A1CF /* Sources */,
+				E11FA3039E414550866B5891 /* Frameworks */,
+				3821668F3C974ACF9BC1EF22 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RunSync;
+			productName = RunSync;
+			productReference = C3CDDFE0CE4F4A049EC6557E /* RunSync.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		CAE28A23AF1E4202A1BD741A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A4A348B6A96A4734A74DF1A1 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 143F6050C69141D59211218B /* Build configuration list for PBXProject "RunSync" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = E1E9E0AABB4644DEA4EBEC1B;
+			productRefGroup = FDA3297609F3488B84AB1951 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A4A348B6A96A4734A74DF1A1 /* RunSync */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3821668F3C974ACF9BC1EF22 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				38320B5539CA6ED0231FD2B4 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		043F8642AC864D67B8B5A1CF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5C268EA5B5884FD4962E3C4D /* RunSyncApp.swift in Sources */,
+				2768C78C09CD4F20B3CB2AF2 /* ContentView.swift in Sources */,
+				A155B7F7CA474AA7B45CCDE4 /* HealthKitManager.swift in Sources */,
+				77FF2CC1CF5D493FA1924EEF /* SyncService.swift in Sources */,
+				2D52B53A11D4498F8B31C896 /* Models.swift in Sources */,
+				489FF51127BA4941BDADA051 /* Config.swift in Sources */,
+				700D81C3305087FC00228E61 /* BackgroundSyncManager.swift in Sources */,
+				477443936BBA4F3E9CEB5899 /* SyncWorkoutsIntent.swift in Sources */,
+				0D48BC5C3BA54BDA8DFFDDD9 /* AuthService.swift in Sources */,
+				778AFC6CD3E04399AC69EF12 /* SyncCoordinator.swift in Sources */,
+				C0D074D5074843098964DCCE /* ProfileService.swift in Sources */,
+				07C604F4C75C4CCB9D50C0C3 /* RunningAnimationView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		6DC58228B958497A96713129 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AD8F4EADB21E41E5871AB3A3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = RunSync/RunSync.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9HGVW4W8WF;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RunSync/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MyRunningApp;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Utilisé pour synchroniser tes séances de course vers ton dashboard personnel.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Utilisé pour synchroniser tes séances de course vers ton dashboard personnel.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omaralem.RunSync;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		B3E908C5DE844D99A30B94DE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = RunSync/RunSync.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9HGVW4W8WF;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RunSync/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = MyRunningApp;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Utilisé pour synchroniser tes séances de course vers ton dashboard personnel.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Utilisé pour synchroniser tes séances de course vers ton dashboard personnel.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.omaralem.RunSync;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		D93F7352DE064F36A1FADB71 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		143F6050C69141D59211218B /* Build configuration list for PBXProject "RunSync" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D93F7352DE064F36A1FADB71 /* Debug */,
+				6DC58228B958497A96713129 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3C9CE315133C4683ABA33C29 /* Build configuration list for PBXNativeTarget "RunSync" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AD8F4EADB21E41E5871AB3A3 /* Debug */,
+				B3E908C5DE844D99A30B94DE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = CAE28A23AF1E4202A1BD741A /* Project object */;
+}
