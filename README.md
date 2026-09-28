@@ -90,6 +90,8 @@ Sur un nouveau Mac :
 
 Le vrai projet Xcode est versionné dans `ios-app/` depuis le 28/09/2026 — ouvre directement `ios-app/RunSync.xcodeproj`. Suis les étapes du [ios-app/README.md](ios-app/README.md) pour la signature et l'installation.
 
+Une tâche automatique (2x/jour) synchronise `~/Developer/RunSync` vers ce dépôt — voir [backend/README.md](backend/README.md) pour la remettre en place sur un nouveau Mac.
+
 ### Outils à réinstaller
 
 Sur un Mac neuf, ces outils ne sont pas là par défaut et ont été installés manuellement pendant le développement de ce projet :
