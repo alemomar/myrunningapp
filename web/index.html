@@ -3171,8 +3171,11 @@ function renderContentInner(){
     };
     // Regroupées par mois (repliables) plutôt qu'une seule longue liste :
     // avec beaucoup d'historique, tout afficher rendait la page interminable.
+    // Marche exclue de cette liste : jamais utilisée nulle part en aval
+    // (déjà hors stats par défaut), elle ne fait qu'encombrer l'historique
+    // sans qu'aucune action n'en découle (retour utilisateur).
     const monthGroups = [];
-    filtered.slice().reverse().forEach(r=>{
+    filtered.filter(r=>r.type!=="Marche").slice().reverse().forEach(r=>{
       const key = `${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`;
       let group = monthGroups[monthGroups.length-1];
       if(!group || group.key!==key){
@@ -3186,7 +3189,7 @@ function renderContentInner(){
       <div class="card">
         <div class="stitle">Toutes les séances</div>
         <div class="chart-hint">Change le type ou l'interrupteur "Suivi" pour piloter ce qui compte dans tes stats de course. "Détail cardio" affiche la courbe FC et les zones quand elles sont disponibles.</div>
-        <div class="filters">${["Tous",...TYPE_OPTIONS.filter(t=>t!=="Other")].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${t}</button>`).join("")}</div>
+        <div class="filters">${["Tous",...TYPE_OPTIONS.filter(t=>t!=="Other" && t!=="Marche")].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${t}</button>`).join("")}</div>
         ${monthGroups.length?monthGroups.map(g=>{
           const monthOpen = openMonths.has(g.key);
           return `<div class="month-sep" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleMonthGroup('${g.key}')">
