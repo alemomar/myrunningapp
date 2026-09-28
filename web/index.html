@@ -563,6 +563,7 @@ function persistActiveTab(){
 let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=initialActiveTab(), activeFilter="Tous", charts=[], activeGoalSlot="principal";
 let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = null, restingHrUpdatedAt = null, restingHrIsManual = false, avatarUrl = null;
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
+let onboardingCompletedAt = null;
 let openSessionRatings = new Set();
 let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
 let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
@@ -633,7 +634,7 @@ async function loadData() {
   // user_id. Sans ce garde-fou, tout le profil retombe à vide (profile
   // devient undefined) et ça donne l'impression que rien n'a jamais été
   // enregistré, alors que les écritures individuelles fonctionnent très bien.
-  const { data: profile, error: profileError } = await supa.from("profiles").select("sync_since_date, goals, max_hr, resting_hr, resting_hr_updated_at, resting_hr_is_manual, vo2_max, vo2_max_updated_at, vo2_max_is_manual, avatar_url, pseudo, age, gender, cities, dashboard_period, program_settings").maybeSingle();
+  const { data: profile, error: profileError } = await supa.from("profiles").select("sync_since_date, goals, max_hr, resting_hr, resting_hr_updated_at, resting_hr_is_manual, vo2_max, vo2_max_updated_at, vo2_max_is_manual, avatar_url, pseudo, age, gender, cities, dashboard_period, program_settings, onboarding_completed_at").maybeSingle();
   if(profileError){
     console.error("Erreur de chargement du profil :", profileError);
     alert("Erreur de chargement du profil : "+profileError.message+"\n\nTes réglages (Mon compte, Objectifs) risquent d'apparaître vides même s'ils sont bien enregistrés. Contacte-moi avec ce message.");
@@ -654,6 +655,7 @@ async function loadData() {
   cities = profile?.cities || [];
   dashboardPeriod = profile?.dashboard_period || "monthly";
   programSettings = profile?.program_settings || {};
+  onboardingCompletedAt = profile?.onboarding_completed_at || null;
 
   const { data: plannedData, error: plannedError } = await supa.from("planned_sessions").select("*").order("planned_date", { ascending: true });
   if(plannedError){
@@ -3739,9 +3741,38 @@ async function boot(){
   document.getElementById("appView").style.display="block";
   document.getElementById("content").innerHTML=`<div class="loading"><div class="spinner"></div></div>`;
   await loadData();
+  renderApp();
+}
+
+// Point d'entrée unique pour dessiner l'app après chargement des données :
+// tant que l'onboarding n'est pas terminé, on affiche son écran à la place
+// de la nav normale (voir CDC v2, 4.1.a). Le contenu détaillé du parcours
+// (objectifs/niveau/disponibilités/matériel) arrive avec 4.1.b/c/d — pour
+// l'instant ce n'est qu'une coquille testable.
+function renderApp(){
+  const tabsEl = document.getElementById("tabs");
+  if(!onboardingCompletedAt){
+    tabsEl.style.display = "none";
+    document.getElementById("content").innerHTML = onboardingHTML();
+    return;
+  }
+  tabsEl.style.display = "";
   renderTabs();
   renderContent();
 }
+function onboardingHTML(){
+  return `<div class="card" style="text-align:center;padding:32px 20px">
+    <div style="font-size:20px;font-weight:600;margin-bottom:8px">Bienvenue sur MyRunningApp</div>
+    <div style="color:var(--text-dim);font-size:14px;margin-bottom:24px">On va te poser quelques questions pour personnaliser ton programme — objectifs, niveau, disponibilités et matériel. (Parcours en construction : les vraies étapes arrivent bientôt.)</div>
+    <button class="btn-primary" onclick="completeOnboarding()">Terminer l'onboarding</button>
+  </div>`;
+}
+window.completeOnboarding = async function(){
+  const ok = await upsertProfile({ onboarding_completed_at: new Date().toISOString() });
+  if(!ok) return;
+  onboardingCompletedAt = new Date().toISOString();
+  renderApp();
+};
 
 supa.auth.getSession().then(({ data }) => {
   if (data.session) boot();
