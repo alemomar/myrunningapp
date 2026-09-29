@@ -1211,31 +1211,44 @@ window.uploadAvatar = async (input) => {
 // FC repos, VO2 max) — plusieurs boutons séparés prêtaient à confusion
 // (facile de n'en cliquer qu'un et de croire que tout était enregistré).
 // Une seule requête, un seul point de confirmation/erreur.
+// FC repos/VO2 max : pré-remplis avec la valeur actuelle (utile pour la voir),
+// mais resaisir la page pour une tout autre raison (ex: changer son pseudo)
+// ne doit jamais figer une valeur auto-synchronisée comme "manuelle" — d'où
+// la comparaison à data-original (valeur affichée à l'ouverture) plutôt que
+// "le champ contient un chiffre". Seul un vrai changement de valeur marque
+// le champ manuel (ou le repasse en auto si l'utilisateur le vide).
+function manualFieldUpdate(inputId, currentIsManual, currentValue, currentUpdatedAt, parse){
+  const input = document.getElementById(inputId);
+  const val = input.value;
+  const changed = val !== input.dataset.original;
+  if(!changed) return { num: currentValue, isManual: currentIsManual, updatedAt: currentUpdatedAt };
+  const num = val ? parse(val) : null;
+  return { num, isManual: !!num, updatedAt: num ? new Date().toISOString() : null };
+}
 window.saveAccountInfo = async () => {
   const pseudoVal = document.getElementById("profPseudo").value;
   const ageVal = parseInt(document.getElementById("profAge").value, 10) || null;
   const genderVal = document.getElementById("profGender").value;
   const citiesVal = document.getElementById("profCities").value.split(",").map(s=>s.trim()).filter(Boolean);
+  // FC max : champ jamais pré-rempli avec l'estimation (220-âge), donc vide
+  // ici veut toujours dire "laisse le calcul automatique s'appliquer" — pas
+  // besoin de comparer à une valeur d'origine comme pour FC repos/VO2 max.
   const maxHrVal = document.getElementById("maxHrInput").value;
   const maxHrNum = maxHrVal ? parseInt(maxHrVal, 10) : null;
-  const restingHrVal = document.getElementById("restingHrInput").value;
-  const restingHrNum = restingHrVal ? parseInt(restingHrVal, 10) : null;
-  const restingHrNow = restingHrNum ? new Date().toISOString() : null;
-  const vo2MaxVal = document.getElementById("vo2MaxInput").value;
-  const vo2MaxNum = vo2MaxVal ? parseFloat(vo2MaxVal) : null;
-  const vo2MaxNow = vo2MaxNum ? new Date().toISOString() : null;
+  const rhr = manualFieldUpdate("restingHrInput", restingHrIsManual, restingHr, restingHrUpdatedAt, v=>parseInt(v,10));
+  const vo2 = manualFieldUpdate("vo2MaxInput", vo2MaxIsManual, vo2Max, vo2MaxUpdatedAt, v=>parseFloat(v));
 
   const ok = await upsertProfile({
     pseudo: pseudoVal, age: ageVal, gender: genderVal, cities: citiesVal,
     max_hr: maxHrNum,
-    resting_hr: restingHrNum, resting_hr_updated_at: restingHrNow, resting_hr_is_manual: !!restingHrNum,
-    vo2_max: vo2MaxNum, vo2_max_updated_at: vo2MaxNow, vo2_max_is_manual: !!vo2MaxNum,
+    resting_hr: rhr.num, resting_hr_updated_at: rhr.updatedAt, resting_hr_is_manual: rhr.isManual,
+    vo2_max: vo2.num, vo2_max_updated_at: vo2.updatedAt, vo2_max_is_manual: vo2.isManual,
   });
   if(!ok) return;
   pseudo = pseudoVal; age = ageVal; gender = genderVal; cities = citiesVal;
   maxHr = maxHrNum;
-  restingHr = restingHrNum; restingHrUpdatedAt = restingHrNow; restingHrIsManual = !!restingHrNum;
-  vo2Max = vo2MaxNum; vo2MaxUpdatedAt = vo2MaxNow; vo2MaxIsManual = !!vo2MaxNum;
+  restingHr = rhr.num; restingHrUpdatedAt = rhr.updatedAt; restingHrIsManual = rhr.isManual;
+  vo2Max = vo2.num; vo2MaxUpdatedAt = vo2.updatedAt; vo2MaxIsManual = vo2.isManual;
   flashSaved("accountSaved");
 };
 window.saveDashboardPeriod = async (value) => {
@@ -3639,10 +3652,10 @@ function renderContentInner(){
 
       <div class="card">
         <div class="stitle">Fréquence cardiaque max</div>
-        <div class="chart-hint">Utilisée pour calculer tes zones cardio (onglet Séances). ${maxHr?"Renseignée manuellement.":estMaxHr?`Pré-saisie à <strong style="color:var(--text)">${estMaxHr} bpm</strong> (formule 220 − âge) — corrige-la si tu connais ta vraie FC max, mesurée sur un effort proche du maximum.`:"Renseigne ton âge (ci-dessus) pour une pré-saisie automatique, ou entre directement ta FC max."}</div>
+        <div class="chart-hint">Utilisée pour calculer tes zones cardio (onglet Séances). ${maxHr?`Saisie manuellement à <strong style="color:var(--text)">${maxHr} bpm</strong> — remplace le calcul automatique. Vide le champ pour y repasser.`:estMaxHr?`Calculée automatiquement à <strong style="color:var(--text)">${estMaxHr} bpm</strong> (220 − ton âge). Tu peux la remplacer ci-dessous si tu connais ta vraie FC max (mesurée sur un effort proche du maximum) — ce sera plus précis.`:"Renseigne ton âge (ci-dessus) pour un calcul automatique, ou indique directement ta FC max ci-dessous si tu la connais."}</div>
         <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">FC max manuelle (bpm)</span>
-          <input type="number" id="maxHrInput" min="120" max="230" value="${maxHr||estMaxHr||""}" placeholder="ex: 190" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">FC max (bpm) — vide = calcul auto</span>
+          <input type="number" id="maxHrInput" min="120" max="230" value="${maxHr||""}" placeholder="${estMaxHr?`Auto : ${estMaxHr}`:"ex: 190"}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
         </div>
       </div>
 
@@ -3651,7 +3664,7 @@ function renderContentInner(){
         <div class="chart-hint">${restingHr?`Utilisée avec ta FC max pour calculer des zones cardio identiques à l'app Santé (méthode réserve de FC). ${restingHrIsManual?"Saisie manuellement : ne sera jamais écrasée automatiquement.":`Rafraîchie automatiquement depuis ta Watch une fois par mois${restingHrUpdatedAt?` (dernière maj : ${new Date(restingHrUpdatedAt).toLocaleDateString('fr-FR')})`:""}.`}`:"Récupérée automatiquement depuis ta Watch si elle capte des données au repos. Si tu ne la portes que pendant tes séances, HealthKit n'a rien de fiable à analyser : renseigne-la manuellement ci-dessous, elle ne sera alors plus jamais modifiée automatiquement."}</div>
         <div class="field" style="margin-bottom:0">
           <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">FC repos (bpm)</span>
-          <input type="number" id="restingHrInput" min="30" max="100" value="${restingHr||""}" placeholder="ex: 60" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+          <input type="number" id="restingHrInput" min="30" max="100" value="${restingHr||""}" data-original="${restingHr||""}" placeholder="ex: 60" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
         </div>
       </div>
 
@@ -3660,7 +3673,7 @@ function renderContentInner(){
         <div class="chart-hint">${vo2Max?`Capacité cardio-respiratoire estimée. ${vo2MaxIsManual?"Saisie manuellement : ne sera jamais écrasée automatiquement.":`Rafraîchie automatiquement depuis ta Watch une fois par mois${vo2MaxUpdatedAt?` (dernière maj : ${new Date(vo2MaxUpdatedAt).toLocaleDateString('fr-FR')})`:""}.`}`:"Récupérée automatiquement depuis ta Watch (nécessite des sorties extérieures avec GPS). Sinon, renseigne-la manuellement si tu la connais."}</div>
         <div class="field" style="margin-bottom:0">
           <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">VO2 max (ml/kg/min)</span>
-          <input type="number" id="vo2MaxInput" min="20" max="90" step="0.1" value="${vo2Max||""}" placeholder="ex: 45" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+          <input type="number" id="vo2MaxInput" min="20" max="90" step="0.1" value="${vo2Max||""}" data-original="${vo2Max||""}" placeholder="ex: 45" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
         </div>
       </div>
 
