@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=25"></script>
+<script src="logic.js?v=26"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -460,6 +460,23 @@ try {
   assertEqual("classifyLevelFromQuestionnaire : 4x/semaine mais durée insuffisante -> Intermédiaire", classifyLevelFromQuestionnaire("4 fois par semaine ou plus", 30), "Intermédiaire");
   assertEqual("classifyLevelFromQuestionnaire : 2-3x/semaine, durée moyenne -> Intermédiaire", classifyLevelFromQuestionnaire("2 à 3 fois par semaine", 30), "Intermédiaire");
   assertEqual("classifyLevelFromQuestionnaire : durée max inconnue, fréquence moyenne -> Intermédiaire", classifyLevelFromQuestionnaire("2 à 3 fois par semaine", null), "Intermédiaire");
+}
+
+// --- couchTo5kWeekSessions (plan NHS, vérifié le 30/09/2026) ---
+{
+  const durMin = w => couchTo5kWeekSessions(w).map(s=>couchTo5kSessionDurationSec(s)/60);
+  assertEqual("couchTo5k semaine 1 : 3 séances identiques, 28min30", durMin(1), [28.5,28.5,28.5]);
+  assertEqual("couchTo5k semaine 2 : 29min", durMin(2), [29,29,29]);
+  assertEqual("couchTo5k semaine 3 : 25min", durMin(3), [25,25,25]);
+  assertEqual("couchTo5k semaine 4 : 31min30", durMin(4), [31.5,31.5,31.5]);
+  assertEqual("couchTo5k semaine 5 : 3 séances différentes (31/31/30min)", durMin(5), [31,31,30]);
+  assertEqual("couchTo5k semaine 6 : 3 séances différentes (34/33/35min)", durMin(6), [34,33,35]);
+  assertEqual("couchTo5k semaine 7 : 35min", durMin(7), [35,35,35]);
+  assertEqual("couchTo5k semaine 8 : 38min", durMin(8), [38,38,38]);
+  assertEqual("couchTo5k semaine 9 : 40min", durMin(9), [40,40,40]);
+  assertEqual("couchTo5k semaine hors plan (10) -> null", couchTo5kWeekSessions(10), null);
+  assertEqual("couchTo5k semaine 3 : structure exacte (segments)", couchTo5kWeekSessions(3)[0].segments,
+    [{type:"marche",sec:300},{type:"course",sec:90},{type:"marche",sec:90},{type:"course",sec:180},{type:"marche",sec:180},{type:"course",sec:90},{type:"marche",sec:90},{type:"course",sec:180},{type:"marche",sec:300}]);
 }
 
 // --- weeklyStructureForObjective ---

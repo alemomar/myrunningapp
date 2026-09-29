@@ -583,6 +583,72 @@ function classifyLevelFromQuestionnaire(frequence, dureeMaxMin){
   return "Intermédiaire";
 }
 
+/* ---------- Programme "marche/course" pour débutant complet (onboarding, 4.1.d) ----------
+   Pour un "vrai" débutant complet (niveau Débutant + "Jamais encore couru"
+   au questionnaire, 4.1.b.2) : le moteur normal (VDOT/allures) ne peut
+   rien générer sans référence de performance. Ce plan la remplace pour
+   les 9 premières semaines par un programme en alternance course/marche.
+   Pas une source scientifique comme VDOT/ACWR/sRPE — c'est le plan
+   "Couch to 5K" du NHS (service de santé publique britannique), un
+   standard pratique largement éprouvé plutôt qu'une étude, choisi pour sa
+   traçabilité (contrairement à d'innombrables variantes non sourcées).
+   Suivi à l'identique, vérifié le 30/09/2026 contre la page officielle :
+   https://www.nhs.uk/better-health/get-active/get-running-with-couch-to-5k/couch-to-5k-running-plan/
+   Chaque séance = une liste de blocs {type:"marche"|"course", sec}, un
+   échauffement et un retour au calme de 5 minutes de marche systématiques.
+   Semaines 1-4 et 7-9 : les 3 séances de la semaine sont identiques.
+   Semaines 5 et 6 : les 3 séances diffèrent (seule exception du plan). */
+function couchCycle(runSec, walkSec, times){
+  const blocks = [];
+  for(let i=0;i<times;i++){ blocks.push({type:"course",sec:runSec}); blocks.push({type:"marche",sec:walkSec}); }
+  return blocks;
+}
+function withWarmup(blocks){
+  return [{type:"marche",sec:300}, ...blocks, {type:"marche",sec:300}];
+}
+const COUCH_TO_5K_PLAN = {
+  1: [{ label:"Course 1min / marche 1min30, répété 7 fois + 1min de course finale",
+        segments: withWarmup([...couchCycle(60,90,7), {type:"course",sec:60}]) }],
+  2: [{ label:"Course 1min30 / marche 2min, répété 5 fois + 1min30 de course finale",
+        segments: withWarmup([...couchCycle(90,120,5), {type:"course",sec:90}]) }],
+  3: [{ label:"1min30 course / 1min30 marche / 3min course / 3min marche / 1min30 course / 1min30 marche / 3min course finale",
+        segments: withWarmup([{type:"course",sec:90},{type:"marche",sec:90},{type:"course",sec:180},{type:"marche",sec:180},{type:"course",sec:90},{type:"marche",sec:90},{type:"course",sec:180}]) }],
+  4: [{ label:"3min course / 1min30 marche / 5min course / 2min30 marche / 3min course / 1min30 marche / 5min course finale",
+        segments: withWarmup([{type:"course",sec:180},{type:"marche",sec:90},{type:"course",sec:300},{type:"marche",sec:150},{type:"course",sec:180},{type:"marche",sec:90},{type:"course",sec:300}]) }],
+  5: [
+    { label:"5min course / 3min marche / 5min course / 3min marche / 5min course",
+      segments: withWarmup([{type:"course",sec:300},{type:"marche",sec:180},{type:"course",sec:300},{type:"marche",sec:180},{type:"course",sec:300}]) },
+    { label:"8min course / 5min marche / 8min course",
+      segments: withWarmup([{type:"course",sec:480},{type:"marche",sec:300},{type:"course",sec:480}]) },
+    { label:"20 minutes de course continue",
+      segments: withWarmup([{type:"course",sec:1200}]) },
+  ],
+  6: [
+    { label:"5min course / 3min marche / 8min course / 3min marche / 5min course",
+      segments: withWarmup([{type:"course",sec:300},{type:"marche",sec:180},{type:"course",sec:480},{type:"marche",sec:180},{type:"course",sec:300}]) },
+    { label:"10min course / 3min marche / 10min course",
+      segments: withWarmup([{type:"course",sec:600},{type:"marche",sec:180},{type:"course",sec:600}]) },
+    { label:"25 minutes de course continue",
+      segments: withWarmup([{type:"course",sec:1500}]) },
+  ],
+  7: [{ label:"25 minutes de course continue", segments: withWarmup([{type:"course",sec:1500}]) }],
+  8: [{ label:"28 minutes de course continue", segments: withWarmup([{type:"course",sec:1680}]) }],
+  9: [{ label:"30 minutes de course continue", segments: withWarmup([{type:"course",sec:1800}]) }],
+};
+// Renvoie toujours exactement 3 séances (répète l'unique structure des
+// semaines qui n'en ont qu'une) — semaine invalide (hors 1-9) -> null,
+// pour laisser l'appelant décider de la "graduation" vers le programme
+// normal une fois les 9 semaines terminées (pas géré ici : orchestration
+// à faire au moment de brancher ce plan dans l'onglet Programme).
+function couchTo5kWeekSessions(week){
+  const templates = COUCH_TO_5K_PLAN[week];
+  if(!templates) return null;
+  return templates.length===3 ? templates : [templates[0], templates[0], templates[0]];
+}
+function couchTo5kSessionDurationSec(session){
+  return session.segments.reduce((a,b)=>a+b.sec,0);
+}
+
 /* ---------- Session-RPE ----------
    Source : Foster et al. (2001), "A new approach to monitoring exercise
    training", Journal of Strength and Conditioning Research 15(1). */
