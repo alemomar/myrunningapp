@@ -423,7 +423,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=24"></script>
+<script src="logic.js?v=25"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1497,8 +1497,6 @@ function lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate){
     leftHTML = `<div style="font-size:12px;color:var(--text-dim);padding:8px 0">Pas de détail FC pour cette séance.</div>`;
   } else if(!effMaxHr){
     leftHTML = `<div style="font-size:12px;color:var(--text-dim);padding:8px 0">Renseigne ta FC max (Mon compte) pour voir les zones.</div>`;
-  } else if(!hasReliableHrCoverage(lastRun.hrSeries, effMaxHr, effRestingHr, lastRun.durationSec)){
-    leftHTML = `<div style="font-size:12px;color:var(--text-dim);padding:8px 0">Données cardio insuffisantes pour une répartition par zones fiable.</div>`;
   } else {
     const {secs, defs} = computeHrZoneSeconds(lastRun.hrSeries, effMaxHr, effRestingHr);
     const total = secs.reduce((a,b)=>a+b,0)||1;
@@ -2225,9 +2223,6 @@ function hrDetailHTML(r, effMaxHr, effRestingHr){
   }
   if(!effMaxHr){
     return `<div style="padding:8px 0 14px;font-size:12px;color:var(--text-dim)">Renseigne ta FC max (onglet Mon compte) pour voir la répartition par zones.</div>`;
-  }
-  if(!hasReliableHrCoverage(r.hrSeries, effMaxHr, effRestingHr, r.durationSec)){
-    return `<div style="padding:8px 0 14px;font-size:12px;color:var(--text-dim)">Données cardio insuffisantes pour cette séance — trop peu de mesures FC par rapport à sa durée pour une répartition par zones fiable.</div>`;
   }
   const {secs, defs} = computeHrZoneSeconds(r.hrSeries, effMaxHr, effRestingHr);
   const total = secs.reduce((a,b)=>a+b,0)||1;
@@ -3149,7 +3144,7 @@ function renderContentInner(){
       mkPaceTrendChart("cEFmini", efRuns, true, 21);
       if(hasFrac) mkFractionneChart("cFracMini", fracRuns, 21);
       mkChart("cVolMini",{type:"bar",data:{labels:vol.map(r=>r.label),datasets:[{label:"km",data:vol.map(r=>r.dist),backgroundColor:isMonthly?vol.map(r=>monthlyGoalColor(r.dist, goals.kmMensuel?Number(goals.kmMensuel):null)):vol.map(intensityColor),borderRadius:6}]},plugins:[barValueLabelsPlugin],options:{scales:{x:{ticks:{autoSkip:false,maxRotation:45}}},plugins:{tooltip:{callbacks:{label:ctx=>ctx.raw+" km"}}}}});
-      if(lastRunExpanded && lastRun && lastRun.hrSeries && lastRun.hrSeries.length>1 && effMaxHr && hasReliableHrCoverage(lastRun.hrSeries, effMaxHr, effRestingHr, lastRun.durationSec)) mkHrCurveChart("cHr_"+lastRun.id, lastRun.hrSeries);
+      if(lastRunExpanded && lastRun && lastRun.hrSeries && lastRun.hrSeries.length>1 && effMaxHr) mkHrCurveChart("cHr_"+lastRun.id, lastRun.hrSeries);
       if(withHr.length) mkPaceFcChart("cPaceFc", efRuns);
       if(monthly.length>=2){
         mkZoneMonthlyChart("cZoneMonthly", monthly);
@@ -3211,7 +3206,7 @@ function renderContentInner(){
         }).join(""):`<div style="font-size:13px;color:var(--text-dim);padding:12px 0">Aucune séance de ce type</div>`}
       </div>`;
     setTimeout(()=>{
-      filtered.filter(r=>openManageRow.has(r.id) && openHrDetail.has(r.id) && r.hrSeries && r.hrSeries.length>1 && effMaxHr && hasReliableHrCoverage(r.hrSeries, effMaxHr, effRestingHr, r.durationSec)).forEach(r=>{
+      filtered.filter(r=>openManageRow.has(r.id) && openHrDetail.has(r.id) && r.hrSeries && r.hrSeries.length>1 && effMaxHr).forEach(r=>{
         mkHrCurveChart("cHr_"+r.id, r.hrSeries);
       });
     },50);

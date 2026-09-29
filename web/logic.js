@@ -43,34 +43,27 @@ function zoneIndexForHr(hr, defs){
   for(let i=0;i<defs.length;i++) if(hr<=defs[i].max) return i;
   return defs.length-1;
 }
+// Attribue à CHAQUE échantillon la totalité du temps qui le sépare du
+// suivant, sans jamais ignorer les grands écarts — vérifié le 29/09/2026
+// contre un vrai export Apple Santé (testeuse Leïla) : une séance de 30min
+// avec seulement 22 mesures FC (échantillonnage épars mais réel, pas un
+// bug de synchro) donne, écarts non filtrés, exactement les mêmes zones
+// que celles affichées nativement par Apple (27:17 calculé vs 27:16
+// affiché par Apple, à 1s près). Un ancien filtre ignorait tout écart
+// >60s ("pour ignorer les pauses") : il faisait perdre plus de 95% de la
+// séance dans ce cas réel, largement plus agressif que ce qu'Apple
+// applique lui-même (qui semble ne jamais ignorer les écarts, même de
+// plus de 10 minutes, d'après ce même export).
 function computeHrZoneSeconds(hrSeries, maxHr, restingHr){
   const defs = hrZoneDefs(maxHr, restingHr);
   const secs=[0,0,0,0,0];
   const sorted = hrSeries.slice().sort((a,b)=>a.t-b.t);
   for(let i=0;i<sorted.length-1;i++){
     const dt = sorted[i+1].t - sorted[i].t;
-    if(dt<=0 || dt>60) continue; // ignore pauses/trous de mesure
+    if(dt<=0) continue; // horodatages dupliqués/aberrants uniquement
     secs[zoneIndexForHr(sorted[i].hr, defs)] += dt;
   }
   return {secs, defs};
-}
-
-// Retour testeuse (Leïla, 28/09/2026) : certaines séances anciennes ont un
-// hr_series bien trop épars par rapport à leur durée réelle (ex: 10 points
-// de FC pour 87 minutes) — computeHrZoneSeconds ignore déjà les trous >60s
-// entre deux points, ce qui fait qu'une grosse partie de la séance ne
-// compte pour aucune zone. Résultat : une répartition par zones qui a
-// l'air normale mais ne représente en réalité qu'une poignée de secondes,
-// donnant l'impression d'un bug plutôt que d'un manque de données. Cause
-// exacte non identifiée (voir discussion) — cette fonction ne corrige pas
-// la donnée manquante, elle sert seulement à détecter le cas pour ne pas
-// afficher une répartition trompeuse. Seuil : moins de 50% de la durée
-// réelle couverte par des mesures FC exploitables -> pas fiable.
-function hasReliableHrCoverage(hrSeries, maxHr, restingHr, durationSec){
-  if(!hrSeries || hrSeries.length<10 || !maxHr || !durationSec) return false;
-  const {secs} = computeHrZoneSeconds(hrSeries, maxHr, restingHr);
-  const total = secs.reduce((a,b)=>a+b,0);
-  return total >= durationSec*0.5;
 }
 
 // Une moyenne/pic seuls ne montrent pas la structure temporelle d'une séance :

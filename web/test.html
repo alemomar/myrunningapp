@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=23"></script>
+<script src="logic.js?v=25"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -67,21 +67,22 @@ function assertClose(name, actual, expected, tolerance){
   const series = [{t:0,hr:100},{t:60,hr:100},{t:60,hr:180},{t:120,hr:180}];
   const {secs} = computeHrZoneSeconds(series, 191, 60);
   assertEqual("computeHrZoneSeconds : répartition zone 1 / zone 5", secs, [60,0,0,0,60]);
-}
 
-// --- hasReliableHrCoverage ---
-{
-  // 87 minutes de séance, seulement 10 points de FC très espacés (cas réel
-  // signalé par une testeuse) -> quasiment rien de comptabilisé, pas fiable.
-  const sparse = Array.from({length:10}, (_,i) => ({t: i*500, hr: 140})); // 1 point/8min20
-  assertEqual("hasReliableHrCoverage : séance très éparse -> false", hasReliableHrCoverage(sparse, 191, 60, 5239), false);
+  // Ne doit JAMAIS ignorer un grand écart entre deux mesures (vérifié le
+  // 29/09/2026 contre un vrai export Apple Santé : Apple ne le fait pas
+  // non plus). Un ancien filtre ignorait tout écart >60s ("pauses") — il
+  // faisait perdre l'écrasante majorité d'une séance à échantillonnage
+  // épars mais réel (22 mesures sur 30min), donnant une répartition
+  // trompeuse alors que la donnée était en fait suffisante.
+  const bigGap = [{t:0,hr:100},{t:600,hr:100}]; // 10 minutes d'écart, zone 1
+  assertEqual("computeHrZoneSeconds : grand écart (10min) toujours comptabilisé", computeHrZoneSeconds(bigGap, 191, 60).secs, [600,0,0,0,0]);
 
-  // 30 minutes, un point par seconde -> couverture quasi totale, fiable.
-  const dense = Array.from({length:1800}, (_,i) => ({t:i, hr:145}));
-  assertEqual("hasReliableHrCoverage : séance dense -> true", hasReliableHrCoverage(dense, 191, 60, 1800), true);
-
-  assertEqual("hasReliableHrCoverage : pas de FC max -> false", hasReliableHrCoverage(dense, null, 60, 1800), false);
-  assertEqual("hasReliableHrCoverage : pas de série -> false", hasReliableHrCoverage(null, 191, 60, 1800), false);
+  // Reproduit le vrai cas de la testeuse (22 mesures réelles, 30/05/2026,
+  // écarts en secondes) : le total doit correspondre à ce qu'Apple affiche
+  // nativement pour cette même séance (27:16 = 1636s, à 1s près ici).
+  const realSparseSession = [0,158,548,553,561,563,571,573,578,584,590,592,600,603,610,614,875,961,966,970,973,1637].map((t,i)=>({t, hr: i%2===0?145:170}));
+  const totalCovered = computeHrZoneSeconds(realSparseSession, 191, 60).secs.reduce((a,b)=>a+b,0);
+  assertEqual("computeHrZoneSeconds : séance éparse réelle -> couvre bien 1637s (~27min), pas juste 78s", totalCovered, 1637);
 }
 
 // --- detectHrSurges / looksLikeFractionne ---
