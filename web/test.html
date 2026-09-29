@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=22"></script>
+<script src="logic.js?v=23"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -433,6 +433,17 @@ try {
     detectLevelFromHistory(Array.from({length:16},(_,i)=>({date:daysAgo(i*3), distanceKm:8})), now), "Confirmé");
   assertEqual("detectLevelFromHistory : course hors fenêtre de 8 semaines ignorée",
     detectLevelFromHistory([...runsOf(5), {date:daysAgo(60), distanceKm:5}], now), null);
+}
+
+// --- classifyLevelFromQuestionnaire ---
+{
+  assertEqual("classifyLevelFromQuestionnaire : jamais encore -> Débutant", classifyLevelFromQuestionnaire("Jamais encore", 30), "Débutant");
+  assertEqual("classifyLevelFromQuestionnaire : 1x/semaine ou moins -> Débutant", classifyLevelFromQuestionnaire("1 fois par semaine ou moins", 60), "Débutant");
+  assertEqual("classifyLevelFromQuestionnaire : durée max <20min -> Débutant même si fréquence élevée", classifyLevelFromQuestionnaire("4 fois par semaine ou plus", 15), "Débutant");
+  assertEqual("classifyLevelFromQuestionnaire : 4x/semaine + >=45min -> Confirmé", classifyLevelFromQuestionnaire("4 fois par semaine ou plus", 45), "Confirmé");
+  assertEqual("classifyLevelFromQuestionnaire : 4x/semaine mais durée insuffisante -> Intermédiaire", classifyLevelFromQuestionnaire("4 fois par semaine ou plus", 30), "Intermédiaire");
+  assertEqual("classifyLevelFromQuestionnaire : 2-3x/semaine, durée moyenne -> Intermédiaire", classifyLevelFromQuestionnaire("2 à 3 fois par semaine", 30), "Intermédiaire");
+  assertEqual("classifyLevelFromQuestionnaire : durée max inconnue, fréquence moyenne -> Intermédiaire", classifyLevelFromQuestionnaire("2 à 3 fois par semaine", null), "Intermédiaire");
 }
 
 // --- weeklyStructureForObjective ---

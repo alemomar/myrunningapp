@@ -543,6 +543,35 @@ function detectLevelFromHistory(runs, now){
   return "Intermédiaire";
 }
 
+// Options de fréquence proposées dans le questionnaire (4.1.b.2) — mêmes
+// libellés utilisés côté UI et ici, pour éviter toute divergence de
+// formulation entre les deux.
+const QUESTIONNAIRE_FREQUENCE_OPTIONS = [
+  "Jamais encore",
+  "1 fois par semaine ou moins",
+  "2 à 3 fois par semaine",
+  "4 fois par semaine ou plus",
+];
+
+/* ---------- Niveau depuis le questionnaire (onboarding, 4.1.b.2) ----------
+   Utilisé uniquement quand detectLevelFromHistory() renvoie null (pas
+   assez d'historique) — cascade CDC v2, 4.1 : "questionnaire (fréquence,
+   durée max, chrono récent)". Le "chrono récent" n'entre PAS dans ce
+   calcul (il sert uniquement à préremplir programSettings.refDistanceKm/
+   refTimeSec pour les allures, comme le fait déjà resolveRunnerProfile) —
+   volontairement séparé pour ne pas mélanger deux logiques différentes
+   (niveau qualitatif vs performance chronométrée).
+   Seuils validés avec l'utilisateur : fréquence "jamais encore"/"1x ou
+   moins", OU durée max tenue <20min -> Débutant ; fréquence "4x ou plus"
+   ET durée max tenue >=45min -> Confirmé ; sinon Intermédiaire. */
+function classifyLevelFromQuestionnaire(frequence, dureeMaxMin){
+  const lowFreq = frequence==="Jamais encore" || frequence==="1 fois par semaine ou moins";
+  const highFreq = frequence==="4 fois par semaine ou plus";
+  if(lowFreq || (dureeMaxMin!=null && dureeMaxMin<20)) return "Débutant";
+  if(highFreq && dureeMaxMin!=null && dureeMaxMin>=45) return "Confirmé";
+  return "Intermédiaire";
+}
+
 /* ---------- Session-RPE ----------
    Source : Foster et al. (2001), "A new approach to monitoring exercise
    training", Journal of Strength and Conditioning Research 15(1). */
