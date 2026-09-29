@@ -55,6 +55,24 @@ function computeHrZoneSeconds(hrSeries, maxHr, restingHr){
   return {secs, defs};
 }
 
+// Retour testeuse (Leïla, 28/09/2026) : certaines séances anciennes ont un
+// hr_series bien trop épars par rapport à leur durée réelle (ex: 10 points
+// de FC pour 87 minutes) — computeHrZoneSeconds ignore déjà les trous >60s
+// entre deux points, ce qui fait qu'une grosse partie de la séance ne
+// compte pour aucune zone. Résultat : une répartition par zones qui a
+// l'air normale mais ne représente en réalité qu'une poignée de secondes,
+// donnant l'impression d'un bug plutôt que d'un manque de données. Cause
+// exacte non identifiée (voir discussion) — cette fonction ne corrige pas
+// la donnée manquante, elle sert seulement à détecter le cas pour ne pas
+// afficher une répartition trompeuse. Seuil : moins de 50% de la durée
+// réelle couverte par des mesures FC exploitables -> pas fiable.
+function hasReliableHrCoverage(hrSeries, maxHr, restingHr, durationSec){
+  if(!hrSeries || hrSeries.length<10 || !maxHr || !durationSec) return false;
+  const {secs} = computeHrZoneSeconds(hrSeries, maxHr, restingHr);
+  const total = secs.reduce((a,b)=>a+b,0);
+  return total >= durationSec*0.5;
+}
+
 // Une moyenne/pic seuls ne montrent pas la structure temporelle d'une séance :
 // on repère les oscillations nettes et soutenues de FC (pic après un creux)
 // pour suggérer "ça ressemble à un fractionné" — sans jamais reclasser

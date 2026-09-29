@@ -69,6 +69,21 @@ function assertClose(name, actual, expected, tolerance){
   assertEqual("computeHrZoneSeconds : répartition zone 1 / zone 5", secs, [60,0,0,0,60]);
 }
 
+// --- hasReliableHrCoverage ---
+{
+  // 87 minutes de séance, seulement 10 points de FC très espacés (cas réel
+  // signalé par une testeuse) -> quasiment rien de comptabilisé, pas fiable.
+  const sparse = Array.from({length:10}, (_,i) => ({t: i*500, hr: 140})); // 1 point/8min20
+  assertEqual("hasReliableHrCoverage : séance très éparse -> false", hasReliableHrCoverage(sparse, 191, 60, 5239), false);
+
+  // 30 minutes, un point par seconde -> couverture quasi totale, fiable.
+  const dense = Array.from({length:1800}, (_,i) => ({t:i, hr:145}));
+  assertEqual("hasReliableHrCoverage : séance dense -> true", hasReliableHrCoverage(dense, 191, 60, 1800), true);
+
+  assertEqual("hasReliableHrCoverage : pas de FC max -> false", hasReliableHrCoverage(dense, null, 60, 1800), false);
+  assertEqual("hasReliableHrCoverage : pas de série -> false", hasReliableHrCoverage(null, 191, 60, 1800), false);
+}
+
 // --- detectHrSurges / looksLikeFractionne ---
 {
   // Vrai fractionné : 7 cycles nets de ±45bpm sur 33min (reproduit une vraie séance)
