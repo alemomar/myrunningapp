@@ -3334,12 +3334,15 @@ function renderContentInner(){
     // carte "Contexte de la reprise", DUREE_OPTIONS/ZONE_OPTIONS) reste en
     // place pour pouvoir le réactiver facilement — il suffit de rajouter la
     // ligne ci-dessous.
+    // "Autre" retiré des choix proposés (CDC v2, 4.2 : les 4 objectifs
+    // suffisent, "Autre" n'apportait pas de vraie logique dédiée derrière —
+    // voir OBJECTIF_BLOCKS["Autre"], resté en place comme repli défensif si
+    // jamais une vieille donnée portait encore cette valeur).
     const OBJECTIF_ICONS = [
       ["Préparer une course","flag"],
       ["Améliorer mon allure","bolt"],
       ["Courir plus régulièrement","route"],
       ["Rester en forme","heart"],
-      ["Autre","sparkle"],
     ];
     const objectifCards = (current) => `<div class="goal-principal-cards" data-chipgroup="objectifPrincipal">
       ${OBJECTIF_ICONS.map(([label,ic])=>`<div class="goal-principal-card${label===current?" active":""}" data-value="${label}" onclick="selectChip('objectifPrincipal','${label}')">
