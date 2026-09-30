@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=26"></script>
+<script src="logic.js?v=27"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -477,6 +477,18 @@ try {
   assertEqual("couchTo5k semaine hors plan (10) -> null", couchTo5kWeekSessions(10), null);
   assertEqual("couchTo5k semaine 3 : structure exacte (segments)", couchTo5kWeekSessions(3)[0].segments,
     [{type:"marche",sec:300},{type:"course",sec:90},{type:"marche",sec:90},{type:"course",sec:180},{type:"marche",sec:180},{type:"course",sec:90},{type:"marche",sec:90},{type:"course",sec:180},{type:"marche",sec:300}]);
+}
+
+// --- checkGoalTimelineFeasibility (durées Hal Higdon, vérifiées 30/09/2026) ---
+{
+  assertEqual("checkGoalTimelineFeasibility : 10 semaines pour un 10K Débutant -> ok (min 8)", checkGoalTimelineFeasibility("10km","Débutant",10).status, "ok");
+  assertEqual("checkGoalTimelineFeasibility : 8 semaines pile pour un 10K Débutant -> ok", checkGoalTimelineFeasibility("10km","Débutant",8).status, "ok");
+  assertEqual("checkGoalTimelineFeasibility : 6 semaines pour un 10K Débutant -> compressé (>=60% de 8)", checkGoalTimelineFeasibility("10km","Débutant",6).status, "compresse");
+  assertEqual("checkGoalTimelineFeasibility : 4 semaines pour un 10K Débutant -> extrême (<60% de 8)", checkGoalTimelineFeasibility("10km","Débutant",4).status, "extreme");
+  assertEqual("checkGoalTimelineFeasibility : Confirmé réduit le minimum de 25% (8 -> 6 pour un 10K)", checkGoalTimelineFeasibility("10km","Confirmé",6).status, "ok");
+  assertEqual("checkGoalTimelineFeasibility : marathon, minimum Higdon = 18 semaines", checkGoalTimelineFeasibility("Marathon","Débutant",18).minWeeks, 18);
+  assertEqual("checkGoalTimelineFeasibility : 15K, minimum Higdon = 10 semaines", checkGoalTimelineFeasibility("15km","Débutant",10).minWeeks, 10);
+  assertEqual("checkGoalTimelineFeasibility : distance inconnue -> null", checkGoalTimelineFeasibility("100km","Débutant",20), null);
 }
 
 // --- weeklyStructureForObjective ---

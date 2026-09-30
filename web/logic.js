@@ -714,6 +714,39 @@ function detectDegradedWellbeing(ratingsHistory, threshold=6){
   return (last.fatigue||0)>=threshold || (last.mental||0)>=threshold;
 }
 
+/* ---------- Cohérence date/distance/niveau d'un objectif course (4.2.d) ----------
+   Durées MINIMALES recommandées par distance : directement reprises des
+   plans Hal Higdon (coach américain, référence largement utilisée et
+   publiée), dont la durée totale ne varie quasiment pas entre les niveaux
+   Novice/Intermediate pour une même distance (c'est le contenu de chaque
+   semaine qui change, pas la durée) — vérifié le 30/09/2026 :
+   5K  : https://www.halhigdon.com/training-programs/5k-training/novice-5k/ (8 semaines)
+   10K : https://www.halhigdon.com/training-programs/10k-training/novice-10k/ (8 semaines)
+   15K : https://www.halhigdon.com/training-programs/15k-10-mile-training/novice-15k-10-mile/ (10 semaines)
+   Semi : https://www.halhigdon.com/training-programs/half-marathon-training/novice-1-half-marathon/ (12 semaines)
+   Marathon : https://www.halhigdon.com/training-programs/marathon-training/novice-1-marathon/ (18 semaines)
+   Le facteur "Confirmé" (-25%) ci-dessous n'est PAS issu de Higdon — c'est
+   notre propre ajustement (un coureur déjà confirmé peut raisonnablement
+   compresser davantage), à afficher distinctement de la source dans l'UI. */
+const HIGDON_MIN_WEEKS = { "5km":8, "10km":8, "15km":10, "Semi":12, "Marathon":18 };
+const NIVEAU_WEEKS_FACTOR = { "Débutant":1, "Intermédiaire":1, "Confirmé":0.75 };
+// Écart jugé "extrême" : moins de 60% de la durée minimale recommandée —
+// seuil choisi avec l'utilisateur, pas issu de Higdon non plus.
+const EXTREME_GAP_FACTOR = 0.6;
+
+// `weeksAvailable` : semaines entre aujourd'hui et la date visée.
+// Renvoie le statut ("ok"/"compresse"/"extreme"), la durée minimale
+// recommandée (ajustée au niveau) et si le plan compressé peut être
+// proposé ou non.
+function checkGoalTimelineFeasibility(distanceKey, niveau, weeksAvailable){
+  const baseWeeks = HIGDON_MIN_WEEKS[distanceKey];
+  if(baseWeeks==null || weeksAvailable==null) return null;
+  const minWeeks = baseWeeks * (NIVEAU_WEEKS_FACTOR[niveau] ?? 1);
+  if(weeksAvailable >= minWeeks) return { status:"ok", minWeeks };
+  if(weeksAvailable >= minWeeks*EXTREME_GAP_FACTOR) return { status:"compresse", minWeeks };
+  return { status:"extreme", minWeeks };
+}
+
 /* ---------- Structure macro par objectif ----------
    Répartition Easy/qualité de départ par type d'objectif (base : polarisé
    80/20, Seiler & Kjerland 2006, "Quantifying training intensity
