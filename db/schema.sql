@@ -116,7 +116,7 @@ create table public.planned_sessions (
   target_duration_min numeric,
   target_pace_sec_per_km numeric,
   rationale text not null,              -- justification affichée dans la carte séance
-  status text not null default 'planned', -- planned / done / skipped / replaced
+  status text not null default 'planned', -- planned / done / skipped / replaced / missed
   source text not null default 'generated', -- generated / manual_add / manual_edit / regenerated
   generation_reason text,               -- acwr_high / pain_repeat_or_wellbeing / user_constraint / weekly_replan...
   replaces_session_id uuid references public.planned_sessions(id) on delete set null,

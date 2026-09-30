@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=28"></script>
+<script src="logic.js?v=29"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -388,6 +388,21 @@ try {
   assertEqual("acwrAt : pic récent -> ACWR > 1.3 (zone à risque)", spike.acwr > 1.3, true);
 
   assertEqual("acwrAt : pas de charge chronique -> acwr null", acwrAt([], target).acwr, null);
+}
+
+// --- detectMissedSessions ---
+{
+  const sessions = [
+    {id:"a", status:"planned", pace_zone:"easy", planned_date:"2026-09-28"}, // hier -> manquée
+    {id:"b", status:"planned", pace_zone:"threshold", planned_date:"2026-09-29"}, // aujourd'hui -> pas encore
+    {id:"c", status:"planned", pace_zone:"easy", planned_date:"2026-09-27"}, // avant-hier -> manquée
+    {id:"d", status:"done", pace_zone:"easy", planned_date:"2026-09-27"}, // déjà faite -> ignorée
+    {id:"e", status:"planned", pace_zone:null, planned_date:"2026-09-27"}, // renfo (pas de pace_zone) -> ignorée
+    {id:"f", status:"missed", pace_zone:"easy", planned_date:"2026-09-26"}, // déjà traitée -> ignorée
+  ];
+  const missed = detectMissedSessions(sessions, "2026-09-29").map(s=>s.id);
+  assertEqual("detectMissedSessions : détecte les séances de course passées et non faites", missed, ["a","c"]);
+  assertEqual("detectMissedSessions : liste vide -> aucune manquée", detectMissedSessions([], "2026-09-29"), []);
 }
 
 // --- detectRepeatedPain / detectDegradedWellbeing ---

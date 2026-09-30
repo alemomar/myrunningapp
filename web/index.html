@@ -423,7 +423,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=28"></script>
+<script src="logic.js?v=29"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2667,14 +2667,53 @@ window.addManualSession = async (dateStr) => {
 // redéclencher ici.
 async function reconcilePlannedSessions(){
   const todo = plannedSessions.filter(p=>p.status==="planned" && RUNS.some(r=>localDateStr(dateFromRun(r))===p.planned_date));
-  if(!todo.length) return;
+  const missed = detectMissedSessions(plannedSessions, localDateStr(new Date()));
+  if(!todo.length && !missed.length) return;
   for(const p of todo){
     const match = RUNS.find(r=>localDateStr(dateFromRun(r))===p.planned_date);
     await supa.from("planned_sessions").update({status:"done", linked_run_id:match.id, updated_at:new Date().toISOString()}).eq("id", p.id);
     p.status = "done"; p.linked_run_id = match.id;
   }
+  // Une séance dans `todo` a forcément une vraie course associée, donc ne
+  // peut jamais être aussi dans `missed` (qui exige status==="planned"
+  // encore intact au moment du calcul) — mais on filtre quand même par
+  // sécurité si l'ordre des deux listes venait à se chevaucher un jour.
+  for(const p of missed.filter(m=>!todo.includes(m))){
+    await supa.from("planned_sessions").update({status:"missed", updated_at:new Date().toISOString()}).eq("id", p.id);
+    p.status = "missed";
+  }
   renderContent();
 }
+// Bannière "séance manquée" (4.3.c) : pas de vraie notification push (voir
+// staleSyncBanner ci-dessus, même limite) — ce bandeau à l'ouverture de
+// Programme en fait office. "Réorganiser automatiquement" nécessite les
+// garde-fous de 4.3.d (pas encore construits : jamais 2 séances le même
+// jour, jamais 2 intenses d'affilée...) pour recaser intelligemment la
+// séance sur un autre jour de la semaine — volontairement pas encore actif.
+function missedSessionsBanner(){
+  const missed = plannedSessions.filter(p=>p.status==="missed" && !dismissedMissedIds().includes(p.id));
+  if(!missed.length) return "";
+  const p = missed[0];
+  return `<div class="card" style="border-color:rgba(255,159,10,0.4);background:rgba(255,159,10,0.08)">
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Séance manquée — ${p.title} du ${new Date(p.planned_date).toLocaleDateString('fr-FR')}</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Tu ne l'as pas faite. Tu veux qu'on réorganise ta semaine, ou tu préfères garder ton plan tel quel ?</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-secondary" disabled title="Bientôt disponible" style="opacity:0.5;cursor:not-allowed">Réorganiser automatiquement</button>
+      <button class="btn-secondary" onclick="dismissMissedSession('${p.id}')">Garder mon plan tel quel</button>
+    </div>
+  </div>`;
+}
+function dismissedMissedIds(){
+  try { return JSON.parse(localStorage.getItem("dismissedMissedSessions")||"[]"); } catch { return []; }
+}
+window.dismissMissedSession = (id) => {
+  try {
+    const ids = dismissedMissedIds();
+    ids.push(id);
+    localStorage.setItem("dismissedMissedSessions", JSON.stringify(ids));
+  } catch {}
+  renderContent();
+};
 window.setProgramView = (mode) => {
   programViewMode = mode;
   programWeekOffset = 0; // repart de la semaine/mois courant en changeant de vue
@@ -3737,6 +3776,7 @@ function renderContentInner(){
         <div class="stitle">Programme</div>
         <div class="chart-hint" style="margin-top:0">Calendrier de séances généré à partir de tes objectifs, ton profil coureur et ton ressenti récent — reste modifiable séance par séance.</div>
       </div>
+      ${missedSessionsBanner()}
       ${programSettingsFormHTML(profile)}
       ${ready?`
       <div class="card">

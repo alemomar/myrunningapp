@@ -708,6 +708,26 @@ function acwrAt(dailySeries, targetDate){
   return { acute7j, chronic28j, acwr: chronic28j>0 ? acute7j/chronic28j : null };
 }
 
+/* ---------- Séances manquées (4.3.c) ----------
+   CDC v2, 4.3 : une séance planifiée non faite passe automatiquement au
+   statut "manquée" le lendemain. Pas de vraie notification push (l'app
+   n'a pas cette infrastructure, pas de service worker) — une bannière
+   in-app à la prochaine ouverture en fait office. Ne concerne que les
+   séances de course (`pace_zone` non vide) : le renfo/mobilité n'est
+   jamais passé par le mécanisme de réorganisation (regenerateSession),
+   volontairement exclu ailleurs dans le moteur (index.html,
+   applyProgramAdjustments).
+   `today` : date du jour au format YYYY-MM-DD (même format que
+   `planned_date`, comparaison directe en chaîne).
+   Ne renvoie que les séances PAS ENCORE marquées (status==="planned") —
+   une fois passées à "missed", elles ne ressortent plus ici (pas de
+   re-traitement à chaque appel). */
+function detectMissedSessions(plannedSessions, today){
+  return (plannedSessions||[]).filter(p =>
+    p.status==="planned" && p.pace_zone && p.planned_date < today
+  );
+}
+
 /* ---------- Douleur/gêne répétée ----------
    Règle donnée par l'utilisateur (pas une source externe) : une même zone
    signalée ≥ seuil sur les 2 dernières séances NOTÉES d'affilée déclenche un
