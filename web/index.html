@@ -423,7 +423,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=27"></script>
+<script src="logic.js?v=28"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2347,13 +2347,33 @@ function programProfileSourceLabel(profile){
   return "ton temps de référence saisi"; // pas "le temps de référence que tu as saisi" : "à partir de le..." est une faute (élision manquante), corrigé en "à partir de ton..."
 }
 // Explique l'allure visée en langage clair (ZONE_FRIENDLY, logic.js) — pas
-// de jargon non expliqué (VDOT, %...), pensé pour un débutant.
+// de jargon non expliqué (VDOT, %...), pensé pour un débutant. Complétée
+// (4.3.b) par la vraie consigne d'intensité : ressenti + plafond de FC pour
+// EF/sortie longue (l'allure n'est qu'indicative), allure + zone FC pour
+// Seuil, allure seule pour Fractionné (voir programIntensityGuidance).
 function programPaceExplanationHTML(session){
   const zf = ZONE_FRIENDLY[session.pace_zone];
   if(!zf) return "";
   const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
   const srcLabel = programProfileSourceLabel(profile);
-  return `<div class="chart-hint" style="margin-top:6px;margin-bottom:0">Ton allure ${zf.name} correspond à ${zf.what}${srcLabel?`, calculée à partir de ${srcLabel}`:""}.</div>`;
+  const pareseLabel = srcLabel ? `, calculée à partir de ${srcLabel}` : "";
+  const effMaxHr = maxHr || estimatedMaxHr();
+  const guidance = programIntensityGuidance(session.pace_zone, effMaxHr, restingHr);
+  const paceLine = `Ton allure ${zf.name} correspond à ${zf.what}${pareseLabel}.`;
+
+  if(guidance.mode==="ressenti_plafond"){
+    return `<div class="chart-hint" style="margin-top:6px;margin-bottom:0">
+      <strong style="color:var(--text)">Ressenti : tu dois pouvoir parler sans être essoufflé.</strong>
+      Reste sous ${guidance.hrCeiling} bpm. L'allure ${zf.name} affichée n'est qu'indicative${pareseLabel}.
+    </div>`;
+  }
+  if(guidance.mode==="ressenti"){
+    return `<div class="chart-hint" style="margin-top:6px;margin-bottom:0"><strong style="color:var(--text)">Ressenti : tu dois pouvoir parler sans être essoufflé.</strong> Renseigne ta FC max (Mon compte) pour voir aussi un plafond de FC à ne pas dépasser.</div>`;
+  }
+  if(guidance.mode==="allure_zone"){
+    return `<div class="chart-hint" style="margin-top:6px;margin-bottom:0">${paceLine} Vise aussi une FC entre ${guidance.hrRangeMin} et ${guidance.hrRangeMax} bpm — l'effort est assez long pour que ta FC ait le temps de suivre.</div>`;
+  }
+  return `<div class="chart-hint" style="margin-top:6px;margin-bottom:0">${paceLine}</div>`;
 }
 function sessionRunType(paceZone){
   if(paceZone==="interval"||paceZone==="repetition") return "Fractionné";

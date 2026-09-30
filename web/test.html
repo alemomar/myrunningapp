@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=27"></script>
+<script src="logic.js?v=28"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -59,6 +59,17 @@ function assertClose(name, actual, expected, tolerance){
   assertEqual("hrZoneDefs : bornes avec FC repos (191/60)", defs.map(d=>d.max), [139, 152, 165, 178, 999]);
   const defsNoRest = hrZoneDefs(191, 0);
   assertEqual("hrZoneDefs : bornes sans FC repos = %FC max brut", defsNoRest.map(d=>d.max), [115, 134, 153, 172, 999]);
+}
+
+// --- programIntensityGuidance ---
+{
+  assertEqual("programIntensityGuidance : Fractionné -> allure seule (même avec FC connue)", programIntensityGuidance("interval", 191, 60), {mode:"allure"});
+  assertEqual("programIntensityGuidance : Répétition -> allure seule", programIntensityGuidance("repetition", 191, 60), {mode:"allure"});
+  assertEqual("programIntensityGuidance : EF avec FC connue -> ressenti + plafond (haut zone 2)", programIntensityGuidance("easy", 191, 60), {mode:"ressenti_plafond", hrCeiling:152});
+  assertEqual("programIntensityGuidance : Marathon avec FC connue -> ressenti + plafond aussi", programIntensityGuidance("marathon", 191, 60), {mode:"ressenti_plafond", hrCeiling:152});
+  assertEqual("programIntensityGuidance : Seuil avec FC connue -> allure + zone 3-4", programIntensityGuidance("threshold", 191, 60), {mode:"allure_zone", hrRangeMin:153, hrRangeMax:178});
+  assertEqual("programIntensityGuidance : EF sans FC connue -> ressenti seul", programIntensityGuidance("easy", null, 60), {mode:"ressenti"});
+  assertEqual("programIntensityGuidance : Seuil sans FC connue -> repli sur allure seule", programIntensityGuidance("threshold", null, 60), {mode:"allure"});
 }
 
 // --- computeHrZoneSeconds ---

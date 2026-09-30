@@ -39,6 +39,24 @@ function hrZoneDefs(maxHr, restingHr){
     {zone:5,label:"Zone 5",color:"#ff375f",max:999},
   ];
 }
+/* ---------- Consigne d'intensité par zone d'allure du Programme (4.3.b) ----------
+   CDC v2, 4.3 : EF/sortie longue -> ressenti ("tu dois pouvoir parler") +
+   plafond de FC (allure seulement indicative). Seuil -> allure cible +
+   zone FC en complément (effort assez long pour que la FC ait le temps
+   de suivre). Fractionné -> allure seule : décision prise avec
+   l'utilisateur, la FC a 1 à 3 minutes de retard sur l'effort réel, donc
+   inutile à viser sur des intervalles courts (pas une exigence du CDC,
+   une raison physiologique reconnue). Réutilise hrZoneDefs plutôt que
+   d'inventer de nouveaux seuils : plafond EF = haut de zone 2 (même
+   limite que "EF qualitatif" dans classifyRunType) ; zone Seuil = zone 3
+   à 4. */
+function programIntensityGuidance(paceZone, maxHr, restingHr){
+  if(paceZone==="interval" || paceZone==="repetition") return { mode:"allure" };
+  if(!maxHr) return { mode: paceZone==="threshold" ? "allure" : "ressenti" };
+  const defs = hrZoneDefs(maxHr, restingHr);
+  if(paceZone==="threshold") return { mode:"allure_zone", hrRangeMin: defs[1].max+1, hrRangeMax: defs[3].max };
+  return { mode:"ressenti_plafond", hrCeiling: defs[1].max };
+}
 function zoneIndexForHr(hr, defs){
   for(let i=0;i<defs.length;i++) if(hr<=defs[i].max) return i;
   return defs.length-1;
