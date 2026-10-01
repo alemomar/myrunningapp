@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=33"></script>
+<script src="logic.js?v=34"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -498,6 +498,21 @@ try {
 
   assertEqual("detectDegradedWellbeing : fatigue/mental élevés -> true", detectDegradedWellbeing(history), true);
   assertEqual("detectDegradedWellbeing : ressenti correct -> false", detectDegradedWellbeing([{fatigue:2,mental:1}]), false);
+}
+
+// --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---
+{
+  assertEqual("EXERCISE_LIBRARY : exactement 20 exercices (base CDC 4.7)", EXERCISE_LIBRARY.length, 20);
+  assertEqual("EXERCISE_LIBRARY : 14 Renfo + 6 Mobilité", [EXERCISE_LIBRARY.filter(e=>e.type==="Renfo").length, EXERCISE_LIBRARY.filter(e=>e.type==="Mobilité").length], [14,6]);
+
+  assertEqual("zoneFamily : retire le suffixe _g/_d", [zoneFamily("genoux_g"), zoneFamily("genoux_d"), zoneFamily("dos")], ["genoux","genoux","dos"]);
+
+  const genouxIds = exercisesForZone("genoux_g").map(e=>e.id);
+  assertEqual("exercisesForZone : genoux_g et genoux_d renvoient la même liste (famille, pas côté)", exercisesForZone("genoux_d").map(e=>e.id), genouxIds);
+  assertEqual("exercisesForZone : genoux inclut bien le pont fessier (id 1)", genouxIds.includes(1), true);
+  assertEqual("exercisesForZone : pied -> exactement les 2 exercices dédiés (14, 20)", exercisesForZone("pied_g").map(e=>e.id).sort((a,b)=>a-b), [14,20]);
+  assertEqual("exercisesForZone : zone sans exercice dédié (abdos) -> liste vide", exercisesForZone("abdos"), []);
+  assertEqual("exercisesForZone : psoas -> l'étirement fléchisseurs de hanche (id 15)", exercisesForZone("psoas_g").map(e=>e.id), [15]);
 }
 
 // --- classifyRunType ---

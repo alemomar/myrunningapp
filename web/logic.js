@@ -861,6 +861,54 @@ function detectDegradedWellbeing(ratingsHistory, threshold=6){
   return (last.fatigue||0)>=threshold || (last.mental||0)>=threshold;
 }
 
+/* ---------- Base d'exercices renfo/mobilité (CDC v2, 4.7 — base pour 4.6.a) ----------
+   Fournie par l'utilisateur (01/10/2026), 20 exercices (14 Renfo + 6
+   Mobilité) — destinée à être relue par un kiné avant la phase 3 (CDC v2,
+   trajectoire, condition de passage phase 2->3). `gif` reste à null tant
+   qu'aucune image/GIF réel n'existe (produit ou licencié) — l'UI doit
+   prévoir cet emplacement sans bloquer sur son absence.
+   `zonesDouleur` : correspondance faite au mieux avec nos 22 zones déjà
+   codées (BODY_ZONES), qui n'utilisent pas exactement les mêmes noms que
+   la colonne "Gêne/douleur associée" fournie — signalé à l'utilisateur :
+   "bas du dos" -> dos ; "Achille"/"périostite" -> tendons/tibias (deux
+   zones déjà existantes, pas une seule) ; "hanche" -> bassin (pas de zone
+   "hanche" dédiée) sauf "fléchisseurs de hanche" -> psoas (zone déjà
+   explicitement nommée) ; "essuie-glace"/bande ilio-tibiale -> cuisse
+   (pas de zone dédiée) ; "fasciite plantaire"/"talon" -> pied.
+   `objectifs` : "Tous" ou liste des libellés exacts d'objectifs (4.2). */
+const EXERCISE_LIBRARY = [
+  { id:1,  name:"Pont fessier bilatéral", type:"Renfo", zoneTravaillee:"Grand fessier", objectifs:"Tous", zonesDouleur:["genoux","dos"], niveau:"Débutant", format:"3x15", gif:null },
+  { id:2,  name:"Pont fessier unilatéral", type:"Renfo", zoneTravaillee:"Grand fessier (unilatéral)", objectifs:["Préparer une course","Améliorer mon allure"], zonesDouleur:["genoux"], niveau:"Intermédiaire", format:"3x10/côté", gif:null },
+  { id:3,  name:"Clamshell (coquillage) élastique", type:"Renfo", zoneTravaillee:"Moyen fessier", objectifs:"Tous", zonesDouleur:["genoux","bassin"], niveau:"Débutant", format:"3x15/côté", gif:null },
+  { id:4,  name:"Marche latérale élastique", type:"Renfo", zoneTravaillee:"Moyen fessier", objectifs:"Tous", zonesDouleur:["genoux","bassin"], niveau:"Débutant", format:"3x10 pas/côté", gif:null },
+  { id:5,  name:"Fente arrière", type:"Renfo", zoneTravaillee:"Quadriceps, fessiers, stabilité", objectifs:"Tous", zonesDouleur:["genoux"], niveau:"Débutant/Intermédiaire", format:"3x10/côté", gif:null },
+  { id:6,  name:"Squat bulgare", type:"Renfo", zoneTravaillee:"Quadriceps, fessiers (unilatéral)", objectifs:["Améliorer mon allure","Préparer une course"], zonesDouleur:["genoux"], niveau:"Intermédiaire", format:"3x8/côté", gif:null },
+  { id:7,  name:"Soulevé de terre jambe tendue unilatéral", type:"Renfo", zoneTravaillee:"Ischios, fessiers, équilibre", objectifs:"Tous", zonesDouleur:["ischios","dos"], niveau:"Intermédiaire", format:"3x8/côté", gif:null },
+  { id:8,  name:"Nordic hamstring curl (ou variante assistée)", type:"Renfo", zoneTravaillee:"Ischio-jambiers (excentrique)", objectifs:["Améliorer mon allure","Préparer une course"], zonesDouleur:["ischios"], niveau:"Avancé", format:"3x5", gif:null },
+  { id:9,  name:"Mollets debout jambe tendue", type:"Renfo", zoneTravaillee:"Gastrocnémien", objectifs:"Tous", zonesDouleur:["mollets","tendons","tibias"], niveau:"Débutant", format:"3x15", gif:null },
+  { id:10, name:"Mollets debout genou fléchi", type:"Renfo", zoneTravaillee:"Soléaire", objectifs:"Tous", zonesDouleur:["tendons","mollets"], niveau:"Débutant", format:"3x15", gif:null },
+  { id:11, name:"Gainage ventral (planche)", type:"Renfo", zoneTravaillee:"Core (transverse)", objectifs:"Tous", zonesDouleur:["dos"], niveau:"Débutant", format:"3x30-45s", gif:null },
+  { id:12, name:"Gainage latéral (planche côté)", type:"Renfo", zoneTravaillee:"Obliques, moyen fessier", objectifs:"Tous", zonesDouleur:["bassin","dos"], niveau:"Débutant/Intermédiaire", format:"3x20-30s/côté", gif:null },
+  { id:13, name:"Dead bug", type:"Renfo", zoneTravaillee:"Core profond (stabilité lombo-pelvienne)", objectifs:"Tous", zonesDouleur:["dos"], niveau:"Débutant", format:"3x10/côté", gif:null },
+  { id:14, name:"Renforcement intrinsèque du pied (toe curls / short foot)", type:"Renfo", zoneTravaillee:"Muscles du pied", objectifs:"Tous", zonesDouleur:["pied"], niveau:"Débutant", format:"3x15 ou 2 min", gif:null },
+  { id:15, name:"Étirement fléchisseurs de hanche (couch stretch)", type:"Mobilité", zoneTravaillee:"Psoas, fléchisseurs hanche", objectifs:"Tous", zonesDouleur:["psoas","dos"], niveau:"Débutant", format:"2x30-45s/côté", gif:null },
+  { id:16, name:"Mobilité cheville (knee-to-wall dorsiflexion)", type:"Mobilité", zoneTravaillee:"Cheville", objectifs:"Tous", zonesDouleur:["tendons","tibias","mollets"], niveau:"Débutant", format:"2x10/côté", gif:null },
+  { id:17, name:"Étirement mollet contre mur", type:"Mobilité", zoneTravaillee:"Mollet (gastrocnémien)", objectifs:"Tous", zonesDouleur:["mollets","tendons","tibias"], niveau:"Débutant", format:"2x30s/côté", gif:null },
+  { id:18, name:"Ouverture de hanche 90/90", type:"Mobilité", zoneTravaillee:"Rotateurs de hanche", objectifs:["Préparer une course","Améliorer mon allure"], zonesDouleur:["bassin","genoux"], niveau:"Intermédiaire", format:"2x30-45s/côté", gif:null },
+  { id:19, name:"Étirement / auto-massage bande ilio-tibiale", type:"Mobilité", zoneTravaillee:"Bande ilio-tibiale, tenseur du fascia lata", objectifs:"Tous", zonesDouleur:["genoux","cuisse"], niveau:"Débutant", format:"1-2 min/côté", gif:null },
+  { id:20, name:"Auto-massage plantaire (balle)", type:"Mobilité", zoneTravaillee:"Fascia plantaire", objectifs:"Tous", zonesDouleur:["pied"], niveau:"Débutant", format:"2 min/pied", gif:null },
+];
+// Une zone de BODY_ZONES porte un suffixe _g/_d (genoux_g, genoux_d...) —
+// un exercice n'est jamais spécifique à un côté, donc on compare par
+// "famille" de zone (suffixe retiré) plutôt que par clé exacte.
+function zoneFamily(zoneKey){
+  return (zoneKey||"").replace(/_(g|d)$/, "");
+}
+function exercisesForZone(zoneKey){
+  const family = zoneFamily(zoneKey);
+  return EXERCISE_LIBRARY.filter(ex => ex.zonesDouleur.includes(family));
+}
+
 /* ---------- Cohérence date/distance/niveau d'un objectif course (4.2.d) ----------
    Durées MINIMALES recommandées par distance : directement reprises des
    plans Hal Higdon (coach américain, référence largement utilisée et
