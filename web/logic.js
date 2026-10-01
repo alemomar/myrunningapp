@@ -767,6 +767,41 @@ function findRescheduleDay(sessionToReschedule, weekSessions, availableDayIndexe
   return null;
 }
 
+/* ---------- Détection d'amélioration de l'efficience EF (4.3.e, recalibrage) ----------
+   CDC v2, 4.3 : réévaluer le niveau/les allures périodiquement (15 jours,
+   choisi avec l'utilisateur — plus fréquent que les 4-6 semaines du CDC,
+   pour rester réactif) plutôt que seulement à la prochaine séance qualité.
+   Réutilise la même métrique que le graphique "Efficience cardiaque" du
+   Dashboard (allure ÷ FC moyenne, voir mkPaceFcChart, index.html) — plus
+   bas = meilleur.
+   Deux garde-fous ajoutés avec l'utilisateur en discutant de cette ligne :
+   1. Ne compare que des séances EF "qualitatives" (classifyRunType, zones
+      1-2 majoritaires) — à filtrer par l'appelant avant d'appeler cette
+      fonction — jamais une séance qui a dérivé vers la zone 3 (sinon une
+      allure plus rapide obtenue en poussant plus fort serait prise à
+      tort pour un vrai progrès aérobie).
+   2. Exige que l'allure se soit RÉELLEMENT améliorée (pas seulement le
+      ratio) : le ratio peut aussi baisser si la FC monte pour la même
+      allure (fatigue, chaleur, surentraînement) — un faux positif qu'on
+      ne veut jamais célébrer comme un progrès.
+   Seuil 5% sur le ratio (notre propre choix, pas une étude — discuté et
+   validé avec l'utilisateur, d'abord proposé à 10% puis resserré) : à
+   7'00/km et FC 150, 5% de mieux sur le ratio correspond à ~6'39/km à FC
+   égale — une progression perceptible sans être trop sensible au bruit.
+   `recentRuns`/`baselineRuns` : [{allure, fc}], déjà filtrés EF
+   qualitatif par l'appelant, au moins 2 séances dans chaque fenêtre pour
+   être pris en compte (sinon pas assez de données -> false). */
+function detectEfficiencyImprovement(recentRuns, baselineRuns, thresholdPct=0.05){
+  if(!recentRuns || recentRuns.length<2 || !baselineRuns || baselineRuns.length<2) return false;
+  const ratio = r => r.allure / r.fc;
+  const avg = (arr, fn) => arr.reduce((a,r)=>a+fn(r),0)/arr.length;
+  const recentRatio = avg(recentRuns, ratio);
+  const baselineRatio = avg(baselineRuns, ratio);
+  const ratioImproved = recentRatio <= baselineRatio * (1 - thresholdPct);
+  const paceImproved = avg(recentRuns, r=>r.allure) < avg(baselineRuns, r=>r.allure);
+  return ratioImproved && paceImproved;
+}
+
 /* ---------- Douleur/gêne répétée ----------
    Règle donnée par l'utilisateur (pas une source externe) : une même zone
    signalée ≥ seuil sur les 2 dernières séances NOTÉES d'affilée déclenche un

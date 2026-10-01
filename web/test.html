@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=30"></script>
+<script src="logic.js?v=31"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -435,6 +435,30 @@ try {
 
   // Aucun jour disponible du tout -> abandon, même prioritaire.
   assertEqual("findRescheduleDay : aucun jour disponible -> abandon même prioritaire", findRescheduleDay({pace_zone:"easy"}, [], [], true), null);
+}
+
+// --- detectEfficiencyImprovement (4.3.e, recalibrage) ---
+{
+  // Vraie progression : 7'00/km (420s) à FC150 -> 6'30/km (390s) à FC150.
+  // Ratio 2.8 -> 2.6 (environ -7,1%, au-delà du seuil de 5%), allure
+  // réellement plus rapide -> détecté.
+  const baseline1 = [{allure:420, fc:150}, {allure:420, fc:150}];
+  const recent1 = [{allure:390, fc:150}, {allure:390, fc:150}];
+  assertEqual("detectEfficiencyImprovement : vraie progression (allure + ratio) -> true", detectEfficiencyImprovement(recent1, baseline1), true);
+
+  // Faux positif à écarter : même allure (420), mais FC monte à 160 ->
+  // ratio baisse (2.8 -> 2.625, -6,25%) mais l'allure n'a PAS progressé ->
+  // ne doit jamais être détecté comme un progrès (fatigue/chaleur possible).
+  const recent2 = [{allure:420, fc:160}, {allure:420, fc:160}];
+  assertEqual("detectEfficiencyImprovement : FC qui monte pour la même allure -> false (pas un vrai progrès)", detectEfficiencyImprovement(recent2, baseline1), false);
+
+  // Amélioration réelle mais sous le seuil de 5% -> pas détecté.
+  const recent3 = [{allure:410, fc:150}, {allure:410, fc:150}]; // ratio 2.733, ~2.4% mieux seulement
+  assertEqual("detectEfficiencyImprovement : amélioration sous le seuil de 5% -> false", detectEfficiencyImprovement(recent3, baseline1), false);
+
+  // Pas assez de données (1 séance) dans une des deux fenêtres -> false.
+  assertEqual("detectEfficiencyImprovement : pas assez de séances récentes -> false", detectEfficiencyImprovement([{allure:390,fc:150}], baseline1), false);
+  assertEqual("detectEfficiencyImprovement : pas assez de séances de référence -> false", detectEfficiencyImprovement(recent1, [{allure:420,fc:150}]), false);
 }
 
 // --- detectRepeatedPain / detectDegradedWellbeing ---
