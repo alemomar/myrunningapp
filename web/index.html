@@ -2483,7 +2483,7 @@ function computeProgramInputs(){
   if(painZone) avoidQualityReason = `une douleur répétée au niveau de ${(BODY_ZONES.find(z=>z[0]===painZone)?.[1]||painZone).toLowerCase()}`;
   else if(structure.reason==="acwr_high") avoidQualityReason = "une charge d'entraînement qui a beaucoup augmenté récemment";
   else if(degraded) avoidQualityReason = "une fatigue ou un état d'esprit plus bas que d'habitude, d'après ta dernière notation";
-  return { structure, avoidQualityReason, acwr };
+  return { structure, avoidQualityReason, acwr, painZone };
 }
 
 // Génère et persiste une semaine (lundi `mondayDate`) — n'écrase jamais une
@@ -2956,7 +2956,9 @@ window.regenerateSession = async (id, reason, auto) => {
     user_id:user.id, planned_date:old.planned_date, week_start_date:old.week_start_date,
     type: sessionRunType(newZone), pace_zone:newZone,
     title: softer ? "Sortie easy (ajustée)" : old.title,
-    target_distance_km: softer ? Math.round(old.target_distance_km*0.7*10)/10 : Math.round(old.target_distance_km*0.8*10)/10,
+    // 15% de réduction (palier "Petit", CDC v2 4.6.a : 10-20%) — pas 30%
+    // comme avant, jugé trop sévère pour un simple ajustement automatique.
+    target_distance_km: softer ? Math.round(old.target_distance_km*0.85*10)/10 : Math.round(old.target_distance_km*0.8*10)/10,
     target_pace_sec_per_km: zones[newZone],
     rationale,
     status:"planned", source:"manual_edit", generation_reason:"user_constraint",
@@ -2967,6 +2969,38 @@ window.regenerateSession = async (id, reason, auto) => {
   await loadData(); renderContent();
 };
 window.replaceWithEasy = (id) => window.regenerateSession(id, "Remplacer par une séance easy");
+
+// Palier "Petit" (CDC v2, 4.6.a) : en plus d'assouplir la séance qualité
+// touchée, ajoute une séance de Mobilité ciblée sur la zone douloureuse,
+// avec la liste des exercices recommandés (EXERCISE_LIBRARY, logic.js)
+// affichée dans sa description. Cherche un jour libre de la semaine avec
+// findRescheduleDay (4.3.d) — une Mobilité n'est jamais "intense", donc
+// seule la règle "jamais 2 séances le même jour" s'applique ici. Si aucun
+// jour ne convient, n'ajoute rien plutôt que de forcer un doublon sur un
+// jour déjà pris.
+window.addTargetedMobilitySession = async (weekStartDate, zoneKey) => {
+  const exercises = exercisesForZone(zoneKey);
+  if(!exercises.length) return;
+  const monday = new Date(weekStartDate+"T00:00:00");
+  const weekSessions = plannedSessions
+    .filter(p=>p.week_start_date===weekStartDate && (p.status==="planned"||p.status==="done"))
+    .map(p=>({ dayIndex: Math.round((new Date(p.planned_date+"T00:00:00")-monday)/86400000), pace_zone: p.pace_zone }));
+  const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
+  const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d));
+  const day = findRescheduleDay({pace_zone:null}, weekSessions, availableDayIndexes, false);
+  if(day==null) return;
+  const zoneLabel = (ZONE_SHORT_LABEL[zoneKey]||zoneKey).toLowerCase();
+  const description = exercises.map(ex=>`${ex.name} — ${ex.format}`).join("\n");
+  const { data:{user} } = await supa.auth.getUser();
+  await supa.from("planned_sessions").insert({
+    user_id:user.id, planned_date: localDateStr(addDays(monday, day)), week_start_date: weekStartDate,
+    type:"Mobilité", pace_zone:null,
+    title:`Mobilité ciblée — ${zoneLabel}`,
+    description,
+    rationale:`Ajoutée automatiquement car une douleur est revenue au niveau de ${zoneLabel} — ces exercices aident à soulager cette zone. Tu peux la modifier ou l'ignorer si elle ne te convient pas.`,
+    status:"planned", source:"generated", generation_reason:"pain_repeat_or_wellbeing",
+  });
+};
 
 // Boucle d'ajustement légère (voir plan) : pas de cron possible dans une
 // SPA statique — tout se réévalue à l'ouverture de l'onglet. Génère
@@ -3006,9 +3040,13 @@ async function applyProgramAdjustments(){
   // ACWR/douleur, qui suppose une allure de course (regenerateSession).
   const next = plannedSessions.filter(p=>p.status==="planned" && p.pace_zone && p.planned_date>=todayStr).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0];
   if(!next || next.pace_zone==="easy") return; // rien à assouplir sur une séance déjà easy
-  const { avoidQualityReason } = computeProgramInputs();
+  const { avoidQualityReason, painZone } = computeProgramInputs();
   if(avoidQualityReason && next.generation_reason!=="user_constraint" && next.generation_reason!=="pain_repeat_or_wellbeing" && next.generation_reason!=="acwr_high"){
     await window.regenerateSession(next.id, avoidQualityReason, true);
+    // Palier "Petit" (4.6.a) : une douleur répétée (contrairement à la
+    // fatigue ou l'ACWR haut, qui n'ont pas de zone précise) ajoute aussi
+    // une séance de mobilité ciblée sur la zone concernée.
+    if(painZone) await window.addTargetedMobilitySession(next.week_start_date, painZone);
   }
 }
 
