@@ -861,6 +861,26 @@ function detectDegradedWellbeing(ratingsHistory, threshold=6){
   return (last.fatigue||0)>=threshold || (last.mental||0)>=threshold;
 }
 
+/* ---------- Palier d'adaptation selon la douleur répétée (4.6.b) ----------
+   CDC v2, 4.6 : "Petit" = ajustement automatique (déjà géré ailleurs,
+   4.6.a) ; "Gros" = proposé, à valider par l'utilisateur. Seuils discutés
+   avec l'utilisateur (pas une étude, une échelle cohérente avec le reste
+   de l'app) : intensité 4-5 sur les 2 dernières séances notées -> Petit ;
+   intensité >=6 -> Gros. Réutilise detectRepeatedPain (seuil variable,
+   déjà testé) en vérifiant d'abord le seuil le plus sévère, pour que les
+   deux paliers restent mutuellement exclusifs (une intensité de 6 ne
+   doit jamais aussi matcher comme "Petit").
+   Le palier "Hors ajustement" (douleur >=7 OU 3 séances de suite) est
+   géré séparément (4.6.c) — volontairement pas ici, pour ne pas
+   pré-construire cette ligne avant de l'avoir traitée. */
+function painAdaptationTier(ratingsHistory, zoneKeys){
+  const gros = detectRepeatedPain(ratingsHistory, zoneKeys, 6);
+  if(gros) return { zone:gros, tier:"gros" };
+  const petit = detectRepeatedPain(ratingsHistory, zoneKeys, 4);
+  if(petit) return { zone:petit, tier:"petit" };
+  return null;
+}
+
 /* ---------- Base d'exercices renfo/mobilité (CDC v2, 4.7 — base pour 4.6.a) ----------
    Fournie par l'utilisateur (01/10/2026), 20 exercices (14 Renfo + 6
    Mobilité) — destinée à être relue par un kiné avant la phase 3 (CDC v2,

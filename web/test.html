@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=34"></script>
+<script src="logic.js?v=35"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -498,6 +498,19 @@ try {
 
   assertEqual("detectDegradedWellbeing : fatigue/mental élevés -> true", detectDegradedWellbeing(history), true);
   assertEqual("detectDegradedWellbeing : ressenti correct -> false", detectDegradedWellbeing([{fatigue:2,mental:1}]), false);
+}
+
+// --- painAdaptationTier (4.6.b) ---
+{
+  const zoneKeys = ["genoux_g","genoux_d","dos"];
+  const petitHist = [{genoux_g:4}, {genoux_g:5}];
+  assertEqual("painAdaptationTier : intensité 4-5 répétée -> Petit", painAdaptationTier(petitHist, zoneKeys), {zone:"genoux_g", tier:"petit"});
+  const grosHist = [{genoux_g:6}, {genoux_g:6}];
+  assertEqual("painAdaptationTier : intensité 6 répétée -> Gros", painAdaptationTier(grosHist, zoneKeys), {zone:"genoux_g", tier:"gros"});
+  const grosHautHist = [{genoux_g:8}, {genoux_g:9}];
+  assertEqual("painAdaptationTier : intensité 8-9 répétée -> Gros (pas re-classé Petit)", painAdaptationTier(grosHautHist, zoneKeys), {zone:"genoux_g", tier:"gros"});
+  assertEqual("painAdaptationTier : pas de répétition -> null", painAdaptationTier([{genoux_g:6},{genoux_g:0}], zoneKeys), null);
+  assertEqual("painAdaptationTier : historique trop court -> null", painAdaptationTier([{genoux_g:8}], zoneKeys), null);
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---

@@ -423,7 +423,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=34"></script>
+<script src="logic.js?v=35"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2474,16 +2474,31 @@ function computeProgramInputs(){
   structure = applyAcwrAdjustment(structure, acwr);
   const recentRatings = runningRuns.filter(r=>r.painRatings).slice(-2).map(r=>r.painRatings);
   const zoneKeys = BODY_ZONES.map(z=>z[0]);
-  const painZone = detectRepeatedPain(recentRatings, zoneKeys);
+  // painAdaptationTier (4.6.b) remplace l'ancien detectRepeatedPain à seuil
+  // fixe (4) : distingue "Petit" (intensité 4-5, ajustement automatique)
+  // de "Gros" (intensité >=6, proposé à valider) — les deux paliers
+  // restent mutuellement exclusifs (logic.js).
+  const painTier = painAdaptationTier(recentRatings, zoneKeys);
   const degraded = detectDegradedWellbeing(recentRatings);
+  const chargeGauge = chargeEntrainementGauge(acwr);
   // Phrases pensées pour commencer naturellement après "à cause d'" (voir
   // le rationale "easy" dans logic.js) : pas de jargon (ACWR) exposé tel
   // quel à l'utilisateur.
   let avoidQualityReason = null;
-  if(painZone) avoidQualityReason = `une douleur répétée au niveau de ${(BODY_ZONES.find(z=>z[0]===painZone)?.[1]||painZone).toLowerCase()}`;
-  else if(structure.reason==="acwr_high") avoidQualityReason = "une charge d'entraînement qui a beaucoup augmenté récemment";
+  let painZone = null;
+  if(painTier?.tier==="petit"){
+    painZone = painTier.zone;
+    avoidQualityReason = `une douleur répétée au niveau de ${(BODY_ZONES.find(z=>z[0]===painZone)?.[1]||painZone).toLowerCase()}`;
+  }
+  else if(structure.reason==="acwr_high" && !chargeGauge.severe) avoidQualityReason = "une charge d'entraînement qui a beaucoup augmenté récemment";
   else if(degraded) avoidQualityReason = "une fatigue ou un état d'esprit plus bas que d'habitude, d'après ta dernière notation";
-  return { structure, avoidQualityReason, acwr, painZone };
+  // Palier "Gros" (4.6.b) : douleur d'intensité >=6 répétée, OU charge
+  // d'entraînement sévère (>1.5, même seuil que la jauge de 4.4) — proposé
+  // à l'utilisateur, jamais appliqué automatiquement.
+  let grosIssue = null;
+  if(painTier?.tier==="gros") grosIssue = { type:"pain", zone:painTier.zone };
+  else if(chargeGauge.severe) grosIssue = { type:"charge" };
+  return { structure, avoidQualityReason, acwr, painZone, grosIssue };
 }
 
 // Génère et persiste une semaine (lundi `mondayDate`) — n'écrase jamais une
@@ -2804,6 +2819,107 @@ window.dismissMissedSession = (id) => {
   } catch {}
   renderContent();
 };
+
+// Bannière palier "Gros" (4.6.b, CDC v2) : douleur d'intensité >=6 répétée,
+// ou charge d'entraînement sévère (>1.5) — jamais appliqué automatiquement
+// contrairement au palier "Petit" (4.6.a), toujours proposé à valider.
+// Signature de dismiss construite sur le type+zone pour redevenir active
+// d'elle-même si le problème revient après avoir été ignoré une fois.
+function dismissedGrosIds(){
+  try { return JSON.parse(localStorage.getItem("dismissedGrosAdaptation")||"[]"); } catch { return []; }
+}
+window.dismissGrosAdaptation = (sig) => {
+  try {
+    const ids = dismissedGrosIds();
+    ids.push(sig);
+    localStorage.setItem("dismissedGrosAdaptation", JSON.stringify(ids));
+  } catch {}
+  renderContent();
+};
+function grosAdaptationBanner(){
+  const { grosIssue } = computeProgramInputs();
+  if(!grosIssue) return "";
+  const sig = grosIssue.type==="pain" ? `pain_${grosIssue.zone}` : "charge";
+  if(dismissedGrosIds().includes(sig)) return "";
+  const todayStr = localDateStr(new Date());
+  const next = plannedSessions.filter(p=>p.status==="planned" && p.pace_zone && p.planned_date>=todayStr).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0];
+  const zoneLabel = grosIssue.type==="pain" ? (ZONE_SHORT_LABEL[grosIssue.zone]||grosIssue.zone).toLowerCase() : null;
+  const situation = grosIssue.type==="pain"
+    ? `Une douleur assez marquée revient au niveau de ${zoneLabel}.`
+    : `Ta charge d'entraînement a augmenté très vite ces derniers jours.`;
+  return `<div class="card" style="border-color:rgba(232,163,23,0.5);background:rgba(232,163,23,0.08)">
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px">${situation}</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ce n'est pas anodin — choisis ce qui te convient le mieux :</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${next?`<button class="btn-secondary" onclick="deleteSessionFromGrosBanner('${next.id}','${sig}')">Supprimer cette séance</button>
+      <button class="btn-secondary" onclick="replaceSessionWithRenfo('${next.id}','${sig}')">Remplacer par du renfo</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="number" id="grosShiftDays_${sig}" min="1" max="14" value="3" style="width:50px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:6px;text-align:center">
+        <button class="btn-secondary" style="flex:1" onclick="shiftWeekFromBanner('${next.week_start_date}','${sig}')">jours de décalage pour toute la semaine</button>
+      </div>`:""}
+      <button class="btn-secondary" onclick="goToObjectifs()">Revoir mon objectif</button>
+      <button class="btn-secondary" onclick="dismissGrosAdaptation('${sig}')">Ignorer pour l'instant</button>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text-dim)">Si cette gêne persiste, pense à consulter un médecin ou un kiné pour préciser tes gênes et ajuster les exercices.</div>
+  </div>`;
+}
+window.deleteSessionFromGrosBanner = async (id, sig) => {
+  await window.deleteSession(id);
+  window.dismissGrosAdaptation(sig);
+};
+// "Remplacer par du renfo" : contrairement à la mobilité ciblée du palier
+// "Petit" (ajoutée EN PLUS, 4.6.a), ici on REMPLACE la séance de course
+// elle-même (pattern "supersede", comme regenerateSession) — le palier
+// "Gros" juge que continuer à courir n'est pas une bonne idée du tout.
+window.replaceSessionWithRenfo = async (id, sig) => {
+  const old = plannedSessions.find(p=>p.id===id);
+  if(!old) return;
+  const { data:{user} } = await supa.auth.getUser();
+  const { data: inserted, error: insErr } = await supa.from("planned_sessions").insert({
+    user_id:user.id, planned_date:old.planned_date, week_start_date:old.week_start_date,
+    type:"Renfo", pace_zone:null,
+    title:"Renfo (à la place de la course)",
+    rationale:"Cette séance de course a été remplacée par du renfo, le temps de laisser la gêne se calmer. Tu peux la modifier si elle ne te convient pas.",
+    status:"planned", source:"manual_edit", generation_reason:"pain_repeat_or_wellbeing",
+    replaces_session_id: old.id,
+  }).select().single();
+  if(insErr){ alert("Erreur : "+insErr.message); return; }
+  await supa.from("planned_sessions").update({status:"replaced", superseded_by_id:inserted.id, updated_at:new Date().toISOString()}).eq("id", old.id);
+  if(sig) window.dismissGrosAdaptation(sig);
+  else { await loadData(); renderContent(); }
+};
+// Décale toutes les séances restantes de la semaine (celles à venir,
+// statut "planned") de N jours — jamais celles déjà passées/faites.
+// Refuse silencieusement (laisse la séance en place) si le nouveau jour
+// est déjà occupé, plutôt que d'écraser une autre séance : averti à la
+// fin si certaines n'ont pas pu être décalées.
+window.shiftWeekByDays = async (weekStartDate, days) => {
+  const todayStr = localDateStr(new Date());
+  const toShift = plannedSessions.filter(p=>p.week_start_date===weekStartDate && p.status==="planned" && p.planned_date>=todayStr);
+  let skipped = 0;
+  for(const p of toShift){
+    const newDate = localDateStr(addDays(new Date(p.planned_date+"T00:00:00"), days));
+    const occupied = plannedSessions.some(o=>o.id!==p.id && o.planned_date===newDate && (o.status==="planned"||o.status==="done"));
+    if(occupied){ skipped++; continue; }
+    const newMonday = localDateStr(mondayOf(new Date(newDate+"T00:00:00")));
+    await supa.from("planned_sessions").update({planned_date:newDate, week_start_date:newMonday, updated_at:new Date().toISOString()}).eq("id", p.id);
+  }
+  await loadData(); renderContent();
+  if(skipped) alert(`${skipped} séance(s) n'ont pas pu être décalées (jour déjà occupé) — à ajuster toi-même.`);
+};
+window.shiftWeekFromBanner = async (weekStartDate, sig) => {
+  const days = parseInt(document.getElementById(`grosShiftDays_${sig}`)?.value, 10) || 3;
+  await window.shiftWeekByDays(weekStartDate, days);
+  window.dismissGrosAdaptation(sig);
+};
+window.goToObjectifs = () => {
+  activeTab = "objectifs";
+  persistActiveTab();
+  renderTabs();
+  renderContent();
+  window.scrollTo({top:0,behavior:"smooth"});
+};
+
 window.setProgramView = (mode) => {
   programViewMode = mode;
   programWeekOffset = 0; // repart de la semaine/mois courant en changeant de vue
@@ -3905,6 +4021,7 @@ function renderContentInner(){
         <div class="chart-hint" style="margin-top:0">Calendrier de séances généré à partir de tes objectifs, ton profil coureur et ton ressenti récent — reste modifiable séance par séance.</div>
       </div>
       ${missedSessionsBanner()}
+      ${grosAdaptationBanner()}
       ${programSettingsFormHTML(profile)}
       ${ready?`
       <div class="card">
