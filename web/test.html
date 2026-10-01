@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=32"></script>
+<script src="logic.js?v=33"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -353,6 +353,17 @@ try {
   assertEqual("resolveRunnerProfile : repli programSettings si rien côté Objectifs", fallbackProfile.source, "program_fallback");
 
   assertEqual("resolveRunnerProfile : null si aucune source disponible", resolveRunnerProfile({}, null, RACE_DISTANCES_KM), null);
+}
+
+// --- shouldShowDetailedRatingForm (4.5.b) ---
+{
+  assertEqual("shouldShowDetailedRatingForm : bonne note, pas de gêne -> court", shouldShowDetailedRatingForm(5, false), false);
+  assertEqual("shouldShowDetailedRatingForm : note moyenne (3), pas de gêne -> court", shouldShowDetailedRatingForm(3, false), false);
+  assertEqual("shouldShowDetailedRatingForm : note basse (2) -> détaillé", shouldShowDetailedRatingForm(2, false), true);
+  assertEqual("shouldShowDetailedRatingForm : note basse (1) -> détaillé", shouldShowDetailedRatingForm(1, false), true);
+  assertEqual("shouldShowDetailedRatingForm : bonne note mais gêne signalée -> détaillé", shouldShowDetailedRatingForm(5, true), true);
+  assertEqual("shouldShowDetailedRatingForm : pas encore de note, pas de gêne -> court", shouldShowDetailedRatingForm(null, false), false);
+  assertEqual("shouldShowDetailedRatingForm : pas de note mais gêne -> détaillé", shouldShowDetailedRatingForm(null, true), true);
 }
 
 // --- Session-RPE (Foster 2001) ---

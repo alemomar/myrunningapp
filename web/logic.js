@@ -667,6 +667,20 @@ function couchTo5kSessionDurationSec(session){
   return session.segments.reduce((a,b)=>a+b.sec,0);
 }
 
+/* ---------- Format court/détaillé de la notation post-séance (4.5.b) ----------
+   CDC v2, 4.5 : par défaut, formulaire court (note globale 1-5 + "une
+   gêne/douleur ?") ; le détaillé (respiration/mental/fatigue + carte du
+   corps) ne s'affiche que si la note est basse OU qu'une gêne est
+   signalée. Le RPE reste toujours demandé même dans le format court
+   (décision prise avec l'utilisateur, en plus de ce que liste le CDC) :
+   sans lui, le calcul de charge d'entraînement (4.4, sRPE Foster 2001)
+   perdrait sa donnée pour la majorité des séances.
+   Seuil "note basse" = 1 ou 2 sur 5 (notre choix, validé avec
+   l'utilisateur, en dessous de la moyenne). */
+function shouldShowDetailedRatingForm(note, hasGene){
+  return (note!=null && note<=2) || !!hasGene;
+}
+
 /* ---------- Session-RPE ----------
    Source : Foster et al. (2001), "A new approach to monitoring exercise
    training", Journal of Strength and Conditioning Research 15(1). */

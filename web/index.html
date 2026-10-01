@@ -423,7 +423,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=32"></script>
+<script src="logic.js?v=33"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1293,6 +1293,10 @@ window.deleteRun = async (id, label) => {
 function readPainForm(prefix){
   const ratings={};
   [...SESSION_RPE, ...WELLBEING_EXTRA, ...BODY_ZONES].forEach(([key])=>{ ratings[key]=parseInt(document.getElementById(`${prefix}_${key}`).value,10); });
+  const noteVal = document.getElementById(`${prefix}_note`).value;
+  ratings.note = noteVal ? parseInt(noteVal,10) : null;
+  const geneVal = document.getElementById(`${prefix}_gene`).value;
+  ratings.gene = geneVal==="1" ? true : geneVal==="0" ? false : null;
   return ratings;
 }
 // Valeurs de la dernière séance notée (plus de check-in général indépendant
@@ -2183,14 +2187,60 @@ window.bodyZoneSlide = (prefix, key, val) => {
     zone.querySelectorAll(".zone-fill").forEach(e=>e.setAttribute("fill", fill));
   }
 };
+// Format court par défaut (4.5.b, CDC v2) : note globale 1-5 + "une
+// gêne/douleur ?" (+ RPE, toujours demandé — voir
+// shouldShowDetailedRatingForm, logic.js). Le détaillé (fatigue/mental/
+// respiration + carte du corps) ne s'affiche que si la note est basse ou
+// qu'une gêne est signalée — jamais les deux formats affichés d'un bloc
+// comme avant. `updateRatingFormVisibility` bascule juste l'affichage du
+// bloc détaillé sans tout re-render, pour ne pas perdre une saisie en
+// cours sur un curseur.
 function painFormHTML(prefix, initial){
   initial = initial || {};
+  const note = initial.note ?? null;
+  const gene = initial.gene===true ? true : initial.gene===false ? false : null;
+  const showDetailed = shouldShowDetailedRatingForm(note, gene);
   return `
     ${SESSION_RPE.map(([key,label,lo,hi])=>painSliderRow(prefix,key,label,initial,lo,hi)).join("")}
-    ${WELLBEING_EXTRA.map(([key,label,lo,hi])=>painSliderRow(prefix,key,label,initial,lo,hi)).join("")}
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);margin:14px 0 4px">Douleurs par zone</div>
-    ${bodyMapHTML(prefix, initial)}
+    <div class="pain-row">
+      <div class="pain-row-top"><span class="lbl">Note globale de la séance</span></div>
+      <div class="filters" style="margin-bottom:0" data-chipgroup="${prefix}_note">
+        ${[1,2,3,4,5].map(n=>`<button type="button" class="flt${note===n?" active":""}" data-value="${n}" onclick="setRatingNote('${prefix}',${n})">${n}</button>`).join("")}
+      </div>
+    </div>
+    <div class="pain-row">
+      <div class="pain-row-top"><span class="lbl">Une gêne ou une douleur ?</span></div>
+      <div class="filters" style="margin-bottom:0" data-chipgroup="${prefix}_gene">
+        <button type="button" class="flt${gene===true?" active":""}" data-value="1" onclick="setRatingGene('${prefix}',true)">Oui</button>
+        <button type="button" class="flt${gene===false?" active":""}" data-value="0" onclick="setRatingGene('${prefix}',false)">Non</button>
+      </div>
+    </div>
+    <input type="hidden" id="${prefix}_note" value="${note??""}">
+    <input type="hidden" id="${prefix}_gene" value="${gene===true?"1":gene===false?"0":""}">
+    <div id="${prefix}_detailed" style="display:${showDetailed?"block":"none"}">
+      ${WELLBEING_EXTRA.map(([key,label,lo,hi])=>painSliderRow(prefix,key,label,initial,lo,hi)).join("")}
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);margin:14px 0 4px">Douleurs par zone</div>
+      ${bodyMapHTML(prefix, initial)}
+    </div>
   `;
+}
+window.setRatingNote = (prefix, n) => {
+  document.getElementById(`${prefix}_note`).value = n;
+  document.querySelectorAll(`[data-chipgroup="${prefix}_note"] .flt`).forEach(b=>b.classList.toggle("active", Number(b.dataset.value)===n));
+  updateRatingFormVisibility(prefix);
+};
+window.setRatingGene = (prefix, val) => {
+  document.getElementById(`${prefix}_gene`).value = val ? "1" : "0";
+  document.querySelectorAll(`[data-chipgroup="${prefix}_gene"] .flt`).forEach(b=>b.classList.toggle("active", b.dataset.value===(val?"1":"0")));
+  updateRatingFormVisibility(prefix);
+};
+function updateRatingFormVisibility(prefix){
+  const noteVal = document.getElementById(`${prefix}_note`).value;
+  const note = noteVal ? parseInt(noteVal,10) : null;
+  const geneVal = document.getElementById(`${prefix}_gene`).value;
+  const gene = geneVal==="1" ? true : geneVal==="0" ? false : null;
+  const el = document.getElementById(`${prefix}_detailed`);
+  if(el) el.style.display = shouldShowDetailedRatingForm(note, gene) ? "block" : "none";
 }
 
 let openHrDetail = new Set();
