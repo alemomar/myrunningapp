@@ -423,7 +423,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=29"></script>
+<script src="logic.js?v=30"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2686,10 +2686,10 @@ async function reconcilePlannedSessions(){
 }
 // Bannière "séance manquée" (4.3.c) : pas de vraie notification push (voir
 // staleSyncBanner ci-dessus, même limite) — ce bandeau à l'ouverture de
-// Programme en fait office. "Réorganiser automatiquement" nécessite les
-// garde-fous de 4.3.d (pas encore construits : jamais 2 séances le même
-// jour, jamais 2 intenses d'affilée...) pour recaser intelligemment la
-// séance sur un autre jour de la semaine — volontairement pas encore actif.
+// Programme en fait office. "Réorganiser automatiquement" applique les
+// garde-fous de 4.3.d (findRescheduleDay, logic.js) pour recaser la
+// séance sur un autre jour sûr de la même semaine, ou l'abandonne si
+// aucun jour ne respecte les règles.
 function missedSessionsBanner(){
   const missed = plannedSessions.filter(p=>p.status==="missed" && !dismissedMissedIds().includes(p.id));
   if(!missed.length) return "";
@@ -2698,11 +2698,36 @@ function missedSessionsBanner(){
     <div style="font-size:13px;font-weight:600;margin-bottom:4px">Séance manquée — ${p.title} du ${new Date(p.planned_date).toLocaleDateString('fr-FR')}</div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Tu ne l'as pas faite. Tu veux qu'on réorganise ta semaine, ou tu préfères garder ton plan tel quel ?</div>
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="btn-secondary" disabled title="Bientôt disponible" style="opacity:0.5;cursor:not-allowed">Réorganiser automatiquement</button>
+      <button class="btn-secondary" onclick="rescheduleMissedSession('${p.id}')">Réorganiser automatiquement</button>
       <button class="btn-secondary" onclick="dismissMissedSession('${p.id}')">Garder mon plan tel quel</button>
     </div>
   </div>`;
 }
+// Recase une séance manquée sur un autre jour sûr de la même semaine
+// (4.3.d) — jamais le même jour qu'une autre séance, jamais collée à une
+// autre séance intense (sauf en dernier recours si elle-même est une
+// séance de qualité, cf findRescheduleDay). Si aucun jour ne convient,
+// la séance reste "missed" (abandon, comme prévu par le CDC).
+window.rescheduleMissedSession = async (id) => {
+  const old = plannedSessions.find(p=>p.id===id);
+  if(!old) return;
+  const monday = new Date(old.week_start_date+"T00:00:00");
+  const weekSessions = plannedSessions
+    .filter(p=>p.id!==old.id && p.week_start_date===old.week_start_date && (p.status==="planned"||p.status==="done"))
+    .map(p=>({ dayIndex: Math.round((new Date(p.planned_date+"T00:00:00")-monday)/86400000), pace_zone: p.pace_zone }));
+  const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
+  const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d));
+  const isPriority = isIntensePaceZone(old.pace_zone);
+  const day = findRescheduleDay({pace_zone:old.pace_zone}, weekSessions, availableDayIndexes, isPriority);
+  if(day==null){
+    alert("Impossible de recaser cette séance sans enfreindre les garde-fous (jamais 2 séances le même jour, jamais 2 intenses d'affilée) — elle reste abandonnée cette semaine.");
+    return;
+  }
+  const newDateStr = localDateStr(addDays(monday, day));
+  const { error } = await supa.from("planned_sessions").update({planned_date:newDateStr, status:"planned", updated_at:new Date().toISOString()}).eq("id", id);
+  if(error){ alert("Erreur : "+error.message); return; }
+  await loadData(); renderContent();
+};
 function dismissedMissedIds(){
   try { return JSON.parse(localStorage.getItem("dismissedMissedSessions")||"[]"); } catch { return []; }
 }

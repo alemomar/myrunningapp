@@ -728,6 +728,45 @@ function detectMissedSessions(plannedSessions, today){
   );
 }
 
+/* ---------- Garde-fous de réorganisation (4.3.d) ----------
+   CDC v2, 4.3 : jamais 2 séances le même jour, jamais 2 séances intenses
+   d'affilée, pas de hausse du volume hebdo pendant une réorganisation,
+   priorité à la séance de qualité (sinon abandon).
+   Vérifié dans la littérature running (30/09-01/10/2026) qu'un EF juste
+   avant/après une séance intense n'est PAS un problème — le consensus
+   ("hard days hard, easy days easy") porte sur l'enchaînement de DEUX
+   séances intenses, jamais sur un EF à côté d'une séance dure :
+   https://endogusto.com/blog/recovery-runs-easy-days-runners/
+   https://www.runnersblueprint.com/interval-training-running/
+   D'où : la règle "jamais 2 intenses d'affilée" ne s'applique qu'entre
+   séances intenses elles-mêmes (Seuil/Fractionné/Répétition) — jamais
+   entre un EF et une séance intense.
+   Note : la "sortie longue" du CDC n'est pas protégée spécifiquement ici
+   — le moteur actuel (generateWeekSessions) ne génère pas de sortie
+   longue distincte des autres séances easy (toutes ont la même distance),
+   donc impossible de l'identifier pour l'instant. Seule la séance de
+   qualité bénéficie de la priorité "on retente avant d'abandonner".
+   `sessionToReschedule` : {pace_zone}. `weekSessions` : séances déjà
+   dans la semaine (planned/done), chacune {dayIndex, pace_zone}.
+   `availableDayIndexes` : jours que l'utilisateur a dit disponibles.
+   `isPriority` : true si séance de qualité (Seuil/Fractionné). Renvoie le
+   jour choisi (0=lundi..6=dimanche) ou null (abandon). */
+function isIntensePaceZone(paceZone){
+  return paceZone==="threshold" || paceZone==="interval" || paceZone==="repetition";
+}
+function findRescheduleDay(sessionToReschedule, weekSessions, availableDayIndexes, isPriority){
+  const occupiedDays = new Set((weekSessions||[]).map(s=>s.dayIndex));
+  const intenseDays = new Set((weekSessions||[]).filter(s=>isIntensePaceZone(s.pace_zone)).map(s=>s.dayIndex));
+  const freeDays = (availableDayIndexes||[]).filter(d=>!occupiedDays.has(d));
+  if(!isIntensePaceZone(sessionToReschedule.pace_zone)){
+    return freeDays.length ? freeDays[0] : null;
+  }
+  const safe = freeDays.filter(d=>!intenseDays.has(d-1) && !intenseDays.has(d+1));
+  if(safe.length) return safe[0];
+  if(isPriority && freeDays.length) return freeDays[0]; // assouplit en dernier recours plutôt que d'abandonner tout de suite
+  return null;
+}
+
 /* ---------- Douleur/gêne répétée ----------
    Règle donnée par l'utilisateur (pas une source externe) : une même zone
    signalée ≥ seuil sur les 2 dernières séances NOTÉES d'affilée déclenche un

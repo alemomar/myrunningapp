@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=29"></script>
+<script src="logic.js?v=30"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -403,6 +403,38 @@ try {
   const missed = detectMissedSessions(sessions, "2026-09-29").map(s=>s.id);
   assertEqual("detectMissedSessions : détecte les séances de course passées et non faites", missed, ["a","c"]);
   assertEqual("detectMissedSessions : liste vide -> aucune manquée", detectMissedSessions([], "2026-09-29"), []);
+}
+
+// --- findRescheduleDay (4.3.d, garde-fous de réorganisation) ---
+{
+  // Semaine : Fractionné (intense) mardi(1), Long/easy vendredi(4). EF raté
+  // à recaser -> pas intense, n'importe quel jour libre convient.
+  const week1 = [{dayIndex:1, pace_zone:"interval"}, {dayIndex:4, pace_zone:"easy"}];
+  assertEqual("findRescheduleDay : EF (non intense) -> premier jour libre, même collé à l'intense", findRescheduleDay({pace_zone:"easy"}, week1, [0,1,2,3,4,5,6], false), 0);
+
+  // Même semaine, mais c'est le Fractionné de mardi(1) qui est raté (intense)
+  // -> doit éviter lundi(0) et mercredi(2), collés à mardi ; vendredi(4) est
+  // easy donc sans contrainte, mais déjà occupé -> premier jour sûr = jeudi(3).
+  assertEqual("findRescheduleDay : séance intense évite les jours collés à mardi(1)", findRescheduleDay({pace_zone:"interval"}, week1, [0,1,2,3,4,5,6], true), 3);
+
+  // Semaine dense en intense : Seuil mardi(1), Fractionné jeudi(3). Une
+  // 3e séance intense à recaser doit éviter lundi(0, collé à mardi),
+  // mercredi(2, collé aux deux), vendredi(4, collé à jeudi) -> ne reste
+  // que samedi(5) ou dimanche(6).
+  const week2 = [{dayIndex:1, pace_zone:"threshold"}, {dayIndex:3, pace_zone:"interval"}];
+  assertEqual("findRescheduleDay : séance intense évite les jours collés à une autre intense", findRescheduleDay({pace_zone:"threshold"}, week2, [0,1,2,3,4,5,6], false), 5);
+
+  // Semaine extrême (cas limite, 4 séances intenses déjà casées un jour sur
+  // deux) : chaque jour libre restant (1,3,5) est collé à une intense des
+  // deux côtés -> aucun jour sûr, sans priorité = abandon (null).
+  const week3 = [{dayIndex:0, pace_zone:"threshold"}, {dayIndex:2, pace_zone:"interval"}, {dayIndex:4, pace_zone:"threshold"}, {dayIndex:6, pace_zone:"interval"}];
+  assertEqual("findRescheduleDay : aucun jour sûr, pas prioritaire -> abandon (null)", findRescheduleDay({pace_zone:"interval"}, week3, [0,1,2,3,4,5,6], false), null);
+  // Même cas mais séance de qualité (prioritaire) -> retente en assouplissant,
+  // prend le premier jour libre malgré tout plutôt que d'abandonner.
+  assertEqual("findRescheduleDay : aucun jour sûr, mais prioritaire -> assoupli, pas d'abandon", findRescheduleDay({pace_zone:"interval"}, week3, [0,1,2,3,4,5,6], true), 1);
+
+  // Aucun jour disponible du tout -> abandon, même prioritaire.
+  assertEqual("findRescheduleDay : aucun jour disponible -> abandon même prioritaire", findRescheduleDay({pace_zone:"easy"}, [], [], true), null);
 }
 
 // --- detectRepeatedPain / detectDegradedWellbeing ---
