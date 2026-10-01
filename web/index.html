@@ -1293,6 +1293,7 @@ window.deleteRun = async (id, label) => {
 function readPainForm(prefix){
   const ratings={};
   [...SESSION_RPE, ...WELLBEING_EXTRA, ...BODY_ZONES].forEach(([key])=>{ ratings[key]=parseInt(document.getElementById(`${prefix}_${key}`).value,10); });
+  BODY_ZONES.forEach(([key])=>{ ratings[`${key}_moment`] = document.getElementById(`${prefix}_${key}_moment`).value; });
   const noteVal = document.getElementById(`${prefix}_note`).value;
   ratings.note = noteVal ? parseInt(noteVal,10) : null;
   const geneVal = document.getElementById(`${prefix}_gene`).value;
@@ -2101,6 +2102,11 @@ const ARM_STUBS = [
 // recouvrement.
 const BODY_OUTLINE="M105,59 C101,81 99,115 97,148 C94,173 92,192 89,209 L84,310 L81,346 L76,405 C73,413 70,417 70,421 C70,428 72,432 73,435 L94,437 C96,432 94,423 92,416 L97,346 L100,310 L105,227 C108,213 109,209 111,205 L146,205 C147,209 148,213 151,227 L157,310 L159,346 L165,416 C162,423 161,432 162,437 L184,435 C185,432 186,428 186,421 C186,417 184,413 181,405 L176,346 L173,310 L167,209 C165,192 162,173 159,148 C158,115 155,81 151,59 C142,68 119,68 105,59 Z";
 const ZONE_NEUTRAL = "#48484c";
+// Moment de la douleur (4.5.c, CDC v2) : champ séparé par zone
+// (`${key}_moment`), distinct de l'intensité existante (`${key}`) pour ne
+// rien casser côté lecture ailleurs dans l'app (painColor, historique...).
+// "Pendant" par défaut — le cas le plus fréquent, modifiable en un clic.
+const MOMENT_OPTIONS = [["avant","Avant"],["pendant","Pendant"],["apres","Après"]];
 // Étiquette collée sous chaque capsule (nom court, systématique, dedans
 // comme dehors) — teinte claire pour rester lisible sur le fond sombre.
 function zoneLabelSVG(x, y, text){
@@ -2137,11 +2143,16 @@ function bodyMapHTML(prefix, initial){
   const rows = BODY_ZONES.map(([key,label])=>{
     const v = initial[key] ?? 0;
     const c = painColor(v);
+    const moment = initial[`${key}_moment`] || "pendant";
     return `<div class="zone-row" id="${prefix}_${key}_row" style="display:${revealed.has(key)?"":"none"}">
       <div class="pain-row-top"><span class="lbl">${label}</span><span class="val" id="${prefix}_${key}_v" style="color:${c}">${v}</span></div>
       <input type="range" min="0" max="10" value="${v}" id="${prefix}_${key}" style="accent-color:${c}"
         oninput="bodyZoneSlide('${prefix}','${key}',this.value)">
       ${scaleTicksHTML()}
+      <div class="filters" style="margin-top:6px;margin-bottom:0" data-chipgroup="${prefix}_${key}_moment">
+        ${MOMENT_OPTIONS.map(([val,lbl])=>`<button type="button" class="flt${moment===val?" active":""}" data-value="${val}" onclick="setZoneMoment('${prefix}','${key}','${val}')">${lbl}</button>`).join("")}
+      </div>
+      <input type="hidden" id="${prefix}_${key}_moment" value="${moment}">
     </div>`;
   }).join("");
   const decor = [
@@ -2165,6 +2176,10 @@ function bodyMapHTML(prefix, initial){
 // fur et à mesure des clics, plutôt que de perdre de vue une zone déjà
 // réglée dès qu'on en touche une autre. Seul le halo (zone en cours
 // d'édition) se déplace d'un clic à l'autre.
+window.setZoneMoment = (prefix, key, val) => {
+  document.getElementById(`${prefix}_${key}_moment`).value = val;
+  document.querySelectorAll(`[data-chipgroup="${prefix}_${key}_moment"] .flt`).forEach(b=>b.classList.toggle("active", b.dataset.value===val));
+};
 window.bodyZoneTap = (prefix, key) => {
   const row = document.getElementById(`${prefix}_${key}_row`);
   if(row) row.style.display = "";
