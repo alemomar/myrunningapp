@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=31"></script>
+<script src="logic.js?v=32"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -388,6 +388,20 @@ try {
   assertEqual("acwrAt : pic récent -> ACWR > 1.3 (zone à risque)", spike.acwr > 1.3, true);
 
   assertEqual("acwrAt : pas de charge chronique -> acwr null", acwrAt([], target).acwr, null);
+}
+
+// --- chargeEntrainementGauge (4.4) ---
+{
+  assertEqual("chargeEntrainementGauge : pas d'ACWR -> zone inconnue", chargeEntrainementGauge(null).zone, "inconnue");
+  assertEqual("chargeEntrainementGauge : 0.6 -> sous-charge", chargeEntrainementGauge(0.6).zone, "sous-charge");
+  assertEqual("chargeEntrainementGauge : 0.8 pile -> zone idéale (borne incluse)", chargeEntrainementGauge(0.8).zone, "idéale");
+  assertEqual("chargeEntrainementGauge : 1.0 -> zone idéale", chargeEntrainementGauge(1.0).zone, "idéale");
+  assertEqual("chargeEntrainementGauge : 1.3 pile -> encore zone idéale (borne incluse)", chargeEntrainementGauge(1.3).zone, "idéale");
+  assertEqual("chargeEntrainementGauge : 1.31 -> attention", chargeEntrainementGauge(1.31).zone, "attention");
+  assertEqual("chargeEntrainementGauge : 1.4 -> attention, pas encore sévère", chargeEntrainementGauge(1.4).severe, false);
+  assertEqual("chargeEntrainementGauge : 1.6 -> attention sévère (>1.5)", chargeEntrainementGauge(1.6).severe, true);
+  assertEqual("chargeEntrainementGauge : zone attention toujours en ambre, jamais rouge", chargeEntrainementGauge(1.6).color, "#e8a317");
+  assertEqual("chargeEntrainementGauge : zone attention sévère reste ambre aussi", chargeEntrainementGauge(2.0).color, "#e8a317");
 }
 
 // --- detectMissedSessions ---

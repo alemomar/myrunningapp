@@ -708,6 +708,27 @@ function acwrAt(dailySeries, targetDate){
   return { acute7j, chronic28j, acwr: chronic28j>0 ? acute7j/chronic28j : null };
 }
 
+/* ---------- Charge d'entraînement affichée à l'utilisateur (4.4) ----------
+   CDC v2, 4.4 : l'ACWR déjà calculé (acwrAt ci-dessus) devient visible
+   sous le nom "charge d'entraînement" — jamais le jargon "ACWR" lui-même.
+   Seuils du CDC, directement repris de Gabbett (2016) (voir acwrAt) :
+   sous-charge <0,8 ; zone idéale 0,8-1,3 ; attention >1,3 (alerte
+   renforcée >1,5, mais reste la même zone "attention" — le CDC ne définit
+   qu'une alerte visuelle plus marquée, pas une 4e zone). Zone attention
+   toujours en ambre, jamais en rouge (demande explicite du CDC).
+   `acwr` : résultat de acwrAt(...).acwr (peut être null, pas assez
+   d'historique). Renvoie {zone, color, phrase, severe} — `severe` sert à
+   l'UI pour renforcer l'alerte au-delà de 1,5 sans changer de couleur. */
+function chargeEntrainementGauge(acwr){
+  if(acwr==null) return { zone:"inconnue", color:"#98989f", phrase:"Pas encore assez d'historique pour calculer ta charge d'entraînement.", severe:false };
+  if(acwr<0.8) return { zone:"sous-charge", color:"#5ac8fa", phrase:"Tu pourrais progresser un peu plus vite — ta charge est en dessous de la zone idéale.", severe:false };
+  if(acwr<=1.3) return { zone:"idéale", color:"#30d158", phrase:"Tu augmentes ta charge à un rythme sûr.", severe:false };
+  const severe = acwr>1.5;
+  return { zone:"attention", color:"#e8a317", phrase: severe
+    ? "Ta charge augmente très vite — risque de blessure élevé, pense à lever le pied."
+    : "Ta charge augmente vite — reste attentif à ton ressenti.", severe };
+}
+
 /* ---------- Séances manquées (4.3.c) ----------
    CDC v2, 4.3 : une séance planifiée non faite passe automatiquement au
    statut "manquée" le lendemain. Pas de vraie notification push (l'app
