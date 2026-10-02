@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=39"></script>
+<script src="logic.js?v=40"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -620,6 +620,29 @@ try {
   assertEqual("formatMinutesShort : 85 -> 1 h 25", formatMinutesShort(85), "1 h 25");
   assertEqual("formatMinutesShort : 60 -> 1 h 00", formatMinutesShort(60), "1 h 00");
   assertEqual("formatMinutesShort : 0 -> 0 min", formatMinutesShort(0), "0 min");
+}
+
+// --- chargeGaugePosition / weekSummaryPhrase / plannedThisWeek (4.8.c, 4.8.d) ---
+{
+  assertEqual("chargeGaugePosition : null -> pas de repère", chargeGaugePosition(null), null);
+  assertEqual("chargeGaugePosition : 0 -> début", chargeGaugePosition(0), 0);
+  assertEqual("chargeGaugePosition : 1 -> milieu", chargeGaugePosition(1), 0.5);
+  assertEqual("chargeGaugePosition : 0,8 -> bord de la zone idéale (40%)", chargeGaugePosition(0.8), 0.4);
+  assertEqual("chargeGaugePosition : 1,3 -> fin de la zone idéale (65%)", chargeGaugePosition(1.3), 0.65);
+  assertEqual("chargeGaugePosition : 3 -> plafonné au bout", chargeGaugePosition(3), 1);
+  const day = (status) => ({status});
+  const recap = (statuses, planned) => ({ days: statuses.map(day), plannedThisWeek: planned });
+  const ok = {severe:false}, severe = {severe:true};
+  assertEqual("phrase : charge très élevée prime", weekSummaryPhrase(recap(["fait","manque","prevu","repos","repos","repos","repos"], 3), severe).startsWith("Ta charge d'entraînement monte très vite"), true);
+  assertEqual("phrase : une course manquée", weekSummaryPhrase(recap(["fait","manque","prevu","repos","repos","repos","repos"], 3), ok).startsWith("Une séance n'a pas pu se faire"), true);
+  assertEqual("phrase : tout est fait", weekSummaryPhrase(recap(["fait","fait","fait","repos","repos","repos","repos"], 3), ok).startsWith("Semaine bien remplie"), true);
+  assertEqual("phrase : du fait et du restant", weekSummaryPhrase(recap(["fait","prevu","prevu","repos","repos","repos","repos"], 3), ok), "Tu es sur la bonne voie, continue à ton rythme.");
+  assertEqual("phrase : rien de fait, des séances prévues", weekSummaryPhrase(recap(["prevu","repos","prevu","repos","repos","repos","repos"], 2), ok).startsWith("La semaine démarre"), true);
+  assertEqual("phrase : sortie faite sans rien de prévu", weekSummaryPhrase(recap(["fait","repos","repos","repos","repos","repos","repos"], 0), ok), "Belle sortie ! Chaque séance compte.");
+  assertEqual("phrase : rien de prévu ni de fait", weekSummaryPhrase(recap(["repos","repos","repos","repos","repos","repos","repos"], 0), ok).startsWith("Pas de séance prévue"), true);
+  assertEqual("phrase : gauge absente (null) acceptée", weekSummaryPhrase(recap(["fait","prevu","repos","repos","repos","repos","repos"], 2), null), "Tu es sur la bonne voie, continue à ton rythme.");
+  const real = weekRecap([], [{planned_date:"2026-10-05", status:"done", pace_zone:"easy", type:"EF"},{planned_date:"2026-10-07", status:"skipped", pace_zone:"easy", type:"EF"},{planned_date:"2026-10-12", status:"planned", pace_zone:"easy", type:"EF"}], "2026-10-07");
+  assertEqual("weekRecap : plannedThisWeek ne compte que les séances actives de la semaine", real.plannedThisWeek, 1);
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---

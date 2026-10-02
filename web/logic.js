@@ -973,7 +973,33 @@ function weekRecap(runs, plannedSessions, todayStr){
     else status = "repos";
     return { date, status, isToday: date===todayStr };
   });
-  return { thisWeek: sum(monday, nextMonday), lastWeek: sum(lastMonday, monday), days };
+  const plannedThisWeek = active.filter(p => inRange(p.planned_date, monday, nextMonday)).length;
+  return { thisWeek: sum(monday, nextMonday), lastWeek: sum(lastMonday, monday), days, plannedThisWeek };
+}
+
+/* ---------- Jauge de charge (4.8.c) et phrase de synthèse (4.8.d) ----------
+   Position du repère sur la barre : échelle visuelle 0 -> 2 (au-delà, le
+   repère reste au bout). Segments : 0-0,8 (40%), 0,8-1,3 (25%), 1,3-2
+   (35%), mêmes seuils que chargeEntrainementGauge. null -> pas de repère.
+   La phrase de synthèse suit des règles validées avec l'utilisateur
+   (02/10/2026), la première qui s'applique l'emporte ; elle ne compare
+   jamais à la semaine dernière (pas de pression, CDC 4.10). */
+const CHARGE_SCALE_MAX = 2;
+function chargeGaugePosition(acwr){
+  if(acwr==null) return null;
+  return Math.min(Math.max(acwr,0), CHARGE_SCALE_MAX) / CHARGE_SCALE_MAX;
+}
+function weekSummaryPhrase(recap, gauge){
+  const done = recap.days.filter(d=>d.status==="fait").length;
+  const upcoming = recap.days.filter(d=>d.status==="prevu").length;
+  const missed = recap.days.some(d=>d.status==="manque");
+  if(gauge && gauge.severe) return "Ta charge d'entraînement monte très vite : écoute ton corps, un jour de repos en plus serait bien venu.";
+  if(missed) return "Une séance n'a pas pu se faire cette semaine, ce n'est pas grave : ce qui compte, c'est la régularité sur plusieurs semaines.";
+  if(done>0 && upcoming===0 && recap.plannedThisWeek>0) return "Semaine bien remplie, bravo ! Pense à bien récupérer pour en profiter.";
+  if(done>0 && upcoming>0) return "Tu es sur la bonne voie, continue à ton rythme.";
+  if(done===0 && upcoming>0) return "La semaine démarre : tu as des séances prévues, à ton rythme.";
+  if(done>0) return "Belle sortie ! Chaque séance compte.";
+  return "Pas de séance prévue pour l'instant : c'est peut-être le moment de créer ton programme ou de te reposer.";
 }
 function formatMinutesShort(min){
   const m = Math.round(min||0);

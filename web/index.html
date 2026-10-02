@@ -424,7 +424,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=39"></script>
+<script src="logic.js?v=40"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -3317,6 +3317,8 @@ function weekRecapCardHTML(){
   const runsForRecap = runningRuns.map(r=>({ date: localDateStr(dateFromRun(r)), distKm: r.dist||0, durationSec: r.durationSec||0 }));
   const recap = weekRecap(runsForRecap, plannedSessions, localDateStr(new Date()));
   const { thisWeek, lastWeek, days } = recap;
+  const { acwr } = computeProgramInputs();
+  const gauge = chargeEntrainementGauge(acwr);
   const stat = (value, label, last) => `<div style="flex:1;min-width:0">
     <div style="font-size:22px;font-weight:700;line-height:1.1">${value}</div>
     <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${label}</div>
@@ -3346,7 +3348,40 @@ function weekRecapCardHTML(){
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text-dim);margin-top:8px">
       <span>✓ fait</span><span>○ prévu</span><span style="color:var(--orange)">! manqué</span><span>· repos</span>
     </div>
+    ${chargeGaugeHTML(gauge, acwr)}
+    <div style="font-size:13px;line-height:1.5;margin-top:14px">${weekSummaryPhrase(recap, gauge)}</div>
   </div>`;
+}
+// Jauge de charge d'entraînement (4.8.c) : barre à 3 zones, repère à la
+// position de la charge (échelle 0-2, voir chargeGaugePosition). Jamais de
+// rouge, même au-delà de 1,5 : la phrase passe seulement en gras ambre.
+function chargeGaugeHTML(gauge, acwr){
+  const zoneName = { "sous-charge":"En dessous de la zone idéale", "idéale":"Zone idéale", "attention":"Zone d'attention", "inconnue":"" }[gauge.zone] || "";
+  const pos = chargeGaugePosition(acwr);
+  const known = pos!=null;
+  const seg = (width, color) => `<div style="width:${width}%;background:${known?color:"var(--card-2)"};opacity:${known?0.45:1}"></div>`;
+  const marker = known ? `<div style="position:absolute;top:50%;left:${pos*100}%;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%);background:${gauge.color};border:2px solid var(--text);box-sizing:border-box"></div>` : "";
+  const phrase = known ? gauge.phrase : gauge.phrase+" Note tes séances pour la voir apparaître.";
+  return `<div style="margin-top:18px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px">
+      <span style="font-size:12px;color:var(--text-dim)">Charge d'entraînement</span>
+      <span style="font-size:12px;font-weight:600;color:${gauge.color}">${zoneName}</span>
+    </div>
+    <div style="position:relative;display:flex;height:10px;border-radius:5px;overflow:hidden;margin:0 8px" aria-hidden="true">
+      ${seg(40,"#5ac8fa")}${seg(25,"#30d158")}${seg(35,"#e8a317")}
+    </div>
+    <div style="position:relative;height:0;margin:0 8px">${marker}</div>
+    <div style="font-size:12px;margin-top:10px;color:${gauge.severe?"var(--orange)":"var(--text-dim)"};font-weight:${gauge.severe?700:400}">${phrase}</div>
+  </div>`;
+}
+// Message de jour de repos (4.8.e). La citation de Hal Higdon est tirée de
+// son plan semi-marathon Novice 1 (halhigdon.com), vérifiée le 02/10/2026 ;
+// la première phrase est notre formulation du principe général d'adaptation
+// (sans chiffre), pas une citation.
+function restDayMessageHTML(){
+  return `<div style="font-weight:600;margin-bottom:6px">Jour de repos</div>
+    <div style="font-size:13px;line-height:1.55">C'est pendant le repos que ton corps répare et renforce ce que tes séances ont sollicité. Hal Higdon, coach de référence, le résume ainsi : « Le repos est une partie aussi importante de ton entraînement que les sorties. » Profite-en pour bien dormir et manger, et marche tranquillement si tu en as envie.</div>
+    <div style="font-size:11px;color:var(--text-faint);margin-top:8px">Source : halhigdon.com</div>`;
 }
 function todayScreenHTML(){
   const todayStr = localDateStr(new Date());
@@ -3357,7 +3392,8 @@ function todayScreenHTML(){
   if(todaySessions.length) body = todaySessions.map(s=>programSessionCardHTML(s,date)).join("");
   else if(!hasProgram) body = `<div class="chart-hint" style="margin-top:0">Tu n'as pas encore de programme.</div>
     <button class="btn-secondary" style="margin-top:10px" onclick="goToProgramme()">Créer mon programme</button>`;
-  else body = `<div class="chart-hint" style="margin-top:0">Repos — aucune séance prévue aujourd'hui.</div>`;
+  else if(runningRuns.some(r=>localDateStr(dateFromRun(r))===todayStr)) body = `<div class="chart-hint" style="margin-top:0">Aucune séance n'était planifiée aujourd'hui, mais tu as couru : bravo !</div>`;
+  else body = restDayMessageHTML();
   return noRecentRunBanner() + painPromptBanner() + `<div class="card">
     <div class="chart-hint" style="margin-top:0;margin-bottom:8px;text-transform:capitalize">Aujourd'hui · ${dayLabelShort(date)}</div>
     ${body}
