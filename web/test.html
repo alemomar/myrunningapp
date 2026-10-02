@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=45"></script>
+<script src="logic.js?v=46"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -770,6 +770,22 @@ try {
   assertEqual("evaluateGuidedTestRun : 50 min -> refusé (durée)", evaluateGuidedTestRun(8, 3000), {ok:false, reason:"duree"});
   assertEqual("evaluateGuidedTestRun : 1 km -> refusé (distance)", evaluateGuidedTestRun(1, 1200), {ok:false, reason:"distance"});
   assertEqual("evaluateGuidedTestRun : le temps de référence donne bien un profil exploitable par le moteur", resolveRunnerProfile({}, {refDistanceKm:4.2, refTimeSec:1200}, {})!==null, true);
+}
+
+// --- Textes "En savoir plus" (4.10.b, 4.10.c) ---
+{
+  const keys = Object.keys(SESSION_LEARN_MORE);
+  assertEqual("SESSION_LEARN_MORE : 9 textes (easy, marathon, seuil, fractionné, marche/course, test, renfo, mobilité, yoga)", keys.sort(), ["Renfo","Yoga","couch","easy","interval","marathon","Mobilité","test","threshold"].sort());
+  assertEqual("textes : 3 blocs avec titre et contenu pour chacun", keys.every(k=>SESSION_LEARN_MORE[k].blocks.length===3 && SESSION_LEARN_MORE[k].blocks.every(b=>b.h && b.p.length>60)), true);
+  assertEqual("textes : longueur raisonnable (80 à 220 mots)", keys.every(k=>{ const n=SESSION_LEARN_MORE[k].blocks.map(b=>b.p).join(" ").split(/\s+/).length; return n>=80 && n<=220; }), true);
+  assertEqual("textes : sources présentes partout sauf yoga (aucune étude citée)", keys.filter(k=>!SESSION_LEARN_MORE[k].sources), ["Yoga"]);
+  const all = keys.map(k=>SESSION_LEARN_MORE[k].blocks.map(b=>b.h+" "+b.p).join(" ")).join(" ").toLowerCase();
+  assertEqual("ton : tutoiement, jamais de vouvoiement", /\b(vous|votre|vos)\b/.test(all), false);
+  assertEqual("ton : pas de formulation culpabilisante", /(tu dois absolument|c'est de ta faute|paresse|tu as échoué|raté)/.test(all), false);
+  assertEqual("learnMoreKey : zones d'allure", ["easy","marathon","threshold","interval","repetition"].map(z=>learnMoreKey({pace_zone:z})), ["easy","marathon","threshold","interval","interval"]);
+  assertEqual("learnMoreKey : plan marche/course et test prioritaires sur l'allure", [learnMoreKey({pace_zone:"easy", generation_reason:"beginner_plan"}), learnMoreKey({pace_zone:"easy", generation_reason:"guided_test"})], ["couch","test"]);
+  assertEqual("learnMoreKey : renfo, mobilité, yoga", ["Renfo","Mobilité","Yoga"].map(t=>learnMoreKey({type:t, pace_zone:null})), ["Renfo","Mobilité","Yoga"]);
+  assertEqual("learnMoreKey : type sans texte -> null", [learnMoreKey({type:"Pilates", pace_zone:null}), learnMoreKey(null)], [null,null]);
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---

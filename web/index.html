@@ -424,7 +424,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=45"></script>
+<script src="logic.js?v=46"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -3432,6 +3432,26 @@ function exerciseListHTML(description){
     </div>
   </div>`).join("");
 }
+// "En savoir plus" (4.10.b) : texte long par type de séance, déplié à la
+// demande dans la carte de séance (Aujourd'hui et Programme).
+let openLearnMore = new Set();
+window.toggleLearnMore = (id) => {
+  if(openLearnMore.has(id)) openLearnMore.delete(id);
+  else openLearnMore.add(id);
+  renderContent();
+};
+function learnMoreHTML(session){
+  const key = learnMoreKey(session);
+  if(!key) return "";
+  const open = openLearnMore.has(session.id);
+  const t = SESSION_LEARN_MORE[key];
+  return `<button type="button" class="flt" style="margin-top:10px" onclick="toggleLearnMore('${session.id}')" aria-expanded="${open}">${open?"Réduire":"En savoir plus"}</button>
+    ${open?`<div style="margin-top:10px;padding:12px 14px;background:var(--card-2);border-radius:12px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px">${escHtml(t.title)}</div>
+      ${t.blocks.map(b=>`<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:2px">${escHtml(b.h)}</div><div style="font-size:13px;line-height:1.55">${escHtml(b.p)}</div></div>`).join("")}
+      ${t.sources?`<div style="font-size:11px;color:var(--text-faint);line-height:1.45;margin-top:4px">Sources : ${escHtml(t.sources)}</div>`:""}
+    </div>`:""}`;
+}
 function escHtml(t){ return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 // Écran "Aujourd'hui" (CDC 4.8) : accueil de l'app. Liste TOUTES les séances
 // du jour (0, 1 ou plusieurs) plutôt qu'une seule, pour accueillir sans
@@ -3542,6 +3562,7 @@ function programSessionCardHTML(session, date){
       </div>
     </div>
     <div class="chart-hint" style="margin-top:8px;margin-bottom:0">${session.rationale}</div>
+    ${learnMoreHTML(session)}
     ${session.description?`<div style="margin-top:10px">
       <div class="chart-hint" style="margin-top:0;margin-bottom:4px">${isCouchSession?"Déroulé de la séance":"Exercices"}${session.target_duration_min?` · environ ${Math.round(session.target_duration_min)} min`:""}</div>
       ${exerciseListHTML(session.description)}

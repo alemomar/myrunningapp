@@ -814,6 +814,115 @@ function evaluateGuidedTestRun(distanceKm, durationSec){
   return { ok:true, refDistanceKm: Math.round(distanceKm*100)/100, refTimeSec: Math.round(durationSec) };
 }
 
+/* ---------- Textes "En savoir plus" par type de séance (CDC v2, 4.10.b) ----------
+   Un texte long par type de séance, en 3 blocs (à quoi ça sert / comment la
+   faire / pourquoi) + sources. Ton : coach bienveillant, tutoiement, jamais
+   de culpabilisation, toujours une raison derrière un conseil (4.10.c).
+   Chaque affirmation scientifique cite une source vérifiée sur la page
+   d'origine (02/10/2026) :
+   - Higdon : https://www.halhigdon.com/training-programs/marathon-training/advanced-1-marathon/
+     (sections Tempo Runs, Interval Training, Race Pace)
+   - NHS : https://www.nhs.uk/better-health/get-active/get-running-with-couch-to-5k/
+   - Blagrove et al. (2018), Sports Medicine, PMID 29249083
+   - Lauersen et al. (2014), British Journal of Sports Medicine, PMID 24100287
+   - Seiler & Kjerland (2006), Scand J Med Sci Sports 16:49-56
+   - CDC, "How to Measure Physical Activity Intensity" (test de la conversation)
+   Yoga : aucune étude citée, la séance est proposée pour le bien-être. */
+const SESSION_LEARN_MORE = {
+  easy: {
+    title: "La sortie easy",
+    blocks: [
+      { h:"À quoi ça sert ?", p:"C'est la base de ton entraînement. À allure tranquille, ton cœur, tes muscles et tes tendons s'adaptent petit à petit, sans accumuler de fatigue. Chez les athlètes d'endurance étudiés par Seiler et Kjerland, environ les trois quarts de l'entraînement se faisaient à cette intensité douce." },
+      { h:"Comment la faire ?", p:"Cours à un rythme où tu peux tenir une conversation : une phrase complète sans reprendre ton souffle. Si tu ne peux dire que quelques mots, tu vas trop vite, ralentis. Si tu hésites entre deux allures, prends la plus lente." },
+      { h:"Pourquoi lentement ?", p:"Parce que courir trop vite ces jours-là te fatigue pour les séances importantes, sans te faire progresser davantage. Une sortie easy réussie, c'est une sortie après laquelle tu te sens bien." },
+    ],
+    sources: "Seiler & Kjerland (2006), Scandinavian Journal of Medicine & Science in Sports 16:49-56 ; CDC, « How to Measure Physical Activity Intensity » (test de la conversation).",
+  },
+  marathon: {
+    title: "La séance à allure marathon",
+    blocks: [
+      { h:"À quoi ça sert ?", p:"À t'habituer à tenir longtemps une allure régulière, celle que tu pourrais garder sur la distance d'un marathon. Ton corps et ta tête apprennent à rester stables, sans à-coups." },
+      { h:"Comment la faire ?", p:"Cours à l'allure indiquée, la même du début à la fin de la partie rapide. Hal Higdon définit l'allure de course comme le rythme que tu prévois de tenir le jour de la course pour laquelle tu t'entraînes, et c'est ce rythme qu'il demande dans ces séances." },
+      { h:"Pourquoi ?", p:"La répéter à l'entraînement la rend familière. Si elle te semble beaucoup trop difficile, ralentis : le but est de finir la séance avec de l'énergie, pas de te mettre à bout." },
+    ],
+    sources: "Hal Higdon, programme Advanced 1 Marathon (halhigdon.com), section « Race Pace ».",
+  },
+  threshold: {
+    title: "La séance au seuil",
+    blocks: [
+      { h:"À quoi ça sert ?", p:"À repousser le moment où l'effort devient vraiment difficile, pour tenir plus longtemps à une bonne allure. C'est un effort soutenu, mais que tu peux maîtriser." },
+      { h:"Comment la faire ?", p:"Cours à un rythme soutenu où tu ne peux dire que quelques mots à la fois. Hal Higdon décrit la sortie « tempo » comme une course continue avec une montée en rythme au milieu, jusqu'à près de l'allure d'un 10 km, le pic arrivant environ aux deux tiers de la séance et seulement pendant quelques minutes." },
+      { h:"Pourquoi garder le contrôle ?", p:"Cette séance est efficace parce qu'elle reste maîtrisée : si tu pars trop vite, tu devras ralentir avant la fin et tu en retireras moins. Termine en te disant que tu aurais pu en faire un tout petit peu plus." },
+    ],
+    sources: "Hal Higdon, programme Advanced 1 Marathon (halhigdon.com), section « Tempo Runs ».",
+  },
+  interval: {
+    title: "Le fractionné et les répétitions",
+    blocks: [
+      { h:"À quoi ça sert ?", p:"À développer ta vitesse et ta capacité à encaisser un effort intense. Le fractionné alterne des efforts rapides et des récupérations ; les répétitions sont des efforts encore plus courts et plus rapides, avec une récupération complète entre chacun." },
+      { h:"Comment le faire ?", p:"Hal Higdon donne cet exemple : courir un 800 m plus vite que l'allure marathon, récupérer en trottinant ou en marchant 400 m, puis recommencer. Respecte les allures et les temps de récupération indiqués dans ta séance." },
+      { h:"Pourquoi des récupérations ?", p:"Elles font partie de la séance : elles te permettent de refaire chaque effort à la bonne allure. Si tu n'arrives plus à tenir l'allure, termine la séance plutôt que de forcer. Dans ton programme, ces séances restent une minorité (environ 20 % de l'entraînement) pour que ton corps ait le temps de récupérer." },
+    ],
+    sources: "Hal Higdon, programme Advanced 1 Marathon (halhigdon.com), section « Interval Training » ; répartition 80/20 : Seiler & Kjerland (2006).",
+  },
+  couch: {
+    title: "Le programme marche/course",
+    blocks: [
+      { h:"À quoi ça sert ?", p:"À habituer ton corps à courir en douceur. En alternant marche et course, ton souffle, tes muscles et tes articulations s'adaptent sans être brusqués. Chaque semaine, tu cours un peu plus, jusqu'à pouvoir courir 30 minutes sans t'arrêter." },
+      { h:"Comment la faire ?", p:"Fais 3 séances par semaine, avec des jours de repos entre elles, et cours à un rythme qui te convient, sans chercher la vitesse. Si tu es essoufflé, ralentis ou marche un peu plus longtemps : l'important est de terminer la séance." },
+      { h:"Pourquoi y aller doucement ?", p:"Parce que progresser doucement limite les risques de blessure et te laisse l'envie de continuer. Tu n'es pas obligé de suivre le rythme de 9 semaines : le NHS précise qu'on peut mettre plus longtemps si c'est ce qui te convient, et tu peux déplacer tes séances." },
+    ],
+    sources: "NHS, « Couch to 5K » (nhs.uk) : 3 séances par semaine avec des jours de repos entre elles, à un rythme qui te convient, en 9 semaines ou plus.",
+  },
+  test: {
+    title: "Le test de 20 minutes",
+    blocks: [
+      { h:"À quoi ça sert ?", p:"À mesurer ton niveau du moment, pour calculer des allures d'entraînement qui te correspondent et te construire ton programme." },
+      { h:"Comment le faire ?", p:"Échauffe-toi 10 minutes en footing très léger sans enregistrer l'activité, puis lance l'enregistrement de ta montre et cours 20 minutes à une allure soutenue mais que tu peux tenir régulièrement du début à la fin. Pars plutôt prudemment : si tu t'essouffles trop vite, c'est que tu es parti trop fort. Arrête l'enregistrement au bout des 20 minutes." },
+      { h:"Pourquoi ce test ?", p:"On convertit la distance parcourue en niveau de forme grâce à une formule de Daniels et Gilbert (1979), puis on en déduit tes allures. Comme ce test est un peu moins exigeant qu'une vraie course, tes allures seront prudentes au début, puis elles s'affineront avec tes séances. Il n'y a ni bon ni mauvais résultat." },
+    ],
+    sources: "Daniels & Gilbert (1979), Medicine and Science in Sports 11(2), reprise dans Daniels' Running Formula. Le protocole de 20 minutes est celui de l'application.",
+  },
+  Renfo: {
+    title: "La séance de renfo",
+    blocks: [
+      { h:"À quoi ça sert ?", p:"À renforcer les muscles qui te portent à chaque foulée. Une revue de 24 études chez des coureurs (Blagrove et al., 2018) montre que le renforcement améliore en général l'économie de course (de 2 à 8 % selon les études) et les performances sur 1,5 à 10 km, même si ce n'est pas le cas dans toutes les études. Dans une méta-analyse de 25 essais sur le sport en général (Lauersen et al., 2014), il réduisait les blessures à moins d'un tiers du niveau habituel." },
+      { h:"Comment la faire ?", p:"Fais chaque exercice de façon contrôlée, en suivant les consignes et l'animation. Aucune douleur ne doit apparaître : si un mouvement fait mal, arrête-le et prends la variante proposée ou passe au suivant. Une fatigue musculaire agréable est normale." },
+      { h:"Pourquoi à ce moment-là ?", p:"On place le renfo un jour sans course, et jamais la veille d'une sortie, pour que tes jambes soient fraîches. La revue de Blagrove conclut que 2 à 3 séances de renforcement par semaine sont susceptibles d'apporter un bénéfice aux coureurs." },
+    ],
+    sources: "Blagrove et al. (2018), Sports Medicine, PMID 29249083 ; Lauersen et al. (2014), British Journal of Sports Medicine, PMID 24100287.",
+  },
+  "Mobilité": {
+    title: "La séance de mobilité",
+    blocks: [
+      { h:"À quoi ça sert ?", p:"À entretenir l'amplitude de tes mouvements et à prendre soin des zones qui te gênent. Si une douleur est revenue, ces exercices peuvent t'aider à la soulager." },
+      { h:"Comment la faire ?", p:"Va doucement, sans chercher la douleur : tu dois sentir une tension agréable, jamais une douleur vive. Respire calmement et prends ton temps sur chaque exercice. Si une gêne persiste, pense à consulter un médecin ou un kiné." },
+      { h:"À savoir", p:"Dans la méta-analyse de Lauersen et al. (2014), les étirements seuls n'ont pas montré de baisse du nombre de blessures, contrairement au renforcement. La mobilité reste utile pour le confort et l'amplitude, mais elle ne remplace pas le renfo." },
+    ],
+    sources: "Lauersen et al. (2014), British Journal of Sports Medicine, PMID 24100287.",
+  },
+  Yoga: {
+    title: "La séance de yoga",
+    blocks: [
+      { h:"À quoi ça sert ?", p:"À détendre ton corps et ta tête entre deux sorties : respiration, souplesse et relâchement." },
+      { h:"Comment la faire ?", p:"Reste dans le confort : la respiration guide le mouvement, et tu ne cherches ni la performance ni la douleur. Si une posture te gêne, adapte-la ou passe-la." },
+      { h:"Pourquoi ?", p:"On te la propose pour ton bien-être et ta récupération active. Elle ne remplace ni une sortie de course ni du renforcement. On ne cite pas d'étude ici : ce n'est pas proposé pour un gain de performance démontré." },
+    ],
+    sources: "",
+  },
+};
+// Clé du texte "En savoir plus" d'une séance planifiée, ou null si aucun texte.
+function learnMoreKey(session){
+  if(!session) return null;
+  if(session.generation_reason==="beginner_plan") return "couch";
+  if(session.generation_reason==="guided_test") return "test";
+  if(session.pace_zone){
+    if(session.pace_zone==="interval" || session.pace_zone==="repetition") return "interval";
+    return SESSION_LEARN_MORE[session.pace_zone] ? session.pace_zone : null;
+  }
+  return SESSION_LEARN_MORE[session.type] ? session.type : null;
+}
+
 /* ---------- Format court/détaillé de la notation post-séance (4.5.b) ----------
    CDC v2, 4.5 : par défaut, formulaire court (note globale 1-5 + "une
    gêne/douleur ?") ; le détaillé (respiration/mental/fatigue + carte du
