@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=43"></script>
+<script src="logic.js?v=44"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -718,6 +718,33 @@ try {
   assertEqual("patch : un plan débutant déjà en cours garde sa date de départ", again.programSettings.beginnerPlan, {startMonday:"2026-09-21"});
   const nochrono = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {}, {refDistanceKm:10, refTimeSec:3000}, race, "2026-10-05");
   assertEqual("patch : sans nouveau chrono, l'ancien temps de référence est conservé", [nochrono.programSettings.refDistanceKm, nochrono.programSettings.refTimeSec], [10,3000]);
+}
+
+// --- Plan marche/course : génération (4.1.d) ---
+{
+  assertEqual("couchWeekNumber : semaine de départ -> 1", couchWeekNumber("2026-10-05","2026-10-05"), 1);
+  assertEqual("couchWeekNumber : une semaine plus tard -> 2", couchWeekNumber("2026-10-05","2026-10-12"), 2);
+  assertEqual("couchWeekNumber : 9e semaine", couchWeekNumber("2026-10-05","2026-11-30"), 9);
+  assertEqual("couchWeekNumber : 10e semaine (après le plan)", couchWeekNumber("2026-10-05","2026-12-07"), 10);
+  assertEqual("couchWeekNumber : avant le départ -> 0", couchWeekNumber("2026-10-05","2026-09-28"), 0);
+  assertEqual("pickSpacedDays : 7 jours libres, 3 séances -> lundi, jeudi, dimanche", pickSpacedDays([0,1,2,3,4,5,6],3), [0,3,6]);
+  assertEqual("pickSpacedDays : dimanche indisponible -> écart de 2 jours, étendue max", pickSpacedDays([0,1,2,3,4,5],3), [0,2,5]);
+  assertEqual("pickSpacedDays : jamais 2 jours de suite quand c'est évitable", (()=>{ const d=pickSpacedDays([0,1,2,3,4,5,6],3); return d.slice(1).every((x,i)=>x-d[i]>1); })(), true);
+  assertEqual("pickSpacedDays : moins de jours que demandé -> tous les jours", pickSpacedDays([2,3],3), [2,3]);
+  assertEqual("pickSpacedDays : une seule séance -> le premier jour", pickSpacedDays([4,5],1), [4]);
+  assertEqual("pickSpacedDays : aucun jour -> vide", pickSpacedDays([],3), []);
+  const w1 = couchSessionRows(1,[0,3,6],1);
+  assertEqual("couchSessionRows : 3 séances numérotées avec la semaine", w1.map(r=>r.title), ["Marche/course — semaine 1, séance 1","Marche/course — semaine 1, séance 2","Marche/course — semaine 1, séance 3"]);
+  assertEqual("couchSessionRows : semaine 1 = 29 min (5 + 7x2,5 + 1 + 5)", w1[0].durationMin, 29);
+  assertEqual("couchSessionRows : échauffement, plan NHS et retour au calme dans la description", w1[0].description.startsWith("Échauffement : 5 min de marche rapide.\nCourse 1min / marche 1min30") && w1[0].description.endsWith("Retour au calme : 5 min de marche."), true);
+  assertEqual("couchSessionRows : la rationale cite le NHS et la semaine", w1[0].rationale.includes("NHS") && w1[0].rationale.includes("Semaine 1 sur 9"), true);
+  assertEqual("couchSessionRows : semaine 9 = 40 min (5 + 30 + 5)", couchSessionRows(9,[1],1)[0].durationMin, 40);
+  const w5 = couchSessionRows(5,[0,2,4],1);
+  assertEqual("couchSessionRows : semaine 5, les 3 séances diffèrent", new Set(w5.map(r=>r.description)).size, 3);
+  assertEqual("couchSessionRows : semaine 5, séance 3 = 20 min de course continue", w5[2].description.includes("20 minutes de course continue"), true);
+  const partial = couchSessionRows(5,[2,4],2);
+  assertEqual("couchSessionRows : si une séance existe déjà, numérotation et contenu reprennent à la séance 2", [partial[0].title.endsWith("séance 2"), partial[0].description.includes("8min course"), partial[1].title.endsWith("séance 3")], [true,true,true]);
+  assertEqual("couchSessionRows : semaine hors plan -> aucune séance", [couchSessionRows(0,[0],1), couchSessionRows(10,[0],1)], [[],[]]);
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---

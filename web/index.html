@@ -424,7 +424,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=43"></script>
+<script src="logic.js?v=44"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2486,6 +2486,9 @@ function programProfileSourceLabel(profile){
 // EF/sortie longue (l'allure n'est qu'indicative), allure + zone FC pour
 // Seuil, allure seule pour Fractionné (voir programIntensityGuidance).
 function programPaceExplanationHTML(session){
+  if(session.generation_reason==="beginner_plan"){
+    return `<div class="chart-hint" style="margin-top:6px;margin-bottom:0"><strong style="color:var(--text)">Ressenti : cours à un rythme où tu peux encore parler.</strong> Si tu es essoufflé, ralentis ou marche un peu plus longtemps : l'important est de terminer la séance.</div>`;
+  }
   const zf = ZONE_FRIENDLY[session.pace_zone];
   if(!zf) return "";
   const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
@@ -2613,7 +2616,11 @@ window.generateProgram = async (mondayDate, opts) => {
   programGenerationInFlight.add(mondayStr);
   try{
   const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
-  if(!profile){ if(!opts.silent) alert("Renseigne d'abord un temps de référence (ci-dessus) pour générer ton programme."); return; }
+  // Plan marche/course (4.1.d) : pendant ses 9 semaines, il remplace le
+  // moteur de course et ne demande aucun temps de référence.
+  const couchWeek = programSettings?.beginnerPlan ? couchWeekNumber(programSettings.beginnerPlan.startMonday, mondayStr) : null;
+  const isCouch = couchWeek!=null && couchWeek>=1 && couchWeek<=COUCH_WEEKS;
+  if(!profile && !isCouch){ if(!opts.silent) alert("Renseigne d'abord un temps de référence (ci-dessus) pour générer ton programme."); return; }
   const existing = plannedSessions.filter(p=>p.week_start_date===mondayStr && (p.status==="planned"||p.status==="done"));
   const dayIndexOf = (dateStr) => Math.round((new Date(dateStr+"T00:00:00") - mondayDate) / 86400000);
   // Jours où une NOUVELLE course ne peut pas aller : course ou renfo déjà
@@ -2623,7 +2630,7 @@ window.generateProgram = async (mondayDate, opts) => {
   // "en existe-t-il au moins une" : sinon une seule séance ajoutée à la
   // main (ex: 1 renfo alors que 2/semaine sont visées) faisait croire la
   // semaine "complète" et masquait le bouton pour ajouter le reste.
-  const desiredRunning = Number(goals.frequence) || 3;
+  const desiredRunning = isCouch ? 3 : (Number(goals.frequence) || 3);
   const desiredCross = Number(goals.frequenceAutre) || 0;
   const actualRunning = existing.filter(p=>p.pace_zone).length;
   const actualCross = existing.filter(p=>!p.pace_zone).length;
@@ -2646,6 +2653,21 @@ window.generateProgram = async (mondayDate, opts) => {
   let runningRows = [];
   if(missingRunning>0){
     const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d) && !dayBlockedForRun.includes(d));
+    if(isCouch){
+      // Cette semaine : pas de séance dans le passé.
+      const todayIndex = mondayStr===localDateStr(mondayOf(new Date())) ? dayIndexOf(localDateStr(new Date())) : 0;
+      const days = pickSpacedDays(availableDayIndexes.filter(d=>d>=todayIndex), missingRunning);
+      generated = days.map(d=>({dayIndex:d}));
+      runningRows = couchSessionRows(couchWeek, days, actualRunning+1).map(r => ({
+        user_id:user.id,
+        planned_date: addDaysStr(mondayDate, r.dayIndex),
+        week_start_date: mondayStr,
+        type:"EF", pace_zone:"easy",
+        title:r.title, description:r.description, target_duration_min:r.durationMin,
+        rationale: r.rationale + dayPlacementNote(r.dayIndex, false, false),
+        status:"planned", source:"generated", generation_reason:"beginner_plan",
+      }));
+    } else {
     generated = generateWeekSessions({ profile, structure, weeklyKm, frequency:missingRunning, availableDayIndexes, avoidQualityReason, weekIndex });
     runningRows = generated.map(s => ({
       user_id:user.id,
@@ -2660,6 +2682,7 @@ window.generateProgram = async (mondayDate, opts) => {
       status:"planned", source:"generated",
       generation_reason: avoidQualityReason ? "pain_repeat_or_wellbeing" : (structure.reason||null),
     }));
+    }
   }
 
   let crossRows = [];
@@ -3295,7 +3318,7 @@ let programAdjustmentChecked = false;
 async function applyProgramAdjustments(){
   if(programAdjustmentChecked) return;
   const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
-  if(!profile) return; // pas encore prêt : on retentera au prochain rendu
+  if(!profile && !beginnerPlanInProgress()) return; // pas encore prêt : on retentera au prochain rendu
   programAdjustmentChecked = true;
 
   // Les 4 prochaines semaines (courante incluse) sont générées si elles
@@ -3346,8 +3369,26 @@ window.progSelectRefDistance = (d) => {
 // ("Ton profil coureur") — ce formulaire ne sert plus qu'au repli temps de
 // référence (VDOT), et seulement quand aucun PB/VMA n'est trouvé. Rien à
 // afficher/configurer ici une fois le profil résolu.
+// Plan marche/course en cours (semaines 1 à 9, ou pas encore démarré) : pas de
+// temps de référence à demander. Après la semaine 9 : graduation (voir
+// beginnerGraduationBannerHTML).
+function beginnerPlanInProgress(){
+  const plan = programSettings?.beginnerPlan;
+  if(!plan) return false;
+  return couchWeekNumber(plan.startMonday, localDateStr(mondayOf(new Date()))) <= COUCH_WEEKS;
+}
+function beginnerGraduationBannerHTML(){
+  const plan = programSettings?.beginnerPlan;
+  if(!plan || beginnerPlanInProgress()) return "";
+  if(resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM)) return "";
+  return `<div class="card" style="border-color:rgba(48,209,88,0.4);background:var(--accent-dim)">
+    <div style="font-size:14px;font-weight:600;margin-bottom:4px">Bravo, tu as terminé le programme marche/course !</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Tu cours maintenant 30 minutes d'affilée. Fais un 5 km à ton rythme, puis note ton temps : on s'en servira pour calculer tes allures et créer la suite de ton programme.</div>
+    <button class="btn-secondary" onclick="goToProgramme()">Renseigner mon chrono</button>
+  </div>`;
+}
 function programSettingsFormHTML(profile){
-  if(profile) return "";
+  if(profile || beginnerPlanInProgress()) return "";
   return `<div class="card">
     <div class="stitle">Temps de référence</div>
     <div class="chart-hint" style="margin-top:0">Pour calculer tes allures personnalisées, indique une performance récente : le temps que tu mets à parcourir une distance donnée, à l'entraînement ou en course (par exemple ton chrono sur un 10 km, même approximatif). Plus ce chrono reflète ton niveau actuel, plus les allures calculées seront justes. Tu n'as pas besoin de refaire cette saisie si tu renseignes un record ou une VMA dans Objectifs, ça prendra le relais automatiquement.</div>
@@ -3475,14 +3516,15 @@ function todayScreenHTML(){
     <button class="btn-secondary" style="margin-top:10px" onclick="goToProgramme()">Créer mon programme</button>`;
   else if(runningRuns.some(r=>localDateStr(dateFromRun(r))===todayStr)) body = `<div class="chart-hint" style="margin-top:0">Aucune séance n'était planifiée aujourd'hui, mais tu as couru : bravo !</div>`;
   else body = restDayMessageHTML();
-  return noRecentRunBanner() + painPromptBanner() + `<div class="card">
+  return beginnerGraduationBannerHTML() + noRecentRunBanner() + painPromptBanner() + `<div class="card">
     <div class="chart-hint" style="margin-top:0;margin-bottom:8px;text-transform:capitalize">Aujourd'hui · ${dayLabelShort(date)}</div>
     ${body}
   </div>` + weekRecapCardHTML();
 }
 function programSessionCardHTML(session, date){
   const c = TC[session.type]||TC.Other;
-  const zoneLabel = session.pace_zone ? (PACE_ZONE_LABEL[session.pace_zone]||session.pace_zone) : session.type;
+  const isCouchSession = session.generation_reason==="beginner_plan";
+  const zoneLabel = isCouchSession ? "Marche/course" : (session.pace_zone ? (PACE_ZONE_LABEL[session.pace_zone]||session.pace_zone) : session.type);
   const done = session.status==="done";
   const editOpen = openEditForm===session.id;
   const paceMin = session.target_pace_sec_per_km ? Math.floor(session.target_pace_sec_per_km/60) : "";
@@ -3497,7 +3539,7 @@ function programSessionCardHTML(session, date){
     </div>
     <div class="chart-hint" style="margin-top:8px;margin-bottom:0">${session.rationale}</div>
     ${session.description?`<div style="margin-top:10px">
-      <div class="chart-hint" style="margin-top:0;margin-bottom:4px">Exercices${session.target_duration_min?` · environ ${Math.round(session.target_duration_min)} min`:""}</div>
+      <div class="chart-hint" style="margin-top:0;margin-bottom:4px">${isCouchSession?"Déroulé de la séance":"Exercices"}${session.target_duration_min?` · environ ${Math.round(session.target_duration_min)} min`:""}</div>
       ${exerciseListHTML(session.description)}
     </div>`:""}
     ${programPaceExplanationHTML(session)}

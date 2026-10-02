@@ -729,6 +729,59 @@ function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, 
   return { goals:newGoals, programSettings:ps, beginner };
 }
 
+/* ---------- Génération du plan marche/course (4.1.d) ----------
+   Branche le plan NHS (COUCH_TO_5K_PLAN, ci-dessus) dans le Programme.
+   `startMonday` : lundi de la semaine 1 (programSettings.beginnerPlan).
+   Numéro de semaine : 1 pour la semaine de départ ; <1 avant le départ,
+   >9 après la fin (l'appelant décide de la "graduation", voir la bannière
+   d'Aujourd'hui). 3 séances par semaine, espacées au maximum (jamais 2
+   jours de suite si on peut l'éviter) : choix pragmatique, le NHS demande
+   seulement des jours de repos entre les séances. */
+const COUCH_WEEKS = 9;
+function couchWeekNumber(startMondayStr, weekMondayStr){
+  const parse = (str) => { const [y,m,d] = str.split("-").map(Number); return new Date(y, m-1, d); };
+  return Math.round((parse(weekMondayStr) - parse(startMondayStr)) / (7*86400000)) + 1;
+}
+// Choisit `n` jours parmi `available` (indices 0-6) : écart minimum entre
+// deux séances le plus grand possible, puis étendue la plus large, puis les
+// jours les plus tôt dans la semaine.
+function pickSpacedDays(available, n){
+  const days = [...new Set(available||[])].sort((a,b)=>a-b);
+  if(n<=0) return [];
+  if(days.length<=n) return days;
+  let best = null;
+  const choose = (start, picked) => {
+    if(picked.length===n){
+      const gaps = picked.slice(1).map((d,i)=>d-picked[i]);
+      const minGap = gaps.length ? Math.min(...gaps) : Infinity;
+      const span = picked[picked.length-1]-picked[0];
+      if(!best || minGap>best.minGap || (minGap===best.minGap && span>best.span)) best = { picked:[...picked], minGap, span };
+      return;
+    }
+    for(let i=start;i<days.length;i++){ picked.push(days[i]); choose(i+1, picked); picked.pop(); }
+  };
+  choose(0, []);
+  return best.picked;
+}
+// Lignes de séances d'une semaine du plan : `dayIndexes` (jours choisis),
+// `firstSessionNumber` (1 pour la première séance de la semaine ; plus si
+// une séance existe déjà). Renvoie [{dayIndex,title,description,durationMin,rationale}].
+function couchSessionRows(week, dayIndexes, firstSessionNumber){
+  const templates = couchTo5kWeekSessions(week);
+  if(!templates) return [];
+  return dayIndexes.map((dayIndex, i) => {
+    const number = (firstSessionNumber||1) + i;
+    const t = templates[(number-1)%3];
+    return {
+      dayIndex,
+      title: `Marche/course — semaine ${week}, séance ${number}`,
+      description: `Échauffement : 5 min de marche rapide.\n${t.label}.\nRetour au calme : 5 min de marche.`,
+      durationMin: Math.round(couchTo5kSessionDurationSec(t)/60),
+      rationale: `Ce programme alterne marche et course pour que ton corps s'habitue progressivement à courir, jusqu'à 30 minutes d'affilée à la fin de la semaine ${COUCH_WEEKS}. C'est le programme « Couch to 5K » du NHS (service de santé britannique). Semaine ${week} sur ${COUCH_WEEKS}.`,
+    };
+  });
+}
+
 /* ---------- Format court/détaillé de la notation post-séance (4.5.b) ----------
    CDC v2, 4.5 : par défaut, formulaire court (note globale 1-5 + "une
    gêne/douleur ?") ; le détaillé (respiration/mental/fatigue + carte du
