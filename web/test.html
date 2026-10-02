@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=49"></script>
+<script src="logic.js?v=50"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1097,6 +1097,28 @@ try {
   assertEqual("suppression : course d'aujourd'hui libérée -> prévue", plannedStatusAfterRunDeleted({pace_zone:"easy", planned_date:T0}, T0), "planned");
   assertEqual("suppression : yoga passé libéré -> prévu", plannedStatusAfterRunDeleted({pace_zone:null, planned_date:"2026-10-01"}, T0), "planned");
 
+  // ---- Fusion saisie / synchro (chantier 3) ----
+  const mr = (id,date,type,dur,manual)=>({id,date,type,durationSec:dur,manual});
+  const m1 = matchManualRuns([mr("m","2026-10-01","EF",2640,true), mr("s","2026-10-01","EF",2700,false)], []);
+  assertEqual("fusion : un couple clair -> automatique", [m1.auto, m1.ask], [[{manualId:"m",syncedId:"s"}], []]);
+  const m2 = matchManualRuns([mr("m","2026-10-01","EF",1800,true), mr("s","2026-10-01","EF",4500,false)], []);
+  assertEqual("fusion : durée très différente -> on demande", [m2.auto.length, m2.ask], [0, [{manualId:"m",syncedId:"s"}]]);
+  const m3 = matchManualRuns([mr("m","2026-10-01","EF",2700,true), mr("s1","2026-10-01","EF",2700,false), mr("s2","2026-10-01","Long",2800,false)], []);
+  assertEqual("fusion : deux candidates proches -> on demande", [m3.auto.length, m3.ask.length], [0, 1]);
+  const m4 = matchManualRuns([mr("m1","2026-10-01","EF",2700,true), mr("m2","2026-10-01","EF",2750,true), mr("s","2026-10-01","EF",2700,false)], []);
+  assertEqual("fusion : deux saisies pour une synchro -> pas d'automatique", m4.auto.length, 0);
+  const m5 = matchManualRuns([mr("m","2026-10-01","EF",1800,true), mr("s","2026-10-01","EF",4500,false)], ["m|s"]);
+  assertEqual("fusion : paire déjà refusée -> plus rien", [m5.auto.length, m5.ask.length], [0, 0]);
+  const m6 = matchManualRuns([mr("m","2026-10-01","EF",2700,true), mr("s","2026-10-02","EF",2700,false)], []);
+  assertEqual("fusion : jours différents -> rien", [m6.auto.length, m6.ask.length], [0, 0]);
+  const m7 = matchManualRuns([mr("m","2026-10-01","Yoga",2700,true), mr("s","2026-10-01","EF",2700,false)], []);
+  assertEqual("fusion : yoga saisi vs course synchronisée -> rien", [m7.auto.length, m7.ask.length], [0, 0]);
+  const m8 = matchManualRuns([mr("m","2026-10-01","Yoga",1800,true), mr("s","2026-10-01","Yoga",1900,false)], []);
+  assertEqual("fusion : yoga vs yoga -> automatique", m8.auto.length, 1);
+  const m9 = matchManualRuns([mr("a","2026-10-01","EF",2700,false), mr("b","2026-10-01","EF",2700,false)], []);
+  assertEqual("fusion : sans saisie à la main -> rien", [m9.auto.length, m9.ask.length], [0, 0]);
+  assertEqual("reprise : notation de la saisie reprise si la synchro n'en a pas", mergedRunPatch({painRatings:{rpe:5}, notes:"ok"}, {painRatings:null, notes:null}), {pain_ratings:{rpe:5}, notes:"ok"});
+  assertEqual("reprise : la notation de la synchro prime", mergedRunPatch({painRatings:{rpe:5}}, {painRatings:{rpe:7}}), {});
 document.getElementById("summary").innerHTML =
   `<span class="${fail?'fail':'pass'}">${pass} passés, ${fail} échoués</span>`;
 

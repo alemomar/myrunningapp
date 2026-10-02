@@ -1850,3 +1850,44 @@ function findLikelyDuplicateRun(runs, candidate){
 function plannedStatusAfterRunDeleted(planned, todayStr){
   return planned.pace_zone && planned.planned_date < todayStr ? "missed" : "planned";
 }
+
+/* ---------- Fusion saisie à la main / course synchronisée (chantier 3, Q2) ----------
+   Règle validée le 02/10/2026 : même jour, même nature, durée à 15 % près ->
+   la course de la montre remplace la saisie (notation, notes et lien avec la
+   séance prévue repris), avec un message. Si ce n'est pas clair (durée très
+   différente, ou plusieurs candidates) : on demande "Est-ce la même séance ?".
+   `runs` : [{id, date:"YYYY-MM-DD", type, durationSec, manual:bool}] ;
+   `notSame` : paires "idSaisie|idSynchro" déjà refusées par l'utilisateur.
+   Fusion automatique seulement si le couple est unique des deux côtés. */
+function durationsClose(a, b){
+  const longer = Math.max(a.durationSec, b.durationSec);
+  return longer>0 && Math.abs(a.durationSec-b.durationSec) <= DUPLICATE_DURATION_TOLERANCE*longer;
+}
+function matchManualRuns(runs, notSame){
+  const refused = new Set(notSame||[]);
+  const manuals = (runs||[]).filter(r=>r.manual), synced = (runs||[]).filter(r=>!r.manual);
+  const candidatesOf = (m) => synced.filter(s => s.date===m.date && runsSameNature(m.type, s.type) && !refused.has(m.id+"|"+s.id));
+  const auto = [], ask = [];
+  manuals.forEach(m => {
+    const cands = candidatesOf(m);
+    if(!cands.length) return;
+    const close = cands.filter(s=>durationsClose(m, s));
+    if(close.length===1){
+      const rivals = manuals.filter(o => o.id!==m.id && candidatesOf(o).some(s=>s.id===close[0].id) && durationsClose(o, close[0]));
+      if(!rivals.length){ auto.push({ manualId:m.id, syncedId:close[0].id }); return; }
+    }
+    const best = cands.slice().sort((a,b)=>Math.abs(a.durationSec-m.durationSec)-Math.abs(b.durationSec-m.durationSec))[0];
+    ask.push({ manualId:m.id, syncedId:best.id });
+  });
+  return { auto, ask };
+}
+// Ce qu'on reprend de la saisie sur la course synchronisée (colonnes SQL) :
+// seulement ce que la course de la montre n'a pas déjà (ses mesures priment).
+function mergedRunPatch(manual, synced){
+  const patch = {};
+  if(manual.painRatings && !synced.painRatings) patch.pain_ratings = manual.painRatings;
+  if(manual.notes && !synced.notes) patch.notes = manual.notes;
+  if(manual.effort!=null && synced.effort==null) patch.effort = manual.effort;
+  if(manual.legsFocused!=null && synced.legsFocused==null) patch.legs_focused = manual.legsFocused;
+  return patch;
+}

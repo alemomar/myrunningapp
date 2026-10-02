@@ -469,7 +469,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=49"></script>
+<script src="logic.js?v=50"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1461,6 +1461,74 @@ window.saveManualRun = async () => {
   await runProgramMaintenance(); // rapproche aussi les autres séances prévues du même jour
   const run = RUNS.find(r=>r.id===newId);
   if(run && run.includeInStats) goRateSession(newId); else renderContent();
+};
+/* ---------- Fusion saisie à la main / course synchronisée (chantier 3, Q2) ----------
+   Quand la montre synchronise la course qu'on avait saisie à la main, la
+   course de la montre remplace la saisie (voir matchManualRuns, logic.js).
+   Jamais en silence : un message sur Aujourd'hui l'annonce (mémorisé sur
+   l'appareil, car la saisie est supprimée), et si le cas n'est pas clair on
+   demande "Est-ce la même séance ?". */
+function lsJson(key, fallback){ try{ return JSON.parse(localStorage.getItem(key)||"null") ?? fallback; }catch(e){ return fallback; } }
+function lsSetJson(key, value){ try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){} }
+function manualMergeRuns(){
+  return RUNS.map(r=>({ id:r.id, date:localDateStr(dateFromRun(r)), type:r.type, durationSec:r.durationSec, manual:r.appleType===MANUAL_RUN_MARKER }));
+}
+async function mergeManualIntoSynced(manualId, syncedId){
+  const m = RUNS.find(r=>r.id===manualId), s = RUNS.find(r=>r.id===syncedId);
+  if(!m || !s) return false;
+  const patch = mergedRunPatch(m, s);
+  if(Object.keys(patch).length){
+    const { error } = await supa.from("runs").update(patch).eq("id", syncedId);
+    if(error) return false;
+  }
+  // Le lien avec la séance prévue passe sur la course de la montre avant de
+  // supprimer la saisie (sinon la séance perdrait son lien).
+  await supa.from("planned_sessions").update({ linked_run_id:syncedId, updated_at:new Date().toISOString() }).eq("linked_run_id", manualId);
+  const { error } = await supa.from("runs").delete().eq("id", manualId);
+  if(error) return false;
+  lsSetJson("mra_mergeNotices", [...lsJson("mra_mergeNotices", []), { label:m.label }].slice(-5));
+  return true;
+}
+// À l'ouverture de l'app : fusionne les couples sans ambiguïté. Renvoie true
+// si quelque chose a changé (les données sont alors rechargées).
+async function mergeManualRuns(){
+  const { auto } = matchManualRuns(manualMergeRuns(), lsJson("mra_notSamePairs", []));
+  let changed = false;
+  for(const pair of auto){ if(await mergeManualIntoSynced(pair.manualId, pair.syncedId)) changed = true; }
+  if(changed) await loadData();
+  return changed;
+}
+function mergeNoticeCardHTML(){
+  const notices = lsJson("mra_mergeNotices", []);
+  if(!notices.length) return "";
+  return `<div class="card" role="status" style="border-color:rgba(48,209,88,0.4);background:var(--accent-dim)">
+    ${notices.map(n=>`<div style="font-size:13px;line-height:1.5">On a remplacé ta saisie du ${escHtml(n.label)} par la course synchronisée depuis ta montre.</div>`).join("")}
+    <button class="btn-secondary" style="margin-top:10px" onclick="dismissMergeNotices()">Compris</button>
+  </div>`;
+}
+window.dismissMergeNotices = () => { lsSetJson("mra_mergeNotices", []); renderContent(); };
+function mergeAskCardHTML(){
+  const { ask } = matchManualRuns(manualMergeRuns(), lsJson("mra_notSamePairs", []));
+  if(!ask.length) return "";
+  const m = RUNS.find(r=>r.id===ask[0].manualId), s = RUNS.find(r=>r.id===ask[0].syncedId);
+  if(!m || !s) return "";
+  const desc = (r) => `${r.dist>0?String(r.dist.toFixed(1)).replace(".",",")+" km, ":""}${Math.round(r.durationSec/60)} min`;
+  return `<div class="card" style="border-color:rgba(232,163,23,0.5);background:rgba(232,163,23,0.08)">
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Est-ce la même séance ?</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ta saisie du ${escHtml(m.label)} (${desc(m)}) et la course synchronisée depuis ta montre (${desc(s)}) ont l'air proches. Si c'est la même, on garde celle de la montre et on y reporte ton ressenti.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-primary" style="margin-top:0" onclick="mergeSame('${m.id}','${s.id}')">Oui, c'est la même</button>
+      <button class="btn-secondary" onclick="mergeNotSame('${m.id}','${s.id}')">Non, ce sont deux séances</button>
+    </div>
+  </div>`;
+}
+window.mergeSame = async (manualId, syncedId) => {
+  if(await mergeManualIntoSynced(manualId, syncedId)) await loadData();
+  renderContent();
+};
+window.mergeNotSame = (manualId, syncedId) => {
+  lsSetJson("mra_notSamePairs", [...lsJson("mra_notSamePairs", []), manualId+"|"+syncedId].slice(-100));
+  renderContent();
 };
 window.deleteRun = async (id, label) => {
   // Une séance prévue liée à cette course repasse "à faire" / "à replacer"
@@ -3823,7 +3891,7 @@ function todayScreenHTML(){
     <button class="btn-secondary" style="margin-top:10px" onclick="goToProgramme()">Créer mon programme</button>`;
   else if(runningRuns.some(r=>localDateStr(dateFromRun(r))===todayStr)) body = `<div class="chart-hint" style="margin-top:0">Aucune séance n'était planifiée aujourd'hui, mais tu as couru : bravo !</div>`;
   else body = restDayMessageHTML();
-  return celebrationCardHTML() + guidedTestBannerHTML() + beginnerGraduationBannerHTML() + noRecentRunBanner() + painPromptBanner() + `<div class="card">
+  return celebrationCardHTML() + guidedTestBannerHTML() + beginnerGraduationBannerHTML() + noRecentRunBanner() + painPromptBanner() + mergeNoticeCardHTML() + mergeAskCardHTML() + `<div class="card">
     <div class="chart-hint" style="margin-top:0;margin-bottom:8px;text-transform:capitalize">Aujourd'hui · ${dayLabelShort(date)}</div>
     ${body}
   </div>` + weekRecapCardHTML();
@@ -4679,6 +4747,7 @@ function runProgramMaintenance(){
   if(programMaintenancePromise) return programMaintenancePromise;
   programMaintenancePromise = (async()=>{
     try{
+      if(await mergeManualRuns()) renderContent();
       await reconcilePlannedSessions();
       await applyProgramAdjustments();
     }catch(e){
