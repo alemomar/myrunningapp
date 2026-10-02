@@ -2725,7 +2725,7 @@ window.generateProgram = async (mondayDate, opts) => {
   }
 
   const rows = [...runningRows, ...crossRows];
-  if(!rows.length){ if(!opts.silent) alert("Pas assez d'informations pour générer un programme — vérifie tes objectifs et tes disponibilités ci-dessus."); return; }
+  if(!rows.length){ if(!opts.silent) alert("On n'a pas encore assez d'informations pour générer ton programme : vérifie tes objectifs et tes disponibilités ci-dessus."); return; }
   const { error } = await supa.from("planned_sessions").insert(rows);
   if(error){ if(!opts.silent) alert("Erreur de génération : "+error.message); return; }
   await loadData();
@@ -2768,7 +2768,7 @@ function warnIfDayBeforeRun(dateStr, type){
   if(!NON_RUNNING_TYPES.includes(type)) return;
   const nextDateStr = addDaysStr(new Date(dateStr+"T00:00:00"), 1);
   const hasRunNextDay = plannedSessions.some(p=>p.planned_date===nextDateStr && p.pace_zone && (p.status==="planned"||p.status==="done"));
-  if(hasRunNextDay) alert("⚠️ Attention aux courbatures et au risque de blessure : tu as une course prévue le lendemain de cette séance.");
+  if(hasRunNextDay) alert("Petit conseil : tu as une course prévue le lendemain de cette séance. Des jambes courbaturées peuvent rendre la course plus difficile, tu peux la déplacer si tu préfères.");
 }
 window.saveSessionEdit = async (id) => {
   const session = plannedSessions.find(p=>p.id===id);
@@ -2831,7 +2831,7 @@ window.toggleAddForm = (dateStr) => {
 // sauf le type sont optionnels. Refuse si la nouvelle séance ne peut pas
 // partager ce jour avec celles déjà là (deux courses, du renfo avec une
 // course... voir sessionsCanShareDay).
-const SAME_DAY_REFUSAL = "Ces deux séances ne peuvent pas être le même jour : une course accepte une séance légère (yoga, mobilité, étirements) mais jamais une autre course ni du renfo.";
+const SAME_DAY_REFUSAL = "On ne peut pas mettre ces deux séances le même jour : une course accepte une séance légère (yoga, mobilité, étirements), mais pas une autre course ni du renfo, pour que tu récupères entre deux efforts.";
 window.addManualSession = async (dateStr) => {
   const type = document.getElementById("addSession_type")?.value || "EF";
   const distanceKm = parseFloat(document.getElementById("addSession_distance")?.value);
@@ -2895,8 +2895,8 @@ function missedSessionsBanner(){
   if(!missed.length) return "";
   const p = missed[0];
   return `<div class="card" style="border-color:rgba(255,159,10,0.4);background:rgba(255,159,10,0.08)">
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Séance manquée — ${p.title} du ${new Date(p.planned_date).toLocaleDateString('fr-FR')}</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Tu ne l'as pas faite. Tu veux qu'on réorganise ta semaine, ou tu préfères garder ton plan tel quel ?</div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Une séance n'a pas pu se faire — ${p.title} du ${new Date(p.planned_date).toLocaleDateString('fr-FR')}</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ça arrive à tout le monde. On peut réorganiser ta semaine pour la replacer, ou tu préfères garder ton plan tel quel ?</div>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="btn-secondary" onclick="rescheduleMissedSession('${p.id}')">Réorganiser automatiquement</button>
       <button class="btn-secondary" onclick="dismissMissedSession('${p.id}')">Garder mon plan tel quel</button>
@@ -2920,7 +2920,7 @@ window.rescheduleMissedSession = async (id) => {
   const isPriority = isIntensePaceZone(old.pace_zone);
   const day = findRescheduleDay({pace_zone:old.pace_zone, type:old.type}, weekSessions, availableDayIndexes, isPriority);
   if(day==null){
-    alert("Impossible de recaser cette séance sans enfreindre les garde-fous (jamais 2 séances le même jour, jamais 2 intenses d'affilée) — elle reste abandonnée cette semaine.");
+    alert("On n'a pas trouvé de jour pour replacer cette séance sans surcharger ta semaine (pas deux séances intenses de suite, pas deux courses le même jour). Pas de souci : on la laisse de côté cette semaine, ce qui compte c'est de retrouver ton rythme.");
     return;
   }
   const newDateStr = localDateStr(addDays(monday, day));
@@ -3478,7 +3478,7 @@ function weekRecapCardHTML(){
     repos: "background:var(--card-2);border:2px solid transparent;color:transparent",
   };
   const dotMark = { fait:"✓", manque:"!", prevu:"", repos:"" };
-  const dayLabel = { fait:"fait", manque:"manqué", prevu:"prévu", repos:"repos" };
+  const dayLabel = { fait:"fait", manque:"à replacer", prevu:"prévu", repos:"repos" };
   const dots = days.map((d,i)=>`<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1">
     <div style="font-size:11px;color:${d.isToday?"var(--text)":"var(--text-dim)"};font-weight:${d.isToday?700:500}">${dayLetters[i]}</div>
     <div title="${dayLabel[d.status]}${d.isToday?" (aujourd'hui)":""}" aria-label="${dayLabel[d.status]}${d.isToday?", aujourd'hui":""}" style="width:26px;height:26px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;${dotStyle[d.status]};${d.isToday?"box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--text);":""}">${dotMark[d.status]}</div>
@@ -3492,7 +3492,7 @@ function weekRecapCardHTML(){
     </div>
     <div style="display:flex;gap:4px;padding:2px 0 6px">${dots}</div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text-dim);margin-top:8px">
-      <span>✓ fait</span><span>○ prévu</span><span style="color:var(--orange)">! manqué</span><span>· repos</span>
+      <span>✓ fait</span><span>○ prévu</span><span style="color:var(--orange)">! à replacer</span><span>· repos</span>
     </div>
     ${chargeGaugeHTML(gauge, acwr)}
     <div style="font-size:13px;line-height:1.5;margin-top:14px">${weekSummaryPhrase(recap, gauge)}</div>
