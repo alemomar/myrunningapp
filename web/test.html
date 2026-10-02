@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=35"></script>
+<script src="logic.js?v=36"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -511,6 +511,20 @@ try {
   assertEqual("painAdaptationTier : intensité 8-9 répétée -> Gros (pas re-classé Petit)", painAdaptationTier(grosHautHist, zoneKeys), {zone:"genoux_g", tier:"gros"});
   assertEqual("painAdaptationTier : pas de répétition -> null", painAdaptationTier([{genoux_g:6},{genoux_g:0}], zoneKeys), null);
   assertEqual("painAdaptationTier : historique trop court -> null", painAdaptationTier([{genoux_g:8}], zoneKeys), null);
+}
+
+// --- acutePainTrigger (4.6.c) ---
+{
+  const zoneKeys = ["genoux_g","genoux_d","dos"];
+  assertEqual("acutePainTrigger : douleur 7 sur la dernière séance -> severe", acutePainTrigger([{genoux_g:7}], zoneKeys), {zone:"genoux_g", reason:"severe"});
+  assertEqual("acutePainTrigger : douleur 6 une seule fois -> null", acutePainTrigger([{genoux_g:6}], zoneKeys), null);
+  assertEqual("acutePainTrigger : 7 avant mais plus sur la dernière -> null", acutePainTrigger([{genoux_g:8},{genoux_g:2}], zoneKeys), null);
+  assertEqual("acutePainTrigger : 4 sur 3 séances de suite -> recurring", acutePainTrigger([{dos:4},{dos:5},{dos:4}], zoneKeys), {zone:"dos", reason:"recurring"});
+  assertEqual("acutePainTrigger : 4 sur seulement 2 séances -> null", acutePainTrigger([{dos:4},{dos:5}], zoneKeys), null);
+  assertEqual("acutePainTrigger : 3 séances dont une à 3 -> null", acutePainTrigger([{dos:4},{dos:3},{dos:5}], zoneKeys), null);
+  assertEqual("acutePainTrigger : severe prime sur recurring", acutePainTrigger([{dos:4,genoux_g:4},{dos:5,genoux_g:5},{dos:4,genoux_g:8}], zoneKeys), {zone:"genoux_g", reason:"severe"});
+  assertEqual("acutePainTrigger : zone exclue (déjà en pause) ignorée", acutePainTrigger([{genoux_g:9}], ["dos"]), null);
+  assertEqual("acutePainTrigger : historique vide -> null", acutePainTrigger([], zoneKeys), null);
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---

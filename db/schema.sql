@@ -31,7 +31,9 @@ create table public.profiles (
   vo2_max numeric,
   vo2_max_updated_at timestamptz,
   vo2_max_is_manual boolean not null default false,
-  program_settings jsonb          -- réglages du moteur Programme (repli VMA/temps, contraintes)
+  program_settings jsonb,         -- réglages du moteur Programme (repli VMA/temps, contraintes)
+  onboarding_completed_at timestamptz,  -- fin du parcours guidé de première connexion (migration_022)
+  suspended_zones jsonb           -- zones du corps mises en pause : [{"zone","since"}] (migration_023)
 );
 
 alter table public.profiles enable row level security;

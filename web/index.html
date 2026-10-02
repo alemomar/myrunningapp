@@ -423,7 +423,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=35"></script>
+<script src="logic.js?v=36"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -564,6 +564,7 @@ let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=initialActiveTa
 let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = null, restingHrUpdatedAt = null, restingHrIsManual = false, avatarUrl = null;
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let onboardingCompletedAt = null;
+let suspendedZones = [];
 let openSessionRatings = new Set();
 let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
 let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
@@ -634,7 +635,7 @@ async function loadData() {
   // user_id. Sans ce garde-fou, tout le profil retombe à vide (profile
   // devient undefined) et ça donne l'impression que rien n'a jamais été
   // enregistré, alors que les écritures individuelles fonctionnent très bien.
-  const { data: profile, error: profileError } = await supa.from("profiles").select("sync_since_date, goals, max_hr, resting_hr, resting_hr_updated_at, resting_hr_is_manual, vo2_max, vo2_max_updated_at, vo2_max_is_manual, avatar_url, pseudo, age, gender, cities, dashboard_period, program_settings, onboarding_completed_at").maybeSingle();
+  const { data: profile, error: profileError } = await supa.from("profiles").select("sync_since_date, goals, max_hr, resting_hr, resting_hr_updated_at, resting_hr_is_manual, vo2_max, vo2_max_updated_at, vo2_max_is_manual, avatar_url, pseudo, age, gender, cities, dashboard_period, program_settings, onboarding_completed_at, suspended_zones").maybeSingle();
   if(profileError){
     console.error("Erreur de chargement du profil :", profileError);
     alert("Erreur de chargement du profil : "+profileError.message+"\n\nTes réglages (Mon compte, Objectifs) risquent d'apparaître vides même s'ils sont bien enregistrés. Contacte-moi avec ce message.");
@@ -656,6 +657,7 @@ async function loadData() {
   dashboardPeriod = profile?.dashboard_period || "monthly";
   programSettings = profile?.program_settings || {};
   onboardingCompletedAt = profile?.onboarding_completed_at || null;
+  suspendedZones = Array.isArray(profile?.suspended_zones) ? profile.suspended_zones : [];
 
   const { data: plannedData, error: plannedError } = await supa.from("planned_sessions").select("*").order("planned_date", { ascending: true });
   if(plannedError){
@@ -2472,8 +2474,16 @@ function computeProgramInputs(){
   const dailySeries = buildDailyLoadSeries(loadSessions);
   const { acwr } = acwrAt(dailySeries, new Date());
   structure = applyAcwrAdjustment(structure, acwr);
-  const recentRatings = runningRuns.filter(r=>r.painRatings).slice(-2).map(r=>r.painRatings);
-  const zoneKeys = BODY_ZONES.map(z=>z[0]);
+  const ratedRuns = runningRuns.filter(r=>r.painRatings);
+  const recentRatings = ratedRuns.slice(-2).map(r=>r.painRatings);
+  // Palier "Hors ajustement" (4.6.c) : prime sur Petit/Gros pour sa zone, et
+  // une zone déjà en pause ne redéclenche plus rien (l'utilisateur a déjà
+  // été prévenu et a choisi).
+  const suspendedKeys = suspendedZones.map(z=>z.zone);
+  const allZoneKeys = BODY_ZONES.map(z=>z[0]).filter(k=>!suspendedKeys.includes(k));
+  const urgent = acutePainTrigger(ratedRuns.slice(-3).map(r=>r.painRatings), allZoneKeys);
+  const urgentIssue = urgent ? { ...urgent, runId: ratedRuns[ratedRuns.length-1].id } : null;
+  const zoneKeys = allZoneKeys.filter(k=>k!==urgent?.zone);
   // painAdaptationTier (4.6.b) remplace l'ancien detectRepeatedPain à seuil
   // fixe (4) : distingue "Petit" (intensité 4-5, ajustement automatique)
   // de "Gros" (intensité >=6, proposé à valider) — les deux paliers
@@ -2498,7 +2508,7 @@ function computeProgramInputs(){
   let grosIssue = null;
   if(painTier?.tier==="gros") grosIssue = { type:"pain", zone:painTier.zone };
   else if(chargeGauge.severe) grosIssue = { type:"charge" };
-  return { structure, avoidQualityReason, acwr, painZone, grosIssue };
+  return { structure, avoidQualityReason, acwr, painZone, grosIssue, urgentIssue };
 }
 
 // Génère et persiste une semaine (lundi `mondayDate`) — n'écrase jamais une
@@ -2819,6 +2829,72 @@ window.dismissMissedSession = (id) => {
   } catch {}
   renderContent();
 };
+
+// Palier "Hors ajustement" (4.6.c, CDC v2) : douleur >=7 ou >=4 sur 3
+// séances de suite. L'app ne décide jamais à la place de l'utilisateur :
+// la mise en pause d'une zone, la suppression d'une course, tout est
+// proposé, et l'utilisateur peut continuer s'il le souhaite. Les zones en
+// pause sont stockées dans profiles.suspended_zones (synchronisé entre
+// appareils) ; seul "ignorer" reste local (signature liée à la dernière
+// séance notée, la bannière revient donc à la prochaine notation).
+function dismissedUrgentIds(){
+  try { return JSON.parse(localStorage.getItem("dismissedUrgentPain")||"[]"); } catch { return []; }
+}
+window.dismissUrgentPain = (sig) => {
+  try {
+    const ids = dismissedUrgentIds();
+    ids.push(sig);
+    localStorage.setItem("dismissedUrgentPain", JSON.stringify(ids));
+  } catch {}
+  renderContent();
+};
+window.suspendZone = async (zoneKey) => {
+  if(suspendedZones.some(z=>z.zone===zoneKey)) return;
+  const next = [...suspendedZones, { zone: zoneKey, since: new Date().toISOString() }];
+  if(!(await upsertProfile({ suspended_zones: next }))) return;
+  suspendedZones = next;
+  renderContent();
+};
+window.resumeZone = async (zoneKey) => {
+  const next = suspendedZones.filter(z=>z.zone!==zoneKey);
+  if(!(await upsertProfile({ suspended_zones: next }))) return;
+  suspendedZones = next;
+  renderContent();
+};
+function urgentPainBanner(){
+  const { urgentIssue } = computeProgramInputs();
+  if(!urgentIssue) return "";
+  const sig = `urgent_${urgentIssue.zone}_${urgentIssue.runId}`;
+  if(dismissedUrgentIds().includes(sig)) return "";
+  const zoneLabel = (ZONE_SHORT_LABEL[urgentIssue.zone]||urgentIssue.zone).toLowerCase();
+  const todayStr = localDateStr(new Date());
+  const next = plannedSessions.filter(p=>p.status==="planned" && p.pace_zone && p.planned_date>=todayStr).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0];
+  const why = urgentIssue.reason==="severe" ? "Elle est très forte" : "Elle revient séance après séance";
+  return `<div class="card" style="border-color:rgba(214,69,65,0.55);background:rgba(214,69,65,0.08)">
+    <div style="font-size:14px;font-weight:600;margin-bottom:6px">Cette douleur au niveau de ${zoneLabel} mérite un avis médical.</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">${why}. Continuer comme si de rien n'était risque de l'aggraver : on te conseille de consulter un médecin ou un kiné avant de reprendre des efforts qui sollicitent cette zone. Cette application ne pose pas de diagnostic.</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">En attendant, on peut mettre cette zone en pause : plus d'exercices de mobilité ou de renfo ciblés dessus. Tu peux aussi continuer si tu le souhaites, c'est ton choix.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn-secondary" onclick="suspendZone('${urgentIssue.zone}')">J'ai compris, mettre cette zone en pause</button>
+      ${next?`<button class="btn-secondary" onclick="deleteSession('${next.id}')">Supprimer ma prochaine course</button>
+      <button class="btn-secondary" onclick="replaceSessionWithRenfo('${next.id}','')">Remplacer ma prochaine course par du renfo</button>`:""}
+      <button class="btn-secondary" onclick="dismissUrgentPain('${sig}')">Je continue quand même</button>
+    </div>
+  </div>`;
+}
+function suspendedZonesCard(){
+  if(!suspendedZones.length) return "";
+  return `<div class="card" style="border-color:rgba(214,69,65,0.35)">
+    ${suspendedZones.map(z=>{
+      const label = (ZONE_SHORT_LABEL[z.zone]||z.zone).toLowerCase();
+      const since = new Date(z.since).toLocaleDateString("fr-FR");
+      return `<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">
+        <div style="font-size:12px"><b>Zone en pause : ${label}</b>, depuis le ${since}.<br><span style="color:var(--text-dim)">Pense à consulter un médecin ou un kiné.</span></div>
+        <button class="btn-secondary" onclick="resumeZone('${z.zone}')">Ça va mieux, reprendre</button>
+      </div>`;
+    }).join('<div style="height:10px"></div>')}
+  </div>`;
+}
 
 // Bannière palier "Gros" (4.6.b, CDC v2) : douleur d'intensité >=6 répétée,
 // ou charge d'entraînement sévère (>1.5) — jamais appliqué automatiquement
@@ -4021,6 +4097,8 @@ function renderContentInner(){
         <div class="chart-hint" style="margin-top:0">Calendrier de séances généré à partir de tes objectifs, ton profil coureur et ton ressenti récent — reste modifiable séance par séance.</div>
       </div>
       ${missedSessionsBanner()}
+      ${urgentPainBanner()}
+      ${suspendedZonesCard()}
       ${grosAdaptationBanner()}
       ${programSettingsFormHTML(profile)}
       ${ready?`

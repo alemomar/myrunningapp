@@ -881,6 +881,27 @@ function painAdaptationTier(ratingsHistory, zoneKeys){
   return null;
 }
 
+/* ---------- Palier "Hors ajustement" (4.6.c) ----------
+   Douleur d'intensité >=7 sur la dernière séance notée ("severe"), OU
+   >=4 sur les 3 dernières séances notées de suite ("recurring"). Seuils
+   validés avec l'utilisateur (échelle interne de l'app, pas une étude).
+   "severe" prime sur "recurring". Ne regarde que les zones passées dans
+   zoneKeys (l'appelant retire celles déjà en pause). */
+function acutePainTrigger(ratingsHistory, zoneKeys){
+  if(!ratingsHistory || ratingsHistory.length<1) return null;
+  const last = ratingsHistory[ratingsHistory.length-1];
+  for(const zone of zoneKeys){
+    if((last[zone]||0)>=7) return { zone, reason:"severe" };
+  }
+  if(ratingsHistory.length>=3){
+    const lastThree = ratingsHistory.slice(-3);
+    for(const zone of zoneKeys){
+      if(lastThree.every(r=>(r[zone]||0)>=4)) return { zone, reason:"recurring" };
+    }
+  }
+  return null;
+}
+
 /* ---------- Base d'exercices renfo/mobilité (CDC v2, 4.7 — base pour 4.6.a) ----------
    Fournie par l'utilisateur (01/10/2026), 20 exercices (14 Renfo + 6
    Mobilité) — destinée à être relue par un kiné avant la phase 3 (CDC v2,
