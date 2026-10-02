@@ -196,12 +196,15 @@ struct SyncView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
 
-            Button("Retourner au dashboard") {
-                if let url = URL(string: Config.dashboardURL) {
-                    UIApplication.shared.open(url)
-                }
-            }
-            .buttonStyle(.bordered)
+            // iOS ne permet pas de rouvrir une PWA depuis un lien (ça ouvrirait
+            // le navigateur par défaut) : on renvoie vers le lien de retour
+            // système "◀ MyRunningApp" affiché en haut à gauche quand RunSync
+            // a été ouvert depuis la PWA.
+            Text("Pour revenir à ton dashboard, touche « ◀ MyRunningApp » en haut à gauche de l'écran, ou rouvre MyRunningApp depuis ton écran d'accueil.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
 
             Button("Déconnexion") {
                 AuthService.signOut()
