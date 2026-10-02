@@ -424,7 +424,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=40"></script>
+<script src="logic.js?v=41"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -3306,6 +3306,25 @@ function programSettingsFormHTML(profile){
   </div>`;
 }
 
+// Liste d'exercices d'une séance (4.7.d) : la description est enregistrée en
+// texte (une ligne "Nom — format ..." par exercice, voir formatExerciseList) ;
+// chaque exercice est retrouvé par son nom dans la base pour afficher son
+// animation, ses 3 consignes et sa variante. Texte brut si aucun nom reconnu
+// (ex: description saisie à la main).
+function exerciseListHTML(description){
+  const lines = String(description).split("\n").filter(l=>l.trim() && !l.startsWith("   "));
+  const found = lines.map(l=>EXERCISE_LIBRARY.find(ex=>l.startsWith(ex.name+" — "))).filter(Boolean);
+  if(!found.length) return `<div style="font-size:13px;line-height:1.55;white-space:pre-line">${escHtml(description)}</div>`;
+  return found.map(ex=>`<div style="display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--border)">
+    <img src="${ex.visuel}" alt="Animation : ${escHtml(ex.name)}" width="84" height="84" loading="lazy" style="flex:none;width:84px;height:84px;border-radius:12px;background:var(--card-2)">
+    <div style="min-width:0">
+      <div style="font-size:13px;font-weight:600">${escHtml(ex.name)}</div>
+      <div style="font-size:12px;color:var(--text-dim)">${escHtml(ex.format)}${ex.materiel && ex.materiel!=="Aucun" ? " · matériel : "+escHtml(ex.materiel) : ""}</div>
+      <ul style="margin:6px 0 0;padding-left:16px;font-size:12px;line-height:1.45">${ex.consignes.map(c=>`<li>${escHtml(c)}</li>`).join("")}</ul>
+      ${ex.variante ? `<div style="font-size:11px;color:var(--text-dim);margin-top:6px">${escHtml(ex.variante)}</div>` : ""}
+    </div>
+  </div>`).join("");
+}
 function escHtml(t){ return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 // Écran "Aujourd'hui" (CDC 4.8) : accueil de l'app. Liste TOUTES les séances
 // du jour (0, 1 ou plusieurs) plutôt qu'une seule, pour accueillir sans
@@ -3417,7 +3436,7 @@ function programSessionCardHTML(session, date){
     <div class="chart-hint" style="margin-top:8px;margin-bottom:0">${session.rationale}</div>
     ${session.description?`<div style="margin-top:10px">
       <div class="chart-hint" style="margin-top:0;margin-bottom:4px">Exercices${session.target_duration_min?` · environ ${Math.round(session.target_duration_min)} min`:""}</div>
-      <div style="font-size:13px;line-height:1.55;white-space:pre-line">${escHtml(session.description)}</div>
+      ${exerciseListHTML(session.description)}
     </div>`:""}
     ${programPaceExplanationHTML(session)}
     ${!done?`<div class="filters" style="margin-top:10px;margin-bottom:0">

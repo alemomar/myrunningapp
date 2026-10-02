@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=40"></script>
+<script src="logic.js?v=41"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -643,6 +643,13 @@ try {
   assertEqual("phrase : gauge absente (null) acceptée", weekSummaryPhrase(recap(["fait","prevu","repos","repos","repos","repos","repos"], 2), null), "Tu es sur la bonne voie, continue à ton rythme.");
   const real = weekRecap([], [{planned_date:"2026-10-05", status:"done", pace_zone:"easy", type:"EF"},{planned_date:"2026-10-07", status:"skipped", pace_zone:"easy", type:"EF"},{planned_date:"2026-10-12", status:"planned", pace_zone:"easy", type:"EF"}], "2026-10-07");
   assertEqual("weekRecap : plannedThisWeek ne compte que les séances actives de la semaine", real.plannedThisWeek, 1);
+}
+
+// --- Visuels et consignes des exercices (4.7.d) ---
+{
+  assertEqual("EXERCISE_LIBRARY : chaque exercice a un visuel SVG dans exercices/", EXERCISE_LIBRARY.every(ex=>/^exercices\/[a-z0-9-]+\.svg$/.test(ex.visuel)), true);
+  assertEqual("EXERCISE_LIBRARY : un visuel différent par exercice", new Set(EXERCISE_LIBRARY.map(ex=>ex.visuel)).size, 20);
+  assertEqual("EXERCISE_LIBRARY : 3 consignes par exercice", EXERCISE_LIBRARY.every(ex=>Array.isArray(ex.consignes) && ex.consignes.length===3 && ex.consignes.every(c=>c.length>0)), true);
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---
