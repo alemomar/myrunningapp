@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=48"></script>
+<script src="logic.js?v=49"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1067,8 +1067,39 @@ try {
   assertEqual("fmtDur : 5min -> 5:00", fmtDur(300), "5:00");
 }
 
+  // ---- Saisie à la main (chantier 2) ----
+  const T0 = "2026-10-02";
+  assertEqual("saisie : course valide -> aucune erreur", validateManualRun({date:"2026-10-01", type:"EF", distKm:"7.5", durationMin:"45", hr:""}, T0), {errors:[], warnings:[]});
+  assertEqual("saisie : date future refusée", validateManualRun({date:"2026-10-03", type:"EF", distKm:5, durationMin:30}, T0).errors, ["La date ne peut pas être dans le futur."]);
+  assertEqual("saisie : course sans distance refusée", validateManualRun({date:T0, type:"EF", distKm:"", durationMin:30}, T0).errors, ["Indique la distance en km."]);
+  assertEqual("saisie : yoga sans distance accepté", validateManualRun({date:T0, type:"Yoga", distKm:"", durationMin:40}, T0), {errors:[], warnings:[]});
+  assertEqual("saisie : durée manquante refusée", validateManualRun({date:T0, type:"Yoga", distKm:"", durationMin:""}, T0).errors, ["Indique la durée en minutes."]);
+  assertEqual("saisie : FC hors plage refusée", validateManualRun({date:T0, type:"EF", distKm:5, durationMin:30, hr:300}, T0).errors, ["La fréquence cardiaque doit être entre 30 et 230."]);
+  assertEqual("saisie : 50 km en 20 min -> doute d'allure", validateManualRun({date:T0, type:"EF", distKm:50, durationMin:20}, T0).warnings.length, 1);
+  assertEqual("saisie : 5 km en 30 min -> pas de doute", validateManualRun({date:T0, type:"EF", distKm:5, durationMin:30}, T0).warnings.length, 0);
+  const rowEf = manualRunRow({date:"2026-10-01", type:"EF", distKm:"7.5", durationMin:"45", hr:"148", time:"07:30"}, "u1", new Date(2026,9,2,12,0,0));
+  assertEqual("ligne saisie : marqueur Manuel + compte dans les stats", [rowEf.apple_type, rowEf.include_in_stats, rowEf.distance_km, rowEf.duration_sec, rowEf.avg_hr], ["Manuel", true, 7.5, 2700, 148]);
+  assertEqual("ligne saisie : heure donnée respectée", new Date(rowEf.start_date).getHours()+":"+new Date(rowEf.start_date).getMinutes(), "7:30");
+  const rowSeuil = manualRunRow({date:T0, type:"Seuil", distKm:8, durationMin:40, hr:""}, "u1", new Date());
+  assertEqual("ligne saisie : Seuil compte dans les stats (le trigger SQL l'ignore)", rowSeuil.include_in_stats, true);
+  const rowYoga = manualRunRow({date:T0, type:"Yoga", distKm:"", durationMin:40, hr:""}, "u1", new Date());
+  assertEqual("ligne saisie : yoga hors stats, distance 0, pas de FC", [rowYoga.include_in_stats, rowYoga.distance_km, rowYoga.avg_hr], [false, 0, null]);
+  const rowNoTime = manualRunRow({date:"2026-09-28", type:"EF", distKm:5, durationMin:30, hr:""}, "u1", new Date(2026,9,2,18,42,7));
+  const dNo = new Date(rowNoTime.start_date);
+  assertEqual("ligne saisie : sans heure -> heure de saisie, sur le bon jour", [dNo.getDate(), dNo.getMonth(), dNo.getHours(), dNo.getMinutes(), dNo.getSeconds()], [28, 8, 18, 42, 7]);
+  const existing = [{id:"a", date:"2026-10-01", type:"EF", durationSec:2700}, {id:"b", date:"2026-10-01", type:"Yoga", durationSec:1800}];
+  assertEqual("doublon : même jour, course, durée proche -> trouvé", findLikelyDuplicateRun(existing, {date:"2026-10-01", type:"Long", durationSec:2900})?.id, "a");
+  assertEqual("doublon : durée trop différente -> pas de doublon", findLikelyDuplicateRun(existing, {date:"2026-10-01", type:"EF", durationSec:5400}), null);
+  assertEqual("doublon : autre jour -> pas de doublon", findLikelyDuplicateRun(existing, {date:"2026-09-30", type:"EF", durationSec:2700}), null);
+  assertEqual("doublon : course vs yoga -> pas de doublon", findLikelyDuplicateRun([existing[0]], {date:"2026-10-01", type:"Yoga", durationSec:2700}), null);
+  assertEqual("doublon : yoga vs yoga durée proche -> trouvé", findLikelyDuplicateRun(existing, {date:"2026-10-01", type:"Yoga", durationSec:1700})?.id, "b");
+  assertEqual("suppression : course passée libérée -> à replacer", plannedStatusAfterRunDeleted({pace_zone:"easy", planned_date:"2026-10-01"}, T0), "missed");
+  assertEqual("suppression : course d'aujourd'hui libérée -> prévue", plannedStatusAfterRunDeleted({pace_zone:"easy", planned_date:T0}, T0), "planned");
+  assertEqual("suppression : yoga passé libéré -> prévu", plannedStatusAfterRunDeleted({pace_zone:null, planned_date:"2026-10-01"}, T0), "planned");
+
 document.getElementById("summary").innerHTML =
   `<span class="${fail?'fail':'pass'}">${pass} passés, ${fail} échoués</span>`;
+
 })();
 </script>
 </body>

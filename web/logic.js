@@ -1765,3 +1765,88 @@ function generateCrossTrainingSessions(frequencyAutre, runDayIndexes, weekIndex,
   sessions.sort((a,b)=>a.dayIndex-b.dayIndex);
   return sessions.map(s => ({ dayIndex:s.dayIndex, type:s.type, rationale: CROSS_TRAINING_RATIONALE[s.type] }));
 }
+
+/* ---------- Saisie à la main d'une séance faite sans montre (chantier 2) ----------
+   Marqueur : runs.apple_type = "Manuel" (décision validée le 02/10/2026,
+   pas de nouvelle colonne). Les types de course comptent dans les stats :
+   le trigger SQL ne connaît pas "Seuil", on pose donc include_in_stats
+   explicitement à l'insertion. */
+const MANUAL_RUN_MARKER = "Manuel";
+const RUNNING_RUN_TYPES = ["EF","Long","Fractionné","Seuil","Course","Récup"];
+function isRunningRunType(type){ return RUNNING_RUN_TYPES.includes(type); }
+// Une saisie est valide si on peut l'enregistrer (errors vide) ; les
+// warnings sont des doutes (allure invraisemblable) que l'utilisateur peut
+// confirmer. `input` : {date:"YYYY-MM-DD", type, distKm, durationMin, hr}.
+function validateManualRun(input, todayStr){
+  const errors = [], warnings = [];
+  const { date, type } = input;
+  const distKm = Number(input.distKm), durationMin = Number(input.durationMin);
+  const running = isRunningRunType(type);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date||"")) errors.push("Indique la date de la séance.");
+  else if(date > todayStr) errors.push("La date ne peut pas être dans le futur.");
+  if(!type) errors.push("Choisis le type de séance.");
+  if(!(durationMin>0)) errors.push("Indique la durée en minutes.");
+  else if(durationMin>720) errors.push("Plus de 12 heures : vérifie la durée.");
+  if(running){
+    if(!(distKm>0)) errors.push("Indique la distance en km.");
+    else if(distKm>250) errors.push("Plus de 250 km : vérifie la distance.");
+  } else if(input.distKm!=="" && input.distKm!=null && (isNaN(distKm) || distKm<0 || distKm>250)){
+    errors.push("Vérifie la distance.");
+  }
+  if(input.hr!=="" && input.hr!=null){
+    const hr = Number(input.hr);
+    if(!(hr>=30 && hr<=230)) errors.push("La fréquence cardiaque doit être entre 30 et 230.");
+  }
+  if(!errors.length && running){
+    const paceSec = durationMin*60/distKm;
+    if(paceSec<150 || paceSec>1200){
+      const m = Math.floor(paceSec/60), s = Math.round(paceSec%60);
+      warnings.push(`${String(distKm).replace(".",",")} km en ${Math.round(durationMin)} min, ça fait ${m}'${String(s).padStart(2,"0")}''/km. Ces chiffres sont-ils bons ?`);
+    }
+  }
+  return { errors, warnings };
+}
+// Date de départ d'une saisie : heure donnée (HH:MM), sinon l'heure à laquelle
+// on saisit (évite la collision unique(user_id,start_date) entre deux saisies).
+function manualRunStartDate(dateStr, timeStr, now){
+  const [y,m,d] = dateStr.split("-").map(Number);
+  if(/^\d{2}:\d{2}$/.test(timeStr||"")){
+    const [h,mi] = timeStr.split(":").map(Number);
+    return new Date(y, m-1, d, h, mi, 0);
+  }
+  return new Date(y, m-1, d, now.getHours(), now.getMinutes(), now.getSeconds());
+}
+function manualRunRow(input, userId, now){
+  const running = isRunningRunType(input.type);
+  const distKm = Number(input.distKm);
+  const hr = input.hr!=="" && input.hr!=null ? Number(input.hr) : null;
+  return {
+    user_id: userId,
+    start_date: manualRunStartDate(input.date, input.time, now||new Date()).toISOString(),
+    apple_type: MANUAL_RUN_MARKER,
+    type: input.type,
+    distance_km: distKm>0 ? distKm : 0,
+    duration_sec: Math.round(Number(input.durationMin)*60),
+    avg_hr: hr,
+    include_in_stats: running,
+  };
+}
+// Une séance existe peut-être déjà ce jour-là (synchronisée ou saisie) :
+// même jour, même nature, durée à 15 % près. Sert d'avertissement à la
+// saisie (jamais bloquant) ; `runs` : [{id, date:"YYYY-MM-DD", type, durationSec}].
+const DUPLICATE_DURATION_TOLERANCE = 0.15;
+function runsSameNature(a, b){
+  return sessionCategory({type:a})==="run" ? sessionCategory({type:b})==="run" : a===b;
+}
+function findLikelyDuplicateRun(runs, candidate){
+  return (runs||[]).find(r => {
+    if(r.date!==candidate.date || !runsSameNature(r.type, candidate.type)) return false;
+    const longer = Math.max(r.durationSec, candidate.durationSec);
+    return longer>0 && Math.abs(r.durationSec-candidate.durationSec) <= DUPLICATE_DURATION_TOLERANCE*longer;
+  }) || null;
+}
+// Supprimer une course liée à une séance prévue la libère : une course passée
+// redevient "à replacer", le reste redevient simplement "prévu".
+function plannedStatusAfterRunDeleted(planned, todayStr){
+  return planned.pace_zone && planned.planned_date < todayStr ? "missed" : "planned";
+}

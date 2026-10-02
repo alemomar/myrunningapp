@@ -426,6 +426,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
   0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
   100%{opacity:0;transform:translate(calc(-50% - 30px),calc(-50% - 20px)) scale(0)}
 }
+.sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--card);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box}
+.sheet-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:flex-end}
+.sheet-input{background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;padding:9px;font-family:inherit;box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -457,6 +461,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
   </div>
 
   <div id="content"></div>
+  <div id="sheetRoot"></div>
 
   <div class="tabs" id="tabs"></div>
 </div>
@@ -464,7 +469,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=48"></script>
+<script src="logic.js?v=49"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1358,10 +1363,117 @@ window.setLegsFocused = async (id, value) => {
 };
 // Suppression définitive (pas de corbeille) : contrairement au reste des
 // actions sur une séance, il n'y a pas de retour en arrière, d'où la confirmation.
+/* ---------- Saisie à la main d'une séance faite sans montre (chantier 2) ----------
+   Deux entrées : "J'ai fait cette séance" (séance prévue ou à replacer) et
+   "+ Ajouter une séance réalisée" (historique de Progression). La feuille
+   vit dans #sheetRoot, hors de #content : les rendus de l'app (entretien du
+   programme, etc.) ne la réinitialisent pas. */
+let manualRunForm = null;
+const MANUAL_RUN_TYPES = ["EF","Long","Fractionné","Seuil","Course","Renfo","Mobilité","Yoga","Pilates","Kiné","Souplesse","Other"];
+window.openManualRun = (sessionId) => {
+  const todayStr = localDateStr(new Date());
+  const s = sessionId ? plannedSessions.find(p=>p.id===sessionId) : null;
+  let durationMin = "";
+  if(s && s.target_duration_min) durationMin = String(Math.round(s.target_duration_min));
+  else if(s && s.target_distance_km && s.target_pace_sec_per_km) durationMin = String(Math.round(s.target_distance_km*s.target_pace_sec_per_km/60));
+  manualRunForm = {
+    sessionId: s ? s.id : null,
+    date: s ? (s.planned_date <= todayStr ? s.planned_date : todayStr) : todayStr,
+    type: s && MANUAL_RUN_TYPES.includes(s.type) ? s.type : "EF",
+    distKm: s && s.target_distance_km ? String(s.target_distance_km) : "",
+    durationMin, hr:"", time:"", error:"", saving:false,
+  };
+  renderManualRunSheet();
+};
+window.closeManualRun = () => {
+  manualRunForm = null;
+  document.getElementById("sheetRoot").innerHTML = "";
+};
+window.manualRunSet = (field, value) => { if(manualRunForm) manualRunForm[field] = value; };
+window.manualRunSetType = (value) => { manualRunSet("type", value); renderManualRunSheet(); };
+function renderManualRunSheet(){
+  const root = document.getElementById("sheetRoot");
+  const f = manualRunForm;
+  if(!f){ root.innerHTML = ""; return; }
+  const running = isRunningRunType(f.type);
+  const linked = f.sessionId ? plannedSessions.find(p=>p.id===f.sessionId) : null;
+  root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeManualRun()">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Séance faite sans montre">
+      <div class="stitle" style="margin-bottom:6px">Séance faite sans montre</div>
+      <div class="chart-hint" style="margin-top:0">${linked?`Pour « ${escHtml(linked.title)} ». `:""}Ce que tu indiques compte comme une séance synchronisée : historique, stats, charge d'entraînement.</div>
+      <div class="sheet-row">
+        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">Date</span>
+          <input class="sheet-input" type="date" max="${localDateStr(new Date())}" value="${f.date}" oninput="manualRunSet('date',this.value)"></div>
+        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">Heure de départ (facultatif)</span>
+          <input class="sheet-input" type="time" value="${f.time}" oninput="manualRunSet('time',this.value)"></div>
+      </div>
+      <div class="sheet-row">
+        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">Type de séance</span>
+          <select class="type-select" onchange="manualRunSetType(this.value)">${MANUAL_RUN_TYPES.map(t=>`<option value="${t}" ${t===f.type?"selected":""}>${t==="Other"?"Autre":t}</option>`).join("")}</select></div>
+      </div>
+      <div class="sheet-row">
+        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">Distance${running?"":" (facultatif)"}</span>
+          <div style="display:flex;align-items:center;gap:4px"><input class="sheet-input" type="number" inputmode="decimal" min="0" step="0.01" style="width:90px" value="${f.distKm}" oninput="manualRunSet('distKm',this.value)"><span style="font-size:12px;color:var(--text-dim)">km</span></div></div>
+        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">Durée</span>
+          <div style="display:flex;align-items:center;gap:4px"><input class="sheet-input" type="number" inputmode="numeric" min="1" step="1" style="width:80px" value="${f.durationMin}" oninput="manualRunSet('durationMin',this.value)"><span style="font-size:12px;color:var(--text-dim)">min</span></div></div>
+        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">FC moyenne (facultatif)</span>
+          <div style="display:flex;align-items:center;gap:4px"><input class="sheet-input" type="number" inputmode="numeric" min="30" max="230" step="1" style="width:80px" value="${f.hr}" oninput="manualRunSet('hr',this.value)"><span style="font-size:12px;color:var(--text-dim)">bpm</span></div></div>
+      </div>
+      <div id="mrError" role="alert" style="font-size:13px;color:var(--orange);margin-top:12px;min-height:0">${escHtml(f.error)}</div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn-primary" style="margin-top:0" id="mrSave" ${f.saving?"disabled":""} onclick="saveManualRun()">Enregistrer</button>
+        <button class="btn-secondary" onclick="closeManualRun()">Annuler</button>
+      </div>
+    </div>
+  </div>`;
+}
+window.saveManualRun = async () => {
+  const f = manualRunForm;
+  if(!f || f.saving) return;
+  const showError = (msg) => { f.error = msg; const el = document.getElementById("mrError"); if(el) el.textContent = msg; };
+  const todayStr = localDateStr(new Date());
+  const { errors, warnings } = validateManualRun(f, todayStr);
+  if(errors.length){ showError(errors.join(" ")); return; }
+  const dup = findLikelyDuplicateRun(
+    RUNS.map(r=>({ id:r.id, date:localDateStr(dateFromRun(r)), type:r.type, durationSec:r.durationSec })),
+    { date:f.date, type:f.type, durationSec:Number(f.durationMin)*60 });
+  if(dup && !confirm("Une séance du même type existe déjà ce jour-là (peut-être synchronisée depuis ta montre) : c'est peut-être la même. L'ajouter quand même ?")) return;
+  for(const w of warnings){ if(!confirm(w)) return; }
+  f.saving = true;
+  const saveBtn = document.getElementById("mrSave"); if(saveBtn) saveBtn.disabled = true;
+  const { data:{user} } = await supa.auth.getUser();
+  if(!user){ f.saving = false; showError("Session expirée : reconnecte-toi."); return; }
+  const { data, error } = await supa.from("runs").insert(manualRunRow(f, user.id, new Date())).select("id").single();
+  if(error){
+    f.saving = false; if(saveBtn) saveBtn.disabled = false;
+    showError(error.code==="23505" ? "Une séance existe déjà à cette minute : change l'heure de départ." : "Erreur d'enregistrement : "+error.message);
+    return;
+  }
+  const newId = data.id, sessionId = f.sessionId;
+  if(sessionId) await supa.from("planned_sessions").update({status:"done", linked_run_id:newId, updated_at:new Date().toISOString()}).eq("id", sessionId);
+  closeManualRun();
+  await loadData();
+  const planned = sessionId ? plannedSessions.find(p=>p.id===sessionId) : null;
+  if(planned && planned.generation_reason==="guided_test"){
+    const run = RUNS.find(r=>r.id===newId);
+    if(run) await applyGuidedTestResult(run);
+  }
+  await runProgramMaintenance(); // rapproche aussi les autres séances prévues du même jour
+  const run = RUNS.find(r=>r.id===newId);
+  if(run && run.includeInStats) goRateSession(newId); else renderContent();
+};
 window.deleteRun = async (id, label) => {
-  if(!confirm(`Supprimer définitivement la séance du ${label} ? Cette action est irréversible.`)) return;
+  // Une séance prévue liée à cette course repasse "à faire" / "à replacer"
+  // (sinon elle resterait "faite" sans course derrière).
+  const linked = plannedSessions.filter(p=>p.linked_run_id===id && p.status==="done");
+  const note = linked.length ? ` La séance prévue « ${linked[0].title} » repassera à faire.` : "";
+  if(!confirm(`Supprimer définitivement la séance du ${label} ? Cette action est irréversible.${note}`)) return;
   const { error } = await supa.from("runs").delete().eq("id", id);
   if(error){ alert("Erreur de suppression : "+error.message); return; }
+  const todayStr = localDateStr(new Date());
+  for(const p of linked){
+    await supa.from("planned_sessions").update({status:plannedStatusAfterRunDeleted(p, todayStr), linked_run_id:null, updated_at:new Date().toISOString()}).eq("id", p.id);
+  }
   await refreshAfterEdit();
 };
 function readPainForm(prefix){
@@ -2532,7 +2644,7 @@ function manageableRow(r, effMaxHr, effRestingHr){
         <select class="type-select" onchange="changeType('${r.id}', this.value)">
           ${TYPE_OPTIONS.map(t=>`<option value="${t}" ${t===r.type?"selected":""}>${t}</option>`).join("")}
         </select>
-        ${r.appleType?`<span class="field-sub">Détecté par Santé : ${r.appleType}</span>`:""}
+        ${r.appleType?`<span class="field-sub">${r.appleType===MANUAL_RUN_MARKER?"Saisie à la main":"Détecté par Santé : "+r.appleType}</span>`:""}
       </div>
       <div class="manage-field"><span class="field-lbl">Temps d'effort</span><span class="field-val">${r.dur}</span></div>
       ${r.dist>0?`<div class="manage-field"><span class="field-lbl">Distance</span><span class="field-val">${r.dist.toFixed(2)} km</span></div>
@@ -2985,7 +3097,8 @@ function missedSessionsBanner(){
   return `<div class="card" style="border-color:rgba(255,159,10,0.4);background:rgba(255,159,10,0.08)">
     <div style="font-size:13px;font-weight:600;margin-bottom:4px">Une séance n'a pas pu se faire — ${p.title} du ${new Date(p.planned_date).toLocaleDateString('fr-FR')}</div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ça arrive à tout le monde. On peut réorganiser ta semaine pour la replacer, ou tu préfères garder ton plan tel quel ?</div>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn-secondary" onclick="openManualRun('${p.id}')">Je l'ai faite</button>
       <button class="btn-secondary" onclick="rescheduleMissedSession('${p.id}')">Réorganiser automatiquement</button>
       <button class="btn-secondary" onclick="dismissMissedSession('${p.id}')">Garder mon plan tel quel</button>
     </div>
@@ -3740,6 +3853,7 @@ function programSessionCardHTML(session, date){
     </div>`:""}
     ${programPaceExplanationHTML(session)}
     ${!done?`<div class="filters" style="margin-top:10px;margin-bottom:0">
+      ${session.planned_date<=localDateStr(new Date())?`<button class="flt" onclick="openManualRun('${session.id}')">J'ai fait cette séance</button>`:""}
       ${session.pace_zone && session.pace_zone!=="easy"?`<button class="flt" onclick="replaceWithEasy('${session.id}')">Remplacer par easy</button>`:""}
       <button class="flt" onclick="toggleEditSession('${session.id}')">Modifier</button>
       <button class="flt" style="color:var(--red)" onclick="deleteSession('${session.id}')">Supprimer</button>
@@ -3950,6 +4064,7 @@ function sessionHistoryCardHTML(){
     </div>`;
   return `<div class="card">
     <div class="stitle">Historique des séances et des ressentis</div>
+    <button class="btn-secondary" style="margin-bottom:10px" onclick="openManualRun()">+ Ajouter une séance réalisée</button>
     <div class="chart-hint">Ouvre une séance pour changer son type ou l'interrupteur "Suivi" (ce qui compte dans tes stats), voir le détail cardio quand il est disponible, et noter ton ressenti.</div>
     <div class="filters">${["Tous",...TYPE_OPTIONS.filter(t=>t!=="Other" && t!=="Marche")].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${t}</button>`).join("")}</div>
     ${monthGroups.length?monthGroups.map(g=>{
@@ -3991,7 +4106,7 @@ function renderContentInner(){
   // Objectifs, Mon compte, Programme et Aujourd'hui n'ont pas besoin de séances
   // (un nouvel utilisateur doit pouvoir régler ses objectifs avant sa première).
   if (RUNS.length===0 && !["programme","aujourdhui","profil"].includes(activeTab)){
-    el.innerHTML=`<div class="card">${emptyState("Aucune séance pour l'instant","Première fois ? Ouvre l'app pour choisir depuis quelle date importer, puis synchronise.",true)}</div>`;
+    el.innerHTML=`<div class="card">${emptyState("Aucune séance pour l'instant","Première fois ? Ouvre l'app pour choisir depuis quelle date importer, puis synchronise.",true)}<button class="btn-secondary" style="margin-top:10px" onclick="openManualRun()">Ajouter une séance faite sans montre</button></div>`;
     return;
   }
 
