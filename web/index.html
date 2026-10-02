@@ -547,13 +547,17 @@ document.getElementById("authSubmit").onclick = async () => {
 // toutes. OLD_TAB_INDEX_TO_KEY migre l'ancien format (index numérique,
 // utilisateurs existants) vers la clé correspondante à l'ORDRE D'ORIGINE
 // des onglets, pas leur position actuelle.
-const VALID_TAB_KEYS = ["aujourdhui","dashboard","programme","ressenti","objectifs","seances","compte"];
-const OLD_TAB_INDEX_TO_KEY = ["dashboard","ressenti","objectifs","seances","compte","programme"];
+// 3.c : Dashboard, Séances et Ressenti sont fusionnés dans "progression".
+// Les anciennes clés (mémorisées sur l'appareil) y redirigent.
+const VALID_TAB_KEYS = ["aujourdhui","programme","progression","objectifs","compte"];
+const LEGACY_TAB_KEYS = { dashboard:"progression", ressenti:"progression", seances:"progression" };
+const OLD_TAB_INDEX_TO_KEY = ["progression","progression","objectifs","progression","compte","programme"];
 function initialActiveTab(){
   try{
     const saved = localStorage.getItem("mra_activeTab");
     if(saved==null) return "aujourdhui";
     if(VALID_TAB_KEYS.includes(saved)) return saved;
+    if(LEGACY_TAB_KEYS[saved]) return LEGACY_TAB_KEYS[saved];
     const idx = Number(saved);
     if(Number.isInteger(idx) && OLD_TAB_INDEX_TO_KEY[idx]) return OLD_TAB_INDEX_TO_KEY[idx];
     return "aujourdhui";
@@ -567,7 +571,6 @@ let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = 
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let onboardingCompletedAt = null;
 let suspendedZones = [];
-let openSessionRatings = new Set();
 let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
 let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
 let openEditForm = null; // id de la séance en cours d'édition manuelle (distance/allure)
@@ -614,11 +617,9 @@ const SESSION_RPE=[
 ];
 const TABS=[
   {key:"aujourdhui", label:"Aujourd'hui", icon:"sun"},
-  {key:"dashboard", label:"Dashboard", icon:"bars"},
   {key:"programme", label:"Programme", icon:"calendar"},
-  {key:"ressenti", label:"Ressenti", icon:"sparkle"},
+  {key:"progression", label:"Progression", icon:"bars"},
   {key:"objectifs", label:"Objectifs", icon:"target"},
-  {key:"seances", label:"Séances", icon:"list"},
   {key:"compte", label:"Mon compte", icon:"user"},
 ];
 
@@ -710,12 +711,19 @@ window.dismissPainPrompt = (id) => {
   setTimeout(()=>renderContent(), 380);
 };
 window.goRateSession = (id) => {
-  activeTab = "ressenti";
+  activeTab = "progression";
   persistActiveTab();
-  openSessionRatings.add(id);
+  // Ouvre le mois de la séance et sa ligne dans l'historique, où se trouve
+  // le formulaire de notation.
+  const r = RUNS.find(x=>x.id===id);
+  if(r){
+    if(openMonths===null) openMonths = new Set();
+    openMonths.add(`${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`);
+    openManageRow.add(id);
+  }
   renderTabs();
   renderContent();
-  window.scrollTo({top:0,behavior:"smooth"});
+  setTimeout(()=>document.getElementById("hist_"+id)?.scrollIntoView({behavior:"smooth", block:"center"}), 150);
 };
 function painPromptBanner(){
   const r = unratedRecentSession();
@@ -753,11 +761,9 @@ function noRecentRunBanner(){
 // "compte", ce sont des réglages, pas un endroit à découvrir.
 const TUTORIAL_BUBBLES = {
   aujourdhui: "C'est ton accueil : ta séance du jour avec la raison pour laquelle elle est là, le bilan de ta semaine, et la note de ta dernière séance quand elle attend.",
-  dashboard: "C'est ta vue d'ensemble : tes dernières séances, tes stats clés. Elles arrivent ici automatiquement si tu utilises RunSync (synchro Apple Santé), ou tu peux aussi les ajouter à la main.",
+  progression: "C'est ton suivi : tes indicateurs clés, tes graphiques et l'historique de toutes tes séances. Elles arrivent automatiquement si tu utilises RunSync (synchro Apple Santé). C'est aussi ici que tu notes ton ressenti après une séance.",
   objectifs: "Commence par ici ! Dis-nous ce que tu vises (une course, ta régularité, ton allure...) — c'est ce qui sert de base pour te générer un programme personnalisé.",
   programme: "Ton calendrier de séances, généré automatiquement à partir de tes objectifs. Chaque séance t'explique pourquoi elle est là. Tu peux la déplacer, la modifier ou la supprimer à tout moment.",
-  ressenti: "Après une séance, note comment tu t'es senti (fatigue, douleurs...). Ça permet d'ajuster ton programme si besoin — par exemple, alléger une semaine si tu es fatigué.",
-  seances: "L'historique complet de tout ce que tu as couru, séance par séance.",
 };
 function seenTutorialBubbles(){
   try { return JSON.parse(localStorage.getItem("mra_tutorialSeen")||"[]"); } catch(e){ return []; }
@@ -1329,11 +1335,6 @@ function prefillRatings(existingRatings){
   WELLBEING_EXTRA.forEach(([key])=>{ if(last[key]!=null) prefill[key]=last[key]; });
   return prefill;
 }
-window.toggleSessionRating = (id) => {
-  if(openSessionRatings.has(id)) openSessionRatings.delete(id);
-  else openSessionRatings.add(id);
-  renderContent();
-};
 window.saveSessionRating = async (id) => {
   const ratings = readPainForm(`sess_${id}`);
   if(!(await updateRun(id, { pain_ratings: ratings }))) return;
@@ -3644,6 +3645,67 @@ function addDays(base,n){ const d=new Date(base); d.setDate(d.getDate()+n); retu
 // Wrapper autour de renderContentInner : celle-ci a plusieurs "return"
 // anticipés par onglet (empty state, etc.), donc prépendre la bulle de tuto
 // après coup ici évite de dupliquer cette logique dans chaque branche.
+// Historique unique des séances et des ressentis (4.9.c) : fusion des
+// anciennes listes "Séances" (type, interrupteur Suivi, détail cardio) et
+// "Ressenti" (notation). Groupé par mois, ligne repliée par défaut ; une ligne
+// ouverte montre l'édition ET le formulaire de ressenti. Seules les séances
+// comptées dans les stats (includeInStats, comme l'ancienne liste Ressenti)
+// peuvent être notées.
+function sessionHistoryCardHTML(){
+  const effMaxHr = maxHr || estimatedMaxHr();
+  const effRestingHr = restingHr || null;
+  const filtered = activeFilter==="Tous" ? RUNS : RUNS.filter(r=>r.type===activeFilter);
+  const monthLabel = (d) => {
+    const s = d.toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+  // Marche exclue de cette liste : jamais utilisée nulle part en aval (déjà
+  // hors stats par défaut), elle ne fait qu'encombrer l'historique.
+  const monthGroups = [];
+  filtered.filter(r=>r.type!=="Marche").slice().reverse().forEach(r=>{
+    const key = `${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`;
+    let group = monthGroups[monthGroups.length-1];
+    if(!group || group.key!==key){
+      group = {key, label:monthLabel(r.fullDate), sessions:[]};
+      monthGroups.push(group);
+    }
+    group.sessions.push(r);
+  });
+  if(openMonths===null) openMonths = new Set(monthGroups.length?[monthGroups[0].key]:[]);
+  const ratingBlock = (r) => !r.includeInStats ? "" : `<div style="padding:12px 0 4px;border-top:1px solid var(--border);margin-top:12px">
+      <div class="chart-hint" style="margin-top:0">Ton ressenti — 0 = aucune gêne, 10 = très intense. Les critères généraux reprennent ta dernière saisie ; les zones du corps repartent à 0 à chaque fois, ne note que ce qui fait mal maintenant.</div>
+      ${painFormHTML(`sess_${r.id}`, prefillRatings(r.painRatings))}
+      <button class="btn-primary" style="margin-top:6px" onclick="saveSessionRating('${r.id}')">Enregistrer</button>
+      <div id="sessRatingSaved_${r.id}" class="save-confirm"></div>
+    </div>`;
+  return `<div class="card">
+    <div class="stitle">Historique des séances et des ressentis</div>
+    <div class="chart-hint">Ouvre une séance pour changer son type ou l'interrupteur "Suivi" (ce qui compte dans tes stats), voir le détail cardio quand il est disponible, et noter ton ressenti.</div>
+    <div class="filters">${["Tous",...TYPE_OPTIONS.filter(t=>t!=="Other" && t!=="Marche")].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${t}</button>`).join("")}</div>
+    ${monthGroups.length?monthGroups.map(g=>{
+      const monthOpen = openMonths.has(g.key);
+      return `<div class="month-sep" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleMonthGroup('${g.key}')">
+        <span>${icon(monthOpen?"chevronDown":"chevronRight",12)} ${g.label}</span>
+        <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-dim);font-size:11px">${g.sessions.length} séance${g.sessions.length>1?"s":""}</span>
+      </div>
+      ${monthOpen?g.sessions.map(r=>{
+        const open = openManageRow.has(r.id);
+        return `<div class="session-pick" id="hist_${r.id}" onclick="toggleManageRow('${r.id}')">
+          <span>${icon(open?"chevronDown":"chevronRight",13)} ${icon(TICON[r.type]||"activity",13)} ${r.type} · ${r.label}${r.dist>0?" · "+r.dist.toFixed(2)+" km":""}</span>
+          ${r.includeInStats?`<span class="rated">${r.painRatings?"Notée ✓":"À noter"}</span>`:""}
+        </div>
+        ${open?manageableRow(r, effMaxHr, effRestingHr)+ratingBlock(r):""}`;
+      }).join(""):""}`;
+    }).join(""):`<div style="font-size:13px;color:var(--text-dim);padding:12px 0">Aucune séance de ce type</div>`}
+  </div>`;
+}
+function sessionHistoryAfterRender(){
+  const effMaxHr = maxHr || estimatedMaxHr();
+  const filtered = activeFilter==="Tous" ? RUNS : RUNS.filter(r=>r.type===activeFilter);
+  filtered.filter(r=>openManageRow.has(r.id) && openHrDetail.has(r.id) && r.hrSeries && r.hrSeries.length>1 && effMaxHr).forEach(r=>{
+    mkHrCurveChart("cHr_"+r.id, r.hrSeries);
+  });
+}
 function renderContent(){
   renderContentInner();
   const el = document.getElementById("content");
@@ -3654,16 +3716,23 @@ function renderContentInner(){
   const el=document.getElementById("content");
   const filtered=activeFilter==="Tous"?RUNS:RUNS.filter(r=>r.type===activeFilter);
 
-  if (RUNS.length===0 && activeTab!=="compte" && activeTab!=="programme" && activeTab!=="aujourdhui"){
+  // Objectifs, Mon compte, Programme et Aujourd'hui n'ont pas besoin de séances
+  // (un nouvel utilisateur doit pouvoir régler ses objectifs avant sa première).
+  if (RUNS.length===0 && !["compte","programme","aujourdhui","objectifs"].includes(activeTab)){
     el.innerHTML=`<div class="card">${emptyState("Aucune séance pour l'instant","Première fois ? Ouvre l'app pour choisir depuis quelle date importer, puis synchronise.",true)}</div>`;
     return;
   }
 
   if(activeTab==="aujourdhui"){ el.innerHTML = todayScreenHTML(); return; }
 
-  if(activeTab==="dashboard"){
-    // Dashboard : seul endroit avec l'anneau, les KPIs et les graphiques globaux
-    if(runningRuns.length===0){ el.innerHTML=heroHTML()+kpisHTML()+`<div class="card">${emptyState("Aucune séance de course incluse","Va dans Séances pour inclure tes courses dans le suivi.",true)}</div>`; return; }
+  if(activeTab==="progression"){
+    // Progression (3.c, 4.9) : anneaux, indicateurs, chiffres clés, dernière
+    // séance, graphiques, puis l'historique unique des séances et ressentis.
+    if(runningRuns.length===0){
+      el.innerHTML=heroHTML()+kpisHTML()+`<div class="card">${emptyState("Aucune séance de course incluse","Ouvre une séance dans l'historique ci-dessous et active l'interrupteur « Suivi » pour l'inclure dans tes stats.",true)}</div>`+sessionHistoryCardHTML();
+      setTimeout(sessionHistoryAfterRender,50);
+      return;
+    }
     const isMonthly = dashboardPeriod==="monthly";
     const vol = isMonthly ? monthlyVol() : weeklyVol();
     const hasFrac = fracRuns.filter(r=>r.allure).length>0;
@@ -3673,7 +3742,7 @@ function renderContentInner(){
     const effRestingHr = restingHr || null;
     const celebrate = lastRun && !lastRunCelebrated;
     if(celebrate) lastRunCelebrated = true;
-    // Rapport allure/FC + zones cardio : rapatriés depuis l'onglet Séances
+    // Rapport allure/FC + zones cardio : rapatriés depuis l'ancien onglet Séances
     // (2026-09-14) — leur place est ici, avec les autres graphs de fond,
     // pas au milieu de la liste de séances.
     const withHr = efRuns.filter(r=>r.fc);
@@ -3709,7 +3778,7 @@ function renderContentInner(){
       <div class="card"><div class="stitle">Volume haute intensité par mois</div>
         <div class="chart-hint">Minutes passées en zones 4-5 (effort soutenu/intense)</div>
         <div style="position:relative;width:100%;height:180px"><canvas id="cHiMonthly"></canvas></div>
-      </div>`:""}`;
+      </div>`:""}`+sessionHistoryCardHTML();
     setTimeout(()=>{
       mkPaceTrendChart("cEFmini", efRuns, true, 21);
       if(hasFrac) mkFractionneChart("cFracMini", fracRuns, 21);
@@ -3720,113 +3789,8 @@ function renderContentInner(){
         mkZoneMonthlyChart("cZoneMonthly", monthly);
         mkHighIntensityMonthlyChart("cHiMonthly", monthly);
       }
+      sessionHistoryAfterRender();
     },50);
-  }
-
-  else if(activeTab==="seances"){
-    // Séances : fusion Séances + Cardio — plus de doublon entre deux listes
-    // cliquables séparées. Détail FC/zones intégré à chaque ligne (au lieu
-    // d'une liste "cardio" à part). Les graphs globaux (FC/allure, zones,
-    // haute intensité) sont dans le Dashboard, pas ici — la polarisation
-    // a été retirée (doublon avec le graph des zones).
-    const effMaxHr = maxHr || estimatedMaxHr();
-    const effRestingHr = restingHr || null;
-    // Repliée par défaut (date/type/km) et groupée par mois, comme la liste
-    // de l'onglet Ressenti — le détail complet (édition, cardio) ne
-    // s'affiche qu'au clic sur une ligne, pour rester lisible avec beaucoup
-    // d'historique.
-    const monthLabel = (d) => {
-      const s = d.toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
-      return s.charAt(0).toUpperCase() + s.slice(1);
-    };
-    // Regroupées par mois (repliables) plutôt qu'une seule longue liste :
-    // avec beaucoup d'historique, tout afficher rendait la page interminable.
-    // Marche exclue de cette liste : jamais utilisée nulle part en aval
-    // (déjà hors stats par défaut), elle ne fait qu'encombrer l'historique
-    // sans qu'aucune action n'en découle (retour utilisateur).
-    const monthGroups = [];
-    filtered.filter(r=>r.type!=="Marche").slice().reverse().forEach(r=>{
-      const key = `${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`;
-      let group = monthGroups[monthGroups.length-1];
-      if(!group || group.key!==key){
-        group = {key, label:monthLabel(r.fullDate), sessions:[]};
-        monthGroups.push(group);
-      }
-      group.sessions.push(r);
-    });
-    if(openMonths===null) openMonths = new Set(monthGroups.length?[monthGroups[0].key]:[]);
-    el.innerHTML=`
-      <div class="card">
-        <div class="stitle">Toutes les séances</div>
-        <div class="chart-hint">Change le type ou l'interrupteur "Suivi" pour piloter ce qui compte dans tes stats de course. "Détail cardio" affiche la courbe FC et les zones quand elles sont disponibles.</div>
-        <div class="filters">${["Tous",...TYPE_OPTIONS.filter(t=>t!=="Other" && t!=="Marche")].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${t}</button>`).join("")}</div>
-        ${monthGroups.length?monthGroups.map(g=>{
-          const monthOpen = openMonths.has(g.key);
-          return `<div class="month-sep" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleMonthGroup('${g.key}')">
-            <span>${icon(monthOpen?"chevronDown":"chevronRight",12)} ${g.label}</span>
-            <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-dim);font-size:11px">${g.sessions.length} séance${g.sessions.length>1?"s":""}</span>
-          </div>
-          ${monthOpen?g.sessions.map(r=>{
-            const open = openManageRow.has(r.id);
-            return `<div class="session-pick" onclick="toggleManageRow('${r.id}')">
-              <span>${icon(open?"chevronDown":"chevronRight",13)} ${icon(TICON[r.type]||"activity",13)} ${r.type} · ${r.label}${r.dist>0?" · "+r.dist.toFixed(2)+" km":""}</span>
-            </div>
-            ${open?manageableRow(r, effMaxHr, effRestingHr):""}`;
-          }).join(""):""}`;
-        }).join(""):`<div style="font-size:13px;color:var(--text-dim);padding:12px 0">Aucune séance de ce type</div>`}
-      </div>`;
-    setTimeout(()=>{
-      filtered.filter(r=>openManageRow.has(r.id) && openHrDetail.has(r.id) && r.hrSeries && r.hrSeries.length>1 && effMaxHr).forEach(r=>{
-        mkHrCurveChart("cHr_"+r.id, r.hrSeries);
-      });
-    },50);
-  }
-
-  else if(activeTab==="ressenti"){
-    const ratedCount = runningRuns.filter(r=>r.painRatings).length;
-    const usingMode = ratedCount>0
-      ? `L'IA se basera sur tes ${ratedCount} séance(s) notée(s).`
-      : `Note au moins une séance pour que l'IA ait de quoi travailler.`;
-    const allSessions = runningRuns.slice().reverse();
-    // Regroupées par mois (le plus récent en haut) pour repérer une séance
-    // plus vite qu'en scrollant une liste plate, surtout avec beaucoup
-    // d'historique.
-    let lastMonthKey = null;
-    const monthLabel = (d) => {
-      const s = d.toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
-      return s.charAt(0).toUpperCase() + s.slice(1);
-    };
-
-    el.innerHTML=`
-      <div class="card">
-        <div class="stitle">Ressenti</div>
-        <div class="chart-hint" style="margin-bottom:14px">Note ton ressenti après chaque séance ici, et tes objectifs dans l'onglet Objectifs — l'IA combinera les deux pour te proposer un plan d'entraînement personnalisé.</div>
-      </div>
-
-      <div class="card">
-        <div class="stitle">Tes séances</div>
-        <div class="chart-hint">0 = aucune gêne, 10 = très intense. Les critères généraux reprennent ta dernière saisie ; les zones du corps repartent à 0 à chaque fois — ne note que ce qui fait mal maintenant.</div>
-        ${allSessions.length===0?`<div style="font-size:13px;color:var(--text-dim)">Aucune séance de course pour l'instant.</div>`:allSessions.map(r=>{
-          const monthKey = `${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`;
-          const monthHeader = monthKey!==lastMonthKey ? `<div class="month-sep">${monthLabel(r.fullDate)}</div>` : "";
-          lastMonthKey = monthKey;
-          const open = openSessionRatings.has(r.id);
-          return `
-          ${monthHeader}
-          <div class="session-pick" onclick="toggleSessionRating('${r.id}')">
-            <span>${icon(open?"chevronDown":"chevronRight",13)} ${r.label} · ${r.time}${r.dist>0?" · "+r.dist.toFixed(2)+" km":""}</span>
-            <span class="rated">${r.painRatings?"Notée ✓":"Noter"}</span>
-          </div>
-          ${open?`<div style="padding:10px 0 4px">
-            ${painFormHTML(`sess_${r.id}`, prefillRatings(r.painRatings))}
-            <button class="btn-primary" style="margin-top:6px" onclick="saveSessionRating('${r.id}')">Enregistrer</button>
-            <div id="sessRatingSaved_${r.id}" class="save-confirm"></div>
-          </div>`:""}
-        `;}).join("")}
-      </div>
-
-      ${soonCard("sparkle","Plan personnalisé par IA", usingMode + " Le plan lui-même arrive dans une prochaine étape.")}
-    `;
   }
 
   else if(activeTab==="objectifs"){
@@ -3976,7 +3940,7 @@ function renderContentInner(){
     <div style="${slotColorVars}">
     <div class="card">
       <div class="stitle" style="color:var(--accent)">${activeGoalSlot==="principal"?"Objectif principal":"Objectif secondaire"}</div>
-      <div class="chart-hint">Sert de base au futur plan personnalisé par IA (onglet Ressenti) et conditionne les questions suivantes.</div>
+      <div class="chart-hint">Sert de base à ton programme personnalisé et conditionne les questions suivantes.</div>
       ${objectifCards(slot.objectifPrincipal)}
       <input type="hidden" id="goal_objectifPrincipal" value="${slot.objectifPrincipal||""}">
 
@@ -4103,7 +4067,7 @@ function renderContentInner(){
 
     ${blocks.allure?`<div class="card">
       <div class="stitle">Allure cible</div>
-      <div class="chart-hint">Optionnel — sert de repère sur les graphs de progression (onglets Dashboard/Séances).</div>
+      <div class="chart-hint">Optionnel — sert de repère sur les graphs de l'onglet Progression.</div>
       ${isAmelioAllure?`<div class="account-row">
         <span class="lbl">Allure EF actuelle (5 dernières séances)</span>
         <span class="v">${efPaceRef!=null?fmtA(efPaceRef)+"/km":"pas encore assez de données"}</span>
@@ -4212,7 +4176,7 @@ function renderContentInner(){
 
       <div class="card">
         <div class="stitle">Fréquence cardiaque max</div>
-        <div class="chart-hint">Utilisée pour calculer tes zones cardio (onglet Séances). ${maxHr?`Saisie manuellement à <strong style="color:var(--text)">${maxHr} bpm</strong> — remplace le calcul automatique. Vide le champ pour y repasser.`:estMaxHr?`Calculée automatiquement à <strong style="color:var(--text)">${estMaxHr} bpm</strong> (220 − ton âge). Tu peux la remplacer ci-dessous si tu connais ta vraie FC max (mesurée sur un effort proche du maximum) — ce sera plus précis.`:"Renseigne ton âge (ci-dessus) pour un calcul automatique, ou indique directement ta FC max ci-dessous si tu la connais."}</div>
+        <div class="chart-hint">Utilisée pour calculer tes zones cardio (onglet Progression). ${maxHr?`Saisie manuellement à <strong style="color:var(--text)">${maxHr} bpm</strong> — remplace le calcul automatique. Vide le champ pour y repasser.`:estMaxHr?`Calculée automatiquement à <strong style="color:var(--text)">${estMaxHr} bpm</strong> (220 − ton âge). Tu peux la remplacer ci-dessous si tu connais ta vraie FC max (mesurée sur un effort proche du maximum) — ce sera plus précis.`:"Renseigne ton âge (ci-dessus) pour un calcul automatique, ou indique directement ta FC max ci-dessous si tu la connais."}</div>
         <div class="field" style="margin-bottom:0">
           <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">FC max (bpm) — vide = calcul auto</span>
           <input type="number" id="maxHrInput" min="120" max="230" value="${maxHr||""}" placeholder="${estMaxHr?`Auto : ${estMaxHr}`:"ex: 190"}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
