@@ -958,6 +958,63 @@ function sessionStructureSegments(session){
   return null;
 }
 
+/* ---------- Records et célébrations (CDC v2, 4.11.f) ----------
+   Records célébrés (liste validée avec l'utilisateur) : plus longue sortie
+   (distance), plus longue durée, meilleure allure en sortie easy (EF),
+   meilleure allure de travail en fractionné, et amélioration de
+   l'efficience cardiaque (detectEfficiencyImprovement, 4.3.e).
+   Garde-fous (choix pragmatiques) : au moins 3 séances précédentes pour
+   parler de record (pas de "record" à la première sortie) ; marge minimale
+   (+0,1 km, +60 s, -1 s/km) pour ignorer le bruit de mesure ; allure EF
+   seulement sur des sorties d'au moins 3 km. Seules les séances ANTÉRIEURES
+   comptent comme référence. `run`/`allRuns` : {id, ts (ms), type, distKm,
+   durationSec, paceSecKm, workPaceSecKm}. */
+function recordsForRun(run, allRuns){
+  const prev = (allRuns||[]).filter(r=>r.ts < run.ts);
+  const records = [];
+  if(prev.length>=3){
+    if(run.distKm >= Math.max(...prev.map(r=>r.distKm||0)) + 0.1) records.push({ key:"distance", value:run.distKm });
+    if(run.durationSec >= Math.max(...prev.map(r=>r.durationSec||0)) + 60) records.push({ key:"duree", value:run.durationSec });
+  }
+  if(run.type==="EF" && run.distKm>=3 && run.paceSecKm>0){
+    const prevEf = prev.filter(r=>r.type==="EF" && r.distKm>=3 && r.paceSecKm>0);
+    if(prevEf.length>=3 && run.paceSecKm <= Math.min(...prevEf.map(r=>r.paceSecKm)) - 1) records.push({ key:"allure_ef", value:run.paceSecKm });
+  }
+  if(run.type==="Fractionné" && run.workPaceSecKm>0){
+    const prevFrac = prev.filter(r=>r.type==="Fractionné" && r.workPaceSecKm>0);
+    if(prevFrac.length>=3 && run.workPaceSecKm <= Math.min(...prevFrac.map(r=>r.workPaceSecKm)) - 1) records.push({ key:"allure_frac", value:run.workPaceSecKm });
+  }
+  return records;
+}
+function recordPhrase(record){
+  if(record.key==="distance") return `Ta plus longue sortie : ${Number(record.value).toLocaleString("fr-FR",{maximumFractionDigits:1})} km !`;
+  if(record.key==="duree") return `Ta plus longue durée de course : ${formatMinutesShort(record.value/60)} !`;
+  if(record.key==="allure_ef") return `Ta meilleure allure en sortie easy : ${fmtA(record.value)}/km !`;
+  if(record.key==="allure_frac") return `Ta meilleure allure en fractionné : ${fmtA(record.value)}/km !`;
+  return "";
+}
+// Une séance n'est célébrée que si elle est récente (3 jours, pour ne pas
+// fêter tout l'historique au premier lancement) et pas déjà célébrée.
+function shouldCelebrateRun(runTs, nowTs, runId, celebratedIds){
+  return (nowTs - runTs) <= 3*86400000 && (nowTs - runTs) >= 0 && !(celebratedIds||[]).includes(runId);
+}
+// Amélioration d'efficience à fêter : fenêtres 30 j / 30 j d'avant (comme
+// efficiencyTrend), seuil de 5% avec allure réellement meilleure
+// (detectEfficiencyImprovement), au plus une fois tous les 15 jours.
+// `efRuns` : [{date:"AAAA-MM-JJ", allure, fc}].
+function efficiencyCelebration(efRuns, todayStr, lastCelebratedStr){
+  const parse = (str) => { const [y,m,d] = str.split("-").map(Number); return new Date(y, m-1, d); };
+  const today = parse(todayStr);
+  if(lastCelebratedStr && (today - parse(lastCelebratedStr))/86400000 < 15) return null;
+  const trend = efficiencyTrend(efRuns, todayStr);
+  if(trend.status!=="mieux") return null;
+  const daysAgo = (d) => Math.round((today - parse(d)) / 86400000);
+  const valid = (efRuns||[]).filter(r=>r.allure>0 && r.fc>0);
+  const recent = valid.filter(r=>{ const a=daysAgo(r.date); return a>=0 && a<=29; });
+  const baseline = valid.filter(r=>{ const a=daysAgo(r.date); return a>=30 && a<=59; });
+  return detectEfficiencyImprovement(recent, baseline) ? { pct: trend.pct } : null;
+}
+
 /* ---------- Format court/détaillé de la notation post-séance (4.5.b) ----------
    CDC v2, 4.5 : par défaut, formulaire court (note globale 1-5 + "une
    gêne/douleur ?") ; le détaillé (respiration/mental/fatigue + carte du

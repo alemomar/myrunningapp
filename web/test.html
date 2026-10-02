@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=47"></script>
+<script src="logic.js?v=48"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -806,6 +806,41 @@ try {
   const test = sessionStructureSegments({generation_reason:"guided_test", title:"Test de 20 minutes"});
   assertEqual("sessionStructureSegments : test guidé = 10 + 20 + 5 min", test, [{type:"facile",sec:600},{type:"test",sec:1200},{type:"marche",sec:300}]);
   assertEqual("sessionStructureSegments : séance ordinaire -> aucune structure", [sessionStructureSegments({pace_zone:"easy"}), sessionStructureSegments({generation_reason:"beginner_plan", title:"sans numéros"}), sessionStructureSegments(null)], [null,null,null]);
+}
+
+// --- Records et célébrations (4.11.f) ---
+{
+  const DAY=86400000, t0=Date.UTC(2026,8,1);
+  const mk=(i, o)=>({ id:"r"+i, ts:t0+i*DAY, type:"EF", distKm:6, durationSec:2100, paceSecKm:350, workPaceSecKm:0, ...o });
+  const hist = [mk(0,{distKm:5,durationSec:1800}), mk(1,{distKm:6,durationSec:2100}), mk(2,{distKm:7,durationSec:2400}), mk(3,{distKm:6,durationSec:2100})];
+  const keys = (run, all) => recordsForRun(run, all).map(r=>r.key);
+  assertEqual("record distance : 8 km après un max de 7", keys(mk(10,{distKm:8, paceSecKm:400}), [...hist]), ["distance"]);
+  assertEqual("record distance : marge de 0,1 km (7,05 ne compte pas)", keys(mk(10,{distKm:7.05, durationSec:2000, paceSecKm:400}), [...hist]), []);
+  assertEqual("record durée : +60 s sur le max (2460 > 2400)", keys(mk(10,{distKm:6, durationSec:2460, paceSecKm:400}), [...hist]), ["duree"]);
+  assertEqual("record durée : 2430 s ne compte pas (marge)", keys(mk(10,{distKm:6, durationSec:2430, paceSecKm:400}), [...hist]), []);
+  assertEqual("pas de record avec moins de 3 séances avant", keys(mk(10,{distKm:20, durationSec:9000}), [hist[0],hist[1]]), []);
+  assertEqual("record d'allure EF : meilleure que toutes les sorties easy précédentes", keys(mk(10,{distKm:5, durationSec:1700, paceSecKm:340}), hist), ["allure_ef"]);
+  assertEqual("allure EF : marge de 1 s/km (349,5 ne compte pas)", keys(mk(10,{distKm:5, durationSec:1700, paceSecKm:349.5}), hist), []);
+  assertEqual("allure EF : une sortie de moins de 3 km n'est jamais un record d'allure", keys(mk(10,{distKm:2, durationSec:600, paceSecKm:300}), hist), []);
+  const frac = [0,1,2,3].map(i=>mk(i,{type:"Fractionné", workPaceSecKm:300-i*2}));
+  assertEqual("record fractionné : meilleure allure de travail", keys(mk(10,{type:"Fractionné", distKm:5, durationSec:1700, workPaceSecKm:280, paceSecKm:0}), frac), ["allure_frac"]);
+  assertEqual("fractionné : une allure moins bonne ne compte pas", keys(mk(10,{type:"Fractionné", distKm:5, durationSec:1700, workPaceSecKm:299, paceSecKm:0}), frac), []);
+  assertEqual("seules les séances antérieures servent de référence", keys(mk(2,{distKm:6.5, durationSec:2100, paceSecKm:400}), hist), []);
+  assertEqual("recordPhrase : distance", recordPhrase({key:"distance", value:12.4}), "Ta plus longue sortie : 12,4 km !");
+  assertEqual("recordPhrase : durée", recordPhrase({key:"duree", value:5100}), "Ta plus longue durée de course : 1 h 25 !");
+  assertEqual("recordPhrase : allure easy", recordPhrase({key:"allure_ef", value:342}), "Ta meilleure allure en sortie easy : 5'42''/km !");
+  assertEqual("recordPhrase : allure fractionné", recordPhrase({key:"allure_frac", value:260}), "Ta meilleure allure en fractionné : 4'20''/km !");
+  const now = Date.UTC(2026,9,2,12);
+  assertEqual("shouldCelebrateRun : séance d'hier non célébrée -> oui", shouldCelebrateRun(now-DAY, now, "a", []), true);
+  assertEqual("shouldCelebrateRun : séance de 5 jours -> non (pas tout l'historique)", shouldCelebrateRun(now-5*DAY, now, "a", []), false);
+  assertEqual("shouldCelebrateRun : déjà célébrée -> non", shouldCelebrateRun(now-DAY, now, "a", ["a"]), false);
+  const d=(n)=>{ const x=new Date(2026,9,2); x.setDate(x.getDate()-n); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); };
+  const eff=[{date:d(40),allure:360,fc:150},{date:d(50),allure:360,fc:150},{date:d(2),allure:342,fc:150},{date:d(10),allure:342,fc:150}];
+  assertEqual("efficiencyCelebration : 5% mieux -> célébrée", efficiencyCelebration(eff, "2026-10-02", null), {pct:5});
+  assertEqual("efficiencyCelebration : déjà fêtée il y a 10 jours -> non", efficiencyCelebration(eff, "2026-10-02", d(10)), null);
+  assertEqual("efficiencyCelebration : fêtée il y a 20 jours -> oui", efficiencyCelebration(eff, "2026-10-02", d(20)), {pct:5});
+  assertEqual("efficiencyCelebration : amélioration de 3% (sous le seuil de 5%) -> non", efficiencyCelebration([{date:d(40),allure:360,fc:150},{date:d(50),allure:360,fc:150},{date:d(2),allure:349,fc:150},{date:d(10),allure:349,fc:150}], "2026-10-02", null), null);
+  assertEqual("efficiencyCelebration : pas assez de données -> non", efficiencyCelebration([], "2026-10-02", null), null);
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---
