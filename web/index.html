@@ -4546,9 +4546,33 @@ function renderContentInner(){
         </div>${programSelectedDayPanelHTML()}`;
       })()}`:""}
     `;
-    applyProgramAdjustments();
-    reconcilePlannedSessions();
+    runProgramMaintenance();
   }
+}
+
+// Entretien du programme (CDC 4.8, Q1) : rapprochement course ↔ séance prévue,
+// puis ajustement léger et génération des semaines à venir. Lancé à
+// l'ouverture de l'app, quel que soit l'onglet affiché (sinon Aujourd'hui
+// montrerait un programme périmé tant que Programme n'est pas ouvert), et
+// aussi à chaque affichage de Programme (rattrapage si le profil n'était pas
+// prêt). Le rapprochement passe AVANT l'ajustement : une séance déjà courue
+// aujourd'hui ne doit pas être allégée comme si elle restait à faire. Un seul
+// passage à la fois ; rien en arrière-plan, rien hors de l'ouverture de l'app.
+let programMaintenancePromise = null;
+function runProgramMaintenance(){
+  if(!onboardingCompletedAt) return Promise.resolve();
+  if(programMaintenancePromise) return programMaintenancePromise;
+  programMaintenancePromise = (async()=>{
+    try{
+      await reconcilePlannedSessions();
+      await applyProgramAdjustments();
+    }catch(e){
+      console.error("Entretien du programme :", e);
+    }finally{
+      programMaintenancePromise = null;
+    }
+  })();
+  return programMaintenancePromise;
 }
 
 async function boot(){
@@ -4557,6 +4581,7 @@ async function boot(){
   document.getElementById("content").innerHTML=`<div class="loading"><div class="spinner"></div></div>`;
   await loadData();
   renderApp();
+  runProgramMaintenance();
 }
 
 // Point d'entrée unique pour dessiner l'app après chargement des données :
