@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=44"></script>
+<script src="logic.js?v=45"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -695,6 +695,10 @@ try {
   assertEqual("isBeginnerPlanEligible : Débutant + jamais encore -> oui", isBeginnerPlanEligible("Débutant","Jamais encore"), true);
   assertEqual("isBeginnerPlanEligible : Débutant + 1x/sem -> non", isBeginnerPlanEligible("Débutant","1 fois par semaine ou moins"), false);
   assertEqual("isBeginnerPlanEligible : Intermédiaire + jamais encore -> non", isBeginnerPlanEligible("Intermédiaire","Jamais encore"), false);
+  assertEqual("isBeginnerPlanEligible : Débutant qui court 1x/sem mais moins de 20 min -> oui", isBeginnerPlanEligible("Débutant","1 fois par semaine ou moins",15), true);
+  assertEqual("isBeginnerPlanEligible : Débutant qui tient 20 min ou plus -> non", isBeginnerPlanEligible("Débutant","1 fois par semaine ou moins",25), false);
+  assertEqual("isBeginnerPlanEligible : durée inconnue (niveau détecté par l'historique) -> non", isBeginnerPlanEligible("Débutant","",null), false);
+  assertEqual("isBeginnerPlanEligible : Intermédiaire qui ne tient que 15 min -> non (niveau pas Débutant)", isBeginnerPlanEligible("Intermédiaire","2 à 3 fois par semaine",15), false);
   assertEqual("weeksUntilDate : 10 jours -> 2 semaines (arrondi au supérieur)", weeksUntilDate("2026-10-12","2026-10-02"), 2);
   assertEqual("weeksUntilDate : 14 jours -> 2 semaines", weeksUntilDate("2026-10-16","2026-10-02"), 2);
   assertEqual("weeksUntilDate : date passée -> 0", weeksUntilDate("2026-09-01","2026-10-02"), 0);
@@ -711,6 +715,15 @@ try {
   assertEqual("patch : niveau, fréquence en texte, jours triés", [r.goals.niveau, r.goals.frequence, r.goals.joursIndisponibles], ["Intermédiaire","3","2,6"]);
   assertEqual("patch : le chrono devient le temps de référence de repli", [r.programSettings.refDistanceKm, r.programSettings.refTimeSec, r.programSettings.foo], [5,1680,1]);
   assertEqual("patch : pas de plan débutant pour un coureur régulier", [r.beginner, "beginnerPlan" in r.programSettings], [false,false]);
+  assertEqual("patch : chrono saisi -> pas de test guidé", [r.needsGuidedTest, "guidedTest" in r.programSettings], [false,false]);
+  const noRef = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {}, {}, race, "2026-10-05");
+  assertEqual("patch : ni chrono ni record -> test guidé en attente", [noRef.needsGuidedTest, noRef.programSettings.guidedTest], [true, {status:"pending"}]);
+  const withPb = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {principal:{pbSec:3000}}, {}, race, "2026-10-05");
+  assertEqual("patch : un record existant évite le test guidé", withPb.needsGuidedTest, false);
+  const shortRunner = onboardingProfilePatch({ ...base, niveau:"Débutant", frequenceHistorique:"1 fois par semaine ou moins", dureeMax:15, chronoDistance:"", chronoSec:0 }, {}, {}, race, "2026-10-05");
+  assertEqual("patch : Débutant qui court moins de 20 min -> plan marche/course, pas de test guidé", [shortRunner.beginner, shortRunner.needsGuidedTest], [true,false]);
+  const testDone = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {}, {guidedTest:{status:"done"}}, race, "2026-10-05");
+  assertEqual("patch : un test déjà passé n'est pas remis en attente", testDone.programSettings.guidedTest, {status:"done"});
   const b = onboardingProfilePatch({ ...base, objectif:"Rester en forme", niveau:"Débutant", frequenceHistorique:"Jamais encore", chronoDistance:"", chronoSec:0 }, {}, {}, race, "2026-10-05");
   assertEqual("patch : débutant complet -> plan marche/course à partir du lundi donné", [b.beginner, b.programSettings.beginnerPlan], [true, {startMonday:"2026-10-05"}]);
   assertEqual("patch : objectif hors course -> pas de distance ni de date écrites", ["distanceCourse" in b.goals.principal, "dateCible" in b.goals.principal], [false,false]);
@@ -745,6 +758,18 @@ try {
   const partial = couchSessionRows(5,[2,4],2);
   assertEqual("couchSessionRows : si une séance existe déjà, numérotation et contenu reprennent à la séance 2", [partial[0].title.endsWith("séance 2"), partial[0].description.includes("8min course"), partial[1].title.endsWith("séance 3")], [true,true,true]);
   assertEqual("couchSessionRows : semaine hors plan -> aucune séance", [couchSessionRows(0,[0],1), couchSessionRows(10,[0],1)], [[],[]]);
+}
+
+// --- Test guidé de 20 minutes (4.1.e) ---
+{
+  const t = guidedTestSession();
+  assertEqual("guidedTestSession : titre, 35 min au total, consignes d'échauffement et de retour au calme", [t.title, t.durationMin, t.description.startsWith("Échauffement"), t.description.endsWith("5 min de marche.")], ["Test de 20 minutes", 35, true, true]);
+  assertEqual("evaluateGuidedTestRun : 4,2 km en 20 min -> utilisable", evaluateGuidedTestRun(4.2, 1200), {ok:true, refDistanceKm:4.2, refTimeSec:1200});
+  assertEqual("evaluateGuidedTestRun : 5 km en 24 min -> utilisable (durée libre entre 15 et 35 min)", evaluateGuidedTestRun(5, 1440).ok, true);
+  assertEqual("evaluateGuidedTestRun : 10 min -> refusé (durée)", evaluateGuidedTestRun(2, 600), {ok:false, reason:"duree"});
+  assertEqual("evaluateGuidedTestRun : 50 min -> refusé (durée)", evaluateGuidedTestRun(8, 3000), {ok:false, reason:"duree"});
+  assertEqual("evaluateGuidedTestRun : 1 km -> refusé (distance)", evaluateGuidedTestRun(1, 1200), {ok:false, reason:"distance"});
+  assertEqual("evaluateGuidedTestRun : le temps de référence donne bien un profil exploitable par le moteur", resolveRunnerProfile({}, {refDistanceKm:4.2, refTimeSec:1200}, {})!==null, true);
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---

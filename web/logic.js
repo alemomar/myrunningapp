@@ -676,10 +676,13 @@ function couchTo5kSessionDurationSec(session){
 const ONBOARDING_DUREE_OPTIONS = [
   ["Moins de 10 min", 5], ["10 à 20 min", 15], ["20 à 30 min", 25], ["30 à 45 min", 40], ["Plus de 45 min", 50],
 ];
-// Débutant complet : niveau Débutant ET "Jamais encore" couru (4.1.d) ->
-// programme marche/course du NHS plutôt que le moteur VDOT.
-function isBeginnerPlanEligible(niveau, frequence){
-  return niveau==="Débutant" && frequence==="Jamais encore";
+// Programme marche/course du NHS plutôt que le moteur VDOT (4.1.d) : niveau
+// Débutant ET (jamais couru OU incapable de courir 20 minutes d'affilée).
+// Le second cas complète la règle d'origine ("jamais encore" seulement) :
+// sans lui, quelqu'un qui court un peu mais moins de 20 min n'aurait ni le
+// plan débutant ni la possibilité de faire le test guidé de 20 minutes.
+function isBeginnerPlanEligible(niveau, frequence, dureeMaxMin){
+  return niveau==="Débutant" && (frequence==="Jamais encore" || (dureeMaxMin!=null && dureeMaxMin<20));
 }
 // Semaines entre aujourd'hui et la date visée, arrondies au supérieur (même
 // règle que le texte "Il te reste N semaines" de l'onglet Profil). null si
@@ -723,10 +726,15 @@ function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, 
   const ps = { ...(programSettings||{}) };
   const km = raceDistancesKm ? raceDistancesKm[state.chronoDistance] : null;
   if(km && state.chronoSec>0){ ps.refDistanceKm = km; ps.refTimeSec = state.chronoSec; }
-  const beginner = isBeginnerPlanEligible(state.niveau, state.frequenceHistorique);
+  const beginner = isBeginnerPlanEligible(state.niveau, state.frequenceHistorique, state.dureeMax);
   if(beginner) ps.beginnerPlan = ps.beginnerPlan || { startMonday: startMondayStr };
   else delete ps.beginnerPlan;
-  return { goals:newGoals, programSettings:ps, beginner };
+  // Ni plan débutant, ni chrono, ni record : première séance = test guidé de
+  // 20 minutes (4.1.e), dont le résultat devient le temps de référence.
+  const hasReference = !!(ps.refTimeSec) || !!(newGoals.principal && newGoals.principal.pbSec);
+  const needsGuidedTest = !beginner && !hasReference;
+  if(needsGuidedTest) ps.guidedTest = ps.guidedTest || { status:"pending" };
+  return { goals:newGoals, programSettings:ps, beginner, needsGuidedTest };
 }
 
 /* ---------- Génération du plan marche/course (4.1.d) ----------
@@ -780,6 +788,30 @@ function couchSessionRows(week, dayIndexes, firstSessionNumber){
       rationale: `Ce programme alterne marche et course pour que ton corps s'habitue progressivement à courir, jusqu'à 30 minutes d'affilée à la fin de la semaine ${COUCH_WEEKS}. C'est le programme « Couch to 5K » du NHS (service de santé britannique). Semaine ${week} sur ${COUCH_WEEKS}.`,
     };
   });
+}
+
+/* ---------- Test guidé de 20 minutes (onboarding, 4.1.e) ----------
+   CDC v2, 4.1 : dernier palier de la cascade de niveau, pour qui n'a ni
+   historique ni chrono. Une séance où l'on court 20 minutes à allure
+   soutenue mais régulière ; la distance parcourue donne le temps de
+   référence du moteur (computeVdot accepte tout effort de 3,5 min à 3 h,
+   Daniels & Gilbert 1979). Protocole choisi avec l'utilisateur (pas une
+   méthode publiée) : l'effort étant un peu en dessous d'une vraie course,
+   les allures calculées sont prudentes, et s'affinent avec les séances. */
+function guidedTestSession(){
+  return {
+    title: "Test de 20 minutes",
+    description: "Échauffement : 10 min de footing très léger, sans enregistrer l'activité.\nTest : lance l'enregistrement de ta montre et cours 20 minutes à une allure soutenue mais que tu peux tenir régulièrement du début à la fin, sans partir trop vite. Tu dois pouvoir dire quelques mots, pas une phrase entière. Arrête l'enregistrement au bout des 20 minutes.\nRetour au calme : 5 min de marche.",
+    durationMin: 35,
+    rationale: "On ne connaît pas encore ton niveau en course. Cette séance sert à le mesurer : la distance que tu parcours en 20 minutes nous permet de calculer tes allures d'entraînement, puis de te construire ton programme.",
+  };
+}
+// Une course peut servir de test si elle dure entre 15 et 35 minutes et
+// couvre au moins 1,5 km ; renvoie le temps de référence ou la raison du refus.
+function evaluateGuidedTestRun(distanceKm, durationSec){
+  if(!(distanceKm>=1.5)) return { ok:false, reason:"distance" };
+  if(!(durationSec>=900 && durationSec<=2100)) return { ok:false, reason:"duree" };
+  return { ok:true, refDistanceKm: Math.round(distanceKm*100)/100, refTimeSec: Math.round(durationSec) };
 }
 
 /* ---------- Format court/détaillé de la notation post-séance (4.5.b) ----------
