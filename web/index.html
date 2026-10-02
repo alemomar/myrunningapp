@@ -187,10 +187,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .tab-btn{
   display:flex;flex-direction:column;align-items:center;gap:3px;
   background:none;border:none;color:var(--text-faint);cursor:pointer;
-  padding:4px 6px;flex:1;min-width:0;
+  padding:4px 1px;flex:1;min-width:0;
 }
 .tab-btn svg{width:20px;height:20px}
-.tab-btn span{font-size:9px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.tab-btn span{font-size:8px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .tab-btn.active{color:var(--accent)}
 
 /* ---------- Content cards ---------- */
@@ -446,6 +446,7 @@ const PROGRAM_TYPE_OPTIONS = TYPE_OPTIONS.filter(t=>t!=="Marche" && t!=="Récup"
 const MONTHS=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
 
 const ICONS = {
+  sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"/></svg>`,
   bars: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>`,
   clock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/></svg>`,
   list: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
@@ -545,17 +546,17 @@ document.getElementById("authSubmit").onclick = async () => {
 // toutes. OLD_TAB_INDEX_TO_KEY migre l'ancien format (index numérique,
 // utilisateurs existants) vers la clé correspondante à l'ORDRE D'ORIGINE
 // des onglets, pas leur position actuelle.
-const VALID_TAB_KEYS = ["dashboard","programme","ressenti","objectifs","seances","compte"];
+const VALID_TAB_KEYS = ["aujourdhui","dashboard","programme","ressenti","objectifs","seances","compte"];
 const OLD_TAB_INDEX_TO_KEY = ["dashboard","ressenti","objectifs","seances","compte","programme"];
 function initialActiveTab(){
   try{
     const saved = localStorage.getItem("mra_activeTab");
-    if(saved==null) return "dashboard";
+    if(saved==null) return "aujourdhui";
     if(VALID_TAB_KEYS.includes(saved)) return saved;
     const idx = Number(saved);
     if(Number.isInteger(idx) && OLD_TAB_INDEX_TO_KEY[idx]) return OLD_TAB_INDEX_TO_KEY[idx];
-    return "dashboard";
-  }catch(e){ return "dashboard"; }
+    return "aujourdhui";
+  }catch(e){ return "aujourdhui"; }
 }
 function persistActiveTab(){
   try{ localStorage.setItem("mra_activeTab", activeTab); }catch(e){}
@@ -611,6 +612,7 @@ const SESSION_RPE=[
   ["rpe","Difficulté perçue (RPE)","Repos total","Effort maximal"],
 ];
 const TABS=[
+  {key:"aujourdhui", label:"Aujourd'hui", icon:"sun"},
   {key:"dashboard", label:"Dashboard", icon:"bars"},
   {key:"programme", label:"Programme", icon:"calendar"},
   {key:"ressenti", label:"Ressenti", icon:"sparkle"},
@@ -749,6 +751,7 @@ function noRecentRunBanner(){
 // fois (mémorisée par appareil, comme mra_activeTab). Pas de bulle pour
 // "compte", ce sont des réglages, pas un endroit à découvrir.
 const TUTORIAL_BUBBLES = {
+  aujourdhui: "C'est ton accueil : ta séance du jour avec la raison pour laquelle elle est là, et la note de ta dernière séance quand elle attend.",
   dashboard: "C'est ta vue d'ensemble : tes dernières séances, tes stats clés. Elles arrivent ici automatiquement si tu utilises RunSync (synchro Apple Santé), ou tu peux aussi les ajouter à la main.",
   objectifs: "Commence par ici ! Dis-nous ce que tu vises (une course, ta régularité, ton allure...) — c'est ce qui sert de base pour te générer un programme personnalisé.",
   programme: "Ton calendrier de séances, généré automatiquement à partir de tes objectifs. Chaque séance t'explique pourquoi elle est là. Tu peux la déplacer, la modifier ou la supprimer à tout moment.",
@@ -3297,6 +3300,25 @@ function programSettingsFormHTML(profile){
   </div>`;
 }
 
+function escHtml(t){ return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+// Écran "Aujourd'hui" (CDC 4.8) : accueil de l'app. Liste TOUTES les séances
+// du jour (0, 1 ou plusieurs) plutôt qu'une seule, pour accueillir sans
+// rework une règle "course + séance complémentaire le même jour".
+function todayScreenHTML(){
+  const todayStr = localDateStr(new Date());
+  const date = new Date(todayStr+"T00:00:00");
+  const todaySessions = plannedSessions.filter(p=>p.planned_date===todayStr && (p.status==="planned"||p.status==="done"));
+  const hasProgram = plannedSessions.some(p=>p.status==="planned"||p.status==="done");
+  let body;
+  if(todaySessions.length) body = todaySessions.map(s=>programSessionCardHTML(s,date)).join("");
+  else if(!hasProgram) body = `<div class="chart-hint" style="margin-top:0">Tu n'as pas encore de programme.</div>
+    <button class="btn-secondary" style="margin-top:10px" onclick="goToProgramme()">Créer mon programme</button>`;
+  else body = `<div class="chart-hint" style="margin-top:0">Repos — aucune séance prévue aujourd'hui.</div>`;
+  return noRecentRunBanner() + painPromptBanner() + `<div class="card">
+    <div class="chart-hint" style="margin-top:0;margin-bottom:8px;text-transform:capitalize">Aujourd'hui · ${dayLabelShort(date)}</div>
+    ${body}
+  </div>`;
+}
 function programSessionCardHTML(session, date){
   const c = TC[session.type]||TC.Other;
   const zoneLabel = session.pace_zone ? (PACE_ZONE_LABEL[session.pace_zone]||session.pace_zone) : session.type;
@@ -3313,6 +3335,10 @@ function programSessionCardHTML(session, date){
       </div>
     </div>
     <div class="chart-hint" style="margin-top:8px;margin-bottom:0">${session.rationale}</div>
+    ${session.description?`<div style="margin-top:10px">
+      <div class="chart-hint" style="margin-top:0;margin-bottom:4px">Exercices${session.target_duration_min?` · environ ${Math.round(session.target_duration_min)} min`:""}</div>
+      <div style="font-size:13px;line-height:1.55;white-space:pre-line">${escHtml(session.description)}</div>
+    </div>`:""}
     ${programPaceExplanationHTML(session)}
     ${!done?`<div class="filters" style="margin-top:10px;margin-bottom:0">
       ${session.pace_zone && session.pace_zone!=="easy"?`<button class="flt" onclick="replaceWithEasy('${session.id}')">Remplacer par easy</button>`:""}
@@ -3497,10 +3523,12 @@ function renderContentInner(){
   const el=document.getElementById("content");
   const filtered=activeFilter==="Tous"?RUNS:RUNS.filter(r=>r.type===activeFilter);
 
-  if (RUNS.length===0 && activeTab!=="compte" && activeTab!=="programme"){
+  if (RUNS.length===0 && activeTab!=="compte" && activeTab!=="programme" && activeTab!=="aujourdhui"){
     el.innerHTML=`<div class="card">${emptyState("Aucune séance pour l'instant","Première fois ? Ouvre l'app pour choisir depuis quelle date importer, puis synchronise.",true)}</div>`;
     return;
   }
+
+  if(activeTab==="aujourdhui"){ el.innerHTML = todayScreenHTML(); return; }
 
   if(activeTab==="dashboard"){
     // Dashboard : seul endroit avec l'anneau, les KPIs et les graphiques globaux
@@ -3520,7 +3548,7 @@ function renderContentInner(){
     const withHr = efRuns.filter(r=>r.fc);
     const cardioRuns = [...efRuns, ...fracRuns].sort((a,b)=>dateFromRun(b)-dateFromRun(a));
     const monthly = effMaxHr ? monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr).filter(m=>m.secs.reduce((a,b)=>a+b,0)>0) : [];
-    el.innerHTML=(lastRun?lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate):"")+heroHTML()+kpisHTML()+noRecentRunBanner()+painPromptBanner()+`
+    el.innerHTML=(lastRun?lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate):"")+heroHTML()+kpisHTML()+`
       <div class="card-row">
         <div class="card"><div class="stitle">Progression allure — EF</div>
           <div class="chart-hint">Points = séances · pointillés = tendance et projection à 2 mois · 🚩 = course</div>
