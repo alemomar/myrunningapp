@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=36"></script>
+<script src="logic.js?v=37"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -525,6 +525,34 @@ try {
   assertEqual("acutePainTrigger : severe prime sur recurring", acutePainTrigger([{dos:4,genoux_g:4},{dos:5,genoux_g:5},{dos:4,genoux_g:8}], zoneKeys), {zone:"genoux_g", reason:"severe"});
   assertEqual("acutePainTrigger : zone exclue (déjà en pause) ignorée", acutePainTrigger([{genoux_g:9}], ["dos"]), null);
   assertEqual("acutePainTrigger : historique vide -> null", acutePainTrigger([], zoneKeys), null);
+}
+
+// --- Étiquettes matériel / variante (4.7.b) + buildStrengthSession (4.7.c) ---
+{
+  assertEqual("EXERCISE_LIBRARY : chaque exercice a un matériel", EXERCISE_LIBRARY.every(ex=>typeof ex.materiel==="string" && ex.materiel.length>0), true);
+  assertEqual("EXERCISE_LIBRARY : tout exercice avec matériel (hors mur) a une variante sans matériel", EXERCISE_LIBRARY.filter(ex=>ex.materiel!=="Aucun" && ex.materiel!=="Un mur").every(ex=>!!ex.variante), true);
+  const ids = s => s.exercises.map(e=>e.id);
+  const d = buildStrengthSession({type:"Renfo", niveau:"Débutant", objectif:"Préparer une course", pausedZoneKeys:[], rotationSeed:0});
+  assertEqual("Renfo Débutant : 4 exercices, 12 min", [d.exercises.length, d.durationMin], [4,12]);
+  assertEqual("Renfo Débutant : aucun exercice Intermédiaire/Avancé", d.exercises.every(e=>["Débutant","Débutant/Intermédiaire"].includes(e.niveau)), true);
+  const c = buildStrengthSession({type:"Renfo", niveau:"Confirmé", objectif:"Préparer une course", pausedZoneKeys:[], rotationSeed:0});
+  assertEqual("Renfo Confirmé : 10 exercices, 30 min", [c.exercises.length, c.durationMin], [10,30]);
+  assertEqual("Renfo Confirmé : exercices tous différents", new Set(ids(c)).size, 10);
+  const i = buildStrengthSession({type:"Renfo", niveau:"Intermédiaire", objectif:undefined, pausedZoneKeys:[], rotationSeed:0});
+  assertEqual("Sans objectif : pas d'exercice réservé à un objectif précis", i.exercises.every(e=>e.objectifs==="Tous"), true);
+  assertEqual("Renfo Intermédiaire : 7 exercices, 21 min", [i.exercises.length, i.durationMin], [7,21]);
+  const m = buildStrengthSession({type:"Mobilité", niveau:"Débutant", objectif:"Préparer une course", pausedZoneKeys:[], rotationSeed:0});
+  assertEqual("Mobilité Débutant : plafonnée par la base (5 exercices, 10 min)", [m.exercises.length, m.durationMin], [5,10]);
+  const p = buildStrengthSession({type:"Renfo", niveau:"Confirmé", objectif:"Préparer une course", pausedZoneKeys:["genoux_g"], rotationSeed:0});
+  assertEqual("Zone en pause (genoux) : aucun exercice lié aux genoux", p.exercises.some(e=>e.zonesDouleur.includes("genoux")), false);
+  const r0 = buildStrengthSession({type:"Renfo", niveau:"Débutant", objectif:"Préparer une course", pausedZoneKeys:[], rotationSeed:0});
+  const r1 = buildStrengthSession({type:"Renfo", niveau:"Débutant", objectif:"Préparer une course", pausedZoneKeys:[], rotationSeed:1});
+  assertEqual("Rotation : une autre semaine donne une autre liste", JSON.stringify(ids(r0))!==JSON.stringify(ids(r1)), true);
+  assertEqual("Niveau inconnu : traité comme Débutant (12 min)", buildStrengthSession({type:"Renfo", niveau:undefined, objectif:"Tous", pausedZoneKeys:[], rotationSeed:0}).durationMin, 12);
+  assertEqual("Yoga : pas de liste d'exercices", buildStrengthSession({type:"Yoga", niveau:"Débutant", objectif:"Tous", pausedZoneKeys:[], rotationSeed:0}), null);
+  const txt = formatExerciseList([EXERCISE_LIBRARY[2], EXERCISE_LIBRARY[0]]);
+  assertEqual("formatExerciseList : matériel + variante affichés si besoin", txt.includes("matériel : Élastique") && txt.includes("Sans élastique"), true);
+  assertEqual("formatExerciseList : pas de mention de matériel si 'Aucun'", formatExerciseList([EXERCISE_LIBRARY[0]]).includes("matériel"), false);
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---

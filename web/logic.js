@@ -918,26 +918,26 @@ function acutePainTrigger(ratingsHistory, zoneKeys){
    (pas de zone dédiée) ; "fasciite plantaire"/"talon" -> pied.
    `objectifs` : "Tous" ou liste des libellés exacts d'objectifs (4.2). */
 const EXERCISE_LIBRARY = [
-  { id:1,  name:"Pont fessier bilatéral", type:"Renfo", zoneTravaillee:"Grand fessier", objectifs:"Tous", zonesDouleur:["genoux","dos"], niveau:"Débutant", format:"3x15", gif:null },
-  { id:2,  name:"Pont fessier unilatéral", type:"Renfo", zoneTravaillee:"Grand fessier (unilatéral)", objectifs:["Préparer une course","Améliorer mon allure"], zonesDouleur:["genoux"], niveau:"Intermédiaire", format:"3x10/côté", gif:null },
-  { id:3,  name:"Clamshell (coquillage) élastique", type:"Renfo", zoneTravaillee:"Moyen fessier", objectifs:"Tous", zonesDouleur:["genoux","bassin"], niveau:"Débutant", format:"3x15/côté", gif:null },
-  { id:4,  name:"Marche latérale élastique", type:"Renfo", zoneTravaillee:"Moyen fessier", objectifs:"Tous", zonesDouleur:["genoux","bassin"], niveau:"Débutant", format:"3x10 pas/côté", gif:null },
-  { id:5,  name:"Fente arrière", type:"Renfo", zoneTravaillee:"Quadriceps, fessiers, stabilité", objectifs:"Tous", zonesDouleur:["genoux"], niveau:"Débutant/Intermédiaire", format:"3x10/côté", gif:null },
-  { id:6,  name:"Squat bulgare", type:"Renfo", zoneTravaillee:"Quadriceps, fessiers (unilatéral)", objectifs:["Améliorer mon allure","Préparer une course"], zonesDouleur:["genoux"], niveau:"Intermédiaire", format:"3x8/côté", gif:null },
-  { id:7,  name:"Soulevé de terre jambe tendue unilatéral", type:"Renfo", zoneTravaillee:"Ischios, fessiers, équilibre", objectifs:"Tous", zonesDouleur:["ischios","dos"], niveau:"Intermédiaire", format:"3x8/côté", gif:null },
-  { id:8,  name:"Nordic hamstring curl (ou variante assistée)", type:"Renfo", zoneTravaillee:"Ischio-jambiers (excentrique)", objectifs:["Améliorer mon allure","Préparer une course"], zonesDouleur:["ischios"], niveau:"Avancé", format:"3x5", gif:null },
-  { id:9,  name:"Mollets debout jambe tendue", type:"Renfo", zoneTravaillee:"Gastrocnémien", objectifs:"Tous", zonesDouleur:["mollets","tendons","tibias"], niveau:"Débutant", format:"3x15", gif:null },
-  { id:10, name:"Mollets debout genou fléchi", type:"Renfo", zoneTravaillee:"Soléaire", objectifs:"Tous", zonesDouleur:["tendons","mollets"], niveau:"Débutant", format:"3x15", gif:null },
-  { id:11, name:"Gainage ventral (planche)", type:"Renfo", zoneTravaillee:"Core (transverse)", objectifs:"Tous", zonesDouleur:["dos"], niveau:"Débutant", format:"3x30-45s", gif:null },
-  { id:12, name:"Gainage latéral (planche côté)", type:"Renfo", zoneTravaillee:"Obliques, moyen fessier", objectifs:"Tous", zonesDouleur:["bassin","dos"], niveau:"Débutant/Intermédiaire", format:"3x20-30s/côté", gif:null },
-  { id:13, name:"Dead bug", type:"Renfo", zoneTravaillee:"Core profond (stabilité lombo-pelvienne)", objectifs:"Tous", zonesDouleur:["dos"], niveau:"Débutant", format:"3x10/côté", gif:null },
-  { id:14, name:"Renforcement intrinsèque du pied (toe curls / short foot)", type:"Renfo", zoneTravaillee:"Muscles du pied", objectifs:"Tous", zonesDouleur:["pied"], niveau:"Débutant", format:"3x15 ou 2 min", gif:null },
-  { id:15, name:"Étirement fléchisseurs de hanche (couch stretch)", type:"Mobilité", zoneTravaillee:"Psoas, fléchisseurs hanche", objectifs:"Tous", zonesDouleur:["psoas","dos"], niveau:"Débutant", format:"2x30-45s/côté", gif:null },
-  { id:16, name:"Mobilité cheville (knee-to-wall dorsiflexion)", type:"Mobilité", zoneTravaillee:"Cheville", objectifs:"Tous", zonesDouleur:["tendons","tibias","mollets"], niveau:"Débutant", format:"2x10/côté", gif:null },
-  { id:17, name:"Étirement mollet contre mur", type:"Mobilité", zoneTravaillee:"Mollet (gastrocnémien)", objectifs:"Tous", zonesDouleur:["mollets","tendons","tibias"], niveau:"Débutant", format:"2x30s/côté", gif:null },
-  { id:18, name:"Ouverture de hanche 90/90", type:"Mobilité", zoneTravaillee:"Rotateurs de hanche", objectifs:["Préparer une course","Améliorer mon allure"], zonesDouleur:["bassin","genoux"], niveau:"Intermédiaire", format:"2x30-45s/côté", gif:null },
-  { id:19, name:"Étirement / auto-massage bande ilio-tibiale", type:"Mobilité", zoneTravaillee:"Bande ilio-tibiale, tenseur du fascia lata", objectifs:"Tous", zonesDouleur:["genoux","cuisse"], niveau:"Débutant", format:"1-2 min/côté", gif:null },
-  { id:20, name:"Auto-massage plantaire (balle)", type:"Mobilité", zoneTravaillee:"Fascia plantaire", objectifs:"Tous", zonesDouleur:["pied"], niveau:"Débutant", format:"2 min/pied", gif:null },
+  { id:1,  name:"Pont fessier bilatéral", type:"Renfo", zoneTravaillee:"Grand fessier", objectifs:"Tous", zonesDouleur:["genoux","dos"], niveau:"Débutant", format:"3x15", materiel:"Aucun", variante:null, gif:null },
+  { id:2,  name:"Pont fessier unilatéral", type:"Renfo", zoneTravaillee:"Grand fessier (unilatéral)", objectifs:["Préparer une course","Améliorer mon allure"], zonesDouleur:["genoux"], niveau:"Intermédiaire", format:"3x10/côté", materiel:"Aucun", variante:null, gif:null },
+  { id:3,  name:"Clamshell (coquillage) élastique", type:"Renfo", zoneTravaillee:"Moyen fessier", objectifs:"Tous", zonesDouleur:["genoux","bassin"], niveau:"Débutant", format:"3x15/côté", materiel:"Élastique", variante:"Sans élastique : même mouvement, en tenant 2 secondes en haut de chaque répétition.", gif:null },
+  { id:4,  name:"Marche latérale élastique", type:"Renfo", zoneTravaillee:"Moyen fessier", objectifs:"Tous", zonesDouleur:["genoux","bassin"], niveau:"Débutant", format:"3x10 pas/côté", materiel:"Élastique", variante:"Sans élastique : pas latéraux lents en position de mini-squat, genoux légèrement fléchis.", gif:null },
+  { id:5,  name:"Fente arrière", type:"Renfo", zoneTravaillee:"Quadriceps, fessiers, stabilité", objectifs:"Tous", zonesDouleur:["genoux"], niveau:"Débutant/Intermédiaire", format:"3x10/côté", materiel:"Aucun", variante:null, gif:null },
+  { id:6,  name:"Squat bulgare", type:"Renfo", zoneTravaillee:"Quadriceps, fessiers (unilatéral)", objectifs:["Améliorer mon allure","Préparer une course"], zonesDouleur:["genoux"], niveau:"Intermédiaire", format:"3x8/côté", materiel:"Chaise ou banc", variante:"Sans surélévation : pied arrière posé au sol, derrière toi, même mouvement de fente.", gif:null },
+  { id:7,  name:"Soulevé de terre jambe tendue unilatéral", type:"Renfo", zoneTravaillee:"Ischios, fessiers, équilibre", objectifs:"Tous", zonesDouleur:["ischios","dos"], niveau:"Intermédiaire", format:"3x8/côté", materiel:"Aucun", variante:null, gif:null },
+  { id:8,  name:"Nordic hamstring curl (ou variante assistée)", type:"Renfo", zoneTravaillee:"Ischio-jambiers (excentrique)", objectifs:["Améliorer mon allure","Préparer une course"], zonesDouleur:["ischios"], niveau:"Avancé", format:"3x5", materiel:"Point d'ancrage pour les pieds (partenaire ou meuble lourd)", variante:"Sans ancrage : pont fessier talons au sol, en faisant glisser lentement les talons vers les fesses puis en les repoussant.", gif:null },
+  { id:9,  name:"Mollets debout jambe tendue", type:"Renfo", zoneTravaillee:"Gastrocnémien", objectifs:"Tous", zonesDouleur:["mollets","tendons","tibias"], niveau:"Débutant", format:"3x15", materiel:"Aucun", variante:null, gif:null },
+  { id:10, name:"Mollets debout genou fléchi", type:"Renfo", zoneTravaillee:"Soléaire", objectifs:"Tous", zonesDouleur:["tendons","mollets"], niveau:"Débutant", format:"3x15", materiel:"Aucun", variante:null, gif:null },
+  { id:11, name:"Gainage ventral (planche)", type:"Renfo", zoneTravaillee:"Core (transverse)", objectifs:"Tous", zonesDouleur:["dos"], niveau:"Débutant", format:"3x30-45s", materiel:"Aucun", variante:null, gif:null },
+  { id:12, name:"Gainage latéral (planche côté)", type:"Renfo", zoneTravaillee:"Obliques, moyen fessier", objectifs:"Tous", zonesDouleur:["bassin","dos"], niveau:"Débutant/Intermédiaire", format:"3x20-30s/côté", materiel:"Aucun", variante:null, gif:null },
+  { id:13, name:"Dead bug", type:"Renfo", zoneTravaillee:"Core profond (stabilité lombo-pelvienne)", objectifs:"Tous", zonesDouleur:["dos"], niveau:"Débutant", format:"3x10/côté", materiel:"Aucun", variante:null, gif:null },
+  { id:14, name:"Renforcement intrinsèque du pied (toe curls / short foot)", type:"Renfo", zoneTravaillee:"Muscles du pied", objectifs:"Tous", zonesDouleur:["pied"], niveau:"Débutant", format:"3x15 ou 2 min", materiel:"Aucun", variante:null, gif:null },
+  { id:15, name:"Étirement fléchisseurs de hanche (couch stretch)", type:"Mobilité", zoneTravaillee:"Psoas, fléchisseurs hanche", objectifs:"Tous", zonesDouleur:["psoas","dos"], niveau:"Débutant", format:"2x30-45s/côté", materiel:"Un mur ou un canapé", variante:"Sans mur : fente basse, genou arrière posé au sol, buste droit, hanche poussée vers l'avant.", gif:null },
+  { id:16, name:"Mobilité cheville (knee-to-wall dorsiflexion)", type:"Mobilité", zoneTravaillee:"Cheville", objectifs:"Tous", zonesDouleur:["tendons","tibias","mollets"], niveau:"Débutant", format:"2x10/côté", materiel:"Un mur", variante:null, gif:null },
+  { id:17, name:"Étirement mollet contre mur", type:"Mobilité", zoneTravaillee:"Mollet (gastrocnémien)", objectifs:"Tous", zonesDouleur:["mollets","tendons","tibias"], niveau:"Débutant", format:"2x30s/côté", materiel:"Un mur", variante:null, gif:null },
+  { id:18, name:"Ouverture de hanche 90/90", type:"Mobilité", zoneTravaillee:"Rotateurs de hanche", objectifs:["Préparer une course","Améliorer mon allure"], zonesDouleur:["bassin","genoux"], niveau:"Intermédiaire", format:"2x30-45s/côté", materiel:"Aucun", variante:null, gif:null },
+  { id:19, name:"Étirement / auto-massage bande ilio-tibiale", type:"Mobilité", zoneTravaillee:"Bande ilio-tibiale, tenseur du fascia lata", objectifs:"Tous", zonesDouleur:["genoux","cuisse"], niveau:"Débutant", format:"1-2 min/côté", materiel:"Rouleau de massage (foam roller)", variante:"Sans rouleau : étirement debout, jambe croisée derrière l'autre, buste penché du côté opposé.", gif:null },
+  { id:20, name:"Auto-massage plantaire (balle)", type:"Mobilité", zoneTravaillee:"Fascia plantaire", objectifs:"Tous", zonesDouleur:["pied"], niveau:"Débutant", format:"2 min/pied", materiel:"Balle (tennis ou de massage)", variante:"Sans balle : rouler le pied sur une bouteille d'eau.", gif:null },
 ];
 // Une zone de BODY_ZONES porte un suffixe _g/_d (genoux_g, genoux_d...) —
 // un exercice n'est jamais spécifique à un côté, donc on compare par
@@ -948,6 +948,51 @@ function zoneFamily(zoneKey){
 function exercisesForZone(zoneKey){
   const family = zoneFamily(zoneKey);
   return EXERCISE_LIBRARY.filter(ex => ex.zonesDouleur.includes(family));
+}
+
+// Texte d'une liste d'exercices pour la description d'une séance : nom,
+// format, matériel (seulement s'il en faut) et variante sans matériel.
+function formatExerciseList(exercises){
+  return exercises.map(ex => {
+    let line = `${ex.name} — ${ex.format}`;
+    if(ex.materiel && ex.materiel!=="Aucun") line += ` · matériel : ${ex.materiel}`;
+    if(ex.variante) line += `\n   ${ex.variante}`;
+    return line;
+  }).join("\n");
+}
+
+/* ---------- Séance de renfo / mobilité (CDC v2, 4.7.c) ----------
+   Durée visée par niveau (10-30 min, CDC) et durée estimée par exercice :
+   choix pragmatiques validés avec l'utilisateur, PAS des règles sourcées.
+   Niveaux : l'app dit Débutant/Intermédiaire/Confirmé, la base dit aussi
+   "Avancé" (traité comme Confirmé) et "Débutant/Intermédiaire"
+   (accessible dès Débutant). Un coureur peut faire les exercices de son
+   niveau ou plus faciles. Les exercices liés à une zone en pause (4.6.c)
+   sont exclus. Sélection répartie sur la liste (groupée par zone) avec un
+   décalage `rotationSeed` qui change d'une semaine à l'autre, pour ne
+   pas refaire les mêmes exercices. Mobilité : la base n'a que 6
+   exercices, la durée est donc plafonnée par ce qui existe. */
+const STRENGTH_TARGET_MIN = { "Débutant":12, "Intermédiaire":20, "Confirmé":30 };
+const STRENGTH_MIN_PER_EXERCISE = { "Renfo":3, "Mobilité":2 };
+const EXERCISE_LEVEL_RANK = { "Débutant":0, "Débutant/Intermédiaire":0, "Intermédiaire":1, "Avancé":2 };
+const RUNNER_LEVEL_RANK = { "Débutant":0, "Intermédiaire":1, "Confirmé":2 };
+function buildStrengthSession({ type, niveau, objectif, pausedZoneKeys, rotationSeed }){
+  const perExercise = STRENGTH_MIN_PER_EXERCISE[type];
+  if(!perExercise) return null;
+  const target = STRENGTH_TARGET_MIN[niveau] ?? STRENGTH_TARGET_MIN["Débutant"];
+  const rank = RUNNER_LEVEL_RANK[niveau] ?? 0;
+  const pausedFamilies = (pausedZoneKeys||[]).map(zoneFamily);
+  const eligible = EXERCISE_LIBRARY.filter(ex =>
+    ex.type===type
+    && (EXERCISE_LEVEL_RANK[ex.niveau] ?? 0) <= rank
+    && (ex.objectifs==="Tous" || (objectif && ex.objectifs.includes(objectif)))
+    && !ex.zonesDouleur.some(z => pausedFamilies.includes(z)));
+  if(!eligible.length) return null;
+  const count = Math.min(eligible.length, Math.max(1, Math.round(target/perExercise)));
+  const step = eligible.length/count;
+  const offset = Math.abs(rotationSeed||0) % eligible.length;
+  const exercises = Array.from({length:count}, (_,k) => eligible[Math.floor(offset + k*step) % eligible.length]);
+  return { exercises, durationMin: count*perExercise };
 }
 
 /* ---------- Cohérence date/distance/niveau d'un objectif course (4.2.d) ----------
@@ -1142,10 +1187,8 @@ function generateWeekSessions(params){
    soumises à l'ajustement ACWR/douleur (qui suppose une allure — voir
    applyProgramAdjustments côté index.html, qui filtre explicitement sur
    pace_zone truthy pour ne jamais leur appliquer regenerateSession).
-   Volontairement basique pour cette première itération : pas de
-   suggestion d'exercices précis (ex: quels mouvements de renfo), qui
-   nécessiterait un référentiel dédié — seulement le TYPE de séance et sa
-   justification, à affiner dans un second temps si besoin. */
+   Le TYPE et la justification sont choisis ici ; les exercices concrets
+   d'une séance Renfo/Mobilité viennent de buildStrengthSession (4.7.c). */
 const CROSS_TRAINING_TYPES = ["Renfo", "Mobilité", "Yoga"];
 const CROSS_TRAINING_RATIONALE = {
   "Renfo": "Cette séance de renforcement musculaire t'aide à prévenir les blessures et complète ta charge de course sans ajouter d'impact au sol.",

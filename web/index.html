@@ -423,7 +423,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=36"></script>
+<script src="logic.js?v=37"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2611,14 +2611,24 @@ window.generateProgram = async (mondayDate, opts) => {
     const hasRunningNextMonday = plannedSessions.some(p=>p.planned_date===nextMondayStr && p.pace_zone && (p.status==="planned"||p.status==="done"));
     const avoidDayIndexes = [...dayBeforeRunning, ...(hasRunningNextMonday ? [6] : [])];
     const crossTraining = generateCrossTrainingSessions(missingCross, usedDayIndexes, weekIndex, avoidDayIndexes);
-    crossRows = crossTraining.map(s => ({
-      user_id:user.id,
-      planned_date: addDaysStr(mondayDate, s.dayIndex),
-      week_start_date: mondayStr,
-      type: s.type, pace_zone: null, title: s.type,
-      rationale: s.rationale + dayPlacementNote(s.dayIndex, false, true),
-      status:"planned", source:"generated",
-    }));
+    // Exercices concrets (4.7.c) pour Renfo/Mobilité ; Yoga reste sans liste
+    // (pas dans la base d'exercices).
+    crossRows = crossTraining.map((s, i) => {
+      const strength = buildStrengthSession({
+        type: s.type, niveau: goals.niveau, objectif: goals.principal?.objectifPrincipal,
+        pausedZoneKeys: suspendedZones.map(z=>z.zone), rotationSeed: weekIndex*3 + i,
+      });
+      return {
+        user_id:user.id,
+        planned_date: addDaysStr(mondayDate, s.dayIndex),
+        week_start_date: mondayStr,
+        type: s.type, pace_zone: null, title: s.type,
+        description: strength ? formatExerciseList(strength.exercises) : null,
+        target_duration_min: strength ? strength.durationMin : null,
+        rationale: s.rationale + dayPlacementNote(s.dayIndex, false, true),
+        status:"planned", source:"generated",
+      };
+    });
   }
 
   const rows = [...runningRows, ...crossRows];
@@ -3191,7 +3201,7 @@ window.addTargetedMobilitySession = async (weekStartDate, zoneKey) => {
   const day = findRescheduleDay({pace_zone:null}, weekSessions, availableDayIndexes, false);
   if(day==null) return;
   const zoneLabel = (ZONE_SHORT_LABEL[zoneKey]||zoneKey).toLowerCase();
-  const description = exercises.map(ex=>`${ex.name} — ${ex.format}`).join("\n");
+  const description = formatExerciseList(exercises);
   const { data:{user} } = await supa.auth.getUser();
   await supa.from("planned_sessions").insert({
     user_id:user.id, planned_date: localDateStr(addDays(monday, day)), week_start_date: weekStartDate,
