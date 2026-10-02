@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=50"></script>
+<script src="logic.js?v=51"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1119,6 +1119,24 @@ try {
   assertEqual("fusion : sans saisie à la main -> rien", [m9.auto.length, m9.ask.length], [0, 0]);
   assertEqual("reprise : notation de la saisie reprise si la synchro n'en a pas", mergedRunPatch({painRatings:{rpe:5}, notes:"ok"}, {painRatings:null, notes:null}), {pain_ratings:{rpe:5}, notes:"ok"});
   assertEqual("reprise : la notation de la synchro prime", mergedRunPatch({painRatings:{rpe:5}}, {painRatings:{rpe:7}}), {});
+  // ---- Rattachement d'une sortie (chantier 4) ----
+  const pl = (id,date,status,type,pz,dist,extra)=>({id,planned_date:date,status,type,pace_zone:pz,target_distance_km:dist,...(extra||{})});
+  const runX = {id:"r", date:"2026-10-01", type:"EF", distKm:7.6};
+  const sessionsX = [
+    pl("a","2026-09-28","missed","EF","easy",7), pl("b","2026-10-02","planned","EF","easy",7.5), pl("c","2026-10-03","planned","Long","easy",13),
+    pl("d","2026-10-01","done","EF","easy",7), pl("e","2026-10-02","planned","Yoga",null,null), pl("f","2026-10-10","planned","EF","easy",7),
+    pl("g","2026-10-01","planned","EF","easy",7,{linked_run_id:"zz"}), pl("h","2026-10-01","skipped","EF","easy",7)];
+  assertEqual("rattachement : classement par date puis type puis distance, max 3, sans liées/yoga/hors fenêtre", attachCandidates(runX, sessionsX).map(p=>p.id), ["b","c","a"]);
+  assertEqual("rattachement : même écart de date -> le même type d'effort d'abord", attachCandidates({id:"r",date:"2026-10-01",type:"Long",distKm:13}, [pl("x","2026-10-02","planned","EF","easy",13), pl("y","2026-09-30","planned","Long","easy",13)]).map(p=>p.id), ["y","x"]);
+  assertEqual("rattachement : aucune candidate -> liste vide", attachCandidates(runX, [pl("f","2026-10-10","planned","EF","easy",7)]), []);
+  assertEqual("déplacement : jour libre -> jour de la sortie", attachPlannedDate(pl("a","2026-09-28","missed","EF","easy",7), "2026-10-01", []), "2026-10-01");
+  assertEqual("déplacement : séance légère le même jour -> jour de la sortie", attachPlannedDate(pl("a","2026-09-28","missed","EF","easy",7), "2026-10-01", [pl("y","2026-10-01","planned","Yoga",null,null)]), "2026-10-01");
+  assertEqual("déplacement : autre course le même jour -> la séance garde sa date", attachPlannedDate(pl("a","2026-09-28","missed","EF","easy",7), "2026-10-01", [pl("o","2026-10-01","planned","EF","easy",7)]), "2026-09-28");
+  assertEqual("déplacement : renfo le même jour -> la séance garde sa date", attachPlannedDate(pl("a","2026-09-28","missed","EF","easy",7), "2026-10-01", [pl("o","2026-10-01","planned","Renfo",null,null)]), "2026-09-28");
+  assertEqual("note à replacer : sortie du samedi, séance du vendredi", missedDayNote(["2026-10-02"], ["2026-10-03"]), "Ta sortie de samedi est bien comptée. La séance de vendredi reste à replacer.");
+  assertEqual("note à replacer : rien à replacer -> pas de note", missedDayNote([], ["2026-10-03"]), "");
+  assertEqual("note à replacer : pas de sortie non rattachée -> pas de note", missedDayNote(["2026-10-02"], []), "");
+  assertEqual("daysBetween : changement d'heure d'été respecté", daysBetween("2026-10-24", "2026-10-26"), 2);
 document.getElementById("summary").innerHTML =
   `<span class="${fail?'fail':'pass'}">${pass} passés, ${fail} échoués</span>`;
 

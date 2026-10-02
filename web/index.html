@@ -469,7 +469,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=50"></script>
+<script src="logic.js?v=51"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1528,6 +1528,60 @@ window.mergeSame = async (manualId, syncedId) => {
 };
 window.mergeNotSame = (manualId, syncedId) => {
   lsSetJson("mra_notSamePairs", [...lsJson("mra_notSamePairs", []), manualId+"|"+syncedId].slice(-100));
+  renderContent();
+};
+/* ---------- Rattachement d'une sortie non prévue (chantier 4, Q3) ----------
+   Une course récente (moins de 7 jours) liée à aucune séance prévue propose
+   jusqu'à 3 séances de course à faire ou à replacer (voir attachCandidates,
+   logic.js). Le rapprochement automatique du même jour reste inchangé. */
+function runIsLinked(runId){ return plannedSessions.some(p=>p.linked_run_id===runId); }
+function unlinkedRunDatesThisWeek(){
+  const todayStr = localDateStr(new Date());
+  const monday = localDateStr(mondayOf(new Date(todayStr+"T00:00:00")));
+  return runningRuns.filter(r=>!runIsLinked(r.id) && sessionCategory({type:r.type})==="run" && daysBetween(monday, localDateStr(dateFromRun(r)))>=0)
+    .map(r=>localDateStr(dateFromRun(r))).sort();
+}
+function attachCardHTML(){
+  const todayStr = localDateStr(new Date());
+  const dismissed = new Set(lsJson("mra_notLinked", []));
+  const recent = runningRuns.filter(r=>sessionCategory({type:r.type})==="run" && !runIsLinked(r.id) && !dismissed.has(r.id)
+    && daysBetween(localDateStr(dateFromRun(r)), todayStr)<=7).slice().reverse();
+  for(const r of recent){
+    const cands = attachCandidates({ id:r.id, date:localDateStr(dateFromRun(r)), type:r.type, distKm:r.dist }, plannedSessions);
+    if(!cands.length) continue;
+    const desc = `${r.dist>0?String(r.dist.toFixed(1)).replace(".",",")+" km, ":""}${Math.round(r.durationSec/60)} min`;
+    return `<div class="card" style="border-color:rgba(232,163,23,0.5);background:rgba(232,163,23,0.08)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Cette sortie correspond à une séance prévue ?</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ta sortie du ${escHtml(r.label)} (${desc}) n'est liée à aucune séance du programme. Si elle remplace l'une d'elles, elle comptera comme faite.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${cands.map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="font-size:13px;min-width:0"><div style="font-weight:600">${escHtml(p.title)}</div><div style="font-size:12px;color:var(--text-dim)"><span style="text-transform:capitalize">${dayLabelShort(new Date(p.planned_date+"T00:00:00"))}</span>${p.target_distance_km?" · "+String(p.target_distance_km).replace(".",",")+" km":""}${p.status==="missed"?" · à replacer":""}</div></div>
+          <button class="btn-secondary" style="flex-shrink:0;width:auto;padding:8px 12px" onclick="attachRun('${r.id}','${p.id}')">Oui, c'est celle-là</button>
+        </div>`).join("")}
+        <button class="btn-secondary" onclick="notLinked('${r.id}')">Non, c'était une sortie en plus</button>
+      </div>
+    </div>`;
+  }
+  return "";
+}
+window.attachRun = async (runId, plannedId) => {
+  const p = plannedSessions.find(x=>x.id===plannedId), r = RUNS.find(x=>x.id===runId);
+  if(!p || !r) return;
+  const runDate = localDateStr(dateFromRun(r));
+  const sameDay = plannedSessions.filter(x=>x.id!==p.id && x.planned_date===runDate && (x.status==="planned"||x.status==="done"));
+  const newDate = attachPlannedDate(p, runDate, sameDay);
+  const { error } = await supa.from("planned_sessions").update({
+    status:"done", linked_run_id:runId, planned_date:newDate,
+    week_start_date:localDateStr(mondayOf(new Date(newDate+"T00:00:00"))), updated_at:new Date().toISOString(),
+  }).eq("id", plannedId);
+  if(error){ alert("Erreur : "+error.message); return; }
+  await loadData();
+  const updated = plannedSessions.find(x=>x.id===plannedId);
+  if(updated && updated.generation_reason==="guided_test") await applyGuidedTestResult(r);
+  renderContent();
+};
+window.notLinked = (runId) => {
+  lsSetJson("mra_notLinked", [...lsJson("mra_notLinked", []), runId].slice(-100));
   renderContent();
 };
 window.deleteRun = async (id, label) => {
@@ -3788,6 +3842,7 @@ function weekRecapCardHTML(){
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text-dim);margin-top:8px">
       <span>✓ fait</span><span>○ prévu</span><span style="color:var(--orange)">! à replacer</span><span>· repos</span>
     </div>
+    ${(()=>{ const note = missedDayNote(days.filter(d=>d.status==="manque").map(d=>d.date), unlinkedRunDatesThisWeek()); return note?`<div style="font-size:12px;color:var(--text-dim);margin-top:8px">${escHtml(note)}</div>`:""; })()}
     ${chargeGaugeHTML(gauge, acwr)}
     <div style="font-size:13px;line-height:1.5;margin-top:14px">${weekSummaryPhrase(recap, gauge)}</div>
   </div>`;
@@ -3891,7 +3946,7 @@ function todayScreenHTML(){
     <button class="btn-secondary" style="margin-top:10px" onclick="goToProgramme()">Créer mon programme</button>`;
   else if(runningRuns.some(r=>localDateStr(dateFromRun(r))===todayStr)) body = `<div class="chart-hint" style="margin-top:0">Aucune séance n'était planifiée aujourd'hui, mais tu as couru : bravo !</div>`;
   else body = restDayMessageHTML();
-  return celebrationCardHTML() + guidedTestBannerHTML() + beginnerGraduationBannerHTML() + noRecentRunBanner() + painPromptBanner() + mergeNoticeCardHTML() + mergeAskCardHTML() + `<div class="card">
+  return celebrationCardHTML() + guidedTestBannerHTML() + beginnerGraduationBannerHTML() + noRecentRunBanner() + painPromptBanner() + mergeNoticeCardHTML() + mergeAskCardHTML() + attachCardHTML() + `<div class="card">
     <div class="chart-hint" style="margin-top:0;margin-bottom:8px;text-transform:capitalize">Aujourd'hui · ${dayLabelShort(date)}</div>
     ${body}
   </div>` + weekRecapCardHTML();

@@ -1891,3 +1891,39 @@ function mergedRunPatch(manual, synced){
   if(manual.legsFocused!=null && synced.legsFocused==null) patch.legs_focused = manual.legsFocused;
   return patch;
 }
+
+/* ---------- Rattachement d'une sortie non prévue (chantier 4, Q3) ----------
+   Règles validées le 02/10/2026 : une course récente liée à aucune séance
+   prévue propose jusqu'à 3 séances de course "à faire" ou "à replacer" à ±3
+   jours, classées par proximité de date, puis de type d'effort, puis de
+   distance. "Oui" : la séance passe "faite", liée, et se déplace au jour réel
+   de la sortie sauf si une séance incompatible y est déjà. */
+const ATTACH_WINDOW_DAYS = 3;
+function daysBetween(a, b){
+  const t = (s) => { const [y,m,d] = s.split("-").map(Number); return Date.UTC(y, m-1, d); };
+  return Math.round((t(b)-t(a))/86400000);
+}
+function attachCandidates(run, plannedSessions){
+  return (plannedSessions||[])
+    .filter(p => (p.status==="planned"||p.status==="missed") && !p.linked_run_id && sessionCategory(p)==="run"
+      && Math.abs(daysBetween(p.planned_date, run.date)) <= ATTACH_WINDOW_DAYS)
+    .map(p => ({
+      p,
+      days: Math.abs(daysBetween(p.planned_date, run.date)),
+      typeGap: p.type===run.type ? 0 : 1,
+      distGap: p.target_distance_km && run.distKm ? Math.abs(p.target_distance_km-run.distKm)/Math.max(p.target_distance_km, run.distKm) : 1,
+    }))
+    .sort((a,b)=>a.days-b.days || a.typeGap-b.typeGap || a.distGap-b.distGap)
+    .slice(0,3)
+    .map(x=>x.p);
+}
+function attachPlannedDate(planned, runDate, sameDaySessions){
+  return (sameDaySessions||[]).every(o => sessionsCanShareDay(planned, o)) ? runDate : planned.planned_date;
+}
+// Ligne d'explication sous "Ta semaine" (R5) : une sortie non rattachée est
+// bien comptée même si une séance prévue reste à replacer. Dates "YYYY-MM-DD".
+function missedDayNote(missedDates, unlinkedRunDates){
+  if(!(missedDates||[]).length || !(unlinkedRunDates||[]).length) return "";
+  const dayName = (d) => new Date(d+"T00:00:00").toLocaleDateString("fr-FR", { weekday:"long" });
+  return `Ta sortie de ${dayName(unlinkedRunDates[unlinkedRunDates.length-1])} est bien comptée. La séance de ${dayName(missedDates[0])} reste à replacer.`;
+}
