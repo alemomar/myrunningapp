@@ -117,12 +117,30 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
    fonctionne pas"), un vrai mouvement (pop avec rebond) se voit. Reste
    affichée (pas de disparition) : le message est le signal, pas une nuisance. */
 .save-confirm{font-size:12px;color:var(--accent);margin-top:8px;text-align:center;min-height:16px;font-weight:600}
-.save-confirm.show{animation:saveConfirmPop .5s cubic-bezier(.34,1.56,.64,1)}
+@media (prefers-reduced-motion: no-preference){
+  .save-confirm.show{animation:saveConfirmPop .5s cubic-bezier(.34,1.56,.64,1)}
+}
 @keyframes saveConfirmPop{
   0%{opacity:0;transform:translateY(2px) scale(0.85)}
   60%{opacity:1;transform:scale(1.08)}
   100%{opacity:1;transform:scale(1)}
 }
+/* ---------- Éléments dynamiques (CDC v2, 4.11) ----------
+   Toutes les animations sont déclarées dans ce bloc "no-preference" : si
+   l'appareil demande de réduire les animations, rien ne bouge et les
+   valeurs finales s'affichent directement (4.11.a). */
+@media (prefers-reduced-motion: no-preference){
+  #content.view-in{animation:viewIn .2s ease-out}
+  .expand-in{animation:expandIn .2s ease-out}
+  .chip-pop{animation:chipPop .25s cubic-bezier(.34,1.56,.64,1)}
+  .week-dot-today{animation:todayPulse 2.6s ease-in-out infinite}
+  .check-draw path{stroke-dasharray:24;stroke-dashoffset:24;animation:checkDraw .4s ease-out .1s forwards}
+}
+@keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes expandIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@keyframes chipPop{0%{transform:scale(.88)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes todayPulse{0%,100%{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--text)}50%{box-shadow:0 0 0 3px var(--bg),0 0 0 7px rgba(245,245,247,.3)}}
+@keyframes checkDraw{to{stroke-dashoffset:0}}
 #authError{color:var(--red);font-size:13px;margin-top:12px;text-align:center;min-height:16px;line-height:1.4}
 #authSwitch{margin-top:22px;font-size:13px;color:var(--accent);text-align:center;cursor:pointer;font-weight:500}
 
@@ -816,7 +834,7 @@ window.dismissTutorialBubble = (tabKey) => {
 function flashSaved(elId, text="Enregistré"){
   const el = document.getElementById(elId);
   if(!el) return;
-  el.textContent = "✓ "+text;
+  el.innerHTML = `<svg class="check-draw" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg>${escHtml(text)}`;
   el.classList.remove("show");
   void el.offsetWidth; // force le reflow pour relancer l'animation CSS
   el.classList.add("show");
@@ -1763,14 +1781,30 @@ function renderTabs(){
       ${icon(t.icon,20)}<span>${t.label}</span>
     </button>`).join("");
 }
+const prefersReducedMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+// Rejoue le fondu d'arrivée du contenu (changement d'onglet ou de section).
+function playViewTransition(){
+  const el = document.getElementById("content");
+  if(!el || prefersReducedMotion()) return;
+  el.classList.remove("view-in"); void el.offsetWidth; el.classList.add("view-in");
+}
+// Petit rebond d'un bouton qu'on vient de choisir (retour visuel à la notation).
+function popChip(btn){
+  if(!btn || prefersReducedMotion()) return;
+  btn.classList.remove("chip-pop"); void btn.offsetWidth; btn.classList.add("chip-pop");
+}
+// Clé de l'élément qu'on vient d'ouvrir : lui seul joue l'animation
+// d'ouverture, pas tous ceux qui étaient déjà ouverts (le contenu est
+// redessiné en entier à chaque clic).
+let justOpenedKey = null;
 window.setTab=i=>{
   destroyCharts();
   // "objectifs"/"compte" ne sont plus des onglets mais les deux sections de
   // Profil : les liens internes qui les nomment (setTab('objectifs')) restent valides.
   if(PROFIL_SECTIONS.includes(i)){ setProfilSectionState(i); i="profil"; }
-  activeTab=i;persistActiveTab();renderTabs();renderContent();window.scrollTo({top:0,behavior:"smooth"});
+  activeTab=i;persistActiveTab();renderTabs();renderContent();playViewTransition();window.scrollTo({top:0,behavior:"smooth"});
 };
-window.setProfilSection = (section) => { destroyCharts(); setProfilSectionState(section); renderContent(); window.scrollTo({top:0,behavior:"smooth"}); };
+window.setProfilSection = (section) => { destroyCharts(); setProfilSectionState(section); renderContent(); playViewTransition(); window.scrollTo({top:0,behavior:"smooth"}); };
 function profilSwitchHTML(){
   const chip = (key, label) => `<button class="flt${profilSection===key?" active":""}" onclick="setProfilSection('${key}')">${label}</button>`;
   return `<div class="card"><div class="filters" style="margin-bottom:0">${chip("objectifs","Objectifs")}${chip("compte","Mon compte")}</div></div>`;
@@ -2247,7 +2281,7 @@ function bodyMapHTML(prefix, initial){
 // d'édition) se déplace d'un clic à l'autre.
 window.setZoneMoment = (prefix, key, val) => {
   document.getElementById(`${prefix}_${key}_moment`).value = val;
-  document.querySelectorAll(`[data-chipgroup="${prefix}_${key}_moment"] .flt`).forEach(b=>b.classList.toggle("active", b.dataset.value===val));
+  document.querySelectorAll(`[data-chipgroup="${prefix}_${key}_moment"] .flt`).forEach(b=>{ const on = b.dataset.value===val; b.classList.toggle("active", on); if(on) popChip(b); });
 };
 window.bodyZoneTap = (prefix, key) => {
   const row = document.getElementById(`${prefix}_${key}_row`);
@@ -2310,12 +2344,12 @@ function painFormHTML(prefix, initial){
 }
 window.setRatingNote = (prefix, n) => {
   document.getElementById(`${prefix}_note`).value = n;
-  document.querySelectorAll(`[data-chipgroup="${prefix}_note"] .flt`).forEach(b=>b.classList.toggle("active", Number(b.dataset.value)===n));
+  document.querySelectorAll(`[data-chipgroup="${prefix}_note"] .flt`).forEach(b=>{ const on = Number(b.dataset.value)===n; b.classList.toggle("active", on); if(on) popChip(b); });
   updateRatingFormVisibility(prefix);
 };
 window.setRatingGene = (prefix, val) => {
   document.getElementById(`${prefix}_gene`).value = val ? "1" : "0";
-  document.querySelectorAll(`[data-chipgroup="${prefix}_gene"] .flt`).forEach(b=>b.classList.toggle("active", b.dataset.value===(val?"1":"0")));
+  document.querySelectorAll(`[data-chipgroup="${prefix}_gene"] .flt`).forEach(b=>{ const on = b.dataset.value===(val?"1":"0"); b.classList.toggle("active", on); if(on) popChip(b); });
   updateRatingFormVisibility(prefix);
 };
 function updateRatingFormVisibility(prefix){
@@ -2334,8 +2368,8 @@ let openHrDetail = new Set();
 let openManageRow = new Set();
 window.toggleManageRow = (id) => {
   if(openManageRow.has(id)) openManageRow.delete(id);
-  else openManageRow.add(id);
-  renderContent();
+  else { openManageRow.add(id); justOpenedKey = "mr_"+id; }
+  renderContent(); justOpenedKey = null;
 };
 // Mois repliés par défaut (sauf le plus récent) dans "Toutes les séances" :
 // null tant que non initialisé, pour ne calculer le mois le plus récent à
@@ -2344,8 +2378,8 @@ window.toggleManageRow = (id) => {
 let openMonths = null;
 window.toggleMonthGroup = (key) => {
   if(openMonths.has(key)) openMonths.delete(key);
-  else openMonths.add(key);
-  renderContent();
+  else { openMonths.add(key); justOpenedKey = "mg_"+key; }
+  renderContent(); justOpenedKey = null;
 };
 // Vrai seulement au tout premier rendu du dashboard depuis l'ouverture de
 // l'app : l'animation de célébration de la carte "Dernière séance" ne doit
@@ -3437,8 +3471,8 @@ function exerciseListHTML(description){
 let openLearnMore = new Set();
 window.toggleLearnMore = (id) => {
   if(openLearnMore.has(id)) openLearnMore.delete(id);
-  else openLearnMore.add(id);
-  renderContent();
+  else { openLearnMore.add(id); justOpenedKey = "lm_"+id; }
+  renderContent(); justOpenedKey = null;
 };
 function learnMoreHTML(session){
   const key = learnMoreKey(session);
@@ -3446,7 +3480,7 @@ function learnMoreHTML(session){
   const open = openLearnMore.has(session.id);
   const t = SESSION_LEARN_MORE[key];
   return `<button type="button" class="flt" style="margin-top:10px" onclick="toggleLearnMore('${session.id}')" aria-expanded="${open}">${open?"Réduire":"En savoir plus"}</button>
-    ${open?`<div style="margin-top:10px;padding:12px 14px;background:var(--card-2);border-radius:12px">
+    ${open?`<div class="${justOpenedKey==="lm_"+session.id?"expand-in":""}" style="margin-top:10px;padding:12px 14px;background:var(--card-2);border-radius:12px">
       <div style="font-size:14px;font-weight:600;margin-bottom:8px">${escHtml(t.title)}</div>
       ${t.blocks.map(b=>`<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:2px">${escHtml(b.h)}</div><div style="font-size:13px;line-height:1.55">${escHtml(b.p)}</div></div>`).join("")}
       ${t.sources?`<div style="font-size:11px;color:var(--text-faint);line-height:1.45;margin-top:4px">Sources : ${escHtml(t.sources)}</div>`:""}
@@ -3481,7 +3515,7 @@ function weekRecapCardHTML(){
   const dayLabel = { fait:"fait", manque:"à replacer", prevu:"prévu", repos:"repos" };
   const dots = days.map((d,i)=>`<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1">
     <div style="font-size:11px;color:${d.isToday?"var(--text)":"var(--text-dim)"};font-weight:${d.isToday?700:500}">${dayLetters[i]}</div>
-    <div title="${dayLabel[d.status]}${d.isToday?" (aujourd'hui)":""}" aria-label="${dayLabel[d.status]}${d.isToday?", aujourd'hui":""}" style="width:26px;height:26px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;${dotStyle[d.status]};${d.isToday?"box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--text);":""}">${dotMark[d.status]}</div>
+    <div class="${d.isToday?"week-dot-today":""}" title="${dayLabel[d.status]}${d.isToday?" (aujourd'hui)":""}" aria-label="${dayLabel[d.status]}${d.isToday?", aujourd'hui":""}" style="width:26px;height:26px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;${dotStyle[d.status]};${d.isToday?"box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--text);":""}">${dotMark[d.status]}</div>
   </div>`).join("");
   return `<div class="card">
     <div class="chart-hint" style="margin-top:0;margin-bottom:12px">Ta semaine</div>
@@ -3787,14 +3821,14 @@ function sessionHistoryCardHTML(){
         <span>${icon(monthOpen?"chevronDown":"chevronRight",12)} ${g.label}</span>
         <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-dim);font-size:11px">${g.sessions.length} séance${g.sessions.length>1?"s":""}</span>
       </div>
-      ${monthOpen?g.sessions.map(r=>{
+      ${monthOpen?`<div class="${justOpenedKey==="mg_"+g.key?"expand-in":""}">${g.sessions.map(r=>{
         const open = openManageRow.has(r.id);
         return `<div class="session-pick" id="hist_${r.id}" onclick="toggleManageRow('${r.id}')">
           <span>${icon(open?"chevronDown":"chevronRight",13)} ${icon(TICON[r.type]||"activity",13)} ${r.type} · ${r.label}${r.dist>0?" · "+r.dist.toFixed(2)+" km":""}</span>
           ${r.includeInStats?`<span class="rated">${r.painRatings?"Notée ✓":"À noter"}</span>`:""}
         </div>
-        ${open?manageableRow(r, effMaxHr, effRestingHr)+ratingBlock(r):""}`;
-      }).join(""):""}`;
+        ${open?`<div class="${justOpenedKey==="mr_"+r.id?"expand-in":""}">${manageableRow(r, effMaxHr, effRestingHr)+ratingBlock(r)}</div>`:""}`;
+      }).join("")}</div>`:""}`;
     }).join(""):`<div style="font-size:13px;color:var(--text-dim);padding:12px 0">Aucune séance de ce type</div>`}
   </div>`;
 }
