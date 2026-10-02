@@ -1007,6 +1007,76 @@ function formatMinutesShort(min){
   return Math.floor(m/60)+" h "+String(m%60).padStart(2,"0");
 }
 
+/* ---------- Indicateurs de l'onglet Progression (CDC v2, 4.9.a) ----------
+   Définitions validées avec l'utilisateur (02/10/2026), choix pragmatiques
+   (pas des règles sourcées) :
+   - Efficience cardiaque : même métrique que le graphique du Dashboard
+     (allure ÷ FC moyenne, plus bas = mieux), courses EF avec FC des 30
+     derniers jours vs les 30 jours d'avant ; il faut au moins 2 courses de
+     chaque côté. "Même niveau" = moins de 2% d'écart. Formulé en "plus
+     efficace" (le ratio baisse aussi si la FC baisse à allure égale) plutôt
+     qu'en "plus vite".
+   - Régularité : sur les (jusqu'à 8) dernières semaines COMPLÈTES lundi-
+     dimanche, combien contiennent au moins une course. Pas plus de semaines
+     que depuis la première course (un débutant n'est pas pénalisé).
+   - Volume : km des 28 derniers jours vs les 28 d'avant, sans flèche ni %
+     (même principe que weekRecap). */
+const EFFICIENCY_STABLE_PCT = 2;
+function efficiencyTrend(efRuns, todayStr){
+  const parse = (str) => { const [y,m,d] = str.split("-").map(Number); return new Date(y, m-1, d); };
+  const today = parse(todayStr);
+  const dayMs = 86400000;
+  const daysAgo = (dateStr) => Math.round((today - parse(dateStr)) / dayMs);
+  const valid = (efRuns||[]).filter(r=>r.allure>0 && r.fc>0);
+  const recent = valid.filter(r=>{ const a=daysAgo(r.date); return a>=0 && a<=29; });
+  const baseline = valid.filter(r=>{ const a=daysAgo(r.date); return a>=30 && a<=59; });
+  if(recent.length<2 || baseline.length<2) return { status:"insuffisant" };
+  const avgRatio = (arr) => arr.reduce((a,r)=>a+r.allure/r.fc,0)/arr.length;
+  const pct = (avgRatio(baseline) - avgRatio(recent)) / avgRatio(baseline) * 100;
+  const rounded = Math.round(Math.abs(pct));
+  if(Math.abs(pct) < EFFICIENCY_STABLE_PCT) return { status:"stable", pct:0 };
+  return { status: pct>0 ? "mieux" : "moins", pct: rounded };
+}
+function efficiencyPhrase(trend){
+  if(trend.status==="mieux") return `À fréquence cardiaque égale, tu es ${trend.pct} % plus efficace qu'il y a un mois.`;
+  if(trend.status==="moins") return "À fréquence cardiaque égale, tu es un peu moins efficace qu'il y a un mois : fatigue, chaleur ou reprise peuvent l'expliquer.";
+  if(trend.status==="stable") return "À fréquence cardiaque égale, tu es au même niveau qu'il y a un mois.";
+  return "Pas encore assez de courses avec fréquence cardiaque pour comparer.";
+}
+function regularitySummary(runDates, todayStr){
+  const parse = (str) => { const [y,m,d] = str.split("-").map(Number); return new Date(y, m-1, d); };
+  const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate()+n); return r; };
+  const today = parse(todayStr);
+  const currentMonday = addDays(today, -((today.getDay()+6)%7));
+  const dates = (runDates||[]).map(parse);
+  if(!dates.length) return { status:"insuffisant" };
+  const first = new Date(Math.min(...dates));
+  const firstMonday = addDays(first, -((first.getDay()+6)%7));
+  const weeksSinceFirst = Math.round((currentMonday - firstMonday) / (7*86400000));
+  const totalWeeks = Math.min(8, weeksSinceFirst);
+  if(totalWeeks<1) return { status:"insuffisant" };
+  let weeksWithRun = 0, runs = 0;
+  for(let i=1;i<=totalWeeks;i++){
+    const from = addDays(currentMonday, -7*i), to = addDays(from, 7);
+    const n = dates.filter(d=>d>=from && d<to).length;
+    runs += n; if(n>0) weeksWithRun++;
+  }
+  return { status:"ok", weeksWithRun, totalWeeks, avgPerWeek: Math.round(runs/totalWeeks*10)/10 };
+}
+function regularityPhrase(r){
+  if(r.status!=="ok") return "Pas encore assez d'historique : reviens après ta première semaine complète.";
+  if(r.weeksWithRun===0) return `Aucune course ces ${r.totalWeeks} dernières semaines : une petite sortie facile pour reprendre ?`;
+  const avg = String(r.avgPerWeek).replace(".", ",");
+  return `Tu as couru au moins une fois dans ${r.weeksWithRun} semaine${r.weeksWithRun>1?"s":""} sur ${r.totalWeeks}, soit ${avg} course${r.avgPerWeek>=2?"s":""} par semaine en moyenne.`;
+}
+function volumeComparison(runs, todayStr){
+  const parse = (str) => { const [y,m,d] = str.split("-").map(Number); return new Date(y, m-1, d); };
+  const today = parse(todayStr);
+  const daysAgo = (dateStr) => Math.round((today - parse(dateStr)) / 86400000);
+  const sum = (from, to) => Math.round((runs||[]).filter(r=>{ const a=daysAgo(r.date); return a>=from && a<=to; }).reduce((a,r)=>a+(r.distKm||0),0)*10)/10;
+  return { last28: sum(0,27), prev28: sum(28,55) };
+}
+
 /* ---------- Base d'exercices renfo/mobilité (CDC v2, 4.7 — base pour 4.6.a) ----------
    Fournie par l'utilisateur (01/10/2026), 20 exercices (14 Renfo + 6
    Mobilité) — destinée à être relue par un kiné avant la phase 3 (CDC v2,

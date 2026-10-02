@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=41"></script>
+<script src="logic.js?v=42"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -650,6 +650,41 @@ try {
   assertEqual("EXERCISE_LIBRARY : chaque exercice a un visuel SVG dans exercices/", EXERCISE_LIBRARY.every(ex=>/^exercices\/[a-z0-9-]+\.svg$/.test(ex.visuel)), true);
   assertEqual("EXERCISE_LIBRARY : un visuel différent par exercice", new Set(EXERCISE_LIBRARY.map(ex=>ex.visuel)).size, 20);
   assertEqual("EXERCISE_LIBRARY : 3 consignes par exercice", EXERCISE_LIBRARY.every(ex=>Array.isArray(ex.consignes) && ex.consignes.length===3 && ex.consignes.every(c=>c.length>0)), true);
+}
+
+// --- Indicateurs de Progression (4.9.a) ---
+{
+  const today = "2026-10-02";
+  const d = (n) => { const x = new Date(2026,9,2); x.setDate(x.getDate()-n); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); };
+  // allure 360s/km à FC 150 (ratio 2,4) il y a ~45 j ; 342s/km à FC 150 (ratio 2,28 -> 5% mieux) récemment
+  const base = [{date:d(40), allure:360, fc:150}, {date:d(50), allure:360, fc:150}];
+  const better = [{date:d(2), allure:342, fc:150}, {date:d(10), allure:342, fc:150}];
+  const t1 = efficiencyTrend([...base, ...better], today);
+  assertEqual("efficiencyTrend : ratio 5% plus bas -> mieux, 5%", [t1.status, t1.pct], ["mieux", 5]);
+  const worse = [{date:d(2), allure:378, fc:150}, {date:d(10), allure:378, fc:150}];
+  assertEqual("efficiencyTrend : ratio 5% plus haut -> moins", efficiencyTrend([...base, ...worse], today).status, "moins");
+  const same = [{date:d(2), allure:361, fc:150}, {date:d(10), allure:359, fc:150}];
+  assertEqual("efficiencyTrend : moins de 2% d'écart -> stable", efficiencyTrend([...base, ...same], today).status, "stable");
+  assertEqual("efficiencyTrend : pas assez de courses récentes -> insuffisant", efficiencyTrend([...base, better[0]], today).status, "insuffisant");
+  assertEqual("efficiencyTrend : sans FC ignoré -> insuffisant", efficiencyTrend([...base, {date:d(2), allure:342, fc:0}, {date:d(5), allure:342, fc:0}], today).status, "insuffisant");
+  assertEqual("efficiencyTrend : une course d'il y a 70 jours n'entre dans aucune fenêtre", efficiencyTrend([{date:d(70), allure:300, fc:150}, {date:d(75), allure:300, fc:150}, ...better], today).status, "insuffisant");
+  assertEqual("efficiencyPhrase : mieux", efficiencyPhrase({status:"mieux", pct:5}), "À fréquence cardiaque égale, tu es 5 % plus efficace qu'il y a un mois.");
+  assertEqual("efficiencyPhrase : insuffisant", efficiencyPhrase({status:"insuffisant"}), "Pas encore assez de courses avec fréquence cardiaque pour comparer.");
+  // régularité : 2026-10-02 est un vendredi, semaine en cours = lundi 28/09 (exclue)
+  const steady = []; for(let w=1; w<=8; w++){ steady.push(d(7*w+3)); }
+  const r1 = regularitySummary(steady, today);
+  assertEqual("regularitySummary : 1 course par semaine sur 8 semaines", [r1.weeksWithRun, r1.totalWeeks, r1.avgPerWeek], [8, 8, 1]);
+  const gaps = regularitySummary([d(10), d(17), d(24), d(31), d(38), d(45), d(52), d(59)], today);
+  assertEqual("regularitySummary : semaine courante exclue, au plus 8 semaines", gaps.totalWeeks, 8);
+  const young = regularitySummary([d(17)], today); // première course mardi 15/09 -> 2 semaines complètes (14/09 et 21/09)
+  assertEqual("regularitySummary : un débutant n'est pas pénalisé (semaines depuis la première course)", [young.totalWeeks, young.weeksWithRun], [2, 1]);
+  assertEqual("regularitySummary : aucune course -> insuffisant", regularitySummary([], today).status, "insuffisant");
+  assertEqual("regularitySummary : première course cette semaine -> insuffisant", regularitySummary([d(1)], today).status, "insuffisant");
+  assertEqual("regularityPhrase : cas normal", regularityPhrase({status:"ok", weeksWithRun:6, totalWeeks:8, avgPerWeek:2.5}), "Tu as couru au moins une fois dans 6 semaines sur 8, soit 2,5 courses par semaine en moyenne.");
+  assertEqual("regularityPhrase : aucune semaine", regularityPhrase({status:"ok", weeksWithRun:0, totalWeeks:8, avgPerWeek:0}).startsWith("Aucune course ces 8 dernières semaines"), true);
+  assertEqual("regularityPhrase : singulier", regularityPhrase({status:"ok", weeksWithRun:1, totalWeeks:2, avgPerWeek:0.5}), "Tu as couru au moins une fois dans 1 semaine sur 2, soit 0,5 course par semaine en moyenne.");
+  const v = volumeComparison([{date:d(0), distKm:10}, {date:d(27), distKm:5.5}, {date:d(28), distKm:8}, {date:d(55), distKm:12}, {date:d(56), distKm:99}], today);
+  assertEqual("volumeComparison : 28 derniers jours vs 28 précédents (bornes incluses)", v, {last28:15.5, prev28:20});
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---

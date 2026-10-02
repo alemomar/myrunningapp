@@ -424,7 +424,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=41"></script>
+<script src="logic.js?v=42"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1559,6 +1559,35 @@ function lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate){
   </div>`;
 }
 
+// Indicateurs en tête de Progression (4.9.a) : efficience cardiaque,
+// régularité, volume et charge, chacun en une phrase claire (voir
+// efficiencyTrend / regularitySummary / volumeComparison, logic.js).
+function progressIndicatorsHTML(){
+  const todayStr = localDateStr(new Date());
+  const ds = (r) => localDateStr(dateFromRun(r));
+  const eff = efficiencyTrend(efRuns.map(r=>({date:ds(r), allure:r.allure, fc:r.fc})), todayStr);
+  const reg = regularitySummary(runningRuns.map(ds), todayStr);
+  const vol = volumeComparison(runningRuns.map(r=>({date:ds(r), distKm:r.dist||0})), todayStr);
+  const { acwr } = computeProgramInputs();
+  const gauge = chargeEntrainementGauge(acwr);
+  const effValue = { mieux:`+${eff.pct} %`, moins:`−${eff.pct} %`, stable:"Stable", insuffisant:"—" }[eff.status];
+  const effColor = { mieux:"var(--accent)", moins:"var(--orange)", stable:"var(--text)", insuffisant:"var(--text-faint)" }[eff.status];
+  const row = (label, value, color, phrase, first) => `<div style="padding:12px 0;${first?"":"border-top:1px solid var(--border)"}">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+      <span style="font-size:12px;color:var(--text-dim)">${label}</span>
+      <span style="font-size:20px;font-weight:700;color:${color}">${value}</span>
+    </div>
+    <div style="font-size:12px;line-height:1.45;margin-top:4px;color:var(--text-dim)">${phrase}</div>
+  </div>`;
+  const fmtKm = (n) => n.toLocaleString("fr-FR")+" km";
+  return `<div class="card">
+    <div class="stitle">Tes indicateurs</div>
+    ${row("Efficience cardiaque", effValue, effColor, efficiencyPhrase(eff), true)}
+    ${row("Régularité", reg.status==="ok" ? `${reg.weeksWithRun}/${reg.totalWeeks} sem.` : "—", reg.status==="ok" ? "var(--text)" : "var(--text-faint)", regularityPhrase(reg))}
+    ${row("Volume", fmtKm(vol.last28), "var(--text)", `Sur les 28 derniers jours. Les 28 jours d'avant : ${fmtKm(vol.prev28)}.`)}
+    <div style="border-top:1px solid var(--border)">${chargeGaugeHTML(gauge, acwr)}</div>
+  </div>`;
+}
 function heroHTML(){
   const monthS = periodStats("monthly");
   // Séances/semaine et km/mois sont partagés (tronc commun), peu importe
@@ -3650,7 +3679,7 @@ function renderContentInner(){
     const withHr = efRuns.filter(r=>r.fc);
     const cardioRuns = [...efRuns, ...fracRuns].sort((a,b)=>dateFromRun(b)-dateFromRun(a));
     const monthly = effMaxHr ? monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr).filter(m=>m.secs.reduce((a,b)=>a+b,0)>0) : [];
-    el.innerHTML=(lastRun?lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate):"")+heroHTML()+kpisHTML()+`
+    el.innerHTML=heroHTML()+progressIndicatorsHTML()+kpisHTML()+(lastRun?lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate):"")+`
       <div class="card-row">
         <div class="card"><div class="stitle">Progression allure — EF</div>
           <div class="chart-hint">Points = séances · pointillés = tendance et projection à 2 mois · 🚩 = course</div>
