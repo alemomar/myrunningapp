@@ -930,6 +930,57 @@ function acutePainTrigger(ratingsHistory, zoneKeys){
   return null;
 }
 
+/* ---------- Récap de la semaine (CDC v2, 4.8.a / 4.8.b) ----------
+   Semaine = lundi-dimanche (comme le reste de l'app). Les 3 chiffres
+   (distance, nombre de séances, durée) ne comptent que les courses ; la
+   semaine en cours est montrée "à ce jour" à côté de la semaine dernière
+   COMPLÈTE, sans pourcentage ni flèche (décision validée : pas de
+   culpabilisation, CDC 4.10). `runs` : [{date:"AAAA-MM-JJ", distKm,
+   durationSec}] (courses seulement). `plannedSessions` : lignes de
+   planned_sessions. Statut d'un jour (une seule pastille même avec 2
+   séances) : "fait" si une séance est faite ou une vraie course existe ce
+   jour ; sinon "manque" si une course prévue n'a pas été faite (même règle
+   que detectMissedSessions) ; sinon "prevu" si une séance est encore à
+   venir ; sinon "repos" (une séance légère passée non faite reste neutre,
+   jamais "manquée"). */
+function weekRecap(runs, plannedSessions, todayStr){
+  const parse = (str) => { const [y,m,d] = str.split("-").map(Number); return new Date(y, m-1, d); };
+  const fmt = (d) => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate()+n); return r; };
+  const today = parse(todayStr);
+  const monday = addDays(today, -((today.getDay()+6)%7));
+  const lastMonday = addDays(monday, -7);
+  const nextMonday = addDays(monday, 7);
+  const inRange = (dateStr, from, to) => { const d = parse(dateStr); return d>=from && d<to; };
+  const sum = (from, to) => {
+    const rs = (runs||[]).filter(r=>inRange(r.date, from, to));
+    return {
+      km: Math.round(rs.reduce((a,r)=>a+(r.distKm||0),0)*10)/10,
+      sessions: rs.length,
+      minutes: Math.round(rs.reduce((a,r)=>a+(r.durationSec||0),0)/60),
+    };
+  };
+  const active = (plannedSessions||[]).filter(p=>["planned","done","missed"].includes(p.status));
+  const days = Array.from({length:7}, (_,i) => {
+    const date = fmt(addDays(monday, i));
+    const sessions = active.filter(p=>p.planned_date===date);
+    const hasRun = (runs||[]).some(r=>r.date===date);
+    const missed = sessions.some(p => p.status==="missed" || (p.status==="planned" && p.pace_zone && date<todayStr));
+    let status;
+    if(hasRun || sessions.some(p=>p.status==="done")) status = "fait";
+    else if(missed) status = "manque";
+    else if(sessions.some(p=>p.status==="planned") && date>=todayStr) status = "prevu";
+    else status = "repos";
+    return { date, status, isToday: date===todayStr };
+  });
+  return { thisWeek: sum(monday, nextMonday), lastWeek: sum(lastMonday, monday), days };
+}
+function formatMinutesShort(min){
+  const m = Math.round(min||0);
+  if(m<60) return m+" min";
+  return Math.floor(m/60)+" h "+String(m%60).padStart(2,"0");
+}
+
 /* ---------- Base d'exercices renfo/mobilité (CDC v2, 4.7 — base pour 4.6.a) ----------
    Fournie par l'utilisateur (01/10/2026), 20 exercices (14 Renfo + 6
    Mobilité) — destinée à être relue par un kiné avant la phase 3 (CDC v2,

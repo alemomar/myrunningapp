@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=38"></script>
+<script src="logic.js?v=39"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -582,6 +582,44 @@ try {
   const txt = formatExerciseList([EXERCISE_LIBRARY[2], EXERCISE_LIBRARY[0]]);
   assertEqual("formatExerciseList : matériel + variante affichés si besoin", txt.includes("matériel : Élastique") && txt.includes("Sans élastique"), true);
   assertEqual("formatExerciseList : pas de mention de matériel si 'Aucun'", formatExerciseList([EXERCISE_LIBRARY[0]]).includes("matériel"), false);
+}
+
+// --- weekRecap / formatMinutesShort (4.8.a, 4.8.b) ---
+{
+  const runs = [
+    {date:"2026-10-05", distKm:8, durationSec:2700}, {date:"2026-10-06", distKm:5.5, durationSec:1800},
+    {date:"2026-09-30", distKm:10, durationSec:3600}, {date:"2026-10-03", distKm:12.34, durationSec:4500},
+    {date:"2026-09-27", distKm:99, durationSec:99999}, {date:"2026-10-12", distKm:50, durationSec:9999},
+  ];
+  const planned = [
+    {planned_date:"2026-10-07", status:"planned", pace_zone:"easy", type:"EF"},
+    {planned_date:"2026-10-08", status:"planned", pace_zone:null, type:"Yoga"},
+  ];
+  const r = weekRecap(runs, planned, "2026-10-07"); // mercredi
+  assertEqual("weekRecap : semaine en cours (lun-dim) à ce jour", r.thisWeek, {km:13.5, sessions:2, minutes:75});
+  assertEqual("weekRecap : semaine dernière complète, hors séances d'avant/après", r.lastWeek, {km:22.3, sessions:2, minutes:135});
+  assertEqual("weekRecap : 7 pastilles du lundi au dimanche", r.days.map(d=>d.date), ["2026-10-05","2026-10-06","2026-10-07","2026-10-08","2026-10-09","2026-10-10","2026-10-11"]);
+  assertEqual("weekRecap : statuts (fait, fait, prévu, prévu, repos, repos, repos)", r.days.map(d=>d.status), ["fait","fait","prevu","prevu","repos","repos","repos"]);
+  assertEqual("weekRecap : seul aujourd'hui est marqué", r.days.map(d=>d.isToday), [false,false,true,false,false,false,false]);
+  // Course prévue passée et non faite -> manqué ; yoga passé non fait -> neutre ; yoga fait -> fait ; ignoré/remplacé -> repos
+  const r2 = weekRecap([], [
+    {planned_date:"2026-10-05", status:"done", pace_zone:null, type:"Yoga"},
+    {planned_date:"2026-10-06", status:"planned", pace_zone:null, type:"Yoga"},
+    {planned_date:"2026-10-07", status:"planned", pace_zone:"easy", type:"EF"},
+    {planned_date:"2026-10-08", status:"missed", pace_zone:"easy", type:"EF"},
+    {planned_date:"2026-10-09", status:"skipped", pace_zone:"easy", type:"EF"},
+    {planned_date:"2026-10-10", status:"replaced", pace_zone:"easy", type:"EF"},
+  ], "2026-10-09");
+  assertEqual("weekRecap : fait / yoga passé neutre / course passée non faite / manqué / ignoré / remplacé", r2.days.slice(0,6).map(d=>d.status), ["fait","repos","manque","manque","repos","repos"]);
+  const r3 = weekRecap([{date:"2026-10-07", distKm:5, durationSec:1800}], [{planned_date:"2026-10-07", status:"planned", pace_zone:"easy", type:"EF"}, {planned_date:"2026-10-07", status:"planned", pace_zone:null, type:"Yoga"}], "2026-10-09");
+  assertEqual("weekRecap : course réelle + séances prévues le même jour -> une seule pastille 'fait'", r3.days[2].status, "fait");
+  const r4 = weekRecap([], [], "2026-10-11"); // dimanche : lundi de la même semaine
+  assertEqual("weekRecap : dimanche appartient à la semaine qui commence le lundi 5", r4.days[0].date, "2026-10-05");
+  assertEqual("weekRecap : sans aucune donnée -> zéros, tout en repos", [r4.thisWeek, r4.lastWeek, r4.days.every(d=>d.status==="repos")], [{km:0,sessions:0,minutes:0},{km:0,sessions:0,minutes:0},true]);
+  assertEqual("formatMinutesShort : 45 -> 45 min", formatMinutesShort(45), "45 min");
+  assertEqual("formatMinutesShort : 85 -> 1 h 25", formatMinutesShort(85), "1 h 25");
+  assertEqual("formatMinutesShort : 60 -> 1 h 00", formatMinutesShort(60), "1 h 00");
+  assertEqual("formatMinutesShort : 0 -> 0 min", formatMinutesShort(0), "0 min");
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---
