@@ -187,10 +187,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .tab-btn{
   display:flex;flex-direction:column;align-items:center;gap:3px;
   background:none;border:none;color:var(--text-faint);cursor:pointer;
-  padding:4px 1px;flex:1;min-width:0;
+  padding:4px 6px;flex:1;min-width:0;
 }
 .tab-btn svg{width:20px;height:20px}
-.tab-btn span{font-size:8px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.tab-btn span{font-size:9px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .tab-btn.active{color:var(--accent)}
 
 /* ---------- Content cards ---------- */
@@ -547,20 +547,34 @@ document.getElementById("authSubmit").onclick = async () => {
 // toutes. OLD_TAB_INDEX_TO_KEY migre l'ancien format (index numérique,
 // utilisateurs existants) vers la clé correspondante à l'ORDRE D'ORIGINE
 // des onglets, pas leur position actuelle.
-// 3.c : Dashboard, Séances et Ressenti sont fusionnés dans "progression".
-// Les anciennes clés (mémorisées sur l'appareil) y redirigent.
-const VALID_TAB_KEYS = ["aujourdhui","programme","progression","objectifs","compte"];
-const LEGACY_TAB_KEYS = { dashboard:"progression", ressenti:"progression", seances:"progression" };
-const OLD_TAB_INDEX_TO_KEY = ["progression","progression","objectifs","progression","compte","programme"];
+// 3.c : Dashboard, Séances et Ressenti sont fusionnés dans "progression" ;
+// 3.d : Objectifs et Mon compte sont fusionnés dans "profil" (deux sections).
+// Les anciennes clés mémorisées sur l'appareil y redirigent, vers la bonne
+// section pour objectifs/compte.
+const VALID_TAB_KEYS = ["aujourdhui","programme","progression","profil"];
+const LEGACY_TAB_KEYS = { dashboard:"progression", ressenti:"progression", seances:"progression", objectifs:"profil", compte:"profil" };
+const OLD_TAB_INDEX_TO_KEY = ["dashboard","ressenti","objectifs","seances","compte","programme"];
+const PROFIL_SECTIONS = ["objectifs","compte"];
+let profilSection = "objectifs";
+function setProfilSectionState(section){
+  profilSection = section;
+  try{ localStorage.setItem("mra_profilSection", section); }catch(e){}
+}
+function resolveTabKey(saved){
+  let key = saved;
+  const idx = Number(saved);
+  if(!VALID_TAB_KEYS.includes(key) && !LEGACY_TAB_KEYS[key] && Number.isInteger(idx) && OLD_TAB_INDEX_TO_KEY[idx]) key = OLD_TAB_INDEX_TO_KEY[idx];
+  if(PROFIL_SECTIONS.includes(key)) profilSection = key;
+  if(LEGACY_TAB_KEYS[key]) key = LEGACY_TAB_KEYS[key];
+  return VALID_TAB_KEYS.includes(key) ? key : null;
+}
 function initialActiveTab(){
   try{
+    const savedSection = localStorage.getItem("mra_profilSection");
+    if(PROFIL_SECTIONS.includes(savedSection)) profilSection = savedSection;
     const saved = localStorage.getItem("mra_activeTab");
     if(saved==null) return "aujourdhui";
-    if(VALID_TAB_KEYS.includes(saved)) return saved;
-    if(LEGACY_TAB_KEYS[saved]) return LEGACY_TAB_KEYS[saved];
-    const idx = Number(saved);
-    if(Number.isInteger(idx) && OLD_TAB_INDEX_TO_KEY[idx]) return OLD_TAB_INDEX_TO_KEY[idx];
-    return "aujourdhui";
+    return resolveTabKey(saved) || "aujourdhui";
   }catch(e){ return "aujourdhui"; }
 }
 function persistActiveTab(){
@@ -619,8 +633,7 @@ const TABS=[
   {key:"aujourdhui", label:"Aujourd'hui", icon:"sun"},
   {key:"programme", label:"Programme", icon:"calendar"},
   {key:"progression", label:"Progression", icon:"bars"},
-  {key:"objectifs", label:"Objectifs", icon:"target"},
-  {key:"compte", label:"Mon compte", icon:"user"},
+  {key:"profil", label:"Profil", icon:"user"},
 ];
 
 async function loadData() {
@@ -762,7 +775,7 @@ function noRecentRunBanner(){
 const TUTORIAL_BUBBLES = {
   aujourdhui: "C'est ton accueil : ta séance du jour avec la raison pour laquelle elle est là, le bilan de ta semaine, et la note de ta dernière séance quand elle attend.",
   progression: "C'est ton suivi : tes indicateurs clés, tes graphiques et l'historique de toutes tes séances. Elles arrivent automatiquement si tu utilises RunSync (synchro Apple Santé). C'est aussi ici que tu notes ton ressenti après une séance.",
-  objectifs: "Commence par ici ! Dis-nous ce que tu vises (une course, ta régularité, ton allure...) — c'est ce qui sert de base pour te générer un programme personnalisé.",
+  profil: "Commence par ici ! Dans « Objectifs », dis-nous ce que tu vises (une course, ta régularité, ton allure...) : c'est la base de ton programme personnalisé. Tes réglages (compte, fréquence cardiaque, synchronisation) sont dans « Mon compte ».",
   programme: "Ton calendrier de séances, généré automatiquement à partir de tes objectifs. Chaque séance t'explique pourquoi elle est là. Tu peux la déplacer, la modifier ou la supprimer à tout moment.",
 };
 function seenTutorialBubbles(){
@@ -1604,7 +1617,7 @@ function heroHTML(){
       ${ringSmHTML(monthS.runs.length, sessionGoal, "#0a84ff", String(monthS.runs.length), sessionGoal?`/${sessionGoal}`:"séances", "Séances ce mois")}
       ${ringSmHTML(monthS.time||0, null, "#ffd60a", Math.floor((monthS.time||0)/3600)+"h"+String(Math.round(((monthS.time||0)%3600)/60)).padStart(2,"0"), "", "Temps de course")}
     </div>
-    ${(!kmGoal||!sessionGoal)?`<div class="chart-hint" style="margin-top:10px;margin-bottom:0">Objectifs incomplets — <a href="#" onclick="setTab('objectifs');return false" style="color:var(--accent)">renseigne-les dans l'onglet Objectifs</a> pour voir ta progression.</div>`:""}
+    ${(!kmGoal||!sessionGoal)?`<div class="chart-hint" style="margin-top:10px;margin-bottom:0">Objectifs incomplets — <a href="#" onclick="setTab('objectifs');return false" style="color:var(--accent)">renseigne-les dans Profil › Objectifs</a> pour voir ta progression.</div>`:""}
   </div>`;
 }
 
@@ -1743,7 +1756,18 @@ function renderTabs(){
       ${icon(t.icon,20)}<span>${t.label}</span>
     </button>`).join("");
 }
-window.setTab=i=>{destroyCharts();activeTab=i;persistActiveTab();renderTabs();renderContent();window.scrollTo({top:0,behavior:"smooth"});};
+window.setTab=i=>{
+  destroyCharts();
+  // "objectifs"/"compte" ne sont plus des onglets mais les deux sections de
+  // Profil : les liens internes qui les nomment (setTab('objectifs')) restent valides.
+  if(PROFIL_SECTIONS.includes(i)){ setProfilSectionState(i); i="profil"; }
+  activeTab=i;persistActiveTab();renderTabs();renderContent();window.scrollTo({top:0,behavior:"smooth"});
+};
+window.setProfilSection = (section) => { destroyCharts(); setProfilSectionState(section); renderContent(); window.scrollTo({top:0,behavior:"smooth"}); };
+function profilSwitchHTML(){
+  const chip = (key, label) => `<button class="flt${profilSection===key?" active":""}" onclick="setProfilSection('${key}')">${label}</button>`;
+  return `<div class="card"><div class="filters" style="margin-bottom:0">${chip("objectifs","Objectifs")}${chip("compte","Mon compte")}</div></div>`;
+}
 window.setFilter=f=>{activeFilter=f;destroyCharts();renderContent();};
 
 // `intenseDist` = distance des séances Fractionné/Seuil de la période —
@@ -2338,7 +2362,7 @@ function hrDetailHTML(r, effMaxHr, effRestingHr){
     return `<div style="padding:8px 0 14px;font-size:12px;color:var(--text-dim)">Pas de détail FC pour cette séance — resynchronise-la depuis l'app pour le récupérer.</div>`;
   }
   if(!effMaxHr){
-    return `<div style="padding:8px 0 14px;font-size:12px;color:var(--text-dim)">Renseigne ta FC max (onglet Mon compte) pour voir la répartition par zones.</div>`;
+    return `<div style="padding:8px 0 14px;font-size:12px;color:var(--text-dim)">Renseigne ta FC max (Profil › Mon compte) pour voir la répartition par zones.</div>`;
   }
   const {secs, defs} = computeHrZoneSeconds(r.hrSeries, effMaxHr, effRestingHr);
   const total = secs.reduce((a,b)=>a+b,0)||1;
@@ -3048,7 +3072,8 @@ window.goToProgramme = () => {
   window.scrollTo({top:0,behavior:"smooth"});
 };
 window.goToObjectifs = () => {
-  activeTab = "objectifs";
+  setProfilSectionState("objectifs");
+  activeTab = "profil";
   persistActiveTab();
   renderTabs();
   renderContent();
@@ -3709,6 +3734,7 @@ function sessionHistoryAfterRender(){
 function renderContent(){
   renderContentInner();
   const el = document.getElementById("content");
+  if(activeTab==="profil" && el) el.insertAdjacentHTML("afterbegin", profilSwitchHTML());
   const bubble = tutorialBubbleHTML(activeTab);
   if(bubble && el) el.innerHTML = bubble + el.innerHTML;
 }
@@ -3718,7 +3744,7 @@ function renderContentInner(){
 
   // Objectifs, Mon compte, Programme et Aujourd'hui n'ont pas besoin de séances
   // (un nouvel utilisateur doit pouvoir régler ses objectifs avant sa première).
-  if (RUNS.length===0 && !["compte","programme","aujourdhui","objectifs"].includes(activeTab)){
+  if (RUNS.length===0 && !["programme","aujourdhui","profil"].includes(activeTab)){
     el.innerHTML=`<div class="card">${emptyState("Aucune séance pour l'instant","Première fois ? Ouvre l'app pour choisir depuis quelle date importer, puis synchronise.",true)}</div>`;
     return;
   }
@@ -3793,7 +3819,7 @@ function renderContentInner(){
     },50);
   }
 
-  else if(activeTab==="objectifs"){
+  else if(activeTab==="profil" && profilSection==="objectifs"){
     const ta = (id,val)=>`<textarea id="${id}" onchange="saveGoals()" style="width:100%;min-height:80px;background:var(--card-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;padding:12px;resize:vertical">${val||""}</textarea>`;
     const chipRow = (field, options, current) => `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
       ${options.map(o=>`<button type="button" class="flt${o===current?" active":""}" data-value="${o}" onclick="selectChip('${field}','${o}')">${o}</button>`).join("")}
@@ -4117,7 +4143,7 @@ function renderContentInner(){
     </div>`;
   }
 
-  else if(activeTab==="compte"){
+  else if(activeTab==="profil" && profilSection==="compte"){
     const estMaxHr = estimatedMaxHr();
     el.innerHTML=`
       <div class="card">
