@@ -728,18 +728,20 @@ function painPromptBanner(){
 }
 
 // Rappel léger (pas de vraie notification push, ça demanderait une infra
-// serveur qu'on n'a pas) : si la dernière séance connue date de plusieurs
-// jours, on suggère d'ouvrir l'app pour synchroniser — l'app ne remonte
-// rien tant qu'elle n'est pas ouverte.
-function staleSyncBanner(){
+// serveur qu'on n'a pas) : "tu n'as pas couru depuis X jours" (seuil 5
+// jours), affiché à l'ouverture de l'app. Ne parle pas de
+// synchronisation : RunSync importe déjà tout seul chaque soir à 20h, et
+// "pas de course" ne veut pas dire "pas synchronisé" (une marche ou un
+// renfo importé ne compte pas ici, seules les courses comptent).
+function noRecentRunBanner(){
   if(!runningRuns.length) return "";
   const last = runningRuns[runningRuns.length-1];
   const days = Math.floor((new Date() - dateFromRun(last)) / 86400000);
   if(days < 5) return "";
   return `<div class="card" style="border-color:rgba(10,132,255,0.4);background:rgba(10,132,255,0.08)">
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Pas de séance depuis ${days} jours</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Pense à synchroniser si tu as couru récemment.</div>
-    <button class="btn-secondary" onclick="location.href='myrunningapp://sync'">Ouvrir l'app et synchroniser</button>
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Ça fait ${days} jours que tu n'as pas couru</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Une petite sortie facile te remettrait en route ?</div>
+    <button class="btn-secondary" onclick="goToProgramme()">Voir mon programme</button>
   </div>`;
 }
 
@@ -2775,7 +2777,7 @@ async function reconcilePlannedSessions(){
   renderContent();
 }
 // Bannière "séance manquée" (4.3.c) : pas de vraie notification push (voir
-// staleSyncBanner ci-dessus, même limite) — ce bandeau à l'ouverture de
+// noRecentRunBanner ci-dessus, même limite) — ce bandeau à l'ouverture de
 // Programme en fait office. "Réorganiser automatiquement" applique les
 // garde-fous de 4.3.d (findRescheduleDay, logic.js) pour recaser la
 // séance sur un autre jour sûr de la même semaine, ou l'abandonne si
@@ -2987,6 +2989,13 @@ window.shiftWeekFromBanner = async (weekStartDate, sig) => {
   const days = parseInt(document.getElementById(`grosShiftDays_${sig}`)?.value, 10) || 3;
   await window.shiftWeekByDays(weekStartDate, days);
   window.dismissGrosAdaptation(sig);
+};
+window.goToProgramme = () => {
+  activeTab = "programme";
+  persistActiveTab();
+  renderTabs();
+  renderContent();
+  window.scrollTo({top:0,behavior:"smooth"});
 };
 window.goToObjectifs = () => {
   activeTab = "objectifs";
@@ -3501,7 +3510,7 @@ function renderContentInner(){
     const withHr = efRuns.filter(r=>r.fc);
     const cardioRuns = [...efRuns, ...fracRuns].sort((a,b)=>dateFromRun(b)-dateFromRun(a));
     const monthly = effMaxHr ? monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr).filter(m=>m.secs.reduce((a,b)=>a+b,0)>0) : [];
-    el.innerHTML=(lastRun?lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate):"")+heroHTML()+kpisHTML()+staleSyncBanner()+painPromptBanner()+`
+    el.innerHTML=(lastRun?lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate):"")+heroHTML()+kpisHTML()+noRecentRunBanner()+painPromptBanner()+`
       <div class="card-row">
         <div class="card"><div class="stitle">Progression allure — EF</div>
           <div class="chart-hint">Points = séances · pointillés = tendance et projection à 2 mois · 🚩 = course</div>
