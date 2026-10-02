@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=46"></script>
+<script src="logic.js?v=47"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -786,6 +786,26 @@ try {
   assertEqual("learnMoreKey : plan marche/course et test prioritaires sur l'allure", [learnMoreKey({pace_zone:"easy", generation_reason:"beginner_plan"}), learnMoreKey({pace_zone:"easy", generation_reason:"guided_test"})], ["couch","test"]);
   assertEqual("learnMoreKey : renfo, mobilité, yoga", ["Renfo","Mobilité","Yoga"].map(t=>learnMoreKey({type:t, pace_zone:null})), ["Renfo","Mobilité","Yoga"]);
   assertEqual("learnMoreKey : type sans texte -> null", [learnMoreKey({type:"Pilates", pace_zone:null}), learnMoreKey(null)], [null,null]);
+}
+
+// --- Éléments dynamiques : compteurs et structure de séance (4.11) ---
+{
+  assertEqual("formatCountUp km : 14,4", formatCountUp(14.4,"km"), "14,4 km");
+  assertEqual("formatCountUp km : valeur entière sans décimale", formatCountUp(12,"km"), "12 km");
+  assertEqual("formatCountUp km : arrondi à 1 décimale", formatCountUp(7.349,"km"), "7,3 km");
+  assertEqual("formatCountUp int : arrondi", formatCountUp(2.6,"int"), "3");
+  assertEqual("formatCountUp min : 85 -> 1 h 25", formatCountUp(85,"min"), "1 h 25");
+  assertEqual("formatCountUp pct : signe +", formatCountUp(4.6,"pct",{sign:"+"}), "+5 %");
+  assertEqual("formatCountUp pct : signe − (jamais de double signe)", formatCountUp(-3.2,"pct",{sign:"−"}), "−3 %");
+  assertEqual("formatCountUp frac : 6/8 sem.", formatCountUp(6,"frac",{total:8}), "6/8 sem.");
+  assertEqual("formatCountUp : valeur finale = valeur affichée sans animation (même fonction)", formatCountUp(0,"km"), "0 km");
+  const w1 = sessionStructureSegments({generation_reason:"beginner_plan", title:"Marche/course — semaine 1, séance 1"});
+  assertEqual("sessionStructureSegments : semaine 1 = 5 min marche, 7x(1 min course + 1 min 30 marche), 1 min course, 5 min marche", [w1.length, w1[0], w1[1], w1[w1.length-1], w1.reduce((a,b)=>a+b.sec,0)], [17, {type:"marche",sec:300}, {type:"course",sec:60}, {type:"marche",sec:300}, 1710]);
+  const w5 = sessionStructureSegments({generation_reason:"beginner_plan", title:"Marche/course — semaine 5, séance 3"});
+  assertEqual("sessionStructureSegments : semaine 5, séance 3 = 20 min de course continue", w5.map(x=>x.sec), [300,1200,300]);
+  const test = sessionStructureSegments({generation_reason:"guided_test", title:"Test de 20 minutes"});
+  assertEqual("sessionStructureSegments : test guidé = 10 + 20 + 5 min", test, [{type:"facile",sec:600},{type:"test",sec:1200},{type:"marche",sec:300}]);
+  assertEqual("sessionStructureSegments : séance ordinaire -> aucune structure", [sessionStructureSegments({pace_zone:"easy"}), sessionStructureSegments({generation_reason:"beginner_plan", title:"sans numéros"}), sessionStructureSegments(null)], [null,null,null]);
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---

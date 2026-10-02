@@ -923,6 +923,41 @@ function learnMoreKey(session){
   return SESSION_LEARN_MORE[session.type] ? session.type : null;
 }
 
+/* ---------- Éléments dynamiques (CDC v2, 4.11) : fonctions pures ----------
+   Texte d'un chiffre qui s'anime (compteur) : la même fonction produit les
+   valeurs intermédiaires et la valeur finale, donc l'affichage final est
+   identique avec ou sans animation. Formats : km, int, min (1 h 25),
+   pct (signe dans opts.sign), frac ("6/8 sem.", total dans opts.total). */
+function formatCountUp(value, format, opts){
+  const o = opts || {};
+  const n = Number(value) || 0;
+  if(format==="km") return n.toLocaleString("fr-FR", { maximumFractionDigits:1 })+" km";
+  if(format==="int") return String(Math.round(n));
+  if(format==="min") return formatMinutesShort(n);
+  if(format==="pct") return (o.sign||"")+Math.round(Math.abs(n))+" %";
+  if(format==="frac") return Math.round(n)+"/"+o.total+" sem.";
+  return String(n);
+}
+/* Structure d'une séance structurée (barre de 4.11.d) : liste de blocs
+   {type, sec}. Plan marche/course : les blocs du plan NHS de la semaine et
+   de la séance lues dans le titre ("… semaine W, séance N"). Test guidé :
+   10 min de footing léger, 20 min de test, 5 min de marche. null pour les
+   autres séances (pas de structure à montrer). */
+function sessionStructureSegments(session){
+  if(!session) return null;
+  if(session.generation_reason==="guided_test"){
+    return [{type:"facile",sec:600},{type:"test",sec:1200},{type:"marche",sec:300}];
+  }
+  if(session.generation_reason==="beginner_plan"){
+    const m = /semaine (\d+), séance (\d+)/.exec(session.title||"");
+    if(!m) return null;
+    const templates = couchTo5kWeekSessions(Number(m[1]));
+    if(!templates) return null;
+    return templates[(Number(m[2])-1)%3].segments.map(x=>({ type:x.type, sec:x.sec }));
+  }
+  return null;
+}
+
 /* ---------- Format court/détaillé de la notation post-séance (4.5.b) ----------
    CDC v2, 4.5 : par défaut, formulaire court (note globale 1-5 + "une
    gêne/douleur ?") ; le détaillé (respiration/mental/fatigue + carte du

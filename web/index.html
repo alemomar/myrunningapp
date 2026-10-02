@@ -136,6 +136,13 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
   .week-dot-today{animation:todayPulse 2.6s ease-in-out infinite}
   .check-draw path{stroke-dasharray:24;stroke-dashoffset:24;animation:checkDraw .4s ease-out .1s forwards}
 }
+@media (prefers-reduced-motion: no-preference){
+  .fill-in{animation:fillIn .8s ease-out both}
+  .marker-slide{animation:markerSlide .8s cubic-bezier(.22,1,.36,1) both}
+}
+@keyframes fillIn{from{clip-path:inset(0 100% 0 0 round 5px)}to{clip-path:inset(0 0 0 0 round 5px)}}
+@keyframes markerSlide{from{left:0%}to{left:var(--pos)}}
+[data-countup]{font-variant-numeric:tabular-nums}
 @keyframes viewIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes expandIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 @keyframes chipPop{0%{transform:scale(.88)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
@@ -442,7 +449,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=46"></script>
+<script src="logic.js?v=47"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1609,7 +1616,7 @@ function progressIndicatorsHTML(){
   const vol = volumeComparison(runningRuns.map(r=>({date:ds(r), distKm:r.dist||0})), todayStr);
   const { acwr } = computeProgramInputs();
   const gauge = chargeEntrainementGauge(acwr);
-  const effValue = { mieux:`+${eff.pct} %`, moins:`−${eff.pct} %`, stable:"Stable", insuffisant:"—" }[eff.status];
+  const effValue = eff.status==="mieux" ? countUpHTML(eff.pct,"pct","ind_eff",{sign:"+"}) : eff.status==="moins" ? countUpHTML(eff.pct,"pct","ind_eff",{sign:"−"}) : { stable:"Stable", insuffisant:"—" }[eff.status];
   const effColor = { mieux:"var(--accent)", moins:"var(--orange)", stable:"var(--text)", insuffisant:"var(--text-faint)" }[eff.status];
   const row = (label, value, color, phrase, first) => `<div style="padding:12px 0;${first?"":"border-top:1px solid var(--border)"}">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
@@ -1622,8 +1629,8 @@ function progressIndicatorsHTML(){
   return `<div class="card">
     <div class="stitle">Tes indicateurs</div>
     ${row("Efficience cardiaque", effValue, effColor, efficiencyPhrase(eff), true)}
-    ${row("Régularité", reg.status==="ok" ? `${reg.weeksWithRun}/${reg.totalWeeks} sem.` : "—", reg.status==="ok" ? "var(--text)" : "var(--text-faint)", regularityPhrase(reg))}
-    ${row("Volume", fmtKm(vol.last28), "var(--text)", `Sur les 28 derniers jours. Les 28 jours d'avant : ${fmtKm(vol.prev28)}.`)}
+    ${row("Régularité", reg.status==="ok" ? countUpHTML(reg.weeksWithRun,"frac","ind_reg",{total:reg.totalWeeks}) : "—", reg.status==="ok" ? "var(--text)" : "var(--text-faint)", regularityPhrase(reg))}
+    ${row("Volume", countUpHTML(vol.last28,"km","ind_vol"), "var(--text)", `Sur les 28 derniers jours. Les 28 jours d'avant : ${fmtKm(vol.prev28)}.`)}
     <div style="border-top:1px solid var(--border)">${chargeGaugeHTML(gauge, acwr)}</div>
   </div>`;
 }
@@ -1793,12 +1800,44 @@ function popChip(btn){
   if(!btn || prefersReducedMotion()) return;
   btn.classList.remove("chip-pop"); void btn.offsetWidth; btn.classList.add("chip-pop");
 }
+// Compteurs (4.11.c) et remplissages (4.11.d) : joués à l'apparition de
+// l'écran, pas à chaque redessin du contenu (sinon clignotement). Ces
+// mémoires sont vidées à chaque changement d'onglet, pour rejouer l'entrée.
+let countedValues = {}, animatedOnce = new Set();
+function playOnce(key){ if(animatedOnce.has(key)) return false; animatedOnce.add(key); return !prefersReducedMotion(); }
+function countUpHTML(value, format, key, opts){
+  const o = opts || {};
+  return `<span data-countup="${value}" data-cu-format="${format}" data-cu-key="${key}"${o.sign?` data-cu-sign="${o.sign}"`:""}${o.total!=null?` data-cu-total="${o.total}"`:""}>${formatCountUp(value, format, o)}</span>`;
+}
+function runCountUps(){
+  document.querySelectorAll("[data-countup]").forEach(el=>{
+    const to = Number(el.dataset.countup), key = el.dataset.cuKey;
+    const opts = { sign: el.dataset.cuSign, total: el.dataset.cuTotal };
+    const from = countedValues[key];
+    countedValues[key] = to;
+    if(prefersReducedMotion() || from===to) return;
+    const start = from===undefined ? 0 : from;
+    const t0 = performance.now(), dur = 700;
+    const step = (now) => {
+      if(!el.isConnected) return;
+      const p = Math.min(1, (now-t0)/dur), eased = 1-Math.pow(1-p, 3);
+      el.textContent = formatCountUp(start+(to-start)*eased, el.dataset.cuFormat, opts);
+      if(p<1) requestAnimationFrame(step); else el.textContent = formatCountUp(to, el.dataset.cuFormat, opts);
+    };
+    el.textContent = formatCountUp(start, el.dataset.cuFormat, opts);
+    requestAnimationFrame(step);
+    // Filet de sécurité : le navigateur suspend requestAnimationFrame quand la
+    // page n'est pas visible ; la valeur finale doit s'afficher quoi qu'il arrive.
+    setTimeout(()=>{ if(el.isConnected) el.textContent = formatCountUp(to, el.dataset.cuFormat, opts); }, dur+150);
+  });
+}
 // Clé de l'élément qu'on vient d'ouvrir : lui seul joue l'animation
 // d'ouverture, pas tous ceux qui étaient déjà ouverts (le contenu est
 // redessiné en entier à chaque clic).
 let justOpenedKey = null;
 window.setTab=i=>{
   destroyCharts();
+  countedValues = {}; animatedOnce = new Set();
   // "objectifs"/"compte" ne sont plus des onglets mais les deux sections de
   // Profil : les liens internes qui les nomment (setTab('objectifs')) restent valides.
   if(PROFIL_SECTIONS.includes(i)){ setProfilSectionState(i); i="profil"; }
@@ -3474,6 +3513,31 @@ window.toggleLearnMore = (id) => {
   else { openLearnMore.add(id); justOpenedKey = "lm_"+id; }
   renderContent(); justOpenedKey = null;
 };
+// Barre de structure (4.11.d) : déroulé de la séance d'un coup d'œil, pour les
+// séances marche/course et le test guidé (voir sessionStructureSegments).
+const STRUCTURE_STYLE = {
+  marche:{ label:"Marche", color:"#5c5c60" },
+  course:{ label:"Course", color:"var(--accent)" },
+  facile:{ label:"Footing léger", color:"#0a84ff" },
+  test:{ label:"Test", color:"var(--accent)" },
+};
+function sessionStructureBarHTML(session){
+  const segs = sessionStructureSegments(session);
+  if(!segs) return "";
+  const total = segs.reduce((a,b)=>a+b.sec,0);
+  const byType = {};
+  segs.forEach(g=>{ byType[g.type] = (byType[g.type]||0)+g.sec; });
+  const animate = playOnce("structure_"+session.id);
+  return `<div style="margin-top:12px">
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px">Structure de la séance</div>
+    <div class="${animate?"fill-in":""}" style="display:flex;height:12px;border-radius:6px;overflow:hidden;gap:1px" role="img" aria-label="Déroulé : ${Object.entries(byType).map(([t,sec])=>STRUCTURE_STYLE[t].label+" "+Math.round(sec/60)+" min").join(", ")}">
+      ${segs.map(g=>`<div style="width:${g.sec/total*100}%;background:${STRUCTURE_STYLE[g.type].color}"></div>`).join("")}
+    </div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text-dim);margin-top:6px">
+      ${Object.entries(byType).map(([t,sec])=>`<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${STRUCTURE_STYLE[t].color};margin-right:4px"></span>${STRUCTURE_STYLE[t].label} ${Math.round(sec/60)} min</span>`).join("")}
+    </div>
+  </div>`;
+}
 function learnMoreHTML(session){
   const key = learnMoreKey(session);
   if(!key) return "";
@@ -3520,9 +3584,9 @@ function weekRecapCardHTML(){
   return `<div class="card">
     <div class="chart-hint" style="margin-top:0;margin-bottom:12px">Ta semaine</div>
     <div style="display:flex;gap:12px;margin-bottom:16px">
-      ${stat(thisWeek.km.toLocaleString("fr-FR")+" km", "distance", lastWeek.km.toLocaleString("fr-FR")+" km")}
-      ${stat(thisWeek.sessions, thisWeek.sessions>1?"courses":"course", lastWeek.sessions)}
-      ${stat(formatMinutesShort(thisWeek.minutes), "durée", formatMinutesShort(lastWeek.minutes))}
+      ${stat(countUpHTML(thisWeek.km,"km","recap_km"), "distance", lastWeek.km.toLocaleString("fr-FR")+" km")}
+      ${stat(countUpHTML(thisWeek.sessions,"int","recap_n"), thisWeek.sessions>1?"courses":"course", lastWeek.sessions)}
+      ${stat(countUpHTML(thisWeek.minutes,"min","recap_min"), "durée", formatMinutesShort(lastWeek.minutes))}
     </div>
     <div style="display:flex;gap:4px;padding:2px 0 6px">${dots}</div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text-dim);margin-top:8px">
@@ -3539,15 +3603,16 @@ function chargeGaugeHTML(gauge, acwr){
   const zoneName = { "sous-charge":"En dessous de la zone idéale", "idéale":"Zone idéale", "attention":"Zone d'attention", "inconnue":"" }[gauge.zone] || "";
   const pos = chargeGaugePosition(acwr);
   const known = pos!=null;
+  const animate = known && playOnce("gauge_"+Number(acwr).toFixed(2));
   const seg = (width, color) => `<div style="width:${width}%;background:${known?color:"var(--card-2)"};opacity:${known?0.45:1}"></div>`;
-  const marker = known ? `<div style="position:absolute;top:50%;left:${pos*100}%;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%);background:${gauge.color};border:2px solid var(--text);box-sizing:border-box"></div>` : "";
+  const marker = known ? `<div class="${animate?"marker-slide":""}" style="--pos:${pos*100}%;position:absolute;top:50%;left:${pos*100}%;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%);background:${gauge.color};border:2px solid var(--text);box-sizing:border-box"></div>` : "";
   const phrase = known ? gauge.phrase : gauge.phrase+" Note tes séances pour la voir apparaître.";
   return `<div style="margin-top:18px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px">
       <span style="font-size:12px;color:var(--text-dim)">Charge d'entraînement</span>
       <span style="font-size:12px;font-weight:600;color:${gauge.color}">${zoneName}</span>
     </div>
-    <div style="position:relative;display:flex;height:10px;border-radius:5px;overflow:hidden;margin:0 8px" aria-hidden="true">
+    <div class="${animate?"fill-in":""}" style="position:relative;display:flex;height:10px;border-radius:5px;overflow:hidden;margin:0 8px" aria-hidden="true">
       ${seg(40,"#5ac8fa")}${seg(25,"#30d158")}${seg(35,"#e8a317")}
     </div>
     <div style="position:relative;height:0;margin:0 8px">${marker}</div>
@@ -3596,6 +3661,7 @@ function programSessionCardHTML(session, date){
       </div>
     </div>
     <div class="chart-hint" style="margin-top:8px;margin-bottom:0">${session.rationale}</div>
+    ${sessionStructureBarHTML(session)}
     ${learnMoreHTML(session)}
     ${session.description?`<div style="margin-top:10px">
       <div class="chart-hint" style="margin-top:0;margin-bottom:4px">${isCouchSession?"Déroulé de la séance":"Exercices"}${session.target_duration_min?` · environ ${Math.round(session.target_duration_min)} min`:""}</div>
@@ -3841,6 +3907,7 @@ function sessionHistoryAfterRender(){
 }
 function renderContent(){
   renderContentInner();
+  runCountUps();
   const el = document.getElementById("content");
   if(activeTab==="profil" && el) el.insertAdjacentHTML("afterbegin", profilSwitchHTML());
   const bubble = tutorialBubbleHTML(activeTab);
