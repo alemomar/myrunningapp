@@ -783,7 +783,7 @@ function painPromptBanner(){
   if(!r) return "";
   return `<div class="card" id="painPrompt" style="border-color:rgba(255,159,10,0.4);background:rgba(255,159,10,0.08)">
     <div style="font-size:13px;font-weight:600;margin-bottom:4px">Note ton ressenti — séance du ${r.label}</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Douleurs, respiration, fatigue... ça aide l'IA à personnaliser ton plan.</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Douleurs, respiration, fatigue... ça aide à adapter ton programme.</div>
     <div style="display:flex;gap:8px">
       <button class="btn-primary" style="margin-top:0" onclick="goRateSession('${r.id}')">Noter maintenant</button>
       <button class="btn-secondary" onclick="dismissPainPrompt('${r.id}')">Plus tard</button>
