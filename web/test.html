@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=42"></script>
+<script src="logic.js?v=43"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -685,6 +685,39 @@ try {
   assertEqual("regularityPhrase : singulier", regularityPhrase({status:"ok", weeksWithRun:1, totalWeeks:2, avgPerWeek:0.5}), "Tu as couru au moins une fois dans 1 semaine sur 2, soit 0,5 course par semaine en moyenne.");
   const v = volumeComparison([{date:d(0), distKm:10}, {date:d(27), distKm:5.5}, {date:d(28), distKm:8}, {date:d(55), distKm:12}, {date:d(56), distKm:99}], today);
   assertEqual("volumeComparison : 28 derniers jours vs 28 précédents (bornes incluses)", v, {last28:15.5, prev28:20});
+}
+
+// --- Parcours de démarrage (4.1.a) ---
+{
+  assertEqual("ONBOARDING_DUREE_OPTIONS : 5 tranches croissantes", ONBOARDING_DUREE_OPTIONS.map(o=>o[1]), [5,15,25,40,50]);
+  assertEqual("questionnaire : 4x/sem + 30-45 min (40) -> Intermédiaire, pas Confirmé", classifyLevelFromQuestionnaire("4 fois par semaine ou plus", 40), "Intermédiaire");
+  assertEqual("durée max plus de 45 min (50) + 4x/sem -> Confirmé", classifyLevelFromQuestionnaire("4 fois par semaine ou plus", 50), "Confirmé");
+  assertEqual("isBeginnerPlanEligible : Débutant + jamais encore -> oui", isBeginnerPlanEligible("Débutant","Jamais encore"), true);
+  assertEqual("isBeginnerPlanEligible : Débutant + 1x/sem -> non", isBeginnerPlanEligible("Débutant","1 fois par semaine ou moins"), false);
+  assertEqual("isBeginnerPlanEligible : Intermédiaire + jamais encore -> non", isBeginnerPlanEligible("Intermédiaire","Jamais encore"), false);
+  assertEqual("weeksUntilDate : 10 jours -> 2 semaines (arrondi au supérieur)", weeksUntilDate("2026-10-12","2026-10-02"), 2);
+  assertEqual("weeksUntilDate : 14 jours -> 2 semaines", weeksUntilDate("2026-10-16","2026-10-02"), 2);
+  assertEqual("weeksUntilDate : date passée -> 0", weeksUntilDate("2026-09-01","2026-10-02"), 0);
+  assertEqual("weeksUntilDate : pas de date -> null", weeksUntilDate("","2026-10-02"), null);
+  assertEqual("beginnerPlanStartMonday : mercredi -> lundi de cette semaine", beginnerPlanStartMonday("2026-09-30"), "2026-09-28");
+  assertEqual("beginnerPlanStartMonday : lundi -> ce lundi", beginnerPlanStartMonday("2026-09-28"), "2026-09-28");
+  assertEqual("beginnerPlanStartMonday : jeudi -> lundi suivant", beginnerPlanStartMonday("2026-10-01"), "2026-10-05");
+  assertEqual("beginnerPlanStartMonday : dimanche -> lundi suivant", beginnerPlanStartMonday("2026-10-04"), "2026-10-05");
+  const race = {"5km":5,"10km":10,"Semi":21.0975};
+  const base = { objectif:"Préparer une course", distanceCourse:"10km", dateCible:"2026-12-20", niveau:"Intermédiaire", frequenceHistorique:"2 à 3 fois par semaine", frequence:3, joursIndisponibles:[6,2], chronoDistance:"5km", chronoSec:1680 };
+  const r = onboardingProfilePatch(base, {niveau:"Débutant", autre:"x", principal:{pbExistant:"Oui", pbSec:3000}}, {foo:1}, race, "2026-10-05");
+  assertEqual("patch : objectif, distance et date de course", [r.goals.principal.objectifPrincipal, r.goals.principal.distanceCourse, r.goals.principal.dateCible], ["Préparer une course","10km","2026-12-20"]);
+  assertEqual("patch : conserve les autres champs du profil (pb existant, autre)", [r.goals.principal.pbSec, r.goals.autre], [3000,"x"]);
+  assertEqual("patch : niveau, fréquence en texte, jours triés", [r.goals.niveau, r.goals.frequence, r.goals.joursIndisponibles], ["Intermédiaire","3","2,6"]);
+  assertEqual("patch : le chrono devient le temps de référence de repli", [r.programSettings.refDistanceKm, r.programSettings.refTimeSec, r.programSettings.foo], [5,1680,1]);
+  assertEqual("patch : pas de plan débutant pour un coureur régulier", [r.beginner, "beginnerPlan" in r.programSettings], [false,false]);
+  const b = onboardingProfilePatch({ ...base, objectif:"Rester en forme", niveau:"Débutant", frequenceHistorique:"Jamais encore", chronoDistance:"", chronoSec:0 }, {}, {}, race, "2026-10-05");
+  assertEqual("patch : débutant complet -> plan marche/course à partir du lundi donné", [b.beginner, b.programSettings.beginnerPlan], [true, {startMonday:"2026-10-05"}]);
+  assertEqual("patch : objectif hors course -> pas de distance ni de date écrites", ["distanceCourse" in b.goals.principal, "dateCible" in b.goals.principal], [false,false]);
+  const again = onboardingProfilePatch({ ...base, niveau:"Débutant", frequenceHistorique:"Jamais encore" }, {}, {beginnerPlan:{startMonday:"2026-09-21"}}, race, "2026-10-05");
+  assertEqual("patch : un plan débutant déjà en cours garde sa date de départ", again.programSettings.beginnerPlan, {startMonday:"2026-09-21"});
+  const nochrono = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {}, {refDistanceKm:10, refTimeSec:3000}, race, "2026-10-05");
+  assertEqual("patch : sans nouveau chrono, l'ancien temps de référence est conservé", [nochrono.programSettings.refDistanceKm, nochrono.programSettings.refTimeSec], [10,3000]);
 }
 
 // --- Base d'exercices (EXERCISE_LIBRARY) / exercisesForZone ---

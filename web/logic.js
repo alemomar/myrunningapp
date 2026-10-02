@@ -667,6 +667,68 @@ function couchTo5kSessionDurationSec(session){
   return session.segments.reduce((a,b)=>a+b.sec,0);
 }
 
+/* ---------- Parcours de démarrage (onboarding, 4.1.a) ----------
+   Fonctions pures du parcours guidé (l'écran est dans index.html).
+   Durée maximale tenue sans s'arrêter : options du questionnaire (4.1.b.2)
+   et la valeur en minutes qu'on en tire pour classifyLevelFromQuestionnaire
+   (une valeur représentative par tranche, choisie avec l'utilisateur :
+   5 / 15 / 25 / 40 / 50 min — 40 reste < 45, 50 est >= 45). */
+const ONBOARDING_DUREE_OPTIONS = [
+  ["Moins de 10 min", 5], ["10 à 20 min", 15], ["20 à 30 min", 25], ["30 à 45 min", 40], ["Plus de 45 min", 50],
+];
+// Débutant complet : niveau Débutant ET "Jamais encore" couru (4.1.d) ->
+// programme marche/course du NHS plutôt que le moteur VDOT.
+function isBeginnerPlanEligible(niveau, frequence){
+  return niveau==="Débutant" && frequence==="Jamais encore";
+}
+// Semaines entre aujourd'hui et la date visée, arrondies au supérieur (même
+// règle que le texte "Il te reste N semaines" de l'onglet Profil). null si
+// pas de date ; 0 si la date est passée ou imminente.
+function weeksUntilDate(dateStr, todayStr){
+  if(!dateStr) return null;
+  const parse = (str) => { const [y,m,d] = str.split("-").map(Number); return new Date(y, m-1, d); };
+  const days = Math.ceil((parse(dateStr) - parse(todayStr)) / 86400000);
+  return Math.max(0, Math.ceil(days/7));
+}
+// Lundi où démarre le programme marche/course : cette semaine si on est du
+// lundi au mercredi (3 séances espacées tiennent encore), sinon la semaine
+// suivante. `todayStr` AAAA-MM-JJ -> AAAA-MM-JJ.
+function beginnerPlanStartMonday(todayStr){
+  const [y,m,d] = todayStr.split("-").map(Number);
+  const today = new Date(y, m-1, d);
+  const dow = (today.getDay()+6)%7; // lundi=0
+  const monday = new Date(today); monday.setDate(today.getDate()-dow);
+  if(dow>=3) monday.setDate(monday.getDate()+7);
+  return monday.getFullYear()+"-"+String(monday.getMonth()+1).padStart(2,"0")+"-"+String(monday.getDate()).padStart(2,"0");
+}
+/* Réponses du parcours -> données du profil. `state` : {objectif,
+   distanceCourse, dateCible, niveau, frequenceHistorique, frequence,
+   joursIndisponibles:[0-6], chronoDistance (clé de course), chronoSec}.
+   Un chrono saisi devient le temps de référence "de repli" du moteur
+   (programSettings.refDistanceKm/refTimeSec), jamais un record (pbSec).
+   Le plan débutant garde sa date de départ s'il est déjà en cours. */
+function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, startMondayStr){
+  const prev = goals || {};
+  const principal = { ...(prev.principal||{}), objectifPrincipal: state.objectif };
+  if(state.objectif==="Préparer une course"){
+    if(state.distanceCourse) principal.distanceCourse = state.distanceCourse;
+    principal.dateCible = state.dateCible || "";
+  }
+  const newGoals = {
+    ...prev, principal,
+    niveau: state.niveau,
+    frequence: String(state.frequence),
+    joursIndisponibles: (state.joursIndisponibles||[]).slice().sort((a,b)=>a-b).join(","),
+  };
+  const ps = { ...(programSettings||{}) };
+  const km = raceDistancesKm ? raceDistancesKm[state.chronoDistance] : null;
+  if(km && state.chronoSec>0){ ps.refDistanceKm = km; ps.refTimeSec = state.chronoSec; }
+  const beginner = isBeginnerPlanEligible(state.niveau, state.frequenceHistorique);
+  if(beginner) ps.beginnerPlan = ps.beginnerPlan || { startMonday: startMondayStr };
+  else delete ps.beginnerPlan;
+  return { goals:newGoals, programSettings:ps, beginner };
+}
+
 /* ---------- Format court/détaillé de la notation post-séance (4.5.b) ----------
    CDC v2, 4.5 : par défaut, formulaire court (note globale 1-5 + "une
    gêne/douleur ?") ; le détaillé (respiration/mental/fatigue + carte du

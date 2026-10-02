@@ -424,7 +424,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=42"></script>
+<script src="logic.js?v=43"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -892,6 +892,13 @@ const TERRAIN_COURSE_OPTIONS = ["Plat","Vallonné","Montagneux"];
 // "Courir plus régulièrement" : jours dispos + freins identifiés + préférence
 // de rappel — pas encore de vrais rappels envoyés, juste la préférence
 // enregistrée pour une future notification.
+const NIVEAUX = [["Débutant","Tu commences ou reprends"],["Intermédiaire","Tu cours régulièrement"],["Confirmé","Tu as de l'expérience en compet"]];
+const OBJECTIF_ICONS = [
+  ["Préparer une course","flag"],
+  ["Améliorer mon allure","bolt"],
+  ["Courir plus régulièrement","route"],
+  ["Rester en forme","heart"],
+];
 const JOURS_OPTIONS = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
 const FREINS_OPTIONS = ["Motivation","Météo","Manque de temps","Fatigue"];
 const MOTIVATION_OPTIONS = ["Santé","Sommeil","Bien-être mental","Perte de poids","Performance","Socialiser","Discipline/routine"];
@@ -3871,7 +3878,6 @@ function renderContentInner(){
     const racePaceInit = (raceKm && slot.tempsViseSec) ? Math.round(slot.tempsViseSec/raceKm) : null;
     const pbPaceInit = (raceKm && slot.pbSec) ? Math.round(slot.pbSec/raceKm) : null;
     const kmAnnuelInit = goals.kmMensuel ? Math.round(goals.kmMensuel*12) : "";
-    const NIVEAUX = [["Débutant","Tu commences ou reprends"],["Intermédiaire","Tu cours régulièrement"],["Confirmé","Tu as de l'expérience en compet"]];
     // Icône par objectif — cartes plus grandes que les puces des autres
     // champs, avec un peu de vie sur l'icône choisie (pop au clic, léger
     // flottement en continu) pour que l'écran ne soit pas que du texte.
@@ -3885,12 +3891,7 @@ function renderContentInner(){
     // suffisent, "Autre" n'apportait pas de vraie logique dédiée derrière —
     // voir OBJECTIF_BLOCKS["Autre"], resté en place comme repli défensif si
     // jamais une vieille donnée portait encore cette valeur).
-    const OBJECTIF_ICONS = [
-      ["Préparer une course","flag"],
-      ["Améliorer mon allure","bolt"],
-      ["Courir plus régulièrement","route"],
-      ["Rester en forme","heart"],
-    ];
+
     const objectifCards = (current) => `<div class="goal-principal-cards" data-chipgroup="objectifPrincipal">
       ${OBJECTIF_ICONS.map(([label,ic])=>`<div class="goal-principal-card${label===current?" active":""}" data-value="${label}" onclick="selectChip('objectifPrincipal','${label}')">
         <span class="icon-wrap">${icon(ic,17)}</span>
@@ -4233,6 +4234,11 @@ function renderContentInner(){
       </div>
 
       <div class="card">
+        <div class="stitle">Parcours de démarrage</div>
+        <div class="chart-hint">Refais les questions de départ (objectif, niveau, disponibilités). Tes réponses actuelles sont préremplies.</div>
+        <button class="btn-secondary" onclick="restartOnboarding()">Refaire le parcours</button>
+      </div>
+      <div class="card">
         <div class="stitle">Synchronisation</div>
         <button class="btn-secondary" onclick="location.href='myrunningapp://sync'">Synchroniser mes courses</button>
         <div class="chart-hint" style="margin-top:10px">Ouvre l'app iOS et lance la sync — fonctionne uniquement depuis Safari sur ton iPhone.</div>
@@ -4315,32 +4321,246 @@ async function boot(){
 }
 
 // Point d'entrée unique pour dessiner l'app après chargement des données :
-// tant que l'onboarding n'est pas terminé, on affiche son écran à la place
-// de la nav normale (voir CDC v2, 4.1.a). Le contenu détaillé du parcours
-// (objectifs/niveau/disponibilités/matériel) arrive avec 4.1.b/c/d — pour
-// l'instant ce n'est qu'une coquille testable.
+// tant que l'onboarding n'est pas terminé, on affiche le parcours guidé à la
+// place de la nav normale (CDC v2, 4.1.a).
+// Un compte qui a déjà un objectif, des séances ou un programme est marqué
+// "onboardé" automatiquement : sans ça, tous les comptes créés avant le
+// parcours (migration_022 les a laissés à NULL) le verraient à leur
+// prochaine ouverture au lieu de leur app. `onbRestarting` : parcours
+// relancé volontairement depuis Profil › Mon compte.
+let onb = null, onbRestarting = false, onbPreviousCompletedAt = null;
+function accountHasData(){
+  return !!goals?.principal?.objectifPrincipal || RUNS.length>0 || plannedSessions.length>0;
+}
 function renderApp(){
   const tabsEl = document.getElementById("tabs");
+  if(!onboardingCompletedAt && !onbRestarting && accountHasData()){
+    onboardingCompletedAt = new Date().toISOString();
+    upsertProfile({ onboarding_completed_at: onboardingCompletedAt });
+  }
   if(!onboardingCompletedAt){
     tabsEl.style.display = "none";
     document.getElementById("content").innerHTML = onboardingHTML();
+    if(onb && onb._shownStep!==onb.step){ onb._shownStep = onb.step; window.scrollTo({top:0}); }
     return;
   }
   tabsEl.style.display = "";
   renderTabs();
   renderContent();
 }
-function onboardingHTML(){
-  return `<div class="card" style="text-align:center;padding:32px 20px">
-    <div style="font-size:20px;font-weight:600;margin-bottom:8px">Bienvenue sur MyRunningApp</div>
-    <div style="color:var(--text-dim);font-size:14px;margin-bottom:24px">On va te poser quelques questions pour personnaliser ton programme — objectifs, niveau, disponibilités et matériel. (Parcours en construction : les vraies étapes arrivent bientôt.)</div>
-    <button class="btn-primary" onclick="completeOnboarding()">Terminer l'onboarding</button>
+
+// ---------- Parcours guidé : état, écrans, enregistrement ----------
+// [libellé affiché, clé utilisée dans les données] — même ordre que
+// ONBOARDING_DUREE_OPTIONS ([libellé, valeur]) pour onbChips.
+const ONB_RACES = [["5 km","5km"],["10 km","10km"],["15 km","15km"],["Semi-marathon","Semi"],["Marathon","Marathon"]];
+function onbInit(){
+  const principal = goals?.principal || {};
+  const detected = detectLevelFromHistory(
+    runningRuns.map(r=>({ date: dateFromRun(r), distanceKm: r.dist||0 })), new Date());
+  const chronoKm = programSettings?.refDistanceKm;
+  const chronoKey = Object.keys(RACE_DISTANCES_KM).find(k=>RACE_DISTANCES_KM[k]===chronoKm) || "";
+  const refSec = programSettings?.refTimeSec || 0;
+  onb = {
+    step: 0,
+    objectif: principal.objectifPrincipal && principal.objectifPrincipal!=="Autre" ? principal.objectifPrincipal : "",
+    distanceCourse: principal.distanceCourse || "",
+    dateCible: principal.dateCible || "",
+    detected,
+    niveau: detected || goals?.niveau || "",
+    niveauManual: false,
+    frequenceHistorique: "",
+    dureeMax: null,
+    chronoDistance: chronoKey,
+    chronoH: refSec ? String(Math.floor(refSec/3600)) : "",
+    chronoM: refSec ? String(Math.floor((refSec%3600)/60)) : "",
+    chronoS: refSec ? String(refSec%60) : "",
+    frequence: Number(goals?.frequence) || 3,
+    joursIndisponibles: (goals?.joursIndisponibles ? goals.joursIndisponibles.split(",").map(Number) : []),
+    compressAck: false,
+  };
+}
+function onbChronoSec(){
+  const h = parseInt(onb.chronoH,10)||0, m = parseInt(onb.chronoM,10)||0, sec = parseInt(onb.chronoS,10)||0;
+  return h*3600+m*60+sec;
+}
+function onbBeginner(){ return isBeginnerPlanEligible(onb.niveau, onb.frequenceHistorique); }
+function onbRecomputeLevel(){
+  if(onb.detected || onb.niveauManual) return;
+  if(!onb.frequenceHistorique || onb.dureeMax==null) return;
+  onb.niveau = classifyLevelFromQuestionnaire(onb.frequenceHistorique, onb.dureeMax);
+}
+window.onbSet = (key, value) => {
+  onb[key] = value;
+  if(key==="niveau") onb.niveauManual = true;
+  if(key==="frequenceHistorique" || key==="dureeMax") onbRecomputeLevel();
+  if(key==="distanceCourse" || key==="dateCible" || key==="niveau") onb.compressAck = false;
+  renderApp();
+};
+window.onbSetField = (key, value) => { onb[key] = value; };
+window.onbToggleDay = (i) => {
+  onb.joursIndisponibles = onb.joursIndisponibles.includes(i) ? onb.joursIndisponibles.filter(d=>d!==i) : [...onb.joursIndisponibles, i];
+  renderApp();
+};
+window.onbGo = (delta) => { onb.step = Math.max(0, Math.min(4, onb.step+delta)); renderApp(); };
+window.onbAckCompress = () => { onb.compressAck = true; renderApp(); };
+window.restartOnboarding = () => {
+  onbPreviousCompletedAt = onboardingCompletedAt;
+  onb = null; onbRestarting = true; onboardingCompletedAt = null;
+  renderApp();
+};
+window.cancelOnboarding = () => {
+  onboardingCompletedAt = onbPreviousCompletedAt || new Date().toISOString();
+  onb = null; onbRestarting = false;
+  renderApp();
+};
+
+function onbFeasibility(){
+  if(onb.objectif!=="Préparer une course" || !onb.distanceCourse || !onb.dateCible || !onb.niveau) return null;
+  const weeks = weeksUntilDate(onb.dateCible, localDateStr(new Date()));
+  const check = checkGoalTimelineFeasibility(onb.distanceCourse, onb.niveau, weeks);
+  return check ? { ...check, weeks } : null;
+}
+function onbCanContinue(){
+  if(onb.step===1) return !!onb.objectif && (onb.objectif!=="Préparer une course" || !!onb.distanceCourse);
+  if(onb.step===2) return !!onb.niveau && (!!onb.detected || (!!onb.frequenceHistorique && onb.dureeMax!=null));
+  if(onb.step===4){
+    const f = onbFeasibility();
+    return !f || f.status==="ok" || (f.status==="compresse" && onb.compressAck);
+  }
+  return true;
+}
+function onbShell(title, subtitle, body, nextLabel){
+  const stepNum = onb.step; // 1..4 pour les écrans de questions
+  const dots = [1,2,3,4].map(i=>`<span style="width:${i===stepNum?22:8}px;height:8px;border-radius:4px;background:${i<=stepNum?"var(--accent)":"var(--card-2)"};transition:width .2s"></span>`).join("");
+  const ok = onbCanContinue();
+  return `<div class="card">
+    ${stepNum>=1?`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="display:flex;gap:6px;align-items:center">${dots}</div>
+      <span style="font-size:12px;color:var(--text-dim)">Étape ${stepNum} sur 4</span>
+    </div>`:""}
+    <div style="font-size:20px;font-weight:700;margin-bottom:6px">${title}</div>
+    ${subtitle?`<div style="font-size:13px;color:var(--text-dim);line-height:1.5;margin-bottom:16px">${subtitle}</div>`:""}
+    ${body}
+    <div style="display:flex;gap:10px;margin-top:20px">
+      ${stepNum>=1?`<button class="btn-secondary" style="flex:0 0 auto;width:auto;padding:0 18px" onclick="onbGo(-1)">Retour</button>`:""}
+      <button class="btn-primary" style="margin-top:0;flex:1;${ok?"":"opacity:.4;pointer-events:none"}" onclick="${onb.step===4?"onbFinish()":"onbGo(1)"}">${nextLabel||"Continuer"}</button>
+    </div>
+    ${onbRestarting?`<div style="text-align:center;margin-top:12px"><a href="#" onclick="cancelOnboarding();return false" style="font-size:12px;color:var(--text-dim)">Annuler et revenir à l'app</a></div>`:""}
   </div>`;
 }
-window.completeOnboarding = async function(){
-  const ok = await upsertProfile({ onboarding_completed_at: new Date().toISOString() });
+function onbChips(options, current, onclickFn, valueOf){
+  return `<div class="filters" style="margin-bottom:0">${options.map(o=>{
+    const [label, value] = Array.isArray(o) ? o : [o, o];
+    return `<button type="button" class="flt${current===value?" active":""}" onclick="${onclickFn}(${JSON.stringify(value).replace(/"/g,"&quot;")})">${label}</button>`;
+  }).join("")}</div>`;
+}
+function onbLevelCards(){
+  return `<div class="goal-level-cards">${NIVEAUX.map(([lbl,sub])=>`<div class="goal-level-card${onb.niveau===lbl?" active":""}" onclick="onbSet('niveau','${lbl}')">
+    <div class="lbl">${lbl}</div><div class="sub">${sub}</div></div>`).join("")}</div>`;
+}
+function onboardingHTML(){
+  if(!onb) onbInit();
+  const info = (txt) => `<div style="background:var(--accent-dim);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:14px">${txt}</div>`;
+  if(onb.step===0){
+    return `<div class="card" style="text-align:center;padding:32px 20px">
+      <div style="font-size:22px;font-weight:700;margin-bottom:10px">Bienvenue sur MyRunningApp</div>
+      <div style="color:var(--text-dim);font-size:14px;line-height:1.55;margin-bottom:24px">En quelques questions, on prépare un programme adapté à toi : ton objectif, ton niveau et tes disponibilités. Ça prend 2 minutes, et tu pourras tout modifier ensuite dans Profil.</div>
+      <button class="btn-primary" style="margin-top:0" onclick="onbGo(1)">C'est parti</button>
+      ${onbRestarting?`<div style="margin-top:12px"><a href="#" onclick="cancelOnboarding();return false" style="font-size:12px;color:var(--text-dim)">Annuler et revenir à l'app</a></div>`:""}
+    </div>`;
+  }
+  if(onb.step===1){
+    const cards = `<div class="goal-principal-cards">${OBJECTIF_ICONS.map(([label,ic])=>`<div class="goal-principal-card${label===onb.objectif?" active":""}" onclick="onbSet('objectif','${label}')">
+        <span class="icon-wrap">${icon(ic,17)}</span><span class="lbl">${label}</span></div>`).join("")}</div>`;
+    const course = onb.objectif==="Préparer une course" ? `
+      <div class="chart-hint" style="margin-top:16px">Quelle distance ?</div>
+      ${onbChips(ONB_RACES, onb.distanceCourse, "onbSet.bind(null,'distanceCourse')")}
+      <div class="chart-hint" style="margin-top:14px">À quelle date ? (facultatif)</div>
+      <input type="date" value="${onb.dateCible}" onchange="onbSet('dateCible', this.value)" style="background:var(--card-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;font-family:inherit;width:100%;box-sizing:border-box">
+      <div class="chart-hint" style="margin-top:4px">${weeksUntilText(onb.dateCible)}</div>` : "";
+    return onbShell("Quel est ton objectif ?", "Choisis ce qui te motive le plus en ce moment. Tu pourras en ajouter un second plus tard dans Profil.", cards+course);
+  }
+  if(onb.step===2){
+    let body;
+    if(onb.detected){
+      body = info(`On a regardé tes courses des 8 dernières semaines : ton niveau semble être <strong>${onb.detected}</strong>. Tu peux le corriger si ça ne te ressemble pas.`)+`<div style="margin-top:14px">${onbLevelCards()}</div>`;
+    } else {
+      body = `<div class="chart-hint" style="margin-top:0">Tu cours à quelle fréquence en ce moment ?</div>
+        ${onbChips(QUESTIONNAIRE_FREQUENCE_OPTIONS, onb.frequenceHistorique, "onbSet.bind(null,'frequenceHistorique')")}
+        <div class="chart-hint" style="margin-top:16px">Combien de temps peux-tu courir sans t'arrêter ?</div>
+        ${onbChips(ONBOARDING_DUREE_OPTIONS, onb.dureeMax, "onbSet.bind(null,'dureeMax')")}
+        <div class="chart-hint" style="margin-top:16px">Un chrono récent ? (facultatif, un temps approximatif suffit)</div>
+        ${onbChips(ONB_RACES, onb.chronoDistance, "onbSet.bind(null,'chronoDistance')")}
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--text-dim)">
+          <input type="number" min="0" max="9" inputmode="numeric" placeholder="h" value="${onb.chronoH}" oninput="onbSetField('chronoH',this.value)" class="time-input" style="width:52px"> h
+          <input type="number" min="0" max="59" inputmode="numeric" placeholder="min" value="${onb.chronoM}" oninput="onbSetField('chronoM',this.value)" class="time-input" style="width:60px"> min
+          <input type="number" min="0" max="59" inputmode="numeric" placeholder="s" value="${onb.chronoS}" oninput="onbSetField('chronoS',this.value)" class="time-input" style="width:52px"> s
+        </div>`;
+      if(onb.niveau){
+        body += `<div class="chart-hint" style="margin-top:18px">Ton niveau estimé : tu peux le corriger</div>${onbLevelCards()}`;
+      }
+      body += info("Si tu n'as jamais couru, on te proposera une alternance de marche et de course pour démarrer en douceur (le programme « Couch to 5K » du NHS, le service de santé britannique).");
+    }
+    if(onbBeginner()) body += info("<strong>Programme marche/course :</strong> pendant 9 semaines, 3 séances par semaine qui alternent marche et course, jusqu'à pouvoir courir 30 minutes d'affilée.");
+    return onbShell("Quel est ton niveau ?", onb.detected ? "" : "Quelques questions pour estimer ton niveau, sans test.", body);
+  }
+  if(onb.step===3){
+    const beginner = onbBeginner();
+    if(beginner && onb.frequence!==3) onb.frequence = 3;
+    const body = `<div class="chart-hint" style="margin-top:0">Combien de séances de course par semaine ?</div>
+      <div class="filters" style="margin-bottom:0">${["1","2","3","4","5","6","7"].map(o=>`<button type="button" class="flt${String(onb.frequence)===o?" active":""}" ${beginner?"disabled style=\"opacity:.5\"":""} onclick="onbSet('frequence',${o})">${o}</button>`).join("")}</div>
+      <div class="chart-hint" style="margin-top:6px">${beginner ? "Le programme marche/course comporte toujours 3 séances par semaine." : (FREQUENCE_HINTS[String(onb.frequence)]||"")}</div>
+      <div class="chart-hint" style="margin-top:16px">Des jours où tu ne peux jamais courir ?</div>
+      <div class="filters" style="margin-bottom:0">${JOURS_OPTIONS.map((d,i)=>`<button type="button" class="flt${onb.joursIndisponibles.includes(i)?" active":""}" onclick="onbToggleDay(${i})">${d}</button>`).join("")}</div>`;
+    return onbShell("Tes disponibilités", "On placera tes séances sur les autres jours.", body);
+  }
+  // étape 4 : récapitulatif
+  const f = onbFeasibility();
+  const raceLabel = (ONB_RACES.find(r=>r[1]===onb.distanceCourse)||[])[0];
+  const jours = onb.joursIndisponibles.length ? onb.joursIndisponibles.slice().sort((a,b)=>a-b).map(i=>JOURS_OPTIONS[i]).join(", ") : "aucun";
+  const row = (lbl, val) => `<div class="account-row"><span class="lbl">${lbl}</span><span class="v" style="text-align:right">${val}</span></div>`;
+  let warn = "";
+  if(f && f.status==="compresse"){
+    warn = `<div style="border:1px solid rgba(232,163,23,0.5);background:rgba(232,163,23,0.08);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.5">
+      Ta date est un peu serrée : pour ce niveau, on recommande au moins ${Math.ceil(f.minWeeks)} semaines pour préparer cette distance (d'après les plans de Hal Higdon), et il t'en reste ${f.weeks}. Tu peux la garder (le plan sera compressé, avec un peu plus de risque de blessure) ou choisir une date plus lointaine.
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button class="btn-secondary" style="width:auto;padding:0 14px" onclick="onbAckCompress()">${onb.compressAck?"Date gardée ✓":"Garder cette date"}</button>
+        <button class="btn-secondary" style="width:auto;padding:0 14px" onclick="onbSet('step',1)">Changer ma date ou ma distance</button>
+      </div></div>`;
+  } else if(f && f.status==="extreme"){
+    warn = `<div style="border:1px solid rgba(232,163,23,0.5);background:rgba(232,163,23,0.08);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.5">
+      Cette date est trop proche : pour ce niveau, on recommande au moins ${Math.ceil(f.minWeeks)} semaines pour préparer cette distance (d'après les plans de Hal Higdon), et il t'en reste ${f.weeks}. On ne peut pas te proposer un plan sûr. Choisis une date plus lointaine ou une distance plus courte.
+      <div style="margin-top:10px"><button class="btn-secondary" style="width:auto;padding:0 14px" onclick="onbSet('step',1)">Changer ma date ou ma distance</button></div></div>`;
+  }
+  const programme = onbBeginner() ? "Marche/course sur 9 semaines (NHS)" : "Programme personnalisé";
+  const noChrono = !onbBeginner() && !onbChronoSec() && !programSettings?.refTimeSec && !(goals?.principal?.pbSec);
+  const chronoNote = noChrono ? info("Sans chrono de référence, on ne peut pas encore calculer tes allures. Tu pourras en renseigner un plus tard dans Programme.") : "";
+  const body = `${row("Objectif", onb.objectif + (onb.objectif==="Préparer une course" ? ` · ${raceLabel||""}${onb.dateCible?" · le "+new Date(onb.dateCible+"T00:00:00").toLocaleDateString("fr-FR"):""}` : ""))}
+    ${row("Niveau", onb.niveau)}
+    ${row("Séances de course", onb.frequence+" par semaine")}
+    ${row("Jours indisponibles", jours)}
+    ${row("Programme", programme)}
+    ${warn}${chronoNote}`;
+  return onbShell("Voilà ce qu'on a compris", "Tout pourra être modifié dans Profil.", body, "Créer mon programme");
+}
+window.onbFinish = async function(){
+  if(!onbCanContinue()) return;
+  const todayStr = localDateStr(new Date());
+  const startMonday = beginnerPlanStartMonday(todayStr);
+  const patch = onboardingProfilePatch({
+    objectif:onb.objectif, distanceCourse:onb.distanceCourse, dateCible:onb.dateCible, niveau:onb.niveau,
+    frequenceHistorique:onb.frequenceHistorique, frequence:onb.frequence, joursIndisponibles:onb.joursIndisponibles,
+    chronoDistance:onb.chronoDistance, chronoSec:onbChronoSec(),
+  }, goals, programSettings, RACE_DISTANCES_KM, startMonday);
+  const completedAt = new Date().toISOString();
+  const ok = await upsertProfile({ goals: patch.goals, program_settings: patch.programSettings, onboarding_completed_at: completedAt });
   if(!ok) return;
-  onboardingCompletedAt = new Date().toISOString();
+  goals = patch.goals; programSettings = patch.programSettings; onboardingCompletedAt = completedAt;
+  onb = null; onbRestarting = false;
+  // Première semaine générée tout de suite (silencieusement : sans temps de
+  // référence le moteur ne génère rien, voir generateProgram).
+  try{ await window.generateProgram(mondayOf(new Date()), {silent:true}); }catch(e){ console.error("Génération initiale :", e); }
+  activeTab = "aujourdhui"; persistActiveTab();
   renderApp();
 };
 
