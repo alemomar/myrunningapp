@@ -316,6 +316,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .prog-daycol.today .prog-daycol-hdr b{color:var(--accent)}
 .prog-card-mini{width:100%;min-height:46px;box-sizing:border-box;border-radius:9px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:5px 1px;cursor:pointer;position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .prog-card-mini.draggable{touch-action:none}
+.prog-card-mini + .prog-card-mini{margin-top:4px}
 .prog-card-mini.rest{background:var(--card-2);color:var(--text-dim);font-size:9px;border-style:dashed}
 .prog-card-mini-lbl{font-size:8px;font-weight:600;color:var(--text);text-align:center;line-height:1.2}
 .prog-card-mini-check{position:absolute;top:2px;right:3px;font-size:9px;color:var(--accent);font-weight:700}
@@ -423,7 +424,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=37"></script>
+<script src="logic.js?v=38"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2554,7 +2555,9 @@ window.generateProgram = async (mondayDate, opts) => {
   if(!profile){ if(!opts.silent) alert("Renseigne d'abord un temps de référence (ci-dessus) pour générer ton programme."); return; }
   const existing = plannedSessions.filter(p=>p.week_start_date===mondayStr && (p.status==="planned"||p.status==="done"));
   const dayIndexOf = (dateStr) => Math.round((new Date(dateStr+"T00:00:00") - mondayDate) / 86400000);
-  const existingDayIndexes = existing.map(p=>dayIndexOf(p.planned_date));
+  // Jours où une NOUVELLE course ne peut pas aller : course ou renfo déjà
+  // là (une séance légère, elle, peut cohabiter, voir sessionsCanShareDay).
+  const dayBlockedForRun = existing.filter(p=>!sessionsCanShareDay({pace_zone:"easy"}, p)).map(p=>dayIndexOf(p.planned_date));
   // Comparé au NOMBRE cible (goals.frequence/frequenceAutre), pas juste à
   // "en existe-t-il au moins une" : sinon une seule séance ajoutée à la
   // main (ex: 1 renfo alors que 2/semaine sont visées) faisait croire la
@@ -2581,7 +2584,7 @@ window.generateProgram = async (mondayDate, opts) => {
   let generated = [];
   let runningRows = [];
   if(missingRunning>0){
-    const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d) && !existingDayIndexes.includes(d));
+    const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d) && !dayBlockedForRun.includes(d));
     generated = generateWeekSessions({ profile, structure, weeklyKm, frequency:missingRunning, availableDayIndexes, avoidQualityReason, weekIndex });
     runningRows = generated.map(s => ({
       user_id:user.id,
@@ -2600,20 +2603,20 @@ window.generateProgram = async (mondayDate, opts) => {
 
   let crossRows = [];
   if(missingCross>0){
-    // Séances complémentaires (renfo/mobilité/yoga) sur les jours restants
-    // — jamais le même jour qu'une course (existante ou fraîchement
-    // générée ci-dessus), et jamais non plus la VEILLE d'une course, peu
-    // importe son type (retour utilisateur : courbatures/risque de
-    // blessure le lendemain). Le dimanche de cette semaine compte aussi
-    // s'il précède une course déjà planifiée le lundi suivant.
-    const usedDayIndexes = [...existingDayIndexes, ...generated.map(s=>s.dayIndex)];
-    const existingRunningDayIndexes = existing.filter(p=>p.pace_zone).map(p=>dayIndexOf(p.planned_date));
+    // Séances complémentaires (renfo/mobilité/yoga) : une séance légère
+    // peut tomber le même jour qu'une course, jamais le renfo ; jamais non
+    // plus la VEILLE d'une course, peu importe son type (retour
+    // utilisateur : courbatures/risque de blessure le lendemain). Le
+    // dimanche de cette semaine compte aussi s'il précède une course déjà
+    // planifiée le lundi suivant.
+    const existingRunningDayIndexes = existing.filter(p=>sessionCategory(p)==="run").map(p=>dayIndexOf(p.planned_date));
+    const takenCrossDayIndexes = existing.filter(p=>sessionCategory(p)!=="run").map(p=>dayIndexOf(p.planned_date));
     const allRunningDayIndexes = [...existingRunningDayIndexes, ...generated.map(s=>s.dayIndex)];
     const dayBeforeRunning = allRunningDayIndexes.map(d=>d-1).filter(d=>d>=0);
     const nextMondayStr = addDaysStr(mondayDate, 7);
     const hasRunningNextMonday = plannedSessions.some(p=>p.planned_date===nextMondayStr && p.pace_zone && (p.status==="planned"||p.status==="done"));
     const avoidDayIndexes = [...dayBeforeRunning, ...(hasRunningNextMonday ? [6] : [])];
-    const crossTraining = generateCrossTrainingSessions(missingCross, usedDayIndexes, weekIndex, avoidDayIndexes);
+    const crossTraining = generateCrossTrainingSessions(missingCross, allRunningDayIndexes, weekIndex, avoidDayIndexes, takenCrossDayIndexes);
     // Exercices concrets (4.7.c) pour Renfo/Mobilité ; Yoga reste sans liste
     // (pas dans la base d'exercices).
     crossRows = crossTraining.map((s, i) => {
@@ -2706,6 +2709,10 @@ window.saveSessionEdit = async (id) => {
     patch.rationale = CROSS_TRAINING_RATIONALE[newType] || `Séance de ${newType}, modifiée manuellement.`;
     if(clearingForNonRunning){ patch.target_distance_km = null; patch.target_pace_sec_per_km = null; }
   }
+  if(session && newType && newType!==session.type){
+    const clash = plannedSessions.some(o=>o.id!==id && o.planned_date===session.planned_date && (o.status==="planned"||o.status==="done") && !sessionsCanShareDay({type:newType, pace_zone:null}, o));
+    if(clash){ alert(SAME_DAY_REFUSAL); return; }
+  }
   if(session) warnIfDayBeforeRun(session.planned_date, newType||session.type);
   if(!clearingForNonRunning && !isNaN(distanceKm) && distanceKm>0) patch.target_distance_km = distanceKm;
   if(!clearingForNonRunning && (!isNaN(paceMin) || !isNaN(paceSec))){
@@ -2733,20 +2740,19 @@ window.toggleAddForm = (dateStr) => {
   openAddForm = openAddForm===dateStr ? null : dateStr;
   renderContent();
 };
-// Ajout manuel très basique (bouton "+" sur un jour "Repos") : tous les
-// champs sauf le type sont optionnels. Reste au pattern un-seul-jour-une-
-// séance déjà utilisé partout ailleurs (drag, génération...) — refuse sur
-// un jour déjà occupé plutôt que d'empiler silencieusement une 2e séance
-// que l'affichage ne montrerait pas (programDayColHTML ne prend que la
-// première séance active du jour).
+// Ajout manuel très basique (bouton "+" sur un jour) : tous les champs
+// sauf le type sont optionnels. Refuse si la nouvelle séance ne peut pas
+// partager ce jour avec celles déjà là (deux courses, du renfo avec une
+// course... voir sessionsCanShareDay).
+const SAME_DAY_REFUSAL = "Ces deux séances ne peuvent pas être le même jour : une course accepte une séance légère (yoga, mobilité, étirements) mais jamais une autre course ni du renfo.";
 window.addManualSession = async (dateStr) => {
   const type = document.getElementById("addSession_type")?.value || "EF";
   const distanceKm = parseFloat(document.getElementById("addSession_distance")?.value);
   const durationMin = parseFloat(document.getElementById("addSession_duration")?.value);
   const reminderTime = document.getElementById("addSession_reminderTime")?.value;
   const notes = document.getElementById("addSession_notes")?.value?.trim();
-  const occupied = plannedSessions.some(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
-  if(occupied){ alert("Ce jour a déjà une séance — modifie-la plutôt que d'en ajouter une seconde."); return; }
+  const incompatible = plannedSessions.some(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done") && !sessionsCanShareDay({type, pace_zone:null}, p));
+  if(incompatible){ alert(SAME_DAY_REFUSAL); return; }
   warnIfDayBeforeRun(dateStr, type);
   const { data:{user} } = await supa.auth.getUser();
   if(!user) return;
@@ -2771,11 +2777,12 @@ window.addManualSession = async (dateStr) => {
 // est déjà proposé ailleurs (bannière séance non notée), pas besoin de le
 // redéclencher ici.
 async function reconcilePlannedSessions(){
-  const todo = plannedSessions.filter(p=>p.status==="planned" && RUNS.some(r=>localDateStr(dateFromRun(r))===p.planned_date));
+  const matchingRun = (p) => RUNS.find(r=>localDateStr(dateFromRun(r))===p.planned_date && plannedSessionMatchesRun(p, r));
+  const todo = plannedSessions.filter(p=>p.status==="planned" && matchingRun(p));
   const missed = detectMissedSessions(plannedSessions, localDateStr(new Date()));
   if(!todo.length && !missed.length) return;
   for(const p of todo){
-    const match = RUNS.find(r=>localDateStr(dateFromRun(r))===p.planned_date);
+    const match = matchingRun(p);
     await supa.from("planned_sessions").update({status:"done", linked_run_id:match.id, updated_at:new Date().toISOString()}).eq("id", p.id);
     p.status = "done"; p.linked_run_id = match.id;
   }
@@ -2819,11 +2826,11 @@ window.rescheduleMissedSession = async (id) => {
   const monday = new Date(old.week_start_date+"T00:00:00");
   const weekSessions = plannedSessions
     .filter(p=>p.id!==old.id && p.week_start_date===old.week_start_date && (p.status==="planned"||p.status==="done"))
-    .map(p=>({ dayIndex: Math.round((new Date(p.planned_date+"T00:00:00")-monday)/86400000), pace_zone: p.pace_zone }));
+    .map(p=>({ dayIndex: Math.round((new Date(p.planned_date+"T00:00:00")-monday)/86400000), pace_zone: p.pace_zone, type: p.type }));
   const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
   const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d));
   const isPriority = isIntensePaceZone(old.pace_zone);
-  const day = findRescheduleDay({pace_zone:old.pace_zone}, weekSessions, availableDayIndexes, isPriority);
+  const day = findRescheduleDay({pace_zone:old.pace_zone, type:old.type}, weekSessions, availableDayIndexes, isPriority);
   if(day==null){
     alert("Impossible de recaser cette séance sans enfreindre les garde-fous (jamais 2 séances le même jour, jamais 2 intenses d'affilée) — elle reste abandonnée cette semaine.");
     return;
@@ -2990,7 +2997,7 @@ window.shiftWeekByDays = async (weekStartDate, days) => {
   let skipped = 0;
   for(const p of toShift){
     const newDate = localDateStr(addDays(new Date(p.planned_date+"T00:00:00"), days));
-    const occupied = plannedSessions.some(o=>o.id!==p.id && o.planned_date===newDate && (o.status==="planned"||o.status==="done"));
+    const occupied = plannedSessions.some(o=>o.id!==p.id && o.planned_date===newDate && (o.status==="planned"||o.status==="done") && !sessionsCanShareDay(p, o));
     if(occupied){ skipped++; continue; }
     const newMonday = localDateStr(mondayOf(new Date(newDate+"T00:00:00")));
     await supa.from("planned_sessions").update({planned_date:newDate, week_start_date:newMonday, updated_at:new Date().toISOString()}).eq("id", p.id);
@@ -3037,14 +3044,13 @@ window.progSelectDay = (dateStr) => {
 // Déplace une séance à une nouvelle date (glisser-déposer) — simple UPDATE
 // (pas le pattern "supersede", contrairement à regenerateSession : ici le
 // contenu de la séance ne change pas, seule sa date change, donc rien à
-// tracer côté contenu). Refuse si le jour cible a déjà une séance active,
-// pour ne jamais en masquer une silencieusement (programDayColHTML
-// n'affiche qu'une séance par jour).
+// tracer côté contenu). Refuse si le jour cible contient une séance qui ne
+// peut pas cohabiter avec celle-ci (voir sessionsCanShareDay).
 window.moveSessionToDate = async (id, newDateStr) => {
   const s = plannedSessions.find(p=>p.id===id);
   if(!s || s.planned_date===newDateStr) return;
-  const occupied = plannedSessions.some(p=>p.id!==id && p.planned_date===newDateStr && (p.status==="planned"||p.status==="done"));
-  if(occupied){ alert("Ce jour a déjà une séance — décale ou remplace-la d'abord."); return; }
+  const incompatible = plannedSessions.some(p=>p.id!==id && p.planned_date===newDateStr && (p.status==="planned"||p.status==="done") && !sessionsCanShareDay(s, p));
+  if(incompatible){ alert(SAME_DAY_REFUSAL); return; }
   const monday = mondayOf(new Date(newDateStr+"T00:00:00"));
   const { error } = await supa.from("planned_sessions").update({planned_date:newDateStr, week_start_date:localDateStr(monday), updated_at:new Date().toISOString()}).eq("id", id);
   if(error){ alert("Erreur : "+error.message); return; }
@@ -3198,7 +3204,7 @@ window.addTargetedMobilitySession = async (weekStartDate, zoneKey) => {
   const monday = new Date(weekStartDate+"T00:00:00");
   const weekSessions = plannedSessions
     .filter(p=>p.week_start_date===weekStartDate && (p.status==="planned"||p.status==="done"))
-    .map(p=>({ dayIndex: Math.round((new Date(p.planned_date+"T00:00:00")-monday)/86400000), pace_zone: p.pace_zone }));
+    .map(p=>({ dayIndex: Math.round((new Date(p.planned_date+"T00:00:00")-monday)/86400000), pace_zone: p.pace_zone, type: p.type }));
   const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
   const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d));
   const day = findRescheduleDay({pace_zone:null}, weekSessions, availableDayIndexes, false);
@@ -3400,21 +3406,26 @@ function programNavHeaderHTML(label){
 // optionnel (vue mois uniquement) : estompe les jours hors du mois affiché.
 function programDayColHTML(date, monthDate){
   const dateStr = localDateStr(date);
-  const session = plannedSessions.find(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
+  // Plusieurs séances possibles le même jour (course + séance légère) :
+  // une mini-carte par séance, empilées.
+  const sessions = plannedSessions.filter(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
   const isToday = dateStr===localDateStr(new Date());
   const selected = programSelectedDate===dateStr;
   const outmonth = monthDate && date.getMonth()!==monthDate.getMonth();
-  const draggable = session && session.status==="planned";
-  const c = session ? (TC[session.type]||TC.Other) : null;
-  const dragAttrs = draggable ? `onpointerdown="progDragStart(event,'${session.id}')"` : "";
-  return `<div class="prog-daycol${isToday?" today":""}${selected?" selected":""}${outmonth?" outmonth":""}" data-date="${dateStr}">
-    <div class="prog-daycol-hdr">${date.toLocaleDateString('fr-FR',{weekday:'short'}).slice(0,2)}<b>${date.getDate()}</b></div>
-    ${session
-      ? `<div class="prog-card-mini${draggable?" draggable":""}" style="background:${c}1c;border-color:${c}55" ${dragAttrs} onclick="progSelectDay('${dateStr}')">
+  const miniCard = (session) => {
+    const draggable = session.status==="planned";
+    const c = TC[session.type]||TC.Other;
+    const dragAttrs = draggable ? `onpointerdown="progDragStart(event,'${session.id}')"` : "";
+    return `<div class="prog-card-mini${draggable?" draggable":""}" style="background:${c}1c;border-color:${c}55" ${dragAttrs} onclick="progSelectDay('${dateStr}')">
           <div style="color:${c}">${icon(TICON[session.type]||"activity",14)}</div>
           <div class="prog-card-mini-lbl">${session.target_distance_km?session.target_distance_km+"km":(PACE_ZONE_LABEL[session.pace_zone]||"")}</div>
           ${session.status==="done"?`<div class="prog-card-mini-check">✓</div>`:""}
-        </div>`
+        </div>`;
+  };
+  return `<div class="prog-daycol${isToday?" today":""}${selected?" selected":""}${outmonth?" outmonth":""}" data-date="${dateStr}">
+    <div class="prog-daycol-hdr">${date.toLocaleDateString('fr-FR',{weekday:'short'}).slice(0,2)}<b>${date.getDate()}</b></div>
+    ${sessions.length
+      ? sessions.map(miniCard).join("")
       : `<div class="prog-card-mini rest" onclick="progSelectDay('${dateStr}')">Repos</div>`}
   </div>`;
 }
@@ -3446,15 +3457,13 @@ function programMonthStackHTML(monthDate){
 function programSelectedDayPanelHTML(){
   if(!programSelectedDate) return "";
   const date = new Date(programSelectedDate+"T00:00:00");
-  const session = plannedSessions.find(p=>p.planned_date===programSelectedDate && (p.status==="planned"||p.status==="done"));
+  const sessions = plannedSessions.filter(p=>p.planned_date===programSelectedDate && (p.status==="planned"||p.status==="done"));
   const addOpen = openAddForm===programSelectedDate;
   return `<div class="card" style="margin-top:10px">
     <div class="chart-hint" style="margin-top:0;margin-bottom:4px;text-transform:capitalize">${dayLabelShort(date)}</div>
-    ${session?programSessionCardHTML(session,date):`
-      <div class="chart-hint" style="margin-top:0">Repos — aucune séance planifiée.</div>
-      <button class="flt" style="margin-top:10px" onclick="toggleAddForm('${programSelectedDate}')">${addOpen?"Annuler":"+ Ajouter une séance"}</button>
-      ${addOpen?programAddFormHTML(programSelectedDate):""}
-    `}
+    ${sessions.length ? sessions.map(s=>programSessionCardHTML(s,date)).join("") : `<div class="chart-hint" style="margin-top:0">Repos — aucune séance planifiée.</div>`}
+    <button class="flt" style="margin-top:10px" onclick="toggleAddForm('${programSelectedDate}')">${addOpen?"Annuler":"+ Ajouter une séance"}</button>
+    ${addOpen?programAddFormHTML(programSelectedDate):""}
   </div>`;
 }
 // Formulaire d'ajout manuel très basique : seul le type est requis (repli

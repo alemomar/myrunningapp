@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=37"></script>
+<script src="logic.js?v=38"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -462,6 +462,35 @@ try {
   assertEqual("findRescheduleDay : aucun jour disponible -> abandon même prioritaire", findRescheduleDay({pace_zone:"easy"}, [], [], true), null);
 }
 
+// --- Cohabitation de séances le même jour (4.3.d révisé) ---
+{
+  const run = {pace_zone:"easy"}, manualRun = {type:"EF", pace_zone:null}, renfo = {type:"Renfo"}, yoga = {type:"Yoga"}, mob = {type:"Mobilité"};
+  assertEqual("sessionCategory : allure -> run", sessionCategory(run), "run");
+  assertEqual("sessionCategory : EF ajoutée à la main (sans allure) -> run", sessionCategory(manualRun), "run");
+  assertEqual("sessionCategory : Renfo -> renfo", sessionCategory(renfo), "renfo");
+  assertEqual("sessionCategory : Yoga/Mobilité -> light", [sessionCategory(yoga), sessionCategory(mob)], ["light","light"]);
+  assertEqual("sessionCategory : objet vide ({pace_zone:null}) -> light", sessionCategory({pace_zone:null}), "light");
+  assertEqual("sessionsCanShareDay : course + yoga -> oui", sessionsCanShareDay(run, yoga), true);
+  assertEqual("sessionsCanShareDay : yoga + course -> oui (symétrique)", sessionsCanShareDay(yoga, run), true);
+  assertEqual("sessionsCanShareDay : course + mobilité -> oui", sessionsCanShareDay(run, mob), true);
+  assertEqual("sessionsCanShareDay : course + course -> non", sessionsCanShareDay(run, manualRun), false);
+  assertEqual("sessionsCanShareDay : course + renfo -> non", sessionsCanShareDay(run, renfo), false);
+  assertEqual("sessionsCanShareDay : renfo + yoga -> non", sessionsCanShareDay(renfo, yoga), false);
+  assertEqual("sessionsCanShareDay : yoga + mobilité -> non (une seule complémentaire)", sessionsCanShareDay(yoga, mob), false);
+  assertEqual("plannedSessionMatchesRun : course planifiée + vraie course -> oui", plannedSessionMatchesRun(run, {type:"EF"}), true);
+  assertEqual("plannedSessionMatchesRun : course planifiée + vraie séance de yoga -> non", plannedSessionMatchesRun(run, {type:"Yoga"}), false);
+  assertEqual("plannedSessionMatchesRun : yoga planifié + vraie course -> non", plannedSessionMatchesRun(yoga, {type:"EF"}), false);
+  assertEqual("plannedSessionMatchesRun : yoga planifié + vrai yoga -> oui", plannedSessionMatchesRun(yoga, {type:"Yoga"}), true);
+  assertEqual("plannedSessionMatchesRun : renfo planifié + vrai renfo -> oui", plannedSessionMatchesRun(renfo, {type:"Renfo"}), true);
+  assertEqual("plannedSessionMatchesRun : course planifiée + marche -> non", plannedSessionMatchesRun(run, {type:"Marche"}), false);
+  // findRescheduleDay : une course peut être recasée un jour qui n'a qu'une séance légère, pas un jour de renfo ou de course.
+  const week = [{dayIndex:0, type:"Yoga", pace_zone:null}, {dayIndex:1, type:"Renfo", pace_zone:null}, {dayIndex:2, pace_zone:"easy"}];
+  assertEqual("findRescheduleDay : course recasée sur un jour de yoga", findRescheduleDay({pace_zone:"easy"}, week, [0,1,2], false), 0);
+  assertEqual("findRescheduleDay : jamais sur un jour de renfo ni de course", findRescheduleDay({pace_zone:"easy"}, week, [1,2], false), null);
+  assertEqual("findRescheduleDay : séance légère recasée sur un jour de course", findRescheduleDay({pace_zone:null}, week, [2], false), 2);
+  assertEqual("findRescheduleDay : séance légère jamais sur un jour déjà complémentaire", findRescheduleDay({pace_zone:null}, week, [0,1], false), null);
+}
+
 // --- detectEfficiencyImprovement (4.3.e, recalibrage) ---
 {
   // Vraie progression : 7'00/km (420s) à FC150 -> 6'30/km (390s) à FC150.
@@ -740,14 +769,23 @@ try {
   const used = [0,2,4]; // lundi/mercredi/vendredi déjà pris par la course
   const cross = generateCrossTrainingSessions(2, used, 0);
   assertEqual("generateCrossTrainingSessions : génère bien 2 séances pour frequencyAutre=2", cross.length, 2);
-  assertEqual("generateCrossTrainingSessions : jamais le même jour qu'une séance de course", cross.every(s=>!used.includes(s.dayIndex)), true);
+  assertEqual("generateCrossTrainingSessions : jamais de renfo un jour de course", cross.every(s=>!(s.type==="Renfo" && used.includes(s.dayIndex))), true);
+  assertEqual("generateCrossTrainingSessions : jamais 2 séances complémentaires le même jour", new Set(cross.map(s=>s.dayIndex)).size, cross.length);
   assertEqual("generateCrossTrainingSessions : chaque séance a un type connu (Renfo/Mobilité/Yoga)", cross.every(s=>["Renfo","Mobilité","Yoga"].includes(s.type)), true);
   assertEqual("generateCrossTrainingSessions : chaque séance a une justification non vide", cross.every(s=>s.rationale && s.rationale.length>0), true);
 
-  // Plafonné par les jours réellement disponibles (jamais 2 séances sur 1 seul jour restant).
-  const oneSlotLeft = [0,1,2,3,4,5]; // seul dimanche (6) reste libre
-  const overbooked = generateCrossTrainingSessions(3, oneSlotLeft, 0);
-  assertEqual("generateCrossTrainingSessions : plafonné aux jours vraiment disponibles", overbooked.length, 1);
+  // Course 6 jours sur 7 : les séances légères peuvent partager un jour de
+  // course, mais le renfo n'a plus de jour sans course -> remplacé par du léger.
+  const oneSlotLeft = [0,1,2,3,4,5]; // seul dimanche (6) est sans course
+  const busy = generateCrossTrainingSessions(3, oneSlotLeft, 0);
+  assertEqual("generateCrossTrainingSessions : 3 séances sur 3 jours distincts même avec 6 jours de course", [busy.length, new Set(busy.map(s=>s.dayIndex)).size], [3,3]);
+  assertEqual("generateCrossTrainingSessions : aucun renfo un jour de course (6 jours de course)", busy.every(s=>!(s.type==="Renfo" && oneSlotLeft.includes(s.dayIndex))), true);
+  const allRunDays = generateCrossTrainingSessions(2, [0,1,2,3,4,5,6], 0);
+  assertEqual("generateCrossTrainingSessions : course tous les jours -> uniquement des séances légères", allRunDays.length===2 && allRunDays.every(s=>s.type!=="Renfo"), true);
+  const noRenfoOnRunDays = [0,1,2,3,4,5].every(w => generateCrossTrainingSessions(2, [0,2,4], w).every(s=>!(s.type==="Renfo" && [0,2,4].includes(s.dayIndex))));
+  assertEqual("generateCrossTrainingSessions : jamais de renfo un jour de course, sur 6 semaines de rotation", noRenfoOnRunDays, true);
+  const taken = generateCrossTrainingSessions(2, [], 0, [], [0,1,2,3,4]);
+  assertEqual("generateCrossTrainingSessions : évite les jours déjà pris par une séance complémentaire", taken.every(s=>[5,6].includes(s.dayIndex)), true);
 
   // Alterne le type d'une semaine sur l'autre (weekIndex) -> pas toujours le même.
   const weekX = generateCrossTrainingSessions(1, [0,2,4], 0)[0].type;

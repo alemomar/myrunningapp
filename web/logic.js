@@ -789,10 +789,38 @@ function detectMissedSessions(plannedSessions, today){
 function isIntensePaceZone(paceZone){
   return paceZone==="threshold" || paceZone==="interval" || paceZone==="repetition";
 }
+/* ---------- Cohabitation de séances le même jour (CDC v2, 4.3.d révisé) ----------
+   Règle validée avec l'utilisateur (02/10/2026) : une course accepte une
+   séance LÉGÈRE (yoga, mobilité, étirements, kiné, pilates...) le même
+   jour ; jamais deux courses, jamais du renfo avec une course, et une
+   seule séance complémentaire par jour. Choix pragmatique, pas une règle
+   sourcée. Catégorie : "run" si pace_zone ou type de course, "renfo",
+   sinon "light". Un objet sans type ni allure (ex: {pace_zone:null}) est
+   traité comme léger. */
+const NON_RUNNING_SESSION_TYPES = ["Renfo","Mobilité","Yoga","Souplesse","Kiné","Pilates","Other","Marche"];
+function sessionCategory(s){
+  if(s.pace_zone) return "run";
+  if(!s.type) return "light";
+  if(s.type==="Renfo") return "renfo";
+  if(NON_RUNNING_SESSION_TYPES.includes(s.type)) return "light";
+  return "run";
+}
+function sessionsCanShareDay(a, b){
+  const ca = sessionCategory(a), cb = sessionCategory(b);
+  return (ca==="run" && cb==="light") || (ca==="light" && cb==="run");
+}
+// Une séance planifiée correspond à une vraie séance synchronisée si les
+// deux sont des courses, ou si elles ont exactement le même type
+// (Renfo/Yoga/Mobilité...) — sinon une course du matin validait aussi le
+// yoga prévu le même jour.
+function plannedSessionMatchesRun(planned, run){
+  if(sessionCategory(planned)==="run") return sessionCategory({type:run.type})==="run";
+  return planned.type===run.type;
+}
 function findRescheduleDay(sessionToReschedule, weekSessions, availableDayIndexes, isPriority){
-  const occupiedDays = new Set((weekSessions||[]).map(s=>s.dayIndex));
   const intenseDays = new Set((weekSessions||[]).filter(s=>isIntensePaceZone(s.pace_zone)).map(s=>s.dayIndex));
-  const freeDays = (availableDayIndexes||[]).filter(d=>!occupiedDays.has(d));
+  const freeDays = (availableDayIndexes||[]).filter(d =>
+    !(weekSessions||[]).some(s => s.dayIndex===d && !sessionsCanShareDay(sessionToReschedule, s)));
   if(!isIntensePaceZone(sessionToReschedule.pace_zone)){
     return freeDays.length ? freeDays[0] : null;
   }
@@ -1195,15 +1223,16 @@ const CROSS_TRAINING_RATIONALE = {
   "Mobilité": "Cette séance de mobilité entretient l'amplitude de tes mouvements et facilite ta récupération entre deux sorties de course.",
   "Yoga": "Cette séance de yoga t'aide à récupérer activement et à gérer le stress lié à l'entraînement, grâce au travail de la respiration et de la souplesse.",
 };
-// `usedDayIndexes` : jours déjà pris par une séance de course cette
-// semaine (generateWeekSessions) — le complémentaire se place uniquement
-// sur les jours restants, jamais le même jour qu'une course (garde le
-// modèle "une séance par jour" utilisé partout ailleurs dans l'app).
+// `runDayIndexes` : jours déjà pris par une course cette semaine. Une
+// séance légère (yoga, mobilité) peut tomber le même jour qu'une course,
+// jamais le renfo (règle validée 02/10/2026, voir sessionsCanShareDay) ;
+// `takenCrossDayIndexes` : jours où une séance complémentaire existe déjà
+// (une seule par jour).
 // `weekIndex` : fait tourner le TYPE d'une semaine sur l'autre (et d'une
 // séance à l'autre la même semaine), pour ne jamais répéter indéfiniment
 // le même type.
-// `avoidDayIndexes` (0-6, optionnel) : jours à exclure EN PLUS de
-// usedDayIndexes — sert à ne jamais placer une séance complémentaire la
+// `avoidDayIndexes` (0-6, optionnel) : jours à exclure pour toute séance
+// complémentaire — sert à ne jamais placer une séance complémentaire la
 // veille d'une course, peu importe son type (retour utilisateur : les
 // courbatures de la veille dégradent la course du lendemain). Calculé par
 // l'appelant (index.html), qui a la visibilité sur la semaine suivante
@@ -1211,20 +1240,32 @@ const CROSS_TRAINING_RATIONALE = {
 // Pas une règle sourcée comme les autres (VDOT/80-20/sRPE/ACWR) : c'est un
 // consensus de terrain sur les courbatures (DOMS) plutôt qu'une étude
 // unique citable, assumé comme un choix pragmatique.
-function generateCrossTrainingSessions(frequencyAutre, usedDayIndexes, weekIndex, avoidDayIndexes){
+function generateCrossTrainingSessions(frequencyAutre, runDayIndexes, weekIndex, avoidDayIndexes, takenCrossDayIndexes){
   if(!frequencyAutre || frequencyAutre<1) return [];
-  const excluded = new Set([...usedDayIndexes, ...(avoidDayIndexes||[])]);
-  const available = [0,1,2,3,4,5,6].filter(d=>!excluded.has(d));
-  const n = Math.min(frequencyAutre, available.length);
+  const runDays = new Set(runDayIndexes||[]);
+  const blocked = new Set([...(avoidDayIndexes||[]), ...(takenCrossDayIndexes||[])]);
+  const candidates = [0,1,2,3,4,5,6].filter(d=>!blocked.has(d));
+  const n = Math.min(frequencyAutre, candidates.length);
   if(n<1) return [];
-  const spread = Array.from({length:n}, (_,i) => available[Math.round(i*(available.length-1)/Math.max(1,n-1))]);
+  const spread = Array.from({length:n}, (_,i) => candidates[Math.round(i*(candidates.length-1)/Math.max(1,n-1))]);
   const uniqueDays = [...new Set(spread)];
-  while(uniqueDays.length<n && uniqueDays.length<available.length){
-    for(const d of available){ if(!uniqueDays.includes(d)){ uniqueDays.push(d); break; } }
+  while(uniqueDays.length<n && uniqueDays.length<candidates.length){
+    for(const d of candidates){ if(!uniqueDays.includes(d)){ uniqueDays.push(d); break; } }
   }
   uniqueDays.sort((a,b)=>a-b);
-  return uniqueDays.map((dayIndex, i) => {
-    const type = CROSS_TRAINING_TYPES[(weekIndex+i)%CROSS_TRAINING_TYPES.length];
-    return { dayIndex, type, rationale: CROSS_TRAINING_RATIONALE[type] };
+  // Un jour de course accepte une séance légère mais jamais du renfo : un
+  // renfo tombé sur un jour de course est déplacé vers le jour sans course
+  // le plus proche, ou remplacé par une séance légère s'il n'y en a plus.
+  const nonRunCandidates = candidates.filter(d=>!runDays.has(d));
+  const lightTypes = CROSS_TRAINING_TYPES.filter(t=>t!=="Renfo");
+  const used = new Set(uniqueDays);
+  const sessions = uniqueDays.map((dayIndex, i) => ({ dayIndex, type: CROSS_TRAINING_TYPES[(weekIndex+i)%CROSS_TRAINING_TYPES.length] }));
+  sessions.forEach((s, i) => {
+    if(s.type!=="Renfo" || !runDays.has(s.dayIndex)) return;
+    const free = nonRunCandidates.filter(d=>!used.has(d)).sort((a,b)=>Math.abs(a-s.dayIndex)-Math.abs(b-s.dayIndex) || a-b);
+    if(free.length){ used.delete(s.dayIndex); s.dayIndex = free[0]; used.add(free[0]); }
+    else s.type = lightTypes[(weekIndex+i)%lightTypes.length];
   });
+  sessions.sort((a,b)=>a.dayIndex-b.dayIndex);
+  return sessions.map(s => ({ dayIndex:s.dayIndex, type:s.type, rationale: CROSS_TRAINING_RATIONALE[s.type] }));
 }
