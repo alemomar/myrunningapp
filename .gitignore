@@ -46,3 +46,6 @@ venv/
 *.log
 .tmp/
 backups/
+
+## Copies de sauvegarde posées dans le projet (ne jamais commiter)
+Sauvegarde de secours/
