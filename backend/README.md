@@ -2,7 +2,14 @@
 
 `backup_supabase.py` exporte `runs`, `profiles` et
 `planned_sessions` en JSON dans `backups/<horodatage>/`, deux fois par jour
-(tâche planifiée sur ce Mac). `restore_supabase.py` fait l'inverse : il
+(14h et 17h, tâche planifiée sur ce Mac, créneaux où le Mac est éveillé).
+Le script attend le réseau (jusqu'à 5 min) et réessaie ; en cas d'échec total
+ou partiel il n'écrit plus « Sauvegarde terminée », sort en erreur et envoie une
+notification macOS (ancien défaut : dossiers vides annoncés comme réussis,
+corrigé le 03/10/2026). La copie exécutée par launchd est
+`~/.local/share/myrunningapp/backup_supabase.py` : elle doit rester identique à
+`backend/backup_supabase.py` (la recopier à chaque modification).
+`restore_supabase.py` fait l'inverse : il
 réinjecte le contenu d'un dossier de sauvegarde dans Supabase, table par
 table, en upsert (relancer plusieurs fois ne crée jamais de doublon).
 

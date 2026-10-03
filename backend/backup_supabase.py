@@ -12,13 +12,25 @@ import json
 import os
 import re
 import shutil
+import socket
+import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime
 from pathlib import Path
 
 SUPABASE_URL = "https://iwzlxizgppghjpnasawy.supabase.co"
+SUPABASE_HOST = "iwzlxizgppghjpnasawy.supabase.co"
+
+# Quand le Mac se réveille d'une veille, launchd lance la sauvegarde avant que
+# le Wi-Fi soit revenu (erreur « nodename nor servname provided » : le nom du
+# serveur ne se résout pas). On attend donc le réseau, puis on réessaie.
+NETWORK_WAIT_ATTEMPTS = 10   # × 30 s = 5 minutes d'attente maximum
+NETWORK_WAIT_SECONDS = 30
+FETCH_ATTEMPTS = 3
+FETCH_RETRY_SECONDS = 20
 # planned_sessions ajoutée le 2026-09-27 : absente depuis la création de
 # l'onglet Programme (migration_019), jamais mise à jour ici depuis — tout
 # le calendrier généré n'était donc pas sauvegardé.
@@ -54,6 +66,21 @@ def load_service_role_key() -> str:
     sys.exit(f"SUPABASE_SERVICE_ROLE_KEY absente de {ENV_FILE}")
 
 
+def wait_for_network() -> bool:
+    for attempt in range(1, NETWORK_WAIT_ATTEMPTS + 1):
+        try:
+            socket.getaddrinfo(SUPABASE_HOST, 443)
+            return True
+        except OSError:
+            print(
+                f"[réseau] {SUPABASE_HOST} injoignable "
+                f"(essai {attempt}/{NETWORK_WAIT_ATTEMPTS}), nouvel essai dans {NETWORK_WAIT_SECONDS} s",
+                file=sys.stderr,
+            )
+            time.sleep(NETWORK_WAIT_SECONDS)
+    return False
+
+
 def fetch_table(table: str, key: str) -> list:
     url = f"{SUPABASE_URL}/rest/v1/{table}?select=*"
     request = urllib.request.Request(
@@ -63,8 +90,38 @@ def fetch_table(table: str, key: str) -> list:
             "Authorization": f"Bearer {key}",
         },
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        return json.loads(response.read().decode("utf-8"))
+    last_error = None
+    for attempt in range(1, FETCH_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as err:
+            # 4xx = la requête est mauvaise (table absente, clé refusée) :
+            # réessayer ne changera rien. 5xx = souci passager côté serveur.
+            if err.code < 500:
+                raise
+            last_error = err
+        except urllib.error.URLError as err:
+            last_error = err
+        if attempt < FETCH_ATTEMPTS:
+            time.sleep(FETCH_RETRY_SECONDS)
+    raise last_error
+
+
+def notify_failure(message: str) -> None:
+    # Notification macOS visible : sans elle, un échec de nuit passe inaperçu.
+    try:
+        subprocess.run(
+            [
+                "osascript",
+                "-e",
+                f'display notification "{message}" with title "MyRunningApp : sauvegarde"',
+            ],
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
 
 
 def prune_old_backups() -> None:
@@ -117,7 +174,12 @@ def main() -> None:
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d_%H%M%S")
     dest = BACKUPS_DIR / timestamp
-    dest.mkdir(parents=True, exist_ok=True)
+
+    if not wait_for_network():
+        message = "ÉCHEC : réseau injoignable, aucune sauvegarde faite."
+        print(f"[{timestamp}] {message}", file=sys.stderr)
+        notify_failure(message)
+        sys.exit(1)
 
     counts = {}
     errors = []
@@ -128,11 +190,20 @@ def main() -> None:
             print(f"[{timestamp}] ERREUR sur {table} : {err}", file=sys.stderr)
             errors.append((table, str(err)))
             continue
+        # Le dossier n'est créé qu'au premier succès : un échec total ne
+        # laisse plus de dossier vide qui ressemble à une sauvegarde réussie.
+        dest.mkdir(parents=True, exist_ok=True)
         (dest / f"{table}.json").write_text(
             json.dumps(rows, indent=2, ensure_ascii=False), encoding="utf-8"
         )
         counts[table] = len(rows)
         print(f"[{timestamp}] {table} : {len(rows)} ligne(s) sauvegardée(s)")
+
+    if not counts:
+        message = "ÉCHEC : aucune table sauvegardée."
+        print(f"[{timestamp}] {message}", file=sys.stderr)
+        notify_failure(message)
+        sys.exit(1)
 
     prune_old_backups()
 
@@ -146,6 +217,13 @@ def main() -> None:
         update_readme_status(now, counts, errors)
     except OSError as err:
         print(f"[{timestamp}] mise à jour du README impossible : {err}", file=sys.stderr)
+
+    if errors:
+        failed = ", ".join(table for table, _ in errors)
+        message = f"PARTIELLE : {failed} non sauvegardée(s)."
+        print(f"[{timestamp}] {message} -> {dest}", file=sys.stderr)
+        notify_failure(message)
+        sys.exit(1)
 
     print(f"[{timestamp}] Sauvegarde terminée -> {dest}")
 

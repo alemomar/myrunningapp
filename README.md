@@ -105,14 +105,14 @@ Sur un Mac neuf, ces outils ne sont pas là par défaut et ont été installés 
 ## Dernière sauvegarde
 
 <!-- BACKUP_STATUS_START -->
-Dernière exécution : **27/09/2026 à 19:23**
+Dernière exécution : **03/10/2026 à 19:49**
 
-- `runs` : 185 ligne(s)
-- `profiles` : 2 ligne(s)
-- `planned_sessions` : 36 ligne(s)
+- `runs` : 290 ligne(s)
+- `profiles` : 3 ligne(s)
+- `planned_sessions` : 53 ligne(s)
 <!-- BACKUP_STATUS_END -->
 
-Cette section est mise à jour automatiquement par `backend/backup_supabase.py` à chaque exécution (2x/jour, 3h et 14h). Ne pas éditer à la main entre les marqueurs — ce serait écrasé au prochain passage.
+Cette section est mise à jour automatiquement par `backend/backup_supabase.py` à chaque exécution (2x/jour, 14h et 17h). Ne pas éditer à la main entre les marqueurs — ce serait écrasé au prochain passage.
 
 ---
 
