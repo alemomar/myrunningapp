@@ -488,8 +488,37 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
   100%{opacity:0;transform:translate(calc(-50% - 30px),calc(-50% - 20px)) scale(0)}
 }
 .sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--card);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box}
+.sheet{background:var(--surface-raised);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:var(--shadow-sheet)}
+.sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--grabber);margin:0 auto 14px}
+.sheet-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.sheet-overline{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px}
+.sheet-title{font-family:var(--font-display);font-weight:700;font-size:22px;line-height:1.1;text-transform:uppercase}
+.sheet-close{position:relative;flex-shrink:0;width:36px;height:36px;border-radius:50%;border:none;background:var(--surface-control);color:var(--text-3);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.sheet-close::after{content:"";position:absolute;inset:-4px}
+@media (prefers-reduced-motion: no-preference){
+  .sheet{animation:sheetUp var(--t-step,280ms) var(--ease)}
+  .sheet-back{animation:sheetFade var(--t-step,280ms) ease-out}
+}
+@keyframes sheetUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes sheetFade{from{opacity:0}to{opacity:1}}
+
+/* Message en bas (toast) : blanc sur le fond sombre, 3 s ; remplace peu à peu les fenêtres du
+   navigateur (alert) — voir toast() ; généralisé en S12. */
+#toastRoot{position:fixed;left:0;right:0;bottom:calc(88px + env(safe-area-inset-bottom));display:flex;justify-content:center;pointer-events:none;z-index:400;padding:0 16px}
+.toast{background:var(--select);color:var(--on-accent);border-radius:var(--r-pill);padding:12px 20px;font-size:14.5px;font-weight:600;box-shadow:var(--shadow-lift);max-width:420px;text-align:center;opacity:0;transform:translateY(8px);transition:opacity var(--t-fast),transform var(--t-fast)}
+.toast.show{opacity:1;transform:none}
+
+/* Réduire les animations : rien ne bouge, les valeurs finales s'affichent directement. */
+@media (prefers-reduced-motion: reduce){
+  :root{--t-fast:0ms;--t-step:0ms}
+  *,*::before,*::after{animation:none !important;transition:none !important}
+}
 .sheet-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:flex-end}
+/* Dans une feuille, un champ = libellé au-dessus, saisie de 48 px dessous (pas de boîte dans une boîte). */
+.sheet .field{flex-direction:column;align-items:stretch;gap:6px;background:none;border:none;padding:0;min-height:0}
+.sheet .field input.sheet-input{flex:none;background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-md);padding:9px 14px;outline:none;transition:border-color var(--t-fast)}
+.sheet .field input.sheet-input:focus{border-color:var(--select)}
+.sheet .type-select{min-height:var(--tap-min);font-size:16px;font-weight:500;padding:0 12px;border-radius:var(--r-md)}
 .sheet-input{background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-sm);color:var(--text);font-size:16px;min-height:var(--tap-min);padding:9px 12px;font-family:inherit;box-sizing:border-box}
 </style>
 </head>
@@ -523,6 +552,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 
   <div id="content"></div>
   <div id="sheetRoot"></div>
+  <div id="toastRoot" aria-live="polite"></div>
 
   <div class="tabs" id="tabs"></div>
 </div>
@@ -530,7 +560,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=53"></script>
+<script src="logic.js?v=54"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -581,12 +611,30 @@ const ICONS = {
   bend: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="5" r="2"/><path d="M15 7l-3 5"/><path d="M12 12l-5 2"/><path d="M12 12l1 8"/><path d="M7 14l-2 3"/></svg>`,
   care: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
   ring: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="5" ry="3"/></svg>`,
+  x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
   chevronRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
   chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`,
   calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>`,
 };
 function icon(name,size=18){ return ICONS[name].replace("<svg ",`<svg width="${size}" height="${size}" `); }
+// En-tête commun des feuilles : sur-titre facultatif, titre Condensed, bouton × de 36 px
+// (zone de toucher étendue à 44 px). `closeCall` = code appelé au toucher du ×.
+function sheetHeadHTML(title, closeCall, overline){
+  return `<div class="sheet-head"><div>${overline?`<div class="sheet-overline">${escHtml(overline)}</div>`:""}<div class="sheet-title">${escHtml(title)}</div></div><button class="sheet-close" type="button" aria-label="Fermer" onclick="${closeCall}">${icon("x",16)}</button></div>`;
+}
+// Message blanc en bas de l'écran, 3 s. Les erreurs et pannes restent sobres (jamais rouge ni violet).
+let toastTimer = null;
+window.toast = (message) => {
+  const root = document.getElementById("toastRoot");
+  if(!root) return;
+  root.innerHTML = `<div class="toast" role="status">${escHtml(message)}</div>`;
+  const el = root.firstChild;
+  requestAnimationFrame(()=>el.classList.add("show"));
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.classList.remove("show"); setTimeout(()=>{ if(root.firstChild===el) root.innerHTML=""; }, 250); }, 3000);
+};
 
 function mapRow(r){
   const d=new Date(r.start_date);
@@ -1466,7 +1514,7 @@ function renderManualRunSheet(){
   const linked = f.sessionId ? plannedSessions.find(p=>p.id===f.sessionId) : null;
   root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeManualRun()">
     <div class="sheet" role="dialog" aria-modal="true" aria-label="Séance faite sans montre">
-      <div class="stitle" style="margin-bottom:6px">Séance faite sans montre</div>
+      ${sheetHeadHTML("Séance faite sans montre", "closeManualRun()")}
       <div class="chart-hint" style="margin-top:0">${linked?`Pour « ${escHtml(linked.title)} ». `:""}Ce que tu indiques compte comme une séance synchronisée : historique, stats, charge d'entraînement.</div>
       <div class="sheet-row">
         <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">Date</span>
@@ -1486,7 +1534,7 @@ function renderManualRunSheet(){
         <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">FC moyenne (facultatif)</span>
           <div style="display:flex;align-items:center;gap:4px"><input class="sheet-input" type="number" inputmode="numeric" min="30" max="230" step="1" style="width:80px" value="${f.hr}" oninput="manualRunSet('hr',this.value)"><span style="font-size:12px;color:var(--text-dim)">bpm</span></div></div>
       </div>
-      <div id="mrError" role="alert" style="font-size:13px;color:var(--attention);margin-top:12px;min-height:0">${escHtml(f.error)}</div>
+      <div id="mrError" role="alert" style="font-size:13px;font-weight:600;color:var(--text);margin-top:12px;min-height:0">${escHtml(f.error)}</div>
       <div style="display:flex;gap:8px;margin-top:14px">
         <button class="btn-primary" style="margin-top:0" id="mrSave" ${f.saving?"disabled":""} onclick="saveManualRun()">Enregistrer</button>
         <button class="btn-secondary" onclick="closeManualRun()">Annuler</button>
