@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planche de captures</title>
+<style>
+  body { background:#0C0D0F; color:#EDEEF0; font:14px/1.4 system-ui, sans-serif; margin:16px; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  #statut { color:#9AA0A6; margin:0 0 12px; }
+  .vue { display:flex; gap:16px; align-items:flex-start; margin:0 0 16px; }
+  .vue figure { margin:0; }
+  .vue figcaption { color:#9AA0A6; font-size:12px; margin:0 0 4px; }
+  iframe { border:1px solid #2A2D31; background:#0C0D0F; display:block; }
+  table { border-collapse:collapse; font-size:13px; }
+  th, td { border:1px solid #2A2D31; padding:4px 10px; text-align:left; vertical-align:top; }
+  .ok { color:#C6F432; }
+  .ko { color:#FF7A7A; }
+  code { color:#9AA0A6; }
+</style>
+</head>
+<body>
+<h1>Planche de captures : 375 px et 360 px</h1>
+<p id="statut">Démarrage…</p>
+<div class="vue" id="vue"></div>
+<table id="res"><thead><tr><th>Scénario</th><th>375 px</th><th>360 px</th><th>Détail</th></tr></thead><tbody></tbody></table>
+
+<script>
+// Scénarios du jeu de données fictives (mr-harness.js, choisis par le #hash).
+const SCENARIOS = [
+  "aujourdhui_course","aujourdhui_renfo","aujourdhui_repos","aujourdhui_savoir_plus","seance_faite","seance_retard","hier",
+  "programme_semaine","programme_mois","programme_ajout",
+  "progression","profil_objectifs","profil_compte",
+  "merge","merge_ask","attach","carte_corps","celebration_record",
+  "douleur_forte","zone_pause","rappels","marche_course","test_niveau",
+  "composants","feuille_saisie",
+  "vide_aujourdhui","vide_programme","vide_progression",
+  "onboarding_bienvenue","onboarding","onboarding_niveau","onboarding_dispos","onboarding_recap"
+];
+const LARGEURS = [375, 360];
+const HAUTEUR = 812;
+const ATTENTE_MS = 5500;   // le jeu de données termine son rendu vers 4,5 s
+
+const params = new URLSearchParams(location.search);
+const seul = params.get("s");               // ?s=progression : un seul scénario, laissé à l'écran
+const statut = document.getElementById("statut");
+const vue = document.getElementById("vue");
+const corps = document.querySelector("#res tbody");
+window.__planche = { resultats: [], fini: false };
+
+const attendre = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Éléments dont le bord droit dépasse l'écran, hors zones qui défilent exprès.
+function debordants(doc, largeur) {
+  const win = doc.defaultView;
+  const trouves = [];
+  for (const el of doc.body.querySelectorAll("*")) {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.right <= largeur + 1) continue;
+    let cache = false;
+    for (let a = el; a && a !== doc.body; a = a.parentElement) {
+      const cs = win.getComputedStyle(a);
+      if (cs.position === "fixed" && a === el) { cache = true; break; }
+      if (a !== el && cs.overflowX !== "visible") { cache = true; break; }
+      if (cs.display === "none" || cs.visibility === "hidden") { cache = true; break; }
+    }
+    if (!cache) trouves.push(el.tagName.toLowerCase() + (el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/)[0] : "") + " (+" + Math.round(r.right - largeur) + " px)");
+  }
+  return trouves;
+}
+
+function mesurer(f, largeur) {
+  const d = f.contentDocument;
+  const e = d.documentElement;
+  return {
+    largeur,
+    scrollW: e.scrollWidth,
+    debordePage: e.scrollWidth > e.clientWidth + 1,
+    hauteur: e.scrollHeight,
+    erreurHarnais: (d.title || "").startsWith("DIAG ERR"),
+    elements: debordants(d, largeur).slice(0, 4)
+  };
+}
+
+async function jouer(scen) {
+  const figs = LARGEURS.map((w) => {
+    const fig = document.createElement("figure");
+    const cap = document.createElement("figcaption");
+    cap.textContent = scen + " · " + w + " px";
+    const f = document.createElement("iframe");
+    f.width = w; f.height = HAUTEUR; f.src = "mr.html#" + scen;
+    fig.append(cap, f);
+    return fig;
+  });
+  vue.replaceChildren(...figs);
+  await attendre(ATTENTE_MS);
+  const mesures = figs.map((fig, i) => {
+    try { return mesurer(fig.querySelector("iframe"), LARGEURS[i]); }
+    catch (err) { return { largeur: LARGEURS[i], erreur: String(err) }; }
+  });
+  return { scenario: scen, mesures };
+}
+
+function ligne(res) {
+  const tr = document.createElement("tr");
+  const cell = (txt, cls) => { const td = document.createElement("td"); td.textContent = txt; if (cls) td.className = cls; return td; };
+  tr.append(cell(res.scenario));
+  const details = [];
+  for (const m of res.mesures) {
+    const mauvais = m.erreur || m.debordePage || m.erreurHarnais || m.elements.length > 0;
+    tr.append(cell(mauvais ? "à voir" : "OK", mauvais ? "ko" : "ok"));
+    if (m.erreur) details.push(m.largeur + " : " + m.erreur);
+    else {
+      if (m.erreurHarnais) details.push(m.largeur + " : erreur du jeu de données");
+      if (m.debordePage) details.push(m.largeur + " : la page défile à l'horizontale (" + m.scrollW + " px)");
+      if (m.elements.length) details.push(m.largeur + " : " + m.elements.join(", "));
+    }
+  }
+  tr.append(cell(details.join(" | ") || "—"));
+  corps.append(tr);
+}
+
+(async function () {
+  const liste = seul ? [seul] : SCENARIOS;
+  for (let i = 0; i < liste.length; i++) {
+    statut.textContent = "Scénario " + (i + 1) + "/" + liste.length + " : " + liste[i];
+    const res = await jouer(liste[i]);
+    window.__planche.resultats.push(res);
+    ligne(res);
+  }
+  const mauvais = window.__planche.resultats.filter((r) => r.mesures.some((m) => m.erreur || m.debordePage || m.erreurHarnais || m.elements.length));
+  statut.textContent = "Terminé : " + (liste.length - mauvais.length) + "/" + liste.length + " scénarios sans débordement à 375 px et 360 px.";
+  window.__planche.fini = true;
+})();
+</script>
+</body>
+</html>

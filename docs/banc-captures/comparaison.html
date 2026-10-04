@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comparaison avant / après</title>
+<style>
+  body { background:#0C0D0F; color:#EDEEF0; font:13px/1.4 system-ui, sans-serif; margin:12px; }
+  .paire { display:flex; gap:14px; align-items:flex-start; }
+  figure { margin:0; }
+  figcaption { color:#A3A7AD; font-size:12px; margin:0 0 4px; text-transform:uppercase; letter-spacing:.1em; }
+  iframe { border:1px solid #2A2E33; display:block; background:#0C0D0F; }
+</style>
+</head>
+<body>
+<!-- Usage : comparaison.html?s=progression&w=375&h=812 (avant = version en ligne avant la refonte, étiquette avant-design-v48) -->
+<div class="paire" id="paire"></div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const scen = q.get("s") || "aujourdhui_course";
+  const w = Number(q.get("w")) || 375, h = Number(q.get("h")) || 812;
+  const cote = (titre, src) => {
+    const fig = document.createElement("figure");
+    const cap = document.createElement("figcaption"); cap.textContent = titre + " · " + scen + " · " + w + " px";
+    const f = document.createElement("iframe"); f.width = w; f.height = h; f.src = src;
+    fig.append(cap, f); return fig;
+  };
+  document.getElementById("paire").append(cote("Avant", "avant/mr.html#" + scen), cote("Après", "mr.html#" + scen));
+</script>
+</body>
+</html>

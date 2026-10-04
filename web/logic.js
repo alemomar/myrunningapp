@@ -1269,7 +1269,7 @@ function acwrAt(dailySeries, targetDate){
    l'UI pour renforcer l'alerte au-delà de 1,5 sans changer de couleur. */
 function chargeEntrainementGauge(acwr){
   if(acwr==null) return { zone:"inconnue", color:"#A3A7AD", phrase:"Pas encore assez d'historique pour calculer ta charge d'entraînement.", severe:false };
-  if(acwr<0.8) return { zone:"sous-charge", color:"#5ac8fa", phrase:"Tu pourrais progresser un peu plus vite — ta charge est en dessous de la zone idéale.", severe:false };
+  if(acwr<0.8) return { zone:"sous-charge", color:"#8B8F96", phrase:"Tu pourrais progresser un peu plus vite — ta charge est en dessous de la zone idéale.", severe:false };
   if(acwr<=1.3) return { zone:"idéale", color:"#C6F432", phrase:"Tu augmentes ta charge à un rythme sûr.", severe:false };
   const severe = acwr>1.5;
   return { zone:"attention", color:"oklch(0.72 0.17 300)", phrase: severe
@@ -1517,7 +1517,27 @@ function weekRecap(runs, plannedSessions, todayStr){
     else if(missed) status = "manque";
     else if(sessions.some(p=>p.status==="planned") && date>=todayStr) status = "prevu";
     else status = "repos";
-    return { date, status, isToday: date===todayStr };
+    // Tuile du jour (design 3c) : la séance principale (la course d'abord) et, s'il y en a une, la 2e
+    // séance (pastille « + »). Une séance légère passée et non faite reste neutre (aucune entrée).
+    const entries = [];
+    sessions.forEach(p=>{
+      const isRun = sessionCategory(p)==="run";
+      let st = null;
+      if(p.status==="done") st = "fait";
+      else if(p.status==="missed" || (p.status==="planned" && p.pace_zone && date<todayStr)) st = "manque";
+      else if(p.status==="planned" && date>=todayStr) st = "prevu";
+      if(st) entries.push({ type:normalizeSessionType(p.type)||"Other", status:st, isRun });
+    });
+    const dayRuns = (runs||[]).filter(r=>r.date===date);
+    if(dayRuns.length){
+      // une vraie course valide la course prévue du jour ; sinon elle compte seule
+      const runEntry = entries.find(e=>e.isRun);
+      if(runEntry) runEntry.status = "fait";
+      else entries.push({ type:dayRuns[0].type||"EF", status:"fait", isRun:true });
+    }
+    entries.sort((a,b)=>(b.isRun?1:0)-(a.isRun?1:0));
+    const strip = e => e ? { type:e.type, status:e.status } : null;
+    return { date, status, isToday: date===todayStr, main:strip(entries[0]), second:strip(entries[1]) };
   });
   const plannedThisWeek = active.filter(p => inRange(p.planned_date, monday, nextMonday)).length;
   return { thisWeek: sum(monday, nextMonday), lastWeek: sum(lastMonday, monday), days, plannedThisWeek };
@@ -1546,6 +1566,29 @@ function weekSummaryPhrase(recap, gauge){
   if(done===0 && upcoming>0) return "La semaine démarre : tu as des séances prévues, à ton rythme.";
   if(done>0) return "Belle sortie ! Chaque séance compte.";
   return "Pas de séance prévue pour l'instant : c'est peut-être le moment de créer ton programme ou de te reposer.";
+}
+/* Ligne sous les jours de « Ta semaine » (A7, D20, D23) : si une séance est à replacer, la ligne « ! » prend la
+   place de la phrase de synthèse (jamais deux messages d'affilée). Dates « AAAA-MM-JJ ».
+   - une séance à replacer : « Ta séance de jeudi n'a pas pu se faire, tu peux la replacer. »
+   - plusieurs : « 2 séances n'ont pas pu se faire cette semaine, tu peux les replacer. »
+   - une à replacer et une sortie comptée : « Ta sortie de samedi est bien comptée. La séance de vendredi reste à replacer. » */
+function weekMissedLine(missedDates, unlinkedRunDates){
+  const missed = missedDates || [];
+  if(!missed.length) return "";
+  if((unlinkedRunDates||[]).length) return missedDayNote(missed, unlinkedRunDates);
+  const dayName = (d) => new Date(d+"T00:00:00").toLocaleDateString("fr-FR", { weekday:"long" });
+  if(missed.length===1) return `Ta séance de ${dayName(missed[0])} n'a pas pu se faire, tu peux la replacer.`;
+  return `${missed.length} séances n'ont pas pu se faire cette semaine, tu peux les replacer.`;
+}
+function weekMessage(recap, gauge, missedDates, unlinkedRunDates){
+  const missedLine = weekMissedLine(missedDates, unlinkedRunDates);
+  if(missedLine) return { kind:"missed", text:missedLine };
+  return { kind:"summary", text:weekSummaryPhrase(recap, gauge) };
+}
+// Ligne de charge de « Ta semaine » : « Charge d'entraînement · Dans la zone idéale · 1,08 › ».
+function chargeLineInfo(gauge, acwr){
+  const label = { "sous-charge":"Sous la zone idéale", "idéale":"Dans la zone idéale", "attention":"Au-dessus de la zone", "inconnue":"Pas encore de repère" }[gauge.zone] || "";
+  return { label, value: acwr==null ? "" : Number(acwr).toFixed(2).replace(".",","), color:gauge.color };
 }
 function formatMinutesShort(min){
   const m = Math.round(min||0);

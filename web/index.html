@@ -554,6 +554,31 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .ex-pick .go{flex:none;width:auto;min-height:40px;padding:0 16px;margin-left:auto}
 .toast.has-action{display:flex;align-items:center;gap:14px;pointer-events:auto}
 .toast-action{padding:4px;border:none;background:none;color:var(--on-accent);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+/* ---------- Ta semaine (design 3c) ---------- */
+.wk-stats{display:flex;gap:12px;margin:12px 0 18px}
+.wk-stat{flex:1;min-width:0}
+.wk-num{font-family:var(--font-display);font-weight:700;font-size:30px;line-height:1.05;text-transform:uppercase}
+.wk-lbl{margin-top:2px;font-size:12.5px;color:var(--text-2)}
+.wk-last{margin-top:3px;font-size:11.5px;color:var(--text-muted)}
+.wk-days{display:flex;gap:4px;margin-bottom:14px}
+.wk-day{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:2px 0;border:none;background:none;color:inherit;font-family:inherit;cursor:pointer}
+.wk-letter{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:500;color:var(--text-muted)}
+.wk-day.today .wk-letter{box-shadow:0 0 0 1.5px var(--select);color:var(--select);font-weight:700}
+.wk-tile{position:relative;width:100%;max-width:44px;height:44px;border:1.5px solid transparent;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.wk-tile.fait{color:var(--on-accent)}
+.wk-tile.prevu{background:var(--surface-sunken)}
+.wk-tile.manque{border-style:dashed;border-color:var(--attention)}
+.wk-tile.repos{border-style:dashed;border-color:var(--line-field)}
+.wk-bang{position:absolute;top:-6px;left:-6px;width:16px;height:16px;border-radius:50%;background:var(--attention);color:var(--on-accent);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.wk-plus{position:absolute;top:-6px;right:-6px;width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;line-height:1}
+.wk-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-bottom:14px;font-size:12.5px;color:var(--text-2)}
+.wk-legend i{display:inline-block;width:12px;height:12px;margin-right:6px;border-radius:4px;vertical-align:-2px;box-sizing:border-box}
+.wk-legend .plus{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-right:6px;border-radius:50%;background:var(--text-muted);color:var(--on-accent);font-size:11px;font-weight:700;line-height:1;vertical-align:-2px}
+.wk-msg{display:flex;align-items:flex-start;gap:10px;padding:12px;margin-bottom:6px;border-radius:var(--r-md);background:var(--surface-sunken);font-size:14px;line-height:1.45;color:var(--text-2)}
+.wk-msg>svg{flex:none;margin-top:2px;color:var(--accent)}
+.wk-msg .bang{flex:none;width:20px;height:20px;border-radius:50%;background:var(--attention);color:var(--on-accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.wk-charge{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;width:100%;min-height:52px;margin-top:12px;padding:12px 0 0;border:none;border-top:1px solid var(--line);background:none;color:inherit;font-family:inherit;font-size:14px;text-align:left;cursor:pointer}
+.wk-charge .r{display:flex;align-items:center;gap:6px;margin-left:auto}
 .sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface-raised);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:var(--shadow-sheet)}
 .sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--grabber);margin:0 auto 14px}
@@ -624,7 +649,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=62"></script>
+<script src="logic.js?v=64"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -2044,7 +2069,7 @@ function progressIndicatorsHTML(){
     <div style="font-size:12px;line-height:1.45;margin-top:4px;color:var(--text-dim)">${phrase}</div>
   </div>`;
   const fmtKm = (n) => n.toLocaleString("fr-FR")+" km";
-  return `<div class="card">
+  return `<div class="card" id="progIndicators">
     <div class="stitle">Tes indicateurs</div>
     ${row("Efficience cardiaque", effValue, effColor, efficiencyPhrase(eff), true)}
     ${row("Régularité", reg.status==="ok" ? countUpHTML(reg.weeksWithRun,"frac","ind_reg",{total:reg.totalWeeks}) : "—", reg.status==="ok" ? "var(--text)" : "var(--text-faint)", regularityPhrase(reg))}
@@ -4083,47 +4108,70 @@ function escHtml(t){ return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;")
 // Écran "Aujourd'hui" (CDC 4.8) : accueil de l'app. Liste TOUTES les séances
 // du jour (0, 1 ou plusieurs) plutôt qu'une seule, pour accueillir sans
 // rework une règle "course + séance complémentaire le même jour".
-// Carte "Ta semaine" (4.8.a, 4.8.b) : 3 chiffres de la semaine en cours
-// (courses seulement) avec la semaine dernière en dessous, sans flèche ni
-// pourcentage, puis 7 pastilles lundi-dimanche (voir weekRecap, logic.js).
+// Carte « Ta semaine » (design 3c, 4.8.a et 4.8.b) : 3 chiffres de la semaine en cours (courses seulement) avec la
+// semaine dernière en dessous, sans flèche ni pourcentage ; une tuile par jour (type et statut de la séance
+// principale, pastille « + » pour une 2e séance) ; légende ; une seule ligne de message (la ligne « ! » remplace
+// la phrase de synthèse quand une séance est à replacer) ; ligne de charge qui ouvre les indicateurs.
+const WEEK_LETTERS = ["L","M","M","J","V","S","D"];
+const WEEK_DAYNAMES = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+const WEEK_STATUS_LABEL = { fait:"faite", prevu:"prévue", manque:"à replacer" };
+function weekTileHTML(day, i){
+  const m = day.main, sec = day.second;
+  const c = m ? (TC[m.type]||TC.Other) : null;
+  let style = "";
+  if(m && m.status==="fait") style = `background:${c};`;
+  else if(m && m.status==="prevu") style = `border-color:${c};color:${c};`;
+  else if(m && m.status==="manque") style = `color:${c};`;
+  const bang = m && m.status==="manque" ? `<span class="wk-bang" aria-hidden="true">!</span>` : "";
+  let plus = "";
+  if(sec){
+    const sc = TC[sec.type]||TC.Other;
+    plus = sec.status==="fait"
+      ? `<span class="wk-plus" style="background:${sc};color:var(--on-accent)" aria-hidden="true">+</span>`
+      : `<span class="wk-plus" style="background:var(--surface-sunken);border:1.5px solid ${sc};color:${sc}" aria-hidden="true">+</span>`;
+  }
+  const aria = `${WEEK_DAYNAMES[i]}${day.isToday?", aujourd'hui":""}, ${m ? `${sessionTypeLabel(m.type)} ${WEEK_STATUS_LABEL[m.status]}` : "repos"}${sec ? `, 2e séance ${sessionTypeLabel(sec.type)} ${WEEK_STATUS_LABEL[sec.status]}` : ""}`;
+  return `<button type="button" class="wk-day${day.isToday?" today":""}" aria-label="${escHtml(aria)}" onclick="openProgramDay('${day.date}')">
+    <span class="wk-letter">${WEEK_LETTERS[i]}</span>
+    <span class="wk-tile ${m?m.status:"repos"}" style="${style}">${m?icon(TICON[m.type]||"activity",18):""}${bang}${plus}</span>
+  </button>`;
+}
+// Toucher un jour ouvre ce jour dans Programme ; la ligne de charge ouvre les indicateurs de Progression (R8, D19).
+window.openProgramDay = (dateStr) => { programViewMode = "week"; programWeekOffset = 0; programSelectedDate = dateStr; setTab("programme"); };
+window.goToIndicators = () => { setTab("progression"); setTimeout(()=>document.getElementById("progIndicators")?.scrollIntoView({behavior:"smooth", block:"start"}), 150); };
 function weekRecapCardHTML(){
-  const runsForRecap = runningRuns.map(r=>({ date: localDateStr(dateFromRun(r)), distKm: r.dist||0, durationSec: r.durationSec||0 }));
+  const runsForRecap = runningRuns.map(r=>({ date: localDateStr(dateFromRun(r)), distKm: r.dist||0, durationSec: r.durationSec||0, type: r.type }));
   const recap = weekRecap(runsForRecap, plannedSessions, localDateStr(new Date()));
   const { thisWeek, lastWeek, days } = recap;
   const { acwr } = computeProgramInputs();
   const gauge = chargeEntrainementGauge(acwr);
-  const stat = (value, label, last) => `<div style="flex:1;min-width:0">
-    <div style="font-size:22px;font-weight:700;line-height:1.1">${value}</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-top:2px">${label}</div>
-    <div style="font-size:11px;color:var(--text-faint);margin-top:4px">semaine dernière : ${last}</div>
+  const stat = (value, label, last) => `<div class="wk-stat">
+    <div class="wk-num">${value}</div>
+    <div class="wk-lbl">${label}</div>
+    <div class="wk-last">sem. dernière : ${last}</div>
   </div>`;
-  const dayLetters = ["L","M","M","J","V","S","D"];
-  const dotStyle = {
-    fait: "background:var(--accent);border:2px solid var(--accent);color:var(--on-accent)",
-    manque: "background:var(--attention-bg-strong);border:2px solid var(--attention);color:var(--attention)",
-    prevu: "background:transparent;border:2px solid var(--text-faint);color:transparent",
-    repos: "background:var(--card-2);border:2px solid transparent;color:transparent",
-  };
-  const dotMark = { fait:"✓", manque:"!", prevu:"", repos:"" };
-  const dayLabel = { fait:"fait", manque:"à replacer", prevu:"prévu", repos:"repos" };
-  const dots = days.map((d,i)=>`<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1">
-    <div style="font-size:11px;color:${d.isToday?"var(--text)":"var(--text-dim)"};font-weight:${d.isToday?700:500}">${dayLetters[i]}</div>
-    <div class="${d.isToday?"week-dot-today":""}" title="${dayLabel[d.status]}${d.isToday?" (aujourd'hui)":""}" aria-label="${dayLabel[d.status]}${d.isToday?", aujourd'hui":""}" style="width:26px;height:26px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;${dotStyle[d.status]};${d.isToday?"box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--text);":""}">${dotMark[d.status]}</div>
-  </div>`).join("");
+  const msg = weekMessage(recap, gauge, days.filter(d=>d.status==="manque").map(d=>d.date), unlinkedRunDatesThisWeek());
+  const ci = chargeLineInfo(gauge, acwr);
   return `<div class="card">
-    <div class="chart-hint" style="margin-top:0;margin-bottom:12px">Ta semaine</div>
-    <div style="display:flex;gap:12px;margin-bottom:16px">
+    <div class="stitle" style="margin-bottom:0">Ta semaine</div>
+    <div class="wk-stats">
       ${stat(countUpHTML(thisWeek.km,"km","recap_km"), "distance", lastWeek.km.toLocaleString("fr-FR")+" km")}
       ${stat(countUpHTML(thisWeek.sessions,"int","recap_n"), thisWeek.sessions>1?"courses":"course", lastWeek.sessions)}
       ${stat(countUpHTML(thisWeek.minutes,"min","recap_min"), "durée", formatMinutesShort(lastWeek.minutes))}
     </div>
-    <div style="display:flex;gap:4px;padding:2px 0 6px">${dots}</div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text-dim);margin-top:8px">
-      <span>✓ fait</span><span>○ prévu</span><span style="color:var(--attention)">! à replacer</span><span>· repos</span>
+    <div class="wk-days">${days.map(weekTileHTML).join("")}</div>
+    <div class="wk-legend">
+      <span><i style="background:var(--text-muted)"></i>fait</span>
+      <span><i style="border:1.5px solid var(--text-muted)"></i>prévu</span>
+      <span style="color:var(--attention)"><i style="border:1.5px dashed var(--attention)"></i>à replacer</span>
+      <span><i style="border:1.5px dashed var(--line-field)"></i>repos</span>
+      <span><span class="plus">+</span>2e séance (plein = faite)</span>
     </div>
-    ${(()=>{ const note = missedDayNote(days.filter(d=>d.status==="manque").map(d=>d.date), unlinkedRunDatesThisWeek()); return note?`<div style="font-size:12px;color:var(--text-dim);margin-top:8px">${escHtml(note)}</div>`:""; })()}
-    ${chargeGaugeHTML(gauge, acwr)}
-    <div style="font-size:13px;line-height:1.5;margin-top:14px">${weekSummaryPhrase(recap, gauge)}</div>
+    <div class="wk-msg" role="status">${msg.kind==="missed" ? `<span class="bang" aria-hidden="true">!</span>` : icon("sparkle",16)}<span>${escHtml(msg.text)}</span></div>
+    <button type="button" class="wk-charge" onclick="goToIndicators()" aria-label="Charge d'entraînement : ${escHtml(ci.label)}${ci.value?", "+ci.value:""}">
+      <span style="color:var(--text-muted)">Charge d'entraînement</span>
+      <span class="r"><b style="color:${ci.color}">${escHtml(ci.label)}</b>${ci.value?`<span>· ${ci.value}</span>`:""}${icon("chevronRight",16)}</span>
+    </button>
   </div>`;
 }
 // Jauge de charge d'entraînement (4.8.c) : barre à 3 zones, repère à la
