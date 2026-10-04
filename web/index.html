@@ -7,7 +7,8 @@
 <!-- PWA : permet d'ajouter l'app à l'écran d'accueil iOS/Android, ouverture
      en plein écran sans barre de navigateur (2026-09-20). -->
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#0C0D0F">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -111,13 +112,7 @@ button,input,select,textarea{font-family:inherit}
   min-height:100vh;display:flex;flex-direction:column;justify-content:center;
   max-width:360px;margin:0 auto;padding:32px 24px;
 }
-.auth-icon{
-  width:72px;height:72px;border-radius:22px;margin:0 auto 20px;
-  background:var(--accent);
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 8px 24px rgba(198,244,50,0.25);
-}
-#authView h1{font-size:26px;font-weight:700;text-align:center;letter-spacing:-.4px}
+.auth-logo{display:block;width:220px;max-width:70%;height:auto;margin:0 auto 18px}
 #authView .tagline{text-align:center;color:var(--text-dim);font-size:14px;margin-top:6px;margin-bottom:32px}
 .field{
   display:flex;align-items:center;gap:10px;
@@ -525,10 +520,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <body>
 
 <div id="authView">
-  <div class="auth-icon">
-    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0C0D0F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="#0C0D0F" stroke="none"/><path d="M4 22l4-8 3 3 2-5 4 2"/><path d="M13.5 8.5L11 13l3 2-1.5 4"/></svg>
-  </div>
-  <h1>MyRunningApp</h1>
+  <img class="auth-logo" src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="220" height="136">
   <div class="tagline">Suis tes courses, simplement.</div>
 
   <div class="field">
