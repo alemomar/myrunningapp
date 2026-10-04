@@ -102,7 +102,7 @@ body{
   background:var(--bg);color:var(--text);
   font-family:var(--font-text);
   min-height:100vh;
-  padding-bottom:calc(78px + env(safe-area-inset-bottom));
+  padding-bottom:110px; /* le contenu ne passe pas sous le menu flottant */
 }
 button,input,select,textarea{font-family:inherit}
 ::selection{background:var(--accent);color:var(--on-accent)}
@@ -263,22 +263,32 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .kpi-val{font-size:19px;font-weight:700;letter-spacing:-.3px}
 .kpi-lbl{font-size:11px;color:var(--text-dim)}
 
-/* ---------- Bottom nav ---------- */
-.tabs{
-  position:fixed;bottom:0;left:0;right:0;z-index:10;
-  display:flex;justify-content:space-around;
-  background:rgba(20,20,22,0.86);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  border-top:1px solid var(--border);
-  padding:8px 4px calc(8px + env(safe-area-inset-bottom));
+/* ---------- Menu du bas : pilule flottante, onglet actif en pilule citron avec son nom (design 1b) ---------- */
+.tabs{position:fixed;left:0;right:0;bottom:30px;z-index:10;padding:0 20px;pointer-events:none}
+.tabs-bar{
+  position:relative;pointer-events:auto;max-width:480px;margin:0 auto;height:64px;padding:0 9px;
+  display:flex;justify-content:space-between;align-items:center;
+  border-radius:32px;border:1px solid rgba(255,255,255,.06);
+  background:rgba(30,33,37,.88);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
 }
+.tab-pill{position:absolute;top:8px;left:0;height:46px;width:0;border-radius:23px;background:var(--accent);pointer-events:none;
+  transition:left 220ms var(--ease),width 220ms var(--ease)}
+.tab-pill.no-anim{transition:none}
 .tab-btn{
-  display:flex;flex-direction:column;align-items:center;gap:3px;
-  background:none;border:none;color:var(--text-faint);cursor:pointer;
-  padding:4px 6px;flex:1;min-width:0;
+  position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:8px;
+  height:46px;min-width:52px;padding:0;border:none;border-radius:23px;background:none;
+  color:var(--text-muted);cursor:pointer;
 }
-.tab-btn svg{width:20px;height:20px}
-.tab-btn span{font-size:9px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.tab-btn.active{color:var(--accent)}
+.tab-icon{position:relative;display:flex}
+.tab-icon svg{width:22px;height:22px}
+.tab-label{display:none;font-size:15px;font-weight:600;white-space:nowrap}
+.tab-btn.active{color:var(--on-accent);padding:0 16px 0 13px}
+.tab-btn.active .tab-label{display:inline}
+.tab-dot{position:absolute;top:-4px;right:-5px;width:8px;height:8px;border-radius:50%;background:var(--attention);box-shadow:0 0 0 2px #1E2125}
+@media (prefers-reduced-motion: no-preference){
+  .tab-btn.active .tab-label{animation:tabLabelIn 120ms ease-out}
+}
+@keyframes tabLabelIn{from{opacity:0}to{opacity:1}}
 
 /* ---------- Content cards ---------- */
 #content{padding:0 20px}
@@ -552,7 +562,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=56"></script>
+<script src="logic.js?v=57"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -2145,11 +2155,44 @@ function kpisHTML(){
 }
 
 function destroyCharts(){charts.forEach(c=>c.destroy());charts=[];}
+// Menu du bas. La barre est construite une fois ; les rendus suivants ne changent que les
+// états (onglet actif, point violet, noms accessibles) pour que la pilule citron glisse.
 function renderTabs(){
-  document.getElementById("tabs").innerHTML=TABS.map(t=>`
-    <button class="tab-btn${t.key===activeTab?" active":""}" onclick="setTab('${t.key}')">
-      ${icon(t.icon,20)}<span>${t.label}</span>
-    </button>`).join("");
+  const root = document.getElementById("tabs");
+  let bar = root.querySelector(".tabs-bar");
+  const firstTime = !bar;
+  if(firstTime){
+    root.innerHTML = `<div class="tabs-bar" role="tablist" aria-label="Navigation principale"><div class="tab-pill"></div>${TABS.map(t=>`
+      <button class="tab-btn" type="button" role="tab" data-tab="${t.key}" onclick="setTab('${t.key}')"><span class="tab-icon">${icon(t.icon,22)}</span><span class="tab-label">${t.label}</span></button>`).join("")}</div>`;
+    bar = root.querySelector(".tabs-bar");
+  }
+  const alerts = programAlertCount();
+  bar.querySelectorAll(".tab-btn").forEach(btn=>{
+    const key = btn.dataset.tab, tab = TABS.find(t=>t.key===key), active = key===activeTab;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", active ? "true" : "false");
+    btn.setAttribute("aria-label", key==="programme" ? programTabLabel(alerts) : tab.label);
+    const holder = btn.querySelector(".tab-icon");
+    const dot = holder.querySelector(".tab-dot");
+    if(key==="programme" && alerts>0){ if(!dot) holder.insertAdjacentHTML("beforeend", '<span class="tab-dot" aria-hidden="true"></span>'); }
+    else if(dot) dot.remove();
+  });
+  positionTabPill(!firstTime);
+}
+// Pilule citron sous l'onglet actif : glisse en 220 ms (immédiat avec « réduire les animations »).
+function positionTabPill(animate){
+  const bar = document.querySelector("#tabs .tabs-bar");
+  if(!bar) return;
+  const pill = bar.querySelector(".tab-pill"), btn = bar.querySelector(".tab-btn.active");
+  if(!pill || !btn || !btn.offsetWidth) return;
+  pill.classList.toggle("no-anim", !animate);
+  pill.style.left = btn.offsetLeft+"px";
+  pill.style.width = btn.offsetWidth+"px";
+}
+window.addEventListener("resize", ()=>positionTabPill(false));
+// Alertes de Programme en attente (D7, D51) : sert au point violet du menu.
+function programAlertCount(){
+  try{ return programAlerts().length; }catch(e){ return 0; }
 }
 const prefersReducedMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 // Rejoue le fondu d'arrivée du contenu (changement d'onglet ou de section).
@@ -2199,6 +2242,7 @@ function runCountUps(){
 // redessiné en entier à chaque clic).
 let justOpenedKey = null;
 window.setTab=i=>{
+  if(i===activeTab && !PROFIL_SECTIONS.includes(i)){ window.scrollTo({top:0,behavior:"smooth"}); return; }
   destroyCharts();
   countedValues = {}; animatedOnce = new Set();
   // "objectifs"/"compte" ne sont plus des onglets mais les deux sections de
@@ -3327,8 +3371,9 @@ async function reconcilePlannedSessions(){
 // séance sur un autre jour sûr de la même semaine, ou l'abandonne si
 // aucun jour ne respecte les règles.
 function missedSessionsBanner(){
-  const missed = plannedSessions.filter(p=>p.status==="missed" && !dismissedMissedIds().includes(p.id));
-  if(!missed.length) return "";
+  const alert = missedAlert();
+  if(!alert) return "";
+  const missed = alert.sessions;
   const p = missed[0];
   return `<div class="card" style="border-color:var(--attention-line);background:var(--attention-bg)">
     <div style="font-size:13px;font-weight:600;margin-bottom:4px">Une séance n'a pas pu se faire — ${p.title} du ${new Date(p.planned_date).toLocaleDateString('fr-FR')}</div>
@@ -3408,11 +3453,32 @@ window.resumeZone = async (zoneKey) => {
   suspendedZones = next;
   renderContent();
 };
-function urgentPainBanner(){
-  const { urgentIssue } = computeProgramInputs();
-  if(!urgentIssue) return "";
+// Alertes de Programme (D7, D51) : une conditions par bannière, partagée entre l'affichage et
+// le point violet du menu. L'ordre d'affichage vient de orderProgramAlerts (logic.js).
+function urgentAlert(inputs){
+  const { urgentIssue } = inputs || computeProgramInputs();
+  if(!urgentIssue) return null;
   const sig = `urgent_${urgentIssue.zone}_${urgentIssue.runId}`;
-  if(dismissedUrgentIds().includes(sig)) return "";
+  return dismissedUrgentIds().includes(sig) ? null : { kind:"urgent", sig, issue:urgentIssue };
+}
+function grosAlert(inputs){
+  const { grosIssue } = inputs || computeProgramInputs();
+  if(!grosIssue) return null;
+  const sig = grosIssue.type==="pain" ? `pain_${grosIssue.zone}` : "charge";
+  return dismissedGrosIds().includes(sig) ? null : { kind:"gros", sig, issue:grosIssue };
+}
+function missedAlert(){
+  const missed = plannedSessions.filter(p=>p.status==="missed" && !dismissedMissedIds().includes(p.id));
+  return missed.length ? { kind:"missed", sessions:missed } : null;
+}
+function programAlerts(){
+  const inputs = computeProgramInputs();
+  return orderProgramAlerts([urgentAlert(inputs), grosAlert(inputs), missedAlert()]);
+}
+function urgentPainBanner(){
+  const alert = urgentAlert();
+  if(!alert) return "";
+  const { issue: urgentIssue, sig } = alert;
   const zoneLabel = (ZONE_SHORT_LABEL[urgentIssue.zone]||urgentIssue.zone).toLowerCase();
   const todayStr = localDateStr(new Date());
   const next = plannedSessions.filter(p=>p.status==="planned" && p.pace_zone && p.planned_date>=todayStr).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0];
@@ -3460,10 +3526,9 @@ window.dismissGrosAdaptation = (sig) => {
   renderContent();
 };
 function grosAdaptationBanner(){
-  const { grosIssue } = computeProgramInputs();
-  if(!grosIssue) return "";
-  const sig = grosIssue.type==="pain" ? `pain_${grosIssue.zone}` : "charge";
-  if(dismissedGrosIds().includes(sig)) return "";
+  const alert = grosAlert();
+  if(!alert) return "";
+  const { issue: grosIssue, sig } = alert;
   const todayStr = localDateStr(new Date());
   const next = plannedSessions.filter(p=>p.status==="planned" && p.pace_zone && p.planned_date>=todayStr).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0];
   const zoneLabel = grosIssue.type==="pain" ? (ZONE_SHORT_LABEL[grosIssue.zone]||grosIssue.zone).toLowerCase() : null;
@@ -4332,6 +4397,7 @@ function sessionHistoryAfterRender(){
 }
 function renderContent(){
   renderContentInner();
+  if(document.querySelector("#tabs .tabs-bar")) renderTabs();
   runCountUps();
   const el = document.getElementById("content");
   if(activeTab==="profil" && el) el.insertAdjacentHTML("afterbegin", profilSwitchHTML());

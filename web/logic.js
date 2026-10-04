@@ -1093,6 +1093,25 @@ function efficiencyCelebration(efRuns, todayStr, lastCelebratedStr){
   return detectEfficiencyImprovement(recent, baseline) ? { pct: trend.pct } : null;
 }
 
+/* ---------- Priorité des alertes de Programme (D51, D7) ----------
+   Une seule bannière visible sur Programme, les autres derrière « 1 autre point ».
+   Ordre validé (03/10/2026) : douleur très forte (≥ 7, avis médical) d'abord, puis
+   douleur 6 ou charge très haute (propositions à choisir), puis séance non faite.
+   `alerts` : [{kind:"urgent"|"gros"|"missed", ...}]. À rang égal, l'ordre d'arrivée
+   est conservé. Un kind inconnu est ignoré. Le point violet du menu compte ces alertes. */
+const PROGRAM_ALERT_RANK = { urgent:0, gros:1, missed:2 };
+function orderProgramAlerts(alerts){
+  return (alerts||[])
+    .map((a,i)=>({a,i}))
+    .filter(x=>x.a && PROGRAM_ALERT_RANK[x.a.kind]!==undefined)
+    .sort((x,y)=>PROGRAM_ALERT_RANK[x.a.kind]-PROGRAM_ALERT_RANK[y.a.kind] || x.i-y.i)
+    .map(x=>x.a);
+}
+// Nom accessible de l'onglet Programme : « Programme, 1 point à voir ».
+function programTabLabel(count){
+  return count>0 ? `Programme, ${count} point${count>1?"s":""} à voir` : "Programme";
+}
+
 /* ---------- Format court/détaillé de la notation post-séance (4.5.b) ----------
    CDC v2, 4.5 : par défaut, formulaire court (note globale 1-5 + "une
    gêne/douleur ?") ; le détaillé (respiration/mental/fatigue + carte du

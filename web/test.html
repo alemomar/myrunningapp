@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=56"></script>
+<script src="logic.js?v=57"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1218,6 +1218,20 @@ try {
   assertEqual("efQualitatif : pas assez de mesures -> null", efQualitatif(series(140,5),190,60), null);
   assertEqual("efQualitatif : pas de FC max -> null", efQualitatif(series(140,40),null,60), null);
   assertEqual("classifyRunType : EF propre reste qualitatif (refactor sans effet)", classifyRunType(6, series(140,40), 190, 60), {type:"EF", qualitatif:true});
+}
+
+// ---------- S3 : priorité des alertes de Programme (D51) et point du menu (D7) ----------
+{
+  const k=(arr)=>orderProgramAlerts(arr).map(a=>a.kind);
+  assertEqual("alertes : douleur ≥ 7 d'abord, puis douleur 6 ou charge, puis séance non faite", k([{kind:"missed"},{kind:"gros"},{kind:"urgent"}]), ["urgent","gros","missed"]);
+  assertEqual("alertes : séance non faite avant rien d'autre = seule", k([{kind:"missed"}]), ["missed"]);
+  assertEqual("alertes : aucune alerte", k([]), []);
+  assertEqual("alertes : valeurs vides et inconnues ignorées", k([null, undefined, {kind:"autre"}, {kind:"gros"}]), ["gros"]);
+  assertEqual("alertes : à rang égal, l'ordre d'arrivée est conservé", orderProgramAlerts([{kind:"gros",id:1},{kind:"gros",id:2}]).map(a=>a.id), [1,2]);
+  assertEqual("alertes : liste absente = aucune", orderProgramAlerts(undefined), []);
+  assertEqual("nom accessible de Programme sans alerte", programTabLabel(0), "Programme");
+  assertEqual("nom accessible de Programme avec 1 alerte", programTabLabel(1), "Programme, 1 point à voir");
+  assertEqual("nom accessible de Programme avec 3 alertes", programTabLabel(3), "Programme, 3 points à voir");
 }
 
 document.getElementById("summary").innerHTML =
