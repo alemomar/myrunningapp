@@ -979,19 +979,20 @@ function recordsForRun(run, allRuns){
   const prev = (allRuns||[]).filter(r=>r.ts < run.ts);
   const records = [];
   if(prev.length>=3){
-    if(run.distKm >= Math.max(...prev.map(r=>r.distKm||0)) + 0.1) records.push({ key:"distance", value:run.distKm });
-    if(run.durationSec >= Math.max(...prev.map(r=>r.durationSec||0)) + 60) records.push({ key:"duree", value:run.durationSec });
+    const maxDist = Math.max(...prev.map(r=>r.distKm||0)), maxDur = Math.max(...prev.map(r=>r.durationSec||0));
+    if(run.distKm >= maxDist + 0.1) records.push({ key:"distance", value:run.distKm, previous:maxDist });
+    if(run.durationSec >= maxDur + 60) records.push({ key:"duree", value:run.durationSec, previous:maxDur });
   }
   // D77 : un record d'allure EF ne compte que pour une sortie réellement facile (cœur resté
   // en zones 1 et 2, run.cleanEf), et seulement face à d'autres sorties EF propres : sinon on
   // encouragerait à courir les sorties faciles trop vite.
   if(run.type==="EF" && run.cleanEf===true && run.distKm>=3 && run.paceSecKm>0){
     const prevEf = prev.filter(r=>r.type==="EF" && r.cleanEf===true && r.distKm>=3 && r.paceSecKm>0);
-    if(prevEf.length>=3 && run.paceSecKm <= Math.min(...prevEf.map(r=>r.paceSecKm)) - 1) records.push({ key:"allure_ef", value:run.paceSecKm });
+    if(prevEf.length>=3 && run.paceSecKm <= Math.min(...prevEf.map(r=>r.paceSecKm)) - 1) records.push({ key:"allure_ef", value:run.paceSecKm, previous:Math.min(...prevEf.map(r=>r.paceSecKm)) });
   }
   if(run.type==="Fractionné" && run.workPaceSecKm>0){
     const prevFrac = prev.filter(r=>r.type==="Fractionné" && r.workPaceSecKm>0);
-    if(prevFrac.length>=3 && run.workPaceSecKm <= Math.min(...prevFrac.map(r=>r.workPaceSecKm)) - 1) records.push({ key:"allure_frac", value:run.workPaceSecKm });
+    if(prevFrac.length>=3 && run.workPaceSecKm <= Math.min(...prevFrac.map(r=>r.workPaceSecKm)) - 1) records.push({ key:"allure_frac", value:run.workPaceSecKm, previous:Math.min(...prevFrac.map(r=>r.workPaceSecKm)) });
   }
   // D26 : records par distance. Il faut avoir déjà couru cette distance (un premier 5 km
   // n'est pas un « record » mais devient le détenteur) et gagner au moins 1 s.
@@ -1110,6 +1111,55 @@ function orderProgramAlerts(alerts){
 // Nom accessible de l'onglet Programme : « Programme, 1 point à voir ».
 function programTabLabel(count){
   return count>0 ? `Programme, ${count} point${count>1?"s":""} à voir` : "Programme";
+}
+
+/* ---------- Aujourd'hui : carte « Hier », carte d'action unique, bandeau coach (D11, D12, D53, E1) ---------- */
+// Une seule carte d'action sous la séance du jour, par priorité (D11) : décision de rattachement
+// (« Est-ce la même séance ? », sortie non prévue), puis « Hier » (record et/ou ressenti), puis
+// « Ton objectif a changé » (chantier 6), puis « Ton niveau ». `available` : {clé: vrai si la carte existe}.
+const TODAY_ACTION_ORDER = ["merge_ask","attach","hier","objectif","niveau"];
+function pickTodayActionCard(available){
+  return TODAY_ACTION_ORDER.find(k=>available && available[k]) || null;
+}
+// Bandeau coach : une phrase choisie par priorité parmi les rappels (D53, journal 9) :
+// 1) fin du plan débutant, 2) test de niveau à planifier, 3) X jours sans courir. Quand la carte
+// « Ton niveau » est affichée, les deux rappels de niveau sont masqués (même besoin).
+// `s` : {graduation, guidedTestPending, levelCardShown, daysSinceRun}.
+const NO_RECENT_RUN_DAYS = 5;
+function coachReminder(s){
+  if(!s) return null;
+  if(!s.levelCardShown){
+    if(s.graduation) return { key:"graduation" };
+    if(s.guidedTestPending) return { key:"guided_test" };
+  }
+  if(s.daysSinceRun!=null && s.daysSinceRun>=NO_RECENT_RUN_DAYS) return { key:"no_recent_run", days:s.daysSinceRun };
+  return null;
+}
+// Habillage textuel d'un record pour la carte « Hier » (titres validés en E1 : plus de « Merci ! »,
+// plus de « Bravo, séance faite »). Priorité d'affichage quand une course bat plusieurs records.
+const HIER_RECORD_PRIORITY = ["record_marathon","record_semi","record_10k","record_5k","allure_ef","allure_frac","distance","duree"];
+function sortRecordsForHier(records){
+  const rank = k => { const i = HIER_RECORD_PRIORITY.indexOf(k); return i<0 ? 99 : i; };
+  return (records||[]).slice().sort((a,b)=>rank(a.key)-rank(b.key));
+}
+function hierRecordInfo(record){
+  const k = record.key;
+  if(k && k.startsWith("record_")){
+    return { title:`Nouveau record sur ${record.label} !`, overline:`RECORD · ${String(record.label).toUpperCase()}`, value:fmtDur(record.value),
+      before: record.previous!=null ? `Avant : ${fmtDur(record.previous)}` : "" };
+  }
+  if(k==="allure_ef") return { title:"Nouveau record d'allure !", overline:"MEILLEURE ALLURE EF", value:`${fmtA(record.value)}/km`, before: record.previous!=null ? `Avant : ${fmtA(record.previous)}/km` : "" };
+  if(k==="allure_frac") return { title:"Nouveau record d'allure !", overline:"MEILLEURE ALLURE FRACTIONNÉ", value:`${fmtA(record.value)}/km`, before: record.previous!=null ? `Avant : ${fmtA(record.previous)}/km` : "" };
+  if(k==="distance"){
+    const f = v => Number(v).toLocaleString("fr-FR",{maximumFractionDigits:1})+" km";
+    return { title:"Nouvelle plus longue sortie !", overline:"PLUS LONGUE SORTIE", value:f(record.value), before: record.previous ? `Avant : ${f(record.previous)}` : "" };
+  }
+  if(k==="duree") return { title:"Nouvelle plus longue durée !", overline:"PLUS LONGUE DURÉE", value:formatMinutesShort(record.value/60), before: record.previous ? `Avant : ${formatMinutesShort(record.previous/60)}` : "" };
+  return { title:"", overline:"", value:"", before:"" };
+}
+// Efficience cardiaque qui progresse : même carte, sans valeur de record.
+function hierEfficiencyInfo(pct){
+  return { title:"Ton efficience cardiaque progresse !", overline:"EFFICIENCE CARDIAQUE", value:`+${pct} %`, before:"À fréquence cardiaque égale, tu es plus efficace qu'il y a un mois." };
 }
 
 /* ---------- Format court/détaillé de la notation post-séance (4.5.b) ----------

@@ -17,8 +17,9 @@
 <!-- Polices servies par l'app elle-même (web/fonts, ~15 Ko chacune, jeu latin) : pas de connexion
      à un serveur tiers à l'ouverture. On précharge la plus utilisée (Barlow 400) ; font-display:swap
      affiche tout de suite le texte avec la police du système, puis bascule sur Barlow.
-     À ajouter quand les titres passeront en Condensed (S4) : préchargement de barlow-condensed-700. -->
+     Barlow Condensed 700 (titres de page) est préchargée aussi : elle sert dès le premier écran. -->
 <link rel="preload" href="fonts/barlow-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/barlow-condensed-700.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 @font-face{font-family:"Barlow";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/barlow-400.woff2) format("woff2")}
 @font-face{font-family:"Barlow";font-style:normal;font-weight:500;font-display:swap;src:url(fonts/barlow-500.woff2) format("woff2")}
@@ -221,8 +222,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .topbar{
   padding:calc(env(safe-area-inset-top) + 18px) 20px 8px;
 }
-.topbar-title{font-size:28px;font-weight:700;letter-spacing:-.6px}
-.topbar-title span{color:var(--accent)}
+.topbar-title{font-family:var(--font-display);font-size:28px;font-weight:700;line-height:1.1;text-transform:uppercase}
 
 /* ---------- KPI ring + grid ---------- */
 .hero{padding:4px 20px 18px;display:flex;align-items:center;gap:20px}
@@ -492,6 +492,17 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
   0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
   100%{opacity:0;transform:translate(calc(-50% - 30px),calc(-50% - 20px)) scale(0)}
 }
+/* ---------- Aujourd'hui : bandeau coach, alerte douleur forte, carte « Hier » ---------- */
+.coach{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:10px 14px 10px 10px;margin-bottom:14px;border:none;border-radius:var(--r-lg);background:var(--surface);color:var(--text-2);font-family:inherit;font-size:14px;line-height:1.4;text-align:left;cursor:pointer}
+.coach-dot{flex:none;width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center}
+.coach-chev{margin-left:auto;flex:none;color:var(--text-muted);display:flex}
+.pain-alert{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:12px 14px 12px 12px;margin-bottom:14px;border:none;border-radius:var(--r-lg);background:var(--attention-bg);color:var(--text);font-family:inherit;font-size:14px;line-height:1.4;text-align:left;cursor:pointer}
+.pain-alert .coach-dot{background:var(--attention)}
+.hier-card .hier-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.hier-card .hier-icon{flex:none;width:32px;height:32px;border-radius:10px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center}
+.hier-card .hier-title{font-family:var(--font-display);font-weight:700;font-size:26px;line-height:1.1;text-transform:uppercase;margin-bottom:4px}
+.hier-card .hier-value{font-family:var(--font-display);font-weight:700;font-size:34px;line-height:1.1;color:var(--accent);margin-bottom:4px}
+.hier-card .hier-before{font-size:13px;color:var(--text-muted);margin-bottom:12px}
 .sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface-raised);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:var(--shadow-sheet)}
 .sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--grabber);margin:0 auto 14px}
@@ -549,7 +560,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 
 <div id="appView">
   <div class="topbar">
-    <div class="topbar-title">My<span>Running</span>App</div>
+    <div class="topbar-title" id="pageTitle"></div>
   </div>
 
   <div id="content"></div>
@@ -562,7 +573,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=57"></script>
+<script src="logic.js?v=58"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -617,6 +628,7 @@ const ICONS = {
   check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
   recup: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 7-3 5h4l-3 5"/><path d="M14.856 6H16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.935"/><path d="M22 14v-4"/><path d="M5.14 18H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2.936"/></svg>`,
   moveH: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 8 22 12 18 16"/><polyline points="6 8 2 12 6 16"/><line x1="2" x2="22" y1="12" y2="12"/></svg>`,
+  alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
   chevronRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
   chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`,
@@ -902,37 +914,12 @@ window.goRateSession = (id) => {
   renderContent();
   setTimeout(()=>document.getElementById("hist_"+id)?.scrollIntoView({behavior:"smooth", block:"center"}), 150);
 };
-function painPromptBanner(){
-  const r = unratedRecentSession();
-  if(!r) return "";
-  return `<div class="card" id="painPrompt" style="border-color:var(--attention-line);background:var(--attention-bg)">
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Note ton ressenti — séance du ${r.label}</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Douleurs, respiration, fatigue... ça aide à adapter ton programme.</div>
-    <div style="display:flex;gap:8px">
-      <button class="btn-primary" style="margin-top:0" onclick="goRateSession('${r.id}')">Noter maintenant</button>
-      <button class="btn-secondary" onclick="dismissPainPrompt('${r.id}')">Plus tard</button>
-    </div>
-  </div>`;
-}
-
 // Rappel léger (pas de vraie notification push, ça demanderait une infra
 // serveur qu'on n'a pas) : "tu n'as pas couru depuis X jours" (seuil 5
 // jours), affiché à l'ouverture de l'app. Ne parle pas de
 // synchronisation : RunSync importe déjà tout seul chaque soir à 20h, et
 // "pas de course" ne veut pas dire "pas synchronisé" (une marche ou un
 // renfo importé ne compte pas ici, seules les courses comptent).
-function noRecentRunBanner(){
-  if(!runningRuns.length) return "";
-  const last = runningRuns[runningRuns.length-1];
-  const days = Math.floor((new Date() - dateFromRun(last)) / 86400000);
-  if(days < 5) return "";
-  return `<div class="card" style="border-color:rgba(10,132,255,0.4);background:rgba(10,132,255,0.08)">
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Ça fait ${days} jours que tu n'as pas couru</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Une petite sortie facile te remettrait en route ?</div>
-    <button class="btn-secondary" onclick="goToProgramme()">Voir mon programme</button>
-  </div>`;
-}
-
 // Tuto de première utilisation : une bulle par onglet, affichée une seule
 // fois (mémorisée par appareil, comme mra_activeTab). Pas de bulle pour
 // "compte", ce sont des réglages, pas un endroit à découvrir.
@@ -3883,16 +3870,6 @@ function beginnerPlanInProgress(){
   if(!plan) return false;
   return couchWeekNumber(plan.startMonday, localDateStr(mondayOf(new Date()))) <= COUCH_WEEKS;
 }
-function beginnerGraduationBannerHTML(){
-  const plan = programSettings?.beginnerPlan;
-  if(!plan || beginnerPlanInProgress()) return "";
-  if(resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM)) return "";
-  return `<div class="card" style="border-color:rgba(198,244,50,0.4);background:var(--accent-dim)">
-    <div style="font-size:14px;font-weight:600;margin-bottom:4px">Bravo, tu as terminé le programme marche/course !</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Tu cours maintenant 30 minutes d'affilée. Fais un 5 km à ton rythme, puis note ton temps : on s'en servira pour calculer tes allures et créer la suite de ton programme.</div>
-    <button class="btn-secondary" onclick="goToProgramme()">Renseigner mon chrono</button>
-  </div>`;
-}
 function programSettingsFormHTML(profile){
   if(profile || beginnerPlanInProgress()) return "";
   return `<div class="card">
@@ -4072,46 +4049,133 @@ function runAsRecord(r){
   return { id:r.id, ts:dateFromRun(r).getTime(), type:r.type, distKm:r.dist||0, durationSec:r.durationSec||0, paceSecKm:r.allure||0,
     workPaceSecKm: ip && (ip.manual || ip.workCount>=2) ? ip.work : 0, cleanEf };
 }
-function celebrationData(){
-  const items = []; let runId = null, title = "", effFlag = false;
+// ---------- Aujourd'hui : bandeau coach, alerte douleur forte, carte « Hier », carte d'action unique ----------
+// (D52, D53, D11, D12 ; journal 9 et 10). Les anciennes cartes séparées (célébration, notation,
+// rappels) sont remplacées : une seule carte d'action sous la séance du jour, par priorité.
+const GUIDED_TEST_SEEN_KEY = "mra_guidedTestSeen";
+function guidedTestSeen(){ try{ return localStorage.getItem(GUIDED_TEST_SEEN_KEY)==="1"; }catch(e){ return false; } }
+// Besoin de niveau : « test_done » (confirmation du test), « guided_test » (test à planifier) ou
+// « graduation » (plan débutant fini, chrono à renseigner).
+function levelNeed(){
+  const gt = programSettings?.guidedTest;
+  if(gt && gt.status==="done" && !guidedTestSeen()) return "test_done";
+  if(gt && gt.status==="pending" && !resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM) && !beginnerPlanInProgress()
+     && !plannedSessions.some(p=>p.status==="planned" && p.generation_reason==="guided_test")) return "guided_test";
+  const plan = programSettings?.beginnerPlan;
+  if(plan && !beginnerPlanInProgress() && !resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM)) return "graduation";
+  return null;
+}
+function levelCardHTML(){
+  const need = levelNeed();
+  if(!need) return "";
+  const gt = programSettings?.guidedTest;
+  let title, text, action;
+  if(need==="test_done"){
+    const km = String(gt.distanceKm).replace(".", ",");
+    title = "Merci, ton test est analysé !";
+    text = `D'après tes ${km} km en ${Math.round(gt.durationSec/60)} minutes, on a calculé tes allures et créé ton programme. Elles s'affineront au fil de tes séances.`;
+    action = `<button class="btn-primary" onclick="dismissGuidedTestSeen()">Super</button>`;
+  } else if(need==="guided_test"){
+    title = gt.lastFailure ? "On refait le test ?" : "Fais le test de 20 minutes";
+    text = gt.lastFailure==="duree" ? "Ton dernier test n'a pas pu servir : l'activité enregistrée doit durer entre 15 et 35 minutes (enregistre seulement la partie test de 20 minutes, pas l'échauffement ni la marche)."
+      : gt.lastFailure==="distance" ? "Ton dernier test n'a pas pu servir : la distance parcourue est trop courte."
+      : "Pour calculer tes allures et créer ton programme, on a besoin de ton niveau en course.";
+    action = `<button class="btn-primary" onclick="scheduleGuidedTest()">Planifier mon test</button>`;
+  } else {
+    title = "Bravo, tu as terminé le programme marche/course !";
+    text = "Tu cours maintenant 30 minutes d'affilée. Fais un 5 km à ton rythme, puis note ton temps : on s'en servira pour calculer tes allures et créer la suite de ton programme.";
+    action = `<button class="btn-primary" onclick="goToProgramme()">Renseigner mon chrono</button>`;
+  }
+  return `<div class="card">
+    <div class="stitle" style="margin-bottom:8px">Ton niveau</div>
+    <div style="font-family:var(--font-display);font-weight:700;font-size:22px;line-height:1.15;text-transform:uppercase;margin-bottom:6px">${escHtml(title)}</div>
+    <div style="font-size:13.5px;line-height:1.5;color:var(--text-2);margin-bottom:12px">${escHtml(text)}</div>
+    ${action}
+  </div>`;
+}
+// Bandeau coach : une phrase, cliquable en entier (chevron, sans bouton).
+const COACH_TEXT = {
+  graduation: () => "Bravo, tu as terminé le programme marche/course ! Note le temps d'un 5 km pour la suite.",
+  guided_test: () => "Pour calculer tes allures, planifie ton test de 20 minutes.",
+  no_recent_run: (r) => `Ça fait ${r.days} jours que tu n'as pas couru. Une petite sortie facile te remettrait en route ?`,
+};
+window.coachAction = (key) => { if(key==="guided_test") scheduleGuidedTest(); else goToProgramme(); };
+function coachBannerHTML(reminder){
+  if(!reminder) return "";
+  return `<button class="coach" type="button" onclick="coachAction('${reminder.key}')">
+    <span class="coach-dot">${icon("sparkle",16)}</span><span>${escHtml(COACH_TEXT[reminder.key](reminder))}</span><span class="coach-chev">${icon("chevronRight",18)}</span>
+  </button>`;
+}
+// Alerte de douleur forte (≥ 7) : toujours affichée sur Aujourd'hui, hors règle de la carte unique ;
+// les choix (pause de la zone, supprimer la course…) restent dans Programme.
+function urgentTodayHTML(){
+  const alert = urgentAlert();
+  if(!alert) return "";
+  const zoneLabel = (ZONE_SHORT_LABEL[alert.issue.zone]||alert.issue.zone).toLowerCase();
+  return `<button class="pain-alert" type="button" onclick="goToProgramme()">
+    <span class="coach-dot">${icon("alert",16)}</span><span><b>Cette douleur au niveau de ${escHtml(zoneLabel)} mérite un avis médical.</b></span><span class="coach-chev">${icon("chevronRight",18)}</span>
+  </button>`;
+}
+// Carte « Hier » : record et/ou ressenti à noter, fusionnés (D12). Le plein écran des records de distance
+// vient en S9 ; ici la carte simple (A2) sert pour tous les records.
+function celebratedRunIds(){
+  try{ return JSON.parse(localStorage.getItem("mra_celebratedRuns")||"[]"); }catch(e){ return []; }
+}
+function runAsRecord(r){
+  const ip = r.type==="Fractionné" ? getIntervalPaces(r) : null;
+  // cleanEf (D77) : sortie EF dont le cœur est resté en zones 1 et 2 ; sans données de FC, on ne peut pas l'affirmer.
+  const cleanEf = r.type==="EF" && efQualitatif(r.hrSeries, maxHr || estimatedMaxHr(), restingHr || null)===true;
+  return { id:r.id, ts:dateFromRun(r).getTime(), type:r.type, distKm:r.dist||0, durationSec:r.durationSec||0, paceSecKm:r.allure||0,
+    workPaceSecKm: ip && (ip.manual || ip.workCount>=2) ? ip.work : 0, cleanEf };
+}
+function hierData(){
   const last = runningRuns[runningRuns.length-1];
+  let records = [];
   if(last && shouldCelebrateRun(dateFromRun(last).getTime(), Date.now(), last.id, celebratedRunIds())){
-    const records = recordsForRun(runAsRecord(last), runningRuns.map(runAsRecord));
-    const done = plannedSessions.find(p=>p.status==="done" && p.linked_run_id===last.id);
-    if(done || records.length){
-      runId = last.id;
-      title = done ? "Bravo, séance faite !" : "Belle sortie !";
-      if(done) items.push(`Ta séance « ${done.title} » est faite.`);
-      records.forEach(r=>items.push(recordPhrase(r)));
-    }
+    records = sortRecordsForHier(recordsForRun(runAsRecord(last), runningRuns.map(runAsRecord)));
   }
   let lastEff = null; try{ lastEff = localStorage.getItem("mra_effCelebratedAt"); }catch(e){}
   const eff = efficiencyCelebration(efRuns.map(r=>({ date:localDateStr(dateFromRun(r)), allure:r.allure, fc:r.fc })), localDateStr(new Date()), lastEff);
-  if(eff){
-    effFlag = true; if(!title) title = "Beau travail !";
-    items.push(`Ton efficience cardiaque progresse : à fréquence cardiaque égale, tu es ${eff.pct} % plus efficace qu'il y a un mois.`);
-  }
-  return items.length ? { title, items, runId, effFlag } : null;
+  const unrated = unratedRecentSession();
+  if(!records.length && !eff && !unrated) return null;
+  return { run:last, records, eff, unrated:!!unrated };
 }
-function celebrationCardHTML(){
-  const c = celebrationData();
-  if(!c) return "";
-  const play = playOnce("celebrate_"+(c.runId||"eff"));
-  const sparks = [["-18px","-22px","var(--accent)"],["22px","-18px","#ffd60a"],["30px","6px","var(--accent)"],["-26px","10px","#ffd60a"],["6px","-30px","var(--accent)"],["14px","24px","#ffd60a"]]
-    .map(([dx,dy,col])=>`<span class="spark" style="--dx:${dx};--dy:${dy};background:${col}"></span>`).join("");
-  return `<div class="card celebrate-card${play?" play":""}" role="status" style="border-color:rgba(198,244,50,0.4);background:var(--accent-dim)">
-    ${sparks}
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <span style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="check-draw" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></span>
-      <div style="font-size:16px;font-weight:700">${escHtml(c.title)}</div>
+function hierCardHTML(){
+  const h = hierData();
+  if(!h || !h.run) return "";
+  const run = h.run;
+  const main = h.records.length ? hierRecordInfo(h.records[0]) : (h.eff ? hierEfficiencyInfo(h.eff.pct) : null);
+  const runDay = localDateStr(dateFromRun(run));
+  const dayLbl = daysBetween(runDay, localDateStr(new Date()))===1 ? "Hier" : dayLabelShort(dateFromRun(run));
+  const c = TC[run.type]||TC.Other;
+  const others = h.records.slice(1).map(r=>hierRecordInfo(r)).filter(i=>i.title);
+  const effLine = h.records.length && h.eff ? hierEfficiencyInfo(h.eff.pct).title : "";
+  const effFlag = !!h.eff;
+  const buttons = h.unrated
+    ? `<button class="btn-primary" onclick="goRateSession('${run.id}')">Noter mon ressenti</button>
+       <button class="btn-secondary" style="margin-top:8px" onclick="dismissHier('${run.id}', ${effFlag})">Plus tard</button>`
+    : `<button class="btn-secondary" onclick="dismissHier('${run.id}', ${effFlag})">Fermer</button>`;
+  return `<div class="card hier-card" id="painPrompt" role="status">
+    <div class="hier-head">
+      <div class="hier-icon" style="color:${c}">${icon(TICON[run.type]||"activity",18)}</div>
+      <div class="stitle" style="margin:0">${escHtml(dayLbl)}${main?" · "+escHtml(main.overline):""}</div>
     </div>
-    <ul style="margin:0 0 12px;padding-left:18px;font-size:13px;line-height:1.55">${c.items.map(i=>`<li>${escHtml(i)}</li>`).join("")}</ul>
-    <button class="btn-secondary" onclick="dismissCelebration('${c.runId||""}', ${c.effFlag})">Merci !</button>
+    ${main ? `<div class="hier-title">${escHtml(main.title)}</div>
+      ${main.value?`<div class="hier-value">${escHtml(main.value)}</div>`:""}
+      ${main.before?`<div class="hier-before">${escHtml(main.before)}</div>`:""}`
+    : `<div class="hier-title">Note ton ressenti</div>
+      <div class="hier-before">Séance du ${escHtml(run.label)} : douleurs, respiration, fatigue… ça aide à adapter ton programme.</div>`}
+    ${others.length?`<ul style="margin:0 0 12px;padding-left:18px;font-size:13px;line-height:1.5;color:var(--text-2)">${others.map(i=>`<li>${escHtml(i.title)} ${escHtml(i.value)}</li>`).join("")}</ul>`:""}
+    ${effLine?`<div class="hier-before">${escHtml(effLine)}</div>`:""}
+    ${buttons}
   </div>`;
 }
-window.dismissCelebration = (runId, effFlag) => {
+window.dismissHier = (runId, effFlag) => {
   try{
-    if(runId){ const ids = celebratedRunIds(); ids.push(runId); localStorage.setItem("mra_celebratedRuns", JSON.stringify(ids.slice(-60))); }
+    if(runId){
+      const ids = celebratedRunIds(); ids.push(runId); localStorage.setItem("mra_celebratedRuns", JSON.stringify(ids.slice(-60)));
+      const list = dismissedPromptIds(); list.push(runId); localStorage.setItem("dismissedPainPrompts", JSON.stringify(list));
+    }
     if(effFlag) localStorage.setItem("mra_effCelebratedAt", localDateStr(new Date()));
   }catch(e){}
   renderContent();
@@ -4127,10 +4191,20 @@ function todayScreenHTML(){
     <button class="btn-secondary" style="margin-top:10px" onclick="goToProgramme()">Créer mon programme</button>`;
   else if(runningRuns.some(r=>localDateStr(dateFromRun(r))===todayStr)) body = `<div class="chart-hint" style="margin-top:0">Aucune séance n'était planifiée aujourd'hui, mais tu as couru : bravo !</div>`;
   else body = restDayMessageHTML();
-  return celebrationCardHTML() + guidedTestBannerHTML() + beginnerGraduationBannerHTML() + noRecentRunBanner() + painPromptBanner() + mergeNoticeCardHTML() + mergeAskCardHTML() + attachCardHTML() + `<div class="card">
-    <div class="chart-hint" style="margin-top:0;margin-bottom:8px;text-transform:capitalize">Aujourd'hui · ${dayLabelShort(date)}</div>
+  // Une seule carte d'action sous la séance du jour (D11) ; le bandeau coach laisse la place aux
+  // rappels de niveau quand la carte « Ton niveau » est déjà affichée (D53).
+  const cards = { merge_ask: mergeAskCardHTML(), attach: attachCardHTML(), hier: hierCardHTML(), niveau: levelCardHTML() };
+  const picked = pickTodayActionCard({ merge_ask:!!cards.merge_ask, attach:!!cards.attach, hier:!!cards.hier, niveau:!!cards.niveau });
+  const need = levelNeed();
+  const last = runningRuns[runningRuns.length-1];
+  const reminder = coachReminder({
+    graduation: need==="graduation", guidedTestPending: need==="guided_test", levelCardShown: picked==="niveau",
+    daysSinceRun: last ? Math.floor((new Date() - dateFromRun(last)) / 86400000) : null,
+  });
+  return coachBannerHTML(reminder) + urgentTodayHTML() + mergeNoticeCardHTML() + `<div class="card">
+    <div class="stitle" style="margin-bottom:8px">Aujourd'hui</div>
     ${body}
-  </div>` + weekRecapCardHTML();
+  </div>` + (picked ? cards[picked] : "") + weekRecapCardHTML();
 }
 function programSessionCardHTML(session, date){
   const c = TC[session.type]||TC.Other;
@@ -4395,8 +4469,16 @@ function sessionHistoryAfterRender(){
     mkHrCurveChart("cHr_"+r.id, r.hrSeries);
   });
 }
+// Titre de l'écran (Barlow Condensed, majuscules) : la date sur Aujourd'hui, le nom ailleurs.
+function setPageTitle(){
+  const el = document.getElementById("pageTitle");
+  if(!el) return;
+  const names = { programme:"Programme", progression:"Progression", profil:"Profil" };
+  el.textContent = activeTab==="aujourdhui" ? dayLabelShort(new Date()) : (names[activeTab]||"");
+}
 function renderContent(){
   renderContentInner();
+  setPageTitle();
   if(document.querySelector("#tabs .tabs-bar")) renderTabs();
   runCountUps();
   const el = document.getElementById("content");
@@ -5025,11 +5107,13 @@ function renderApp(){
   }
   if(!onboardingCompletedAt){
     tabsEl.style.display = "none";
+    document.querySelector(".topbar").style.display = "none";
     document.getElementById("content").innerHTML = onboardingHTML();
     if(onb && onb._shownStep!==onb.step){ onb._shownStep = onb.step; window.scrollTo({top:0}); }
     return;
   }
   tabsEl.style.display = "";
+  document.querySelector(".topbar").style.display = "";
   renderTabs();
   renderContent();
 }
@@ -5066,28 +5150,6 @@ async function applyGuidedTestResult(run){
   if(!(await upsertProfile({ program_settings: ps }))) return;
   programSettings = ps;
   if(ev.ok){ programAdjustmentChecked = false; await applyProgramAdjustments(); }
-}
-function guidedTestBannerHTML(){
-  const gt = programSettings?.guidedTest;
-  if(!gt) return "";
-  if(gt.status==="done"){
-    let dismissed = false; try{ dismissed = localStorage.getItem("mra_guidedTestSeen")==="1"; }catch(e){}
-    if(dismissed) return "";
-    const km = String(gt.distanceKm).replace(".", ",");
-    return `<div class="card" style="border-color:rgba(198,244,50,0.4);background:var(--accent-dim)">
-      <div style="font-size:14px;font-weight:600;margin-bottom:4px">Merci, ton test est analysé !</div>
-      <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">D'après tes ${km} km en ${Math.round(gt.durationSec/60)} minutes, on a calculé tes allures et créé ton programme. Elles s'affineront au fil de tes séances.</div>
-      <button class="btn-secondary" onclick="dismissGuidedTestSeen()">Super</button>
-    </div>`;
-  }
-  if(gt.status!=="pending" || resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM) || beginnerPlanInProgress()) return "";
-  if(plannedSessions.some(p=>p.status==="planned" && p.generation_reason==="guided_test")) return "";
-  const why = gt.lastFailure==="duree" ? "Ton dernier test n'a pas pu servir : l'activité enregistrée doit durer entre 15 et 35 minutes (enregistre seulement la partie test de 20 minutes, pas l'échauffement ni la marche)." : gt.lastFailure==="distance" ? "Ton dernier test n'a pas pu servir : la distance parcourue est trop courte." : "Pour calculer tes allures et créer ton programme, on a besoin de ton niveau en course.";
-  return `<div class="card" style="border-color:rgba(10,132,255,0.4);background:rgba(10,132,255,0.08)">
-    <div style="font-size:14px;font-weight:600;margin-bottom:4px">${gt.lastFailure?"On refait le test ?":"Fais le test de 20 minutes"}</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">${why}</div>
-    <button class="btn-secondary" onclick="scheduleGuidedTest()">Planifier mon test</button>
-  </div>`;
 }
 window.dismissGuidedTestSeen = () => {
   try{ localStorage.setItem("mra_guidedTestSeen","1"); }catch(e){}

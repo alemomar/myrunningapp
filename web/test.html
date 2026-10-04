@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=57"></script>
+<script src="logic.js?v=58"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1232,6 +1232,33 @@ try {
   assertEqual("nom accessible de Programme sans alerte", programTabLabel(0), "Programme");
   assertEqual("nom accessible de Programme avec 1 alerte", programTabLabel(1), "Programme, 1 point à voir");
   assertEqual("nom accessible de Programme avec 3 alertes", programTabLabel(3), "Programme, 3 points à voir");
+}
+
+// ---------- S4.1 : carte d'action unique (D11), bandeau coach (D53), carte « Hier » (D12, E1) ----------
+{
+  assertEqual("carte d'action : rattachement avant Hier", pickTodayActionCard({attach:true, hier:true, niveau:true}), "attach");
+  assertEqual("carte d'action : « Est-ce la même séance ? » avant rattachement", pickTodayActionCard({merge_ask:true, attach:true}), "merge_ask");
+  assertEqual("carte d'action : Hier avant objectif changé et Ton niveau", pickTodayActionCard({hier:true, objectif:true, niveau:true}), "hier");
+  assertEqual("carte d'action : objectif changé avant Ton niveau", pickTodayActionCard({objectif:true, niveau:true}), "objectif");
+  assertEqual("carte d'action : Ton niveau seule", pickTodayActionCard({niveau:true}), "niveau");
+  assertEqual("carte d'action : aucune", pickTodayActionCard({}), null);
+  assertEqual("carte d'action : entrée absente", pickTodayActionCard(undefined), null);
+  assertEqual("bandeau coach : fin du plan débutant d'abord", coachReminder({graduation:true, guidedTestPending:true, daysSinceRun:9}), {key:"graduation"});
+  assertEqual("bandeau coach : test de niveau avant les jours sans courir", coachReminder({guidedTestPending:true, daysSinceRun:9}), {key:"guided_test"});
+  assertEqual("bandeau coach : X jours sans courir", coachReminder({daysSinceRun:6}), {key:"no_recent_run", days:6});
+  assertEqual("bandeau coach : 4 jours sans courir, rien", coachReminder({daysSinceRun:4}), null);
+  assertEqual("bandeau coach : rien à dire", coachReminder({}), null);
+  assertEqual("bandeau coach : carte Ton niveau affichée -> rappels de niveau masqués, on passe au suivant", coachReminder({graduation:true, guidedTestPending:true, levelCardShown:true, daysSinceRun:7}), {key:"no_recent_run", days:7});
+  assertEqual("bandeau coach : carte Ton niveau affichée et rien d'autre -> aucun bandeau", coachReminder({graduation:true, levelCardShown:true, daysSinceRun:1}), null);
+  assertEqual("hierRecordInfo : record d'allure EF", hierRecordInfo({key:"allure_ef", value:343, previous:350}), {title:"Nouveau record d'allure !", overline:"MEILLEURE ALLURE EF", value:"5'43''/km", before:"Avant : 5'50''/km"});
+  assertEqual("hierRecordInfo : record d'allure fractionné", hierRecordInfo({key:"allure_frac", value:260, previous:270}).overline, "MEILLEURE ALLURE FRACTIONNÉ");
+  assertEqual("hierRecordInfo : plus longue sortie", hierRecordInfo({key:"distance", value:15.4, previous:13.1}), {title:"Nouvelle plus longue sortie !", overline:"PLUS LONGUE SORTIE", value:"15,4 km", before:"Avant : 13,1 km"});
+  assertEqual("hierRecordInfo : plus longue durée", hierRecordInfo({key:"duree", value:5100, previous:4800}), {title:"Nouvelle plus longue durée !", overline:"PLUS LONGUE DURÉE", value:"1 h 25", before:"Avant : 1 h 20"});
+  assertEqual("hierRecordInfo : record 5 km", hierRecordInfo({key:"record_5k", value:1500, previous:1534, label:"5 km"}), {title:"Nouveau record sur 5 km !", overline:"RECORD · 5 KM", value:"25:00", before:"Avant : 25:34"});
+  assertEqual("hierEfficiencyInfo : titre validé", hierEfficiencyInfo(6).title, "Ton efficience cardiaque progresse !");
+  assertEqual("aucun titre ne dit « Merci » ni « Bravo, séance faite »", ["allure_ef","allure_frac","distance","duree","record_5k"].map(key=>hierRecordInfo({key,value:100,label:"5 km"}).title).concat(hierEfficiencyInfo(5).title).some(t=>/Merci|Bravo/.test(t)), false);
+  assertEqual("records d'une course : le plus prestigieux d'abord (record de distance avant allure)", sortRecordsForHier([{key:"duree"},{key:"allure_ef"},{key:"record_10k"}]).map(r=>r.key), ["record_10k","allure_ef","duree"]);
+  assertEqual("recordsForRun garde la valeur précédente pour « Avant : »", recordsForRun({id:"n", ts:10, type:"EF", distKm:8, durationSec:2400, paceSecKm:400, cleanEf:false}, [{ts:1,distKm:6,durationSec:2000},{ts:2,distKm:7,durationSec:2100},{ts:3,distKm:6.5,durationSec:2050}]).filter(r=>r.key==="distance").map(r=>r.previous), [7]);
 }
 
 document.getElementById("summary").innerHTML =
