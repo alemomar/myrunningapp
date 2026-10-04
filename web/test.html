@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=54"></script>
+<script src="logic.js?v=55"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1137,6 +1137,35 @@ try {
   assertEqual("note à replacer : rien à replacer -> pas de note", missedDayNote([], ["2026-10-03"]), "");
   assertEqual("note à replacer : pas de sortie non rattachée -> pas de note", missedDayNote(["2026-10-02"], []), "");
   assertEqual("daysBetween : changement d'heure d'été respecté", daysBetween("2026-10-24", "2026-10-26"), 2);
+// ---------- S2.1 : types de séance (D15) et « seules les courses comptent » (D78) ----------
+{
+  assertEqual("types réalisés : 14", SESSION_TYPES_DONE.length, 14);
+  assertEqual("types réalisés : Récup, Marche, Étirements présents", ["Récup","Marche","Étirements"].every(t=>SESSION_TYPES_DONE.includes(t)), true);
+  assertEqual("types réalisés : plus de Souplesse", SESSION_TYPES_DONE.includes("Souplesse"), false);
+  assertEqual("types prévus : 12, sans Récup ni Marche", SESSION_TYPES_PLANNED, ["EF","Long","Fractionné","Seuil","Course","Renfo","Mobilité","Yoga","Pilates","Étirements","Kiné","Other"]);
+  assertEqual("normalizeSessionType : Souplesse -> Étirements", normalizeSessionType("Souplesse"), "Étirements");
+  assertEqual("normalizeSessionType : les autres types sont inchangés", ["EF","Récup","Other"].map(normalizeSessionType), ["EF","Récup","Other"]);
+  assertEqual("sessionTypeLabel : Other -> Autre, Souplesse -> Étirements", [sessionTypeLabel("Other"), sessionTypeLabel("Souplesse"), sessionTypeLabel("Yoga")], ["Autre","Étirements","Yoga"]);
+  assertEqual("isRunningRunType : Récup n'est pas une course", isRunningRunType("Récup"), false);
+  assertEqual("isRunningRunType : EF, Long, Fractionné, Seuil, Course oui", ["EF","Long","Fractionné","Seuil","Course"].every(isRunningRunType), true);
+  assertEqual("isRunningRunType : Marche et Étirements non", [isRunningRunType("Marche"), isRunningRunType("Étirements")], [false,false]);
+  assertEqual("sessionCategory : Récup, Marche, Étirements, Souplesse = léger", ["Récup","Marche","Étirements","Souplesse"].map(t=>sessionCategory({type:t})), ["light","light","light","light"]);
+  assertEqual("sessionCategory : Renfo = renfo, Course = course", [sessionCategory({type:"Renfo"}), sessionCategory({type:"Course"})], ["renfo","run"]);
+  assertEqual("cohabitation : course + étirements -> oui", sessionsCanShareDay({type:"EF", pace_zone:"easy"}, {type:"Étirements"}), true);
+  assertEqual("cohabitation : course + marche -> oui", sessionsCanShareDay({type:"EF", pace_zone:"easy"}, {type:"Marche"}), true);
+  assertEqual("cohabitation : course + récup -> oui (Récup n'est pas une 2e course)", sessionsCanShareDay({type:"EF", pace_zone:"easy"}, {type:"Récup"}), true);
+  assertEqual("cohabitation : renfo + récup -> non (une seule complémentaire)", sessionsCanShareDay({type:"Renfo"}, {type:"Récup"}), false);
+  assertEqual("rapprochement : une EF prévue n'est pas validée par une Récup", plannedSessionMatchesRun({type:"EF", pace_zone:"easy"}, {type:"Récup"}), false);
+  assertEqual("rapprochement : une EF prévue est validée par une course Long", plannedSessionMatchesRun({type:"EF", pace_zone:"easy"}, {type:"Long"}), true);
+  assertEqual("doublon : une Récup et une EF le même jour ne sont pas la même séance", findLikelyDuplicateRun([{id:"a",date:"2026-10-01",type:"EF",durationSec:2700}], {date:"2026-10-01",type:"Récup",durationSec:2700}), null);
+  const nowT = new Date(2026,9,2,9,0,0);
+  assertEqual("saisie à la main : Récup hors stats par défaut", manualRunRow({date:"2026-10-01", type:"Récup", distKm:"", durationMin:"20", hr:""}, "u1", nowT).include_in_stats, false);
+  assertEqual("saisie à la main : Marche hors stats", manualRunRow({date:"2026-10-01", type:"Marche", distKm:"3", durationMin:"40", hr:""}, "u1", nowT).include_in_stats, false);
+  assertEqual("saisie à la main : Course dans les stats", manualRunRow({date:"2026-10-01", type:"Course", distKm:"10", durationMin:"50", hr:""}, "u1", nowT).include_in_stats, true);
+  assertEqual("validation : Récup sans distance est valide", validateManualRun({date:"2026-10-01", type:"Récup", distKm:"", durationMin:"20", hr:""}, "2026-10-02").errors, []);
+  assertEqual("validation : EF sans distance est refusée", validateManualRun({date:"2026-10-01", type:"EF", distKm:"", durationMin:"20", hr:""}, "2026-10-02").errors, ["Indique la distance en km."]);
+}
+
 document.getElementById("summary").innerHTML =
   `<span class="${fail?'fail':'pass'}">${pass} passés, ${fail} échoués</span>`;
 

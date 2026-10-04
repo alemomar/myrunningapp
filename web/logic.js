@@ -1145,12 +1145,24 @@ function isIntensePaceZone(paceZone){
    sourcée. Catégorie : "run" si pace_zone ou type de course, "renfo",
    sinon "light". Un objet sans type ni allure (ex: {pace_zone:null}) est
    traité comme léger. */
-const NON_RUNNING_SESSION_TYPES = ["Renfo","Mobilité","Yoga","Souplesse","Kiné","Pilates","Other","Marche"];
+/* ---------- Types de séance (D15, design v48) ----------
+   Séances RÉALISÉES (historique, saisie à la main) : 14 types. Séances PRÉVUES
+   (Programme) : 12, sans Récup ni Marche. « Récup » n'est jamais confondu avec
+   « EF » et n'est pas une course (hors statistiques par défaut, voir D78) ;
+   « Marche » est une activité à part entière ; « Souplesse » est devenu
+   « Étirements » (normalizeSessionType ramène les anciennes valeurs). La valeur
+   interne « Other » s'affiche « Autre ». */
+const SESSION_TYPES_DONE = ["EF","Long","Fractionné","Seuil","Course","Récup","Marche","Renfo","Mobilité","Yoga","Pilates","Étirements","Kiné","Other"];
+const SESSION_TYPES_PLANNED = SESSION_TYPES_DONE.filter(t=>t!=="Récup" && t!=="Marche");
+function normalizeSessionType(type){ return type==="Souplesse" ? "Étirements" : type; }
+function sessionTypeLabel(type){ return type==="Other" ? "Autre" : (normalizeSessionType(type)||""); }
+const NON_RUNNING_SESSION_TYPES = ["Renfo","Mobilité","Yoga","Étirements","Kiné","Pilates","Other","Marche","Récup"];
 function sessionCategory(s){
   if(s.pace_zone) return "run";
   if(!s.type) return "light";
-  if(s.type==="Renfo") return "renfo";
-  if(NON_RUNNING_SESSION_TYPES.includes(s.type)) return "light";
+  const type = normalizeSessionType(s.type);
+  if(type==="Renfo") return "renfo";
+  if(NON_RUNNING_SESSION_TYPES.includes(type)) return "light";
   return "run";
 }
 function sessionsCanShareDay(a, b){
@@ -1770,9 +1782,11 @@ function generateCrossTrainingSessions(frequencyAutre, runDayIndexes, weekIndex,
    Marqueur : runs.apple_type = "Manuel" (décision validée le 02/10/2026,
    pas de nouvelle colonne). Les types de course comptent dans les stats :
    le trigger SQL ne connaît pas "Seuil", on pose donc include_in_stats
-   explicitement à l'insertion. */
+   explicitement à l'insertion. Récup n'est plus un type de course (D78,
+   03/10/2026) : seules les sorties de course alimentent graphiques, indicateurs,
+   records et charge ; tous les autres types sont hors stats par défaut. */
 const MANUAL_RUN_MARKER = "Manuel";
-const RUNNING_RUN_TYPES = ["EF","Long","Fractionné","Seuil","Course","Récup"];
+const RUNNING_RUN_TYPES = ["EF","Long","Fractionné","Seuil","Course"];
 function isRunningRunType(type){ return RUNNING_RUN_TYPES.includes(type); }
 // Une saisie est valide si on peut l'enregistrer (errors vide) ; les
 // warnings sont des doutes (allure invraisemblable) que l'utilisateur peut

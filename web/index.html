@@ -552,7 +552,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=54"></script>
+<script src="logic.js?v=55"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -564,20 +564,20 @@ if(window.Chart){ Chart.defaults.font.family = getComputedStyle(document.documen
 // Yoga, Mobilité, Pilates, Kiné partagent --type-souple ; Souplesse (renommé Étirements en S2).
 const TC={
   EF:"#C6F432", Long:"#71D6A3", "Fractionné":"#C56A3E", "Seuil":"#CFA354", "Récup":"#CCD2D7", Course:"#EE343B",
-  Marche:"#C0A689", Renfo:"#59AAF8", Yoga:"#DC8FD5", "Mobilité":"#DC8FD5", "Souplesse":"#F1ACCC",
+  Marche:"#C0A689", Renfo:"#59AAF8", Yoga:"#DC8FD5", "Mobilité":"#DC8FD5", "Étirements":"#F1ACCC", "Souplesse":"#F1ACCC",
   "Kiné":"#DC8FD5", Pilates:"#DC8FD5", Other:"#8B8F96"
 };
 const TICON={
-  EF:"runner", Long:"route", "Fractionné":"bolt", "Seuil":"flame", "Récup":"runner", Course:"flag",
-  Marche:"walk", Renfo:"dumbbell", Yoga:"yoga", "Mobilité":"stretch", "Souplesse":"bend",
+  EF:"runner", Long:"route", "Fractionné":"bolt", "Seuil":"flame", "Récup":"recup", Course:"flag",
+  Marche:"walk", Renfo:"dumbbell", Yoga:"yoga", "Mobilité":"stretch", "Étirements":"moveH", "Souplesse":"moveH",
   "Kiné":"care", Pilates:"ring", Other:"activity"
 };
-const TYPE_OPTIONS=["EF","Long","Fractionné","Seuil","Récup","Course","Marche","Renfo","Yoga","Mobilité","Souplesse","Kiné","Pilates","Other"];
+const TYPE_OPTIONS=SESSION_TYPES_DONE; // 14 types de séance réalisée (D15)
 // Sous-ensemble de TYPE_OPTIONS proposé pour PLANIFIER une séance (bouton
 // "+ Ajouter") — Marche et Récup retirés à la demande : ce ne sont pas des
 // séances qu'on planifie à l'avance dans ce contexte. TYPE_OPTIONS reste
 // inchangé pour Séances (classer une activité réellement synchronisée).
-const PROGRAM_TYPE_OPTIONS = TYPE_OPTIONS.filter(t=>t!=="Marche" && t!=="Récup");
+const PROGRAM_TYPE_OPTIONS = SESSION_TYPES_PLANNED; // 12 types de séance prévue (sans Récup ni Marche)
 const MONTHS=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
 
 const ICONS = {
@@ -605,6 +605,8 @@ const ICONS = {
   ring: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="5" ry="3"/></svg>`,
   x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
   check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
+  recup: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 7-3 5h4l-3 5"/><path d="M14.856 6H16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.935"/><path d="M22 14v-4"/><path d="M5.14 18H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2.936"/></svg>`,
+  moveH: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 8 22 12 18 16"/><polyline points="6 8 2 12 6 16"/><line x1="2" x2="22" y1="12" y2="12"/></svg>`,
   chevronRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
   chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`,
@@ -640,7 +642,7 @@ function mapRow(r){
     fullDate:d,
     label:`${dd} ${MONTHS[d.getMonth()]}`,
     time:d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
-    type:r.type||"Other",
+    type:normalizeSessionType(r.type)||"Other",
     appleType:r.apple_type||null,
     lieu:r.lieu||"",
     dist:Number(r.distance_km)||0,
@@ -832,7 +834,7 @@ async function loadData() {
   if(plannedError){
     console.error("Erreur de chargement du programme :", plannedError);
   }
-  plannedSessions = plannedData || [];
+  plannedSessions = (plannedData || []).map(p=>({ ...p, type: normalizeSessionType(p.type) }));
 }
 
 // Formule 220-âge par défaut : plus fiable que le pic FC observé en
@@ -1461,7 +1463,12 @@ window.toggleInclude = async (id, checked) => {
   await refreshAfterEdit();
 };
 window.changeType = async (id, newType) => {
-  if(!(await updateRun(id, { type: newType }))) return;
+  // D78 : quand le type passe de « course » à « non-course » (ou l'inverse), le défaut
+  // « compter dans mes stats » suit ; entre deux types du même camp, le choix de l'utilisateur reste.
+  const current = RUNS.find(r=>r.id===id);
+  const patch = { type: newType };
+  if(current && isRunningRunType(newType)!==isRunningRunType(current.type)) patch.include_in_stats = isRunningRunType(newType);
+  if(!(await updateRun(id, patch))) return;
   await refreshAfterEdit();
 };
 window.setLegsFocused = async (id, value) => {
@@ -1476,7 +1483,7 @@ window.setLegsFocused = async (id, value) => {
    vit dans #sheetRoot, hors de #content : les rendus de l'app (entretien du
    programme, etc.) ne la réinitialisent pas. */
 let manualRunForm = null;
-const MANUAL_RUN_TYPES = ["EF","Long","Fractionné","Seuil","Course","Renfo","Mobilité","Yoga","Pilates","Kiné","Souplesse","Other"];
+const MANUAL_RUN_TYPES = SESSION_TYPES_DONE;
 window.openManualRun = (sessionId) => {
   const todayStr = localDateStr(new Date());
   const s = sessionId ? plannedSessions.find(p=>p.id===sessionId) : null;
@@ -2871,7 +2878,7 @@ function manageableRow(r, effMaxHr, effRestingHr){
       <div class="manage-field">
         <span class="field-lbl">Type de séance</span>
         <select class="type-select" onchange="changeType('${r.id}', this.value)">
-          ${TYPE_OPTIONS.map(t=>`<option value="${t}" ${t===r.type?"selected":""}>${t}</option>`).join("")}
+          ${TYPE_OPTIONS.map(t=>`<option value="${t}" ${t===r.type?"selected":""}>${sessionTypeLabel(t)}</option>`).join("")}
         </select>
         ${r.appleType?`<span class="field-sub">${r.appleType===MANUAL_RUN_MARKER?"Saisie à la main":"Importée d'Apple Santé"}</span>`:""}
       </div>
@@ -3192,7 +3199,7 @@ window.toggleEditSession = (id) => {
 // veille d'une course déjà planifiée (retour utilisateur : courbatures/
 // risque de blessure le lendemain). Le moteur de génération applique déjà
 // cette règle automatiquement, voir avoidDayIndexes dans generateProgram.
-const NON_RUNNING_TYPES = ["Renfo","Mobilité","Yoga","Souplesse","Kiné","Pilates","Other"];
+const NON_RUNNING_TYPES = ["Renfo","Mobilité","Yoga","Étirements","Kiné","Pilates","Other"];
 function warnIfDayBeforeRun(dateStr, type){
   if(!NON_RUNNING_TYPES.includes(type)) return;
   const nextDateStr = addDaysStr(new Date(dateStr+"T00:00:00"), 1);
@@ -4093,7 +4100,7 @@ function programSessionCardHTML(session, date){
       <div style="margin-top:8px;margin-bottom:10px">
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap;display:block;margin-bottom:6px">Type</span>
         <div class="filters" data-chipgroup="editType_${session.id}" style="margin-bottom:0">
-          ${PROGRAM_TYPE_OPTIONS.map(t=>`<button type="button" class="flt${t===session.type?" active":""}" data-value="${t}" onclick="progSelectEditType('${session.id}','${t}')" style="display:inline-flex;align-items:center;gap:5px"><span style="color:${TC[t]||TC.Other};display:flex">${icon(TICON[t]||"activity",13)}</span>${t}</button>`).join("")}
+          ${PROGRAM_TYPE_OPTIONS.map(t=>`<button type="button" class="flt${t===session.type?" active":""}" data-value="${t}" onclick="progSelectEditType('${session.id}','${t}')" style="display:inline-flex;align-items:center;gap:5px"><span style="color:${TC[t]||TC.Other};display:flex">${icon(TICON[t]||"activity",13)}</span>${sessionTypeLabel(t)}</button>`).join("")}
         </div>
         <input type="hidden" id="edit_type_${session.id}" value="${session.type}">
       </div>
@@ -4225,7 +4232,7 @@ function programAddFormHTML(dateStr){
     <div style="margin-bottom:10px">
       <span style="font-size:12px;color:var(--text-dim);white-space:nowrap;display:block;margin-bottom:6px">Type</span>
       <div class="filters" data-chipgroup="addSession_type_group" style="margin-bottom:0">
-        ${PROGRAM_TYPE_OPTIONS.map(t=>`<button type="button" class="flt${t==="EF"?" active":""}" data-value="${t}" onclick="progSelectAddType('${t}')" style="display:inline-flex;align-items:center;gap:5px"><span style="color:${TC[t]||TC.Other};display:flex">${icon(TICON[t]||"activity",13)}</span>${t}</button>`).join("")}
+        ${PROGRAM_TYPE_OPTIONS.map(t=>`<button type="button" class="flt${t==="EF"?" active":""}" data-value="${t}" onclick="progSelectAddType('${t}')" style="display:inline-flex;align-items:center;gap:5px"><span style="color:${TC[t]||TC.Other};display:flex">${icon(TICON[t]||"activity",13)}</span>${sessionTypeLabel(t)}</button>`).join("")}
       </div>
       <input type="hidden" id="addSession_type" value="EF">
     </div>
@@ -4296,7 +4303,7 @@ function sessionHistoryCardHTML(){
     <div class="stitle">Historique des séances et des ressentis</div>
     <button class="btn-secondary" style="margin-bottom:10px" onclick="openManualRun()">+ Ajouter une séance réalisée</button>
     <div class="chart-hint">Ouvre une séance pour changer son type ou l'interrupteur "Suivi" (ce qui compte dans tes stats), voir le détail cardio quand il est disponible, et noter ton ressenti.</div>
-    <div class="filters">${["Tous",...TYPE_OPTIONS.filter(t=>t!=="Other" && t!=="Marche")].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${t}</button>`).join("")}</div>
+    <div class="filters">${["Tous",...TYPE_OPTIONS.filter(t=>t!=="Other" && t!=="Marche")].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${sessionTypeLabel(t)}</button>`).join("")}</div>
     ${monthGroups.length?monthGroups.map(g=>{
       const monthOpen = openMonths.has(g.key);
       return `<div class="month-sep" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleMonthGroup('${g.key}')">
