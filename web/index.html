@@ -121,18 +121,18 @@ button,input,select,textarea{font-family:inherit}
 #authView .tagline{text-align:center;color:var(--text-dim);font-size:14px;margin-top:6px;margin-bottom:32px}
 .field{
   display:flex;align-items:center;gap:10px;
-  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
-  padding:14px 16px;margin-bottom:12px;transition:border-color .15s;
+  background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-md);
+  min-height:var(--field-h);padding:12px 16px;margin-bottom:12px;transition:border-color var(--t-fast);
 }
-.field:focus-within{border-color:var(--accent)}
+.field:focus-within{border-color:var(--select)}
 .field svg{flex-shrink:0;color:var(--text-faint)}
 .field input{
-  flex:1;background:none;border:none;outline:none;color:var(--text);font-size:15px;
+  flex:1;background:none;border:none;outline:none;color:var(--text);font-size:16px;
 }
 .field input::placeholder{color:var(--text-faint)}
 .goal-level-cards{display:flex;gap:6px}
 .goal-level-card{flex:1;padding:7px 6px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
-.goal-level-card.active{border-color:var(--accent);background:rgba(198,244,50,0.1)}
+.goal-level-card.active{border-color:var(--select);background:var(--select-soft)}
 .goal-level-card .lbl{font-size:12px;font-weight:600}
 .goal-level-card .sub{font-size:9px;color:var(--text-dim);margin-top:1px;line-height:1.2}
 .goal-slot-switch{display:flex;gap:6px;margin-bottom:0}
@@ -144,9 +144,9 @@ button,input,select,textarea{font-family:inherit}
 .goal-slot-btn.active-secondaire{border-color:var(--select);background:var(--select-soft);color:var(--select)}
 .goal-principal-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .goal-principal-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);cursor:pointer;transition:border-color .15s,background .15s}
-.goal-principal-card.active{border-color:var(--accent);background:var(--accent-dim)}
+.goal-principal-card.active{border-color:var(--select);background:var(--select-soft)}
 .goal-principal-card .icon-wrap{width:32px;height:32px;border-radius:50%;background:var(--card-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-dim);transition:color .15s,background .15s}
-.goal-principal-card.active .icon-wrap{color:var(--accent);background:var(--accent-dim)}
+.goal-principal-card.active .icon-wrap{color:var(--select);background:var(--select-soft)}
 .goal-principal-card .lbl{font-size:12.5px;font-weight:600;line-height:1.25}
 @media (prefers-reduced-motion: no-preference){
   .goal-principal-card.active .icon-wrap{animation:goalIconPop .4s cubic-bezier(.34,1.56,.64,1)}
@@ -155,16 +155,17 @@ button,input,select,textarea{font-family:inherit}
 @keyframes goalIconPop{0%{transform:scale(.6)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
 @keyframes goalIconFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
 .pace-stepper{display:flex;align-items:center;gap:12px}
-.pace-stepper button{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--card-2);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+.pace-stepper button{width:36px;height:36px;border-radius:50%;border:none;background:var(--surface-control);color:var(--text);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
 .pace-stepper .val{font-weight:700;font-size:15px;min-width:64px;text-align:center}
-.time-input{width:44px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;text-align:center;padding:8px 0}
+.time-input{width:44px;background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-xs);color:var(--text);font-size:14px;text-align:center;padding:8px 0}
 /* Icône native du sélecteur de date invisible sur fond sombre (icône noire
    par défaut) sans ce filtre — l'utilisateur ne voyait pas qu'un calendrier
    était cliquable et pensait devoir saisir la date au clavier. */
 input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:pointer}
 .btn-primary{
-  width:100%;padding:15px;border-radius:var(--radius-sm);border:none;
-  background:var(--accent);color:var(--on-accent);font-weight:600;font-size:15px;cursor:pointer;
+  width:100%;min-height:var(--btn-h);padding:0 20px;border-radius:24px;border:none;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--accent);color:var(--on-accent);font-weight:700;font-size:16px;cursor:pointer;
   margin-top:6px;transition:transform .1s, opacity .15s;
 }
 .btn-primary:active{transform:scale(0.97)}
@@ -173,7 +174,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
    passe inaperçu (bug remonté : "on a l'impression que le bouton ne
    fonctionne pas"), un vrai mouvement (pop avec rebond) se voit. Reste
    affichée (pas de disparition) : le message est le signal, pas une nuisance. */
-.save-confirm{font-size:12px;color:var(--accent);margin-top:8px;text-align:center;min-height:16px;font-weight:600}
+.save-confirm{display:flex;align-items:center;justify-content:center;gap:6px;width:fit-content;margin:8px auto 0;min-height:16px;border-radius:var(--r-pill);font-size:12.5px;font-weight:600;color:var(--accent)}
+.save-confirm:not(:empty){min-height:26px;padding:0 12px;background:var(--accent-soft)}
 @media (prefers-reduced-motion: no-preference){
   .save-confirm.show{animation:saveConfirmPop .5s cubic-bezier(.34,1.56,.64,1)}
 }
@@ -315,12 +317,13 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .session-hr{font-size:11px;color:var(--text-dim);margin-top:2px}
 
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
-.type-select{background:var(--card-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 6px;font-size:12px;font-weight:600;font-family:inherit;width:100%}
+.type-select{background:var(--surface-sunken);border:1px solid var(--line-field);color:var(--text);border-radius:var(--r-xs);padding:5px 6px;font-size:12px;font-weight:600;font-family:inherit;width:100%}
 .toggle{position:relative;width:42px;height:25px;flex-shrink:0}
 .toggle input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer;z-index:1}
-.toggle .track{position:absolute;inset:0;background:var(--card-2);border-radius:13px;transition:background .15s}
-.toggle .thumb{position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:transform .15s}
-.toggle input:checked ~ .track{background:var(--accent)}
+.toggle .track{position:absolute;inset:0;background:var(--surface-control);border-radius:13px;transition:background var(--t-fast)}
+.toggle .thumb{position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:var(--text-3);transition:transform var(--t-fast),background var(--t-fast)}
+.toggle input:checked ~ .track{background:var(--select)}
+.toggle input:checked ~ .thumb{background:var(--on-accent)}
 .toggle input:checked ~ .thumb{transform:translateX(17px)}
 
 .manage-row{padding:14px 0;border-bottom:1px solid var(--border)}
@@ -337,8 +340,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .field-val{font-size:13px;font-weight:600}
 .field-sub{font-size:10px;color:var(--text-faint)}
 .filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;overflow-x:auto;padding-bottom:2px}
-.flt{padding:6px 13px;border-radius:20px;font-size:12px;cursor:pointer;background:var(--card-2);color:var(--text-dim);border:1px solid transparent;font-weight:500;white-space:nowrap}
-.flt.active{background:var(--accent);color:var(--on-accent);font-weight:700}
+.flt{display:inline-flex;align-items:center;min-height:var(--chip-h);padding:0 14px;border-radius:var(--r-pill);font-size:13px;cursor:pointer;background:var(--surface-sunken);color:var(--text-3);border:1px solid var(--line-field);font-weight:500;white-space:nowrap}
+.flt.active{background:var(--select);border-color:var(--select);color:var(--on-accent);font-weight:600}
 
 .empty-state{text-align:center;padding:40px 20px;color:var(--text-dim)}
 .empty-state svg{color:var(--text-faint);margin-bottom:14px}
@@ -361,7 +364,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .pain-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
 .pain-row-top .lbl{font-size:13px;color:var(--text)}
 .pain-row-top .val{font-size:13px;font-weight:700;min-width:20px;text-align:right}
-.pain-row input[type="range"],.zone-row input[type="range"]{width:100%;accent-color:var(--accent);height:20px}
+.pain-row input[type="range"],.zone-row input[type="range"]{width:100%;accent-color:var(--select);height:20px}
 .scale-ticks{display:flex;justify-content:space-between;margin-top:1px}
 .scale-ticks span{font-size:9px;color:var(--text-faint);width:12px;text-align:center;font-variant-numeric:tabular-nums}
 .pain-scale{display:flex;justify-content:space-between;gap:10px;margin-top:2px}
@@ -426,8 +429,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .account-row .lbl{font-size:13px;color:var(--text-dim)}
 .account-row .v{font-size:13px;font-weight:600}
 .btn-secondary{
-  width:100%;padding:13px;border-radius:var(--radius-sm);border:1px solid var(--border);
-  background:var(--card-2);color:var(--text);font-weight:600;font-size:14px;cursor:pointer;
+  width:100%;min-height:var(--btn-h);padding:0 20px;border-radius:24px;border:none;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface-control);color:var(--text);font-weight:600;font-size:15px;cursor:pointer;
 }
 .btn-danger{color:var(--text-3);background:none;border:none;font-size:14px;font-weight:500;cursor:pointer;padding:12px 0}
 
@@ -486,7 +490,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--card);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box}
 .sheet-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:flex-end}
-.sheet-input{background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px;padding:9px;font-family:inherit;box-sizing:border-box}
+.sheet-input{background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-sm);color:var(--text);font-size:16px;min-height:var(--tap-min);padding:9px 12px;font-family:inherit;box-sizing:border-box}
 </style>
 </head>
 <body>
