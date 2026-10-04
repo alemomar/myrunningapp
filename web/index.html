@@ -934,7 +934,7 @@ function noRecentRunBanner(){
 // "compte", ce sont des réglages, pas un endroit à découvrir.
 const TUTORIAL_BUBBLES = {
   aujourdhui: "C'est ton accueil : ta séance du jour avec la raison pour laquelle elle est là, le bilan de ta semaine, et la note de ta dernière séance quand elle attend.",
-  progression: "C'est ton suivi : tes indicateurs clés, tes graphiques et l'historique de toutes tes séances. Elles arrivent automatiquement si tu utilises RunSync (synchro Apple Santé). C'est aussi ici que tu notes ton ressenti après une séance.",
+  progression: "C'est ton suivi : tes indicateurs clés, tes graphiques et l'historique de toutes tes séances. Elles arrivent automatiquement depuis Apple Santé. C'est aussi ici que tu notes ton ressenti après une séance.",
   profil: "Commence par ici ! Dans « Objectifs », dis-nous ce que tu vises (une course, ta régularité, ton allure...) : c'est la base de ton programme personnalisé. Tes réglages (compte, fréquence cardiaque, synchronisation) sont dans « Mon compte ».",
   programme: "Ton calendrier de séances, généré automatiquement à partir de tes objectifs. Chaque séance t'explique pourquoi elle est là. Tu peux la déplacer, la modifier ou la supprimer à tout moment.",
 };
@@ -2881,7 +2881,7 @@ function manageableRow(r, effMaxHr, effRestingHr){
         <select class="type-select" onchange="changeType('${r.id}', this.value)">
           ${TYPE_OPTIONS.map(t=>`<option value="${t}" ${t===r.type?"selected":""}>${t}</option>`).join("")}
         </select>
-        ${r.appleType?`<span class="field-sub">${r.appleType===MANUAL_RUN_MARKER?"Saisie à la main":"Détecté par Santé : "+r.appleType}</span>`:""}
+        ${r.appleType?`<span class="field-sub">${r.appleType===MANUAL_RUN_MARKER?"Saisie à la main":"Importée d'Apple Santé"}</span>`:""}
       </div>
       <div class="manage-field"><span class="field-lbl">Temps d'effort</span><span class="field-val">${r.dur}</span></div>
       ${r.dist>0?`<div class="manage-field"><span class="field-lbl">Distance</span><span class="field-val">${r.dist.toFixed(2)} km</span></div>
