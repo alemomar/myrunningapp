@@ -532,10 +532,14 @@ const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
 if(window.Chart){ Chart.defaults.font.family = getComputedStyle(document.documentElement).getPropertyValue("--font-text").trim() || "sans-serif"; }
 
+// Couleurs par type (D24, design v48). Écrites en hexadécimal, équivalents exacts des
+// --type-* du design (oklch) : plusieurs gabarits ajoutent un suffixe de transparence
+// (`${c}22`), ce qui ne marche qu'avec une couleur hexadécimale.
+// Yoga, Mobilité, Pilates, Kiné partagent --type-souple ; Souplesse (renommé Étirements en S2).
 const TC={
-  EF:"#C6F432", Long:"#0a84ff", "Fractionné":"#ff9f0a", "Seuil":"#d70015", "Récup":"#A3A7AD", Course:"#ff453a",
-  Marche:"#64d2ff", Renfo:"#bf5af2", Yoga:"#ff375f", "Mobilité":"#ffd60a", "Souplesse":"#00c7be",
-  "Kiné":"#a2845e", Pilates:"#66d4cf", Other:"#A3A7AD"
+  EF:"#C6F432", Long:"#71D6A3", "Fractionné":"#C56A3E", "Seuil":"#CFA354", "Récup":"#CCD2D7", Course:"#EE343B",
+  Marche:"#C0A689", Renfo:"#59AAF8", Yoga:"#DC8FD5", "Mobilité":"#DC8FD5", "Souplesse":"#F1ACCC",
+  "Kiné":"#DC8FD5", Pilates:"#DC8FD5", Other:"#8B8F96"
 };
 const TICON={
   EF:"runner", Long:"route", "Fractionné":"bolt", "Seuil":"flame", "Récup":"runner", Course:"flag",
