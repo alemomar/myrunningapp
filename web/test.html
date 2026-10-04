@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=55"></script>
+<script src="logic.js?v=56"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -811,7 +811,7 @@ try {
 // --- Records et célébrations (4.11.f) ---
 {
   const DAY=86400000, t0=Date.UTC(2026,8,1);
-  const mk=(i, o)=>({ id:"r"+i, ts:t0+i*DAY, type:"EF", distKm:6, durationSec:2100, paceSecKm:350, workPaceSecKm:0, ...o });
+  const mk=(i, o)=>({ id:"r"+i, ts:t0+i*DAY, type:"EF", distKm:6, durationSec:2100, paceSecKm:350, workPaceSecKm:0, cleanEf:true, ...o });
   const hist = [mk(0,{distKm:5,durationSec:1800}), mk(1,{distKm:6,durationSec:2100}), mk(2,{distKm:7,durationSec:2400}), mk(3,{distKm:6,durationSec:2100})];
   const keys = (run, all) => recordsForRun(run, all).map(r=>r.key);
   assertEqual("record distance : 8 km après un max de 7", keys(mk(10,{distKm:8, paceSecKm:400}), [...hist]), ["distance"]);
@@ -819,8 +819,8 @@ try {
   assertEqual("record durée : +60 s sur le max (2460 > 2400)", keys(mk(10,{distKm:6, durationSec:2460, paceSecKm:400}), [...hist]), ["duree"]);
   assertEqual("record durée : 2430 s ne compte pas (marge)", keys(mk(10,{distKm:6, durationSec:2430, paceSecKm:400}), [...hist]), []);
   assertEqual("pas de record avec moins de 3 séances avant", keys(mk(10,{distKm:20, durationSec:9000}), [hist[0],hist[1]]), []);
-  assertEqual("record d'allure EF : meilleure que toutes les sorties easy précédentes", keys(mk(10,{distKm:5, durationSec:1700, paceSecKm:340}), hist), ["allure_ef"]);
-  assertEqual("allure EF : marge de 1 s/km (349,5 ne compte pas)", keys(mk(10,{distKm:5, durationSec:1700, paceSecKm:349.5}), hist), []);
+  assertEqual("record d'allure EF : meilleure que toutes les sorties easy précédentes", keys(mk(10,{distKm:4, durationSec:1360, paceSecKm:340}), hist), ["allure_ef"]);
+  assertEqual("allure EF : marge de 1 s/km (349,5 ne compte pas)", keys(mk(10,{distKm:4, durationSec:1398, paceSecKm:349.5}), hist), []);
   assertEqual("allure EF : une sortie de moins de 3 km n'est jamais un record d'allure", keys(mk(10,{distKm:2, durationSec:600, paceSecKm:300}), hist), []);
   const frac = [0,1,2,3].map(i=>mk(i,{type:"Fractionné", workPaceSecKm:300-i*2}));
   assertEqual("record fractionné : meilleure allure de travail", keys(mk(10,{type:"Fractionné", distKm:5, durationSec:1700, workPaceSecKm:280, paceSecKm:0}), frac), ["allure_frac"]);
@@ -1164,6 +1164,60 @@ try {
   assertEqual("saisie à la main : Course dans les stats", manualRunRow({date:"2026-10-01", type:"Course", distKm:"10", durationMin:"50", hr:""}, "u1", nowT).include_in_stats, true);
   assertEqual("validation : Récup sans distance est valide", validateManualRun({date:"2026-10-01", type:"Récup", distKm:"", durationMin:"20", hr:""}, "2026-10-02").errors, []);
   assertEqual("validation : EF sans distance est refusée", validateManualRun({date:"2026-10-01", type:"EF", distKm:"", durationMin:"20", hr:""}, "2026-10-02").errors, ["Indique la distance en km."]);
+}
+
+// ---------- S2.2 : records par distance (D26), trophée (D43), allure EF « propre » (D77) ----------
+{
+  const DAY=86400000, t0=Date.UTC(2026,8,1);
+  const run=(i,o)=>({ id:"r"+i, ts:t0+i*DAY, type:"EF", distKm:5, durationSec:1800, paceSecKm:360, workPaceSecKm:0, cleanEf:false, ...o });
+  const D5=RECORD_DISTANCES[0], D10=RECORD_DISTANCES[1];
+  assertEqual("distances de record : 5 km, 10 km, semi, marathon", RECORD_DISTANCES.map(d=>d.label), ["5 km","10 km","Semi","Marathon"]);
+  assertEqual("distanceRecordTime : 5,00 km pile compte, temps inchangé", distanceRecordTime(run(0,{distKm:5,durationSec:1500}), D5), 1500);
+  assertEqual("distanceRecordTime : 5,2 km en 26:00 -> 5 km en 25:00 (proportionnel)", distanceRecordTime(run(0,{distKm:5.2,durationSec:1560}), D5), 1500);
+  assertEqual("distanceRecordTime : 5,25 km (D + 5 %) compte", distanceRecordTime(run(0,{distKm:5.25,durationSec:1575}), D5), 1500);
+  assertEqual("distanceRecordTime : 5,3 km ne compte pas (au-delà de D + 5 %)", distanceRecordTime(run(0,{distKm:5.3,durationSec:1590}), D5), null);
+  assertEqual("distanceRecordTime : 4,9 km ne compte pas (en dessous de D)", distanceRecordTime(run(0,{distKm:4.9,durationSec:1470}), D5), null);
+  assertEqual("distanceRecordTime : 9,5 km n'est pas un 10 km (ancienne règle ±5 % écartée)", distanceRecordTime(run(0,{distKm:9.5,durationSec:3000}), D10), null);
+  assertEqual("distanceRecordTime : une marche ne compte jamais", distanceRecordTime(run(0,{type:"Marche",distKm:5,durationSec:3600}), D5), null);
+  assertEqual("distanceRecordTime : un fractionné de 5 km compte (course)", distanceRecordTime(run(0,{type:"Fractionné",distKm:5,durationSec:1700}), D5), 1700);
+  const keys=(r,all)=>recordsForRun(r,all).map(x=>x.key);
+  const prev5=[run(0,{distKm:5,durationSec:1800})];
+  assertEqual("record 5 km : 1 s de mieux sur le détenteur compte", keys(run(5,{distKm:5,durationSec:1799}), prev5), ["record_5k"]);
+  assertEqual("record 5 km : à égalité ne compte pas", keys(run(5,{distKm:5,durationSec:1800}), prev5), []);
+  assertEqual("record 5 km : 5,1 km en 29:00 = 28:25 sur 5 km, bat 30:00", recordsForRun(run(5,{distKm:5.1,durationSec:1740}), prev5).map(x=>[x.key,x.value,x.previous]), [["record_5k",1706,1800]]);
+  assertEqual("premier 5 km jamais couru : pas de record (il devient le détenteur)", keys(run(5,{distKm:5,durationSec:1500}), [run(0,{distKm:7,durationSec:2400})]), []);
+  assertEqual("record 5 km : une course de 5,4 km n'est pas comparée", keys(run(5,{distKm:5.4,durationSec:1500}), prev5), []);
+  // EF propre (D77)
+  const efs=[0,1,2].map(i=>run(i,{cleanEf:true, distKm:6, durationSec:2160, paceSecKm:360}));
+  assertEqual("allure EF : sortie propre plus rapide = record", keys(run(9,{cleanEf:true, distKm:6, durationSec:2040, paceSecKm:340}), efs), ["allure_ef"]);
+  assertEqual("allure EF : sortie plus rapide mais cœur monté (non propre) = pas de record", keys(run(9,{cleanEf:false, distKm:6, durationSec:2040, paceSecKm:340}), efs), []);
+  assertEqual("allure EF : sans données de FC (non propre) = pas de record", keys(run(9,{cleanEf:undefined, distKm:6, durationSec:2040, paceSecKm:340}), efs), []);
+  const mixte=[run(0,{cleanEf:false,paceSecKm:300,distKm:6,durationSec:2200}),run(1,{cleanEf:false,paceSecKm:300,distKm:6,durationSec:2200}),run(2,{cleanEf:false,paceSecKm:300,distKm:6,durationSec:2200}),run(3,{cleanEf:true,paceSecKm:360,distKm:6,durationSec:2200})];
+  assertEqual("allure EF : les sorties non propres ne servent pas de référence (il en faut 3 propres)", keys(run(9,{cleanEf:true, distKm:6, durationSec:2040, paceSecKm:340}), mixte), []);
+  // détenteurs actuels et trophée (D43)
+  const all=[run(0,{id:"a",distKm:5,durationSec:1800}), run(1,{id:"b",distKm:10.2,durationSec:3060}), run(2,{id:"c",distKm:5.1,durationSec:1700}), run(3,{id:"d",distKm:5,durationSec:1700})];
+  const h=recordHolders(all);
+  assertEqual("détenteur 5 km : c (1700 s * 5/5,1 = 1667), pas d (1700)", [h.distances["5k"].runId, h.distances["5k"].timeSec], ["c",1667]);
+  assertEqual("détenteur 10 km : 10,2 km en 51:00 -> 50:00, course b", [h.distances["10k"].runId, h.distances["10k"].timeSec], ["b",3000]);
+  assertEqual("détenteur semi et marathon : aucun (pas encore couru)", [h.distances.semi, h.distances.marathon], [null,null]);
+  assertEqual("détenteur 5 km à égalité : la plus ancienne garde le record", recordHolders([run(0,{id:"x",durationSec:1700}), run(1,{id:"y",durationSec:1700})]).distances["5k"].runId, "x");
+  assertEqual("détenteur : quand le record est battu, il passe à la nouvelle course", recordHolders([run(0,{id:"x",durationSec:1700}), run(1,{id:"y",durationSec:1650})]).distances["5k"].runId, "y");
+  assertEqual("chrono déclaré : jamais un détenteur (pas une course)", recordHolders([{id:"z", ts:t0, type:"Marche", distKm:5, durationSec:1200, paceSecKm:240, workPaceSecKm:0, cleanEf:false}]).distances["5k"], null);
+  assertEqual("runRecordLabels : la course b détient le 10 km", runRecordLabels("b", h), [{key:"10k", text:"10 km en 50:00"}]);
+  assertEqual("runRecordLabels : une course sans record = aucun trophée", runRecordLabels("a", h), []);
+  const hEf=recordHolders([run(0,{id:"e1",cleanEf:true,distKm:6,paceSecKm:360}), run(1,{id:"e2",cleanEf:false,distKm:6,paceSecKm:320}), run(2,{id:"e3",cleanEf:true,distKm:6,paceSecKm:350})]);
+  assertEqual("détenteur allure EF : e3 (e2, plus rapide mais non propre, est écartée)", hEf.allure_ef.runId, "e3");
+  assertEqual("runRecordLabels : allure EF", runRecordLabels("e3", hEf).map(x=>x.text), ["meilleure allure EF, 5'50''/km"]);
+  const hFr=recordHolders([run(0,{id:"f1",type:"Fractionné",workPaceSecKm:290,distKm:6}), run(1,{id:"f2",type:"Fractionné",workPaceSecKm:280,distKm:6})]);
+  assertEqual("détenteur allure fractionné : f2", hFr.allure_frac.runId, "f2");
+  assertEqual("recordPhrase : record 5 km avec gain", recordPhrase({key:"record_5k", value:1706, previous:1800, label:"5 km"}), "Nouveau record sur 5 km : 28:26, 94 s de mieux !");
+  // efQualitatif
+  const series=(hr,n)=>Array.from({length:n},(_,i)=>({t:i*20,hr}));
+  assertEqual("efQualitatif : cœur en zones 1-2 -> true", efQualitatif(series(140,40),190,60), true);
+  assertEqual("efQualitatif : cœur haut -> false", efQualitatif(series(172,40),190,60), false);
+  assertEqual("efQualitatif : pas assez de mesures -> null", efQualitatif(series(140,5),190,60), null);
+  assertEqual("efQualitatif : pas de FC max -> null", efQualitatif(series(140,40),null,60), null);
+  assertEqual("classifyRunType : EF propre reste qualitatif (refactor sans effet)", classifyRunType(6, series(140,40), 190, 60), {type:"EF", qualitatif:true});
 }
 
 document.getElementById("summary").innerHTML =

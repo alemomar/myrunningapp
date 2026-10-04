@@ -532,16 +532,22 @@ function resolveRunnerProfile(goals, programSettings, raceDistancesKm){
       dire "on sait que ce n'est pas un EF propre"). Un EF non qualitatif
       reste un EF (pas de reclassement), mais doit être signalé comme tel
       dans l'affichage plutôt que présenté comme un footing propre. */
+// EF « propre » : zones 1 et 2 combinées > 70 % du temps. null = pas assez de
+// données de FC pour juger (à ne pas confondre avec false). Sert aussi à décider
+// si une sortie EF peut être un record d'allure (D77).
+function efQualitatif(hrSeries, maxHr, restingHr){
+  if(!hrSeries || hrSeries.length<10 || !maxHr) return null;
+  const {secs} = computeHrZoneSeconds(hrSeries, maxHr, restingHr);
+  const total = secs.reduce((a,b)=>a+b,0);
+  if(total<300) return null;
+  const lowZone = secs[0]+secs[1];
+  return lowZone/total > 0.7;
+}
 function classifyRunType(distanceKm, hrSeries, maxHr, restingHr){
   if(looksLikeFractionne(hrSeries)) return {type:"Fractionné", qualitatif:true};
   if(looksLikeSeuil(hrSeries, maxHr, restingHr)) return {type:"Seuil", qualitatif:true};
   if(distanceKm>10) return {type:"Long", qualitatif:true};
-  if(!hrSeries || hrSeries.length<10 || !maxHr) return {type:"EF", qualitatif:null};
-  const {secs} = computeHrZoneSeconds(hrSeries, maxHr, restingHr);
-  const total = secs.reduce((a,b)=>a+b,0);
-  if(total<300) return {type:"EF", qualitatif:null};
-  const lowZone = secs[0]+secs[1];
-  return {type:"EF", qualitatif: lowZone/total > 0.7};
+  return {type:"EF", qualitatif: efQualitatif(hrSeries, maxHr, restingHr)};
 }
 
 /* ---------- Détection du niveau depuis l'historique (onboarding, 4.1.b.1) ----------
@@ -976,17 +982,89 @@ function recordsForRun(run, allRuns){
     if(run.distKm >= Math.max(...prev.map(r=>r.distKm||0)) + 0.1) records.push({ key:"distance", value:run.distKm });
     if(run.durationSec >= Math.max(...prev.map(r=>r.durationSec||0)) + 60) records.push({ key:"duree", value:run.durationSec });
   }
-  if(run.type==="EF" && run.distKm>=3 && run.paceSecKm>0){
-    const prevEf = prev.filter(r=>r.type==="EF" && r.distKm>=3 && r.paceSecKm>0);
+  // D77 : un record d'allure EF ne compte que pour une sortie réellement facile (cœur resté
+  // en zones 1 et 2, run.cleanEf), et seulement face à d'autres sorties EF propres : sinon on
+  // encouragerait à courir les sorties faciles trop vite.
+  if(run.type==="EF" && run.cleanEf===true && run.distKm>=3 && run.paceSecKm>0){
+    const prevEf = prev.filter(r=>r.type==="EF" && r.cleanEf===true && r.distKm>=3 && r.paceSecKm>0);
     if(prevEf.length>=3 && run.paceSecKm <= Math.min(...prevEf.map(r=>r.paceSecKm)) - 1) records.push({ key:"allure_ef", value:run.paceSecKm });
   }
   if(run.type==="Fractionné" && run.workPaceSecKm>0){
     const prevFrac = prev.filter(r=>r.type==="Fractionné" && r.workPaceSecKm>0);
     if(prevFrac.length>=3 && run.workPaceSecKm <= Math.min(...prevFrac.map(r=>r.workPaceSecKm)) - 1) records.push({ key:"allure_frac", value:run.workPaceSecKm });
   }
+  // D26 : records par distance. Il faut avoir déjà couru cette distance (un premier 5 km
+  // n'est pas un « record » mais devient le détenteur) et gagner au moins 1 s.
+  RECORD_DISTANCES.forEach(d=>{
+    const t = distanceRecordTime(run, d);
+    if(t==null) return;
+    const prevTimes = prev.map(r=>distanceRecordTime(r, d)).filter(x=>x!=null);
+    if(!prevTimes.length) return;
+    const best = Math.min(...prevTimes);
+    if(t <= best - 1) records.push({ key:"record_"+d.key, value:t, previous:best, distKm:d.km, label:d.label });
+  });
   return records;
 }
+
+/* ---------- Records par distance (D26, D43) ----------
+   5 km, 10 km, semi, marathon. Une course compte pour la distance D si sa
+   distance est entre D et D + 5 % (règle validée par Omar le 03/10/2026 :
+   ±5 % était trop souple, une course de 9,5 km aurait compté comme un 10 km
+   avec un temps trop optimiste). Le temps est ramené proportionnellement à D
+   (5,2 km en 26:00 -> 5 km en 25:00). Seules les sorties de course comptent.
+   Les chronos déclarés dans « Ton niveau » n'entrent jamais ici. */
+const RECORD_DISTANCES = [
+  { key:"5k",       km:5,       label:"5 km" },
+  { key:"10k",      km:10,      label:"10 km" },
+  { key:"semi",     km:21.0975, label:"Semi" },
+  { key:"marathon", km:42.195,  label:"Marathon" },
+];
+const RECORD_DISTANCE_TOLERANCE = 0.05;
+function distanceRecordTime(run, dist){
+  if(!run || !isRunningRunType(run.type) || !(run.durationSec>0)) return null;
+  if(!(run.distKm>=dist.km && run.distKm<=dist.km*(1+RECORD_DISTANCE_TOLERANCE))) return null;
+  return Math.round(run.durationSec * dist.km / run.distKm);
+}
+/* Détenteurs ACTUELS des records (D43 : « la séance détient un record actuel »).
+   `runs` : [{id, ts, type, distKm, durationSec, paceSecKm, workPaceSecKm, cleanEf}],
+   déjà limitées aux séances qui comptent dans les stats. À égalité, la plus ancienne
+   garde le record ; quand il est battu, il passe à la nouvelle course. */
+function recordHolders(runs){
+  const list = (runs||[]).slice().sort((a,b)=>a.ts-b.ts);
+  const holders = { distances:{}, allure_ef:null, allure_frac:null };
+  RECORD_DISTANCES.forEach(d=>{
+    let best = null;
+    list.forEach(r=>{
+      const t = distanceRecordTime(r, d);
+      if(t!=null && (best===null || t<best.timeSec)) best = { runId:r.id, timeSec:t, distKm:r.distKm, ts:r.ts };
+    });
+    holders.distances[d.key] = best;
+  });
+  list.forEach(r=>{
+    if(r.type==="EF" && r.cleanEf===true && r.distKm>=3 && r.paceSecKm>0 && (holders.allure_ef===null || r.paceSecKm<holders.allure_ef.paceSecKm))
+      holders.allure_ef = { runId:r.id, paceSecKm:r.paceSecKm, ts:r.ts };
+    if(r.type==="Fractionné" && r.workPaceSecKm>0 && (holders.allure_frac===null || r.workPaceSecKm<holders.allure_frac.workPaceSecKm))
+      holders.allure_frac = { runId:r.id, workPaceSecKm:r.workPaceSecKm, ts:r.ts };
+  });
+  return holders;
+}
+// Records détenus par UNE course (pour le trophée et la feuille de détail :
+// « Record : 10 km en 52:10 »). Renvoie [{key, text}].
+function runRecordLabels(runId, holders){
+  const out = [];
+  RECORD_DISTANCES.forEach(d=>{
+    const h = holders.distances[d.key];
+    if(h && h.runId===runId) out.push({ key:d.key, text:`${d.label} en ${fmtDur(h.timeSec)}` });
+  });
+  if(holders.allure_ef && holders.allure_ef.runId===runId) out.push({ key:"allure_ef", text:`meilleure allure EF, ${fmtA(holders.allure_ef.paceSecKm)}/km` });
+  if(holders.allure_frac && holders.allure_frac.runId===runId) out.push({ key:"allure_frac", text:`meilleure allure fractionné, ${fmtA(holders.allure_frac.workPaceSecKm)}/km` });
+  return out;
+}
 function recordPhrase(record){
+  if(record.key && record.key.startsWith("record_")){
+    const gain = record.previous!=null ? Math.round(record.previous - record.value) : null;
+    return `Nouveau record sur ${record.label} : ${fmtDur(record.value)}${gain>0?`, ${gain} s de mieux`:""} !`;
+  }
   if(record.key==="distance") return `Ta plus longue sortie : ${Number(record.value).toLocaleString("fr-FR",{maximumFractionDigits:1})} km !`;
   if(record.key==="duree") return `Ta plus longue durée de course : ${formatMinutesShort(record.value/60)} !`;
   if(record.key==="allure_ef") return `Ta meilleure allure en sortie easy : ${fmtA(record.value)}/km !`;

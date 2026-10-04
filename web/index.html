@@ -552,7 +552,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=55"></script>
+<script src="logic.js?v=56"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -4002,8 +4002,10 @@ function celebratedRunIds(){
 }
 function runAsRecord(r){
   const ip = r.type==="Fractionné" ? getIntervalPaces(r) : null;
+  // cleanEf (D77) : sortie EF dont le cœur est resté en zones 1 et 2 ; sans données de FC, on ne peut pas l'affirmer.
+  const cleanEf = r.type==="EF" && efQualitatif(r.hrSeries, maxHr || estimatedMaxHr(), restingHr || null)===true;
   return { id:r.id, ts:dateFromRun(r).getTime(), type:r.type, distKm:r.dist||0, durationSec:r.durationSec||0, paceSecKm:r.allure||0,
-    workPaceSecKm: ip && (ip.manual || ip.workCount>=2) ? ip.work : 0 };
+    workPaceSecKm: ip && (ip.manual || ip.workCount>=2) ? ip.work : 0, cleanEf };
 }
 function celebrationData(){
   const items = []; let runId = null, title = "", effFlag = false;
