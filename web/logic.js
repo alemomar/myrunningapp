@@ -33,7 +33,7 @@ function hrZoneDefs(maxHr, restingHr){
   const bound = pct => Math.round(base + range*pct);
   return [
     {zone:1,label:"Zone 1",color:"#5ac8fa",max:bound(0.6)},
-    {zone:2,label:"Zone 2",color:"#30d158",max:bound(0.7)},
+    {zone:2,label:"Zone 2",color:"#C6F432",max:bound(0.7)},
     {zone:3,label:"Zone 3",color:"#a8e063",max:bound(0.8)},
     {zone:4,label:"Zone 4",color:"#ff9f0a",max:bound(0.9)},
     {zone:5,label:"Zone 5",color:"#ff375f",max:999},
@@ -1082,9 +1082,9 @@ function acwrAt(dailySeries, targetDate){
    d'historique). Renvoie {zone, color, phrase, severe} — `severe` sert à
    l'UI pour renforcer l'alerte au-delà de 1,5 sans changer de couleur. */
 function chargeEntrainementGauge(acwr){
-  if(acwr==null) return { zone:"inconnue", color:"#98989f", phrase:"Pas encore assez d'historique pour calculer ta charge d'entraînement.", severe:false };
+  if(acwr==null) return { zone:"inconnue", color:"#A3A7AD", phrase:"Pas encore assez d'historique pour calculer ta charge d'entraînement.", severe:false };
   if(acwr<0.8) return { zone:"sous-charge", color:"#5ac8fa", phrase:"Tu pourrais progresser un peu plus vite — ta charge est en dessous de la zone idéale.", severe:false };
-  if(acwr<=1.3) return { zone:"idéale", color:"#30d158", phrase:"Tu augmentes ta charge à un rythme sûr.", severe:false };
+  if(acwr<=1.3) return { zone:"idéale", color:"#C6F432", phrase:"Tu augmentes ta charge à un rythme sûr.", severe:false };
   const severe = acwr>1.5;
   return { zone:"attention", color:"#e8a317", phrase: severe
     ? "Ta charge augmente très vite — risque de blessure élevé, pense à lever le pied."

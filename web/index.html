@@ -9,34 +9,81 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#0C0D0F">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MyRunningApp">
 <style>
+/* Jetons du design gelé (journal v48, docs/design/tokens.css). Thème sombre seul.
+   Si tokens.css change, reporter le changement ici : l'app n'a qu'un fichier de style. */
 :root{
-  --bg:#000000;
-  --card:#1c1c1e;
-  --card-2:#232326;
-  --border:rgba(255,255,255,0.08);
-  --text:#f5f5f7;
-  --text-dim:#98989f;
-  --text-faint:#5c5c60;
-  --accent:#30d158;
-  --accent-dim:rgba(48,209,88,0.15);
-  --red:#ff453a;
-  --blue:#0a84ff;
-  --blue-dim:rgba(10,132,255,0.15);
-  --orange:#ff9f0a;
-  --purple:#bf5af2;
-  --purple-dim:rgba(191,90,242,0.15);
-  --yellow:#ffd60a;
-  --yellow-dim:rgba(255,214,10,0.15);
-  --pink:#ff375f;
-  --cyan:#64d2ff;
-  --radius-lg:20px;
-  --radius-md:14px;
-  --radius-sm:10px;
+  /* Fonds et surfaces */
+  --bg:#0C0D0F;
+  --surface:#17191C;
+  --surface-sunken:#0F1113;
+  --surface-raised:#1B1E21;
+  --surface-control:#22252A;
+  --line:#26292E;
+  --line-field:#2A2E33;
+  --line-empty:#33373D;
+  --grabber:#3A4047;
+  /* Texte */
+  --text:#F2F3F0;
+  --text-2:#C9CCD0;
+  --text-3:#A3A7AD;
+  --text-muted:#8B8F96;
+  --text-faint:#5A6068;
+  --on-accent:#0C0D0F;
+  /* Couleurs de rôle : citron = action principale / EF / progrès ; blanc = réglages et sélections ; violet = attention */
+  --accent:#C6F432;
+  --accent-soft:rgba(198,244,50,.12);
+  --select:#F2F3F0;
+  --select-soft:rgba(242,243,240,.07);
+  --attention:oklch(0.72 0.17 300);
+  --attention-bg:oklch(0.72 0.17 300 / .10);
+  --attention-bg-strong:oklch(0.72 0.17 300 / .16);
+  --attention-line:oklch(0.72 0.17 300 / .40);
+  /* Données (graphiques) */
+  --data-cyan:oklch(0.85 0.13 200);
+  --data-coral:oklch(0.7 0.19 25);
+  --data-heart:oklch(0.62 0.22 25);
+  --data-neutral:#8B8F96;
+  /* Types de séance */
+  --type-ef:#C6F432;
+  --type-long:oklch(0.8 0.12 160);
+  --type-fractionne:oklch(0.62 0.13 45);
+  --type-seuil:oklch(0.74 0.11 80);
+  --type-course:oklch(0.62 0.22 25);
+  --type-recup:oklch(0.86 0.01 250);
+  --type-marche:oklch(0.74 0.05 70);
+  --type-renfo:oklch(0.72 0.14 250);
+  --type-souple:oklch(0.75 0.13 330);
+  --type-etirements:oklch(0.82 0.09 350);
+  --type-autre:#8B8F96;
+  /* Typographie */
+  --font-display:"Barlow Condensed",-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+  --font-text:"Barlow",-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+  /* Arrondis */
+  --r-xs:10px; --r-sm:12px; --r-md:14px; --r-lg:18px; --r-xl:22px; --r-sheet:26px; --r-pill:999px;
+  /* Tailles */
+  --tap-min:44px; --btn-h:48px; --field-h:48px; --chip-h:36px;
+  /* Ombres et animations */
+  --shadow-sheet:0 -10px 40px rgba(0,0,0,.5);
+  --shadow-lift:0 14px 30px rgba(0,0,0,.6);
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --t-fast:200ms;
+
+  /* Anciens noms, gardés le temps de la refonte pour que l'existant se recolore
+     d'un coup. À supprimer quand les écrans auront migré (tranches S4 à S11). */
+  --card:var(--surface);
+  --card-2:var(--surface-control);
+  --border:var(--line);
+  --text-dim:var(--text-3);
+  --accent-dim:var(--accent-soft);
+  --orange:var(--attention);
+  --radius-lg:var(--r-xl);
+  --radius-md:var(--r-md);
+  --radius-sm:var(--r-xs);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{-webkit-font-smoothing:antialiased}
@@ -47,7 +94,7 @@ body{
   padding-bottom:calc(78px + env(safe-area-inset-bottom));
 }
 button,input,select{font-family:inherit}
-::selection{background:var(--accent);color:#000}
+::selection{background:var(--accent);color:var(--on-accent)}
 
 /* ---------- Auth ---------- */
 #authView{
@@ -56,9 +103,9 @@ button,input,select{font-family:inherit}
 }
 .auth-icon{
   width:72px;height:72px;border-radius:22px;margin:0 auto 20px;
-  background:linear-gradient(135deg,var(--accent),#0bb654);
+  background:var(--accent);
   display:flex;align-items:center;justify-content:center;
-  box-shadow:0 8px 24px rgba(48,209,88,0.35);
+  box-shadow:0 8px 24px rgba(198,244,50,0.25);
 }
 #authView h1{font-size:26px;font-weight:700;text-align:center;letter-spacing:-.4px}
 #authView .tagline{text-align:center;color:var(--text-dim);font-size:14px;margin-top:6px;margin-bottom:32px}
@@ -75,7 +122,7 @@ button,input,select{font-family:inherit}
 .field input::placeholder{color:var(--text-faint)}
 .goal-level-cards{display:flex;gap:6px}
 .goal-level-card{flex:1;padding:7px 6px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
-.goal-level-card.active{border-color:var(--accent);background:rgba(48,209,88,0.1)}
+.goal-level-card.active{border-color:var(--accent);background:rgba(198,244,50,0.1)}
 .goal-level-card .lbl{font-size:12px;font-weight:600}
 .goal-level-card .sub{font-size:9px;color:var(--text-dim);margin-top:1px;line-height:1.2}
 .goal-slot-switch{display:flex;gap:6px;margin-bottom:0}
@@ -83,8 +130,8 @@ button,input,select{font-family:inherit}
 .goal-sticky-header .card{padding:10px 12px;margin-bottom:8px}
 .goal-sticky-header .stitle{margin-bottom:8px}
 .goal-slot-btn{flex:1;padding:7px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:border-color .15s,background .15s,color .15s}
-.goal-slot-btn.active-principal{border-color:var(--yellow);background:var(--yellow-dim);color:var(--yellow)}
-.goal-slot-btn.active-secondaire{border-color:var(--purple);background:var(--purple-dim);color:var(--purple)}
+.goal-slot-btn.active-principal{border-color:var(--select);background:var(--select-soft);color:var(--select)}
+.goal-slot-btn.active-secondaire{border-color:var(--select);background:var(--select-soft);color:var(--select)}
 .goal-principal-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .goal-principal-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);cursor:pointer;transition:border-color .15s,background .15s}
 .goal-principal-card.active{border-color:var(--accent);background:var(--accent-dim)}
@@ -107,7 +154,7 @@ button,input,select{font-family:inherit}
 input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:pointer}
 .btn-primary{
   width:100%;padding:15px;border-radius:var(--radius-sm);border:none;
-  background:var(--accent);color:#000;font-weight:600;font-size:15px;cursor:pointer;
+  background:var(--accent);color:var(--on-accent);font-weight:600;font-size:15px;cursor:pointer;
   margin-top:6px;transition:transform .1s, opacity .15s;
 }
 .btn-primary:active{transform:scale(0.97)}
@@ -156,7 +203,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 @keyframes chipPop{0%{transform:scale(.88)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
 @keyframes todayPulse{0%,100%{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--text)}50%{box-shadow:0 0 0 3px var(--bg),0 0 0 7px rgba(245,245,247,.3)}}
 @keyframes checkDraw{to{stroke-dashoffset:0}}
-#authError{color:var(--red);font-size:13px;margin-top:12px;text-align:center;min-height:16px;line-height:1.4}
+#authError{color:var(--text-2);font-size:13px;margin-top:12px;text-align:center;min-height:16px;line-height:1.4}
 #authSwitch{margin-top:22px;font-size:13px;color:var(--accent);text-align:center;cursor:pointer;font-weight:500}
 
 /* ---------- App shell ---------- */
@@ -273,7 +320,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .toggle-col{display:flex;flex-direction:column;align-items:center;gap:3px}
 .toggle-col span{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
 .delete-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--card-2);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
-.delete-btn:hover{background:#d7001522;color:var(--red);border-color:#d7001555}
+.delete-btn:hover{background:var(--surface-control);color:var(--text);border-color:var(--line-field)}
 .manage-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-left:48px}
 .manage-field{display:flex;flex-direction:column;gap:4px}
 .field-lbl{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
@@ -281,7 +328,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .field-sub{font-size:10px;color:var(--text-faint)}
 .filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;overflow-x:auto;padding-bottom:2px}
 .flt{padding:6px 13px;border-radius:20px;font-size:12px;cursor:pointer;background:var(--card-2);color:var(--text-dim);border:1px solid transparent;font-weight:500;white-space:nowrap}
-.flt.active{background:var(--accent);color:#000;font-weight:700}
+.flt.active{background:var(--accent);color:var(--on-accent);font-weight:700}
 
 .empty-state{text-align:center;padding:40px 20px;color:var(--text-dim)}
 .empty-state svg{color:var(--text-faint);margin-bottom:14px}
@@ -372,7 +419,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
   width:100%;padding:13px;border-radius:var(--radius-sm);border:1px solid var(--border);
   background:var(--card-2);color:var(--text);font-weight:600;font-size:14px;cursor:pointer;
 }
-.btn-danger{color:var(--red);background:none;border:none;font-size:14px;font-weight:500;cursor:pointer;padding:12px 0}
+.btn-danger{color:var(--text-3);background:none;border:none;font-size:14px;font-weight:500;cursor:pointer;padding:12px 0}
 
 /* ---------- Dernière séance (hero, repliable) ---------- */
 .last-run-card{
@@ -436,7 +483,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 
 <div id="authView">
   <div class="auth-icon">
-    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="#000" stroke="none"/><path d="M4 22l4-8 3 3 2-5 4 2"/><path d="M13.5 8.5L11 13l3 2-1.5 4"/></svg>
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0C0D0F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="#0C0D0F" stroke="none"/><path d="M4 22l4-8 3 3 2-5 4 2"/><path d="M13.5 8.5L11 13l3 2-1.5 4"/></svg>
   </div>
   <h1>MyRunningApp</h1>
   <div class="tagline">Suis tes courses, simplement.</div>
@@ -469,14 +516,14 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=51"></script>
+<script src="logic.js?v=52"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const TC={
-  EF:"#30d158", Long:"#0a84ff", "Fractionné":"#ff9f0a", "Seuil":"#d70015", "Récup":"#98989f", Course:"#ff453a",
+  EF:"#C6F432", Long:"#0a84ff", "Fractionné":"#ff9f0a", "Seuil":"#d70015", "Récup":"#A3A7AD", Course:"#ff453a",
   Marche:"#64d2ff", Renfo:"#bf5af2", Yoga:"#ff375f", "Mobilité":"#ffd60a", "Souplesse":"#00c7be",
-  "Kiné":"#a2845e", Pilates:"#66d4cf", Other:"#98989f"
+  "Kiné":"#a2845e", Pilates:"#66d4cf", Other:"#A3A7AD"
 };
 const TICON={
   EF:"runner", Long:"route", "Fractionné":"bolt", "Seuil":"flame", "Récup":"runner", Course:"flag",
@@ -1338,9 +1385,9 @@ window.saveDashboardPeriod = async (value) => {
 window.changePassword = async () => {
   const pw = document.getElementById("newPassword").value;
   const msg = document.getElementById("pwMsg");
-  if(!pw || pw.length<6){ msg.textContent="Au moins 6 caractères."; msg.style.color="var(--red)"; return; }
+  if(!pw || pw.length<6){ msg.textContent="Au moins 6 caractères."; msg.style.color="var(--text-2)"; return; }
   const { error } = await supa.auth.updateUser({ password: pw });
-  msg.style.color = error ? "var(--red)" : "var(--accent)";
+  msg.style.color = error ? "var(--text-2)" : "var(--accent)";
   msg.textContent = error ? error.message : "Mot de passe changé.";
   if(!error) document.getElementById("newPassword").value="";
 };
@@ -1501,7 +1548,7 @@ async function mergeManualRuns(){
 function mergeNoticeCardHTML(){
   const notices = lsJson("mra_mergeNotices", []);
   if(!notices.length) return "";
-  return `<div class="card" role="status" style="border-color:rgba(48,209,88,0.4);background:var(--accent-dim)">
+  return `<div class="card" role="status" style="border-color:rgba(198,244,50,0.4);background:var(--accent-dim)">
     ${notices.map(n=>`<div style="font-size:13px;line-height:1.5">On a remplacé ta saisie du ${escHtml(n.label)} par la course synchronisée depuis ta montre.</div>`).join("")}
     <button class="btn-secondary" style="margin-top:10px" onclick="dismissMergeNotices()">Compris</button>
   </div>`;
@@ -1894,7 +1941,7 @@ function heroHTML(){
 
   return `<div class="hero" style="flex-direction:column;align-items:stretch">
     <div class="hero-rings-row">
-      ${ringSmHTML(monthS.dist, kmGoal, "#30d158", monthS.dist.toFixed(0), kmGoal?`/${kmGoal}km`:"km", "Km ce mois")}
+      ${ringSmHTML(monthS.dist, kmGoal, "#C6F432", monthS.dist.toFixed(0), kmGoal?`/${kmGoal}km`:"km", "Km ce mois")}
       ${ringSmHTML(monthS.runs.length, sessionGoal, "#0a84ff", String(monthS.runs.length), sessionGoal?`/${sessionGoal}`:"séances", "Séances ce mois")}
       ${ringSmHTML(monthS.time||0, null, "#ffd60a", Math.floor((monthS.time||0)/3600)+"h"+String(Math.round(((monthS.time||0)%3600)/60)).padStart(2,"0"), "", "Temps de course")}
     </div>
@@ -1999,18 +2046,18 @@ function kpisHTML(){
   // Regroupées par type de donnée plutôt qu'en une seule grille mélangée.
   const groups=[
     ["Volume",[
-      [yearDist.toFixed(2)+" km","Distance annuelle","route","#30d158"],
+      [yearDist.toFixed(2)+" km","Distance annuelle","route","#C6F432"],
       [s.longMax?s.longMax.toFixed(2)+" km":"—","Plus longue sortie "+periodLbl,"flame","#ff453a"],
     ]],
     ["Allure EF",
       adaptivePaceCards(efCompare, "Allure moyenne (encore peu de recul)", ["#ff9f0a","#bf5af2","#0a84ff"]),
     ],
     ["Allure Fractionné",
-      adaptivePaceCards(fracCompare, "Allure moyenne (encore peu de recul)", ["#ff375f","#ffd60a","#30d158"]),
+      adaptivePaceCards(fracCompare, "Allure moyenne (encore peu de recul)", ["#ff375f","#ffd60a","#C6F432"]),
     ],
     ["Cardio",[
       [maxHr?maxHr+" bpm":"—","FC max","heart","#ff375f"],
-      [avgFcEf?avgFcEf+" bpm":"—","FC moy. EF","heart","#30d158"],
+      [avgFcEf?avgFcEf+" bpm":"—","FC moy. EF","heart","#C6F432"],
       [avgFcLong?avgFcLong+" bpm":"—","FC moy. Long","heart","#0a84ff"],
       [avgFcFracWork?avgFcFracWork+" bpm":"—","FC moy. Work Fractionné","heart","#ff9f0a"],
     ]],
@@ -2133,17 +2180,17 @@ function monthlyVol(){
 // intense/distance totale, pas besoin de FC pour que ça marche pour tous.
 function intensityColor(r){
   const pct = r.dist ? r.intenseDist/r.dist : 0;
-  return pct>=0.3 ? "#ff375f" : pct>=0.12 ? "#ff9f0a" : "#30d158";
+  return pct>=0.3 ? "#ff375f" : pct>=0.12 ? "#ff9f0a" : "#C6F432";
 }
 // Couleur du volume MENSUEL comparé à l'objectif km/mois (goals.kmMensuel) :
 // jaune tant qu'on est loin en dessous, vert dans la cible, orange/rouge en
 // cas de dépassement. Gris si aucun objectif n'est renseigné (rien à comparer).
 function monthlyGoalColor(dist, kmGoal){
-  if(!kmGoal) return "#98989f";
+  if(!kmGoal) return "#A3A7AD";
   const pct = dist/kmGoal*100;
   if(pct>150) return "#ff375f";
   if(pct>120) return "#ff9f0a";
-  if(pct>=70) return "#30d158";
+  if(pct>=70) return "#C6F432";
   return "#ffd60a";
 }
 
@@ -2172,9 +2219,9 @@ function mkPaceTrendChart(canvasId, runs, showRaces, projectionDays=90){
   const projX = lastX + projectionDays;
   const trend = [{x:0,y:intercept},{x:projX,y:slope*projX+intercept}];
   const dayToLabel = x => { const d=new Date(first); d.setDate(first.getDate()+Math.round(x)); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}); };
-  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
   const datasets = [
-    {type:'scatter', label:'Allure', data:points, backgroundColor:'#30d158', pointRadius:4},
+    {type:'scatter', label:'Allure', data:points, backgroundColor:'#C6F432', pointRadius:4},
     {type:'line', label:'Tendance', data:trend, borderColor:'#ff9f0a', borderWidth:2, borderDash:[6,4], pointRadius:0, fill:false},
   ];
   // Une course officielle est un point de repère (vraie perf), pas une donnée
@@ -2223,10 +2270,10 @@ function mkFractionneChart(canvasId, fracRuns, projectionDays=90){
   const projX = lastX + projectionDays;
   const trend = [{x:0,y:intercept},{x:projX,y:slope*projX+intercept}];
   const dayToLabel = x => { const d=new Date(first); d.setDate(first.getDate()+Math.round(x)); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}); };
-  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
   const datasets = [
-    {type:'scatter', label:'Work', data:workPoints, backgroundColor:'#30d158', pointRadius:5},
-    {type:'scatter', label:'Récup', data:recoveryPoints, backgroundColor:'#98989f', pointRadius:5},
+    {type:'scatter', label:'Work', data:workPoints, backgroundColor:'#C6F432', pointRadius:5},
+    {type:'scatter', label:'Récup', data:recoveryPoints, backgroundColor:'#A3A7AD', pointRadius:5},
     {type:'line', label:'Tendance', data:trend, borderColor:'#ff9f0a', borderWidth:2, borderDash:[6,4], pointRadius:0, fill:false},
   ];
   const c = new Chart(document.getElementById(canvasId), {
@@ -2262,8 +2309,8 @@ function monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr){
 // lisible pour comparer plusieurs mois d'affilée (préférence Omar,
 // 2026-09-19), même donnée qu'avant (% du temps par zone).
 function mkZoneMonthlyChart(canvasId, monthly){
-  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
-  const zoneColors=["#5ac8fa","#30d158","#a8e063","#ff9f0a","#ff375f"];
+  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
+  const zoneColors=["#5ac8fa","#C6F432","#a8e063","#ff9f0a","#ff375f"];
   const zoneLabels=["Zone 1","Zone 2","Zone 3","Zone 4","Zone 5"];
   const datasets = zoneLabels.map((lbl,i)=>({
     label: lbl, backgroundColor: zoneColors[i],
@@ -2288,7 +2335,7 @@ function mkZoneMonthlyChart(canvasId, monthly){
 // Volume d'effort intense (zones 4+5) par mois — utile pour suivre la charge
 // haute intensité dans le temps (logique 80/20 : peu mais bien dosée).
 function mkHighIntensityMonthlyChart(canvasId, monthly){
-  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
   const data = monthly.map(m=>Math.round((m.secs[3]+m.secs[4])/60));
   const c = new Chart(document.getElementById(canvasId), {
     type:'line',
@@ -2316,14 +2363,14 @@ function mkHighIntensityMonthlyChart(canvasId, monthly){
 function mkPaceFcChart(canvasId, runs){
   const withHr = runs.filter(r=>r.fc && r.allure);
   if(!withHr.length) return;
-  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
   const ratios = withHr.map(r=>r.allure/r.fc);
   const c = new Chart(document.getElementById(canvasId), {
     type:'line',
     data:{
       labels: withHr.map(r=>r.label),
       datasets:[
-        {label:"Allure/FC", data:ratios, borderColor:"#30d158", backgroundColor:"rgba(48,209,88,0.08)", fill:true, borderWidth:2, pointBackgroundColor:"#30d158", pointRadius:3, tension:0.3},
+        {label:"Allure/FC", data:ratios, borderColor:"#C6F432", backgroundColor:"rgba(198,244,50,0.08)", fill:true, borderWidth:2, pointBackgroundColor:"#C6F432", pointRadius:3, tension:0.3},
       ]
     },
     options:{
@@ -2341,7 +2388,7 @@ function mkPaceFcChart(canvasId, runs){
   return c;
 }
 function mkHrCurveChart(canvasId, hrSeries){
-  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
   const sorted = hrSeries.slice().sort((a,b)=>a.t-b.t);
   const c = new Chart(document.getElementById(canvasId), {
     type:'line',
@@ -2376,7 +2423,7 @@ const barValueLabelsPlugin = {
         const val = ds.data[idx];
         if(val==null) return;
         ctx.save();
-        ctx.fillStyle = '#f5f5f7';
+        ctx.fillStyle = '#F2F3F0';
         ctx.font = '600 10px -apple-system, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(val, bar.x, bar.y - 6);
@@ -2386,7 +2433,7 @@ const barValueLabelsPlugin = {
   }
 };
 function mkChart(id,cfg){
-  const grid="rgba(255,255,255,0.06)",tick="#98989f",tbg="#1c1c1e",tbr="rgba(255,255,255,0.1)",ttx="#f5f5f7";
+  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
   cfg.options=Object.assign({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,padding:10,cornerRadius:8}}},cfg.options||{});
   const sc={x:{ticks:{color:tick,font:{size:10}},grid:{display:false}},y:{ticks:{color:tick,font:{size:10}},grid:{color:grid}}};
   if(!cfg.options.scales)cfg.options.scales=sc;
@@ -2512,7 +2559,7 @@ function zoneLabelSVG(x, y, text){
 function zoneShapeSVG(key, s, fill){
   if(key === "abdos"){
     const x=s.cx-s.rx, y=s.cy-s.ry, w=s.rx*2, h=s.ry*2;
-    const seam = (x1,y1,x2,y2)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1c1c1e" stroke-width="2"/>`;
+    const seam = (x1,y1,x2,y2)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#17191C" stroke-width="2"/>`;
     return `<rect class="zone-fill" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="${fill}"/>
       ${seam(s.cx, y+4, s.cx, y+h-4)}
       ${seam(x+4, s.cy-s.ry/3, x+w-4, s.cy-s.ry/3)}
@@ -2712,8 +2759,8 @@ function hrDetailHTML(r, effMaxHr, effRestingHr){
     </div>
     ${!effRestingHr?`<div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Zones basées sur % de FC max uniquement. Renseigne ta FC de repos (Mon compte) pour matcher exactement l'app Santé.</div>`:""}
     ${intervalPaces && (intervalPaces.manual || intervalPaces.workCount>=2)?`<div style="margin-top:12px;display:flex;gap:16px">
-      <div><div style="font-size:11px;color:var(--text-dim)">Allure Work ${intervalPaces.manual?"(manuel)":`(${intervalPaces.workCount})`}</div><div style="font-size:15px;font-weight:700;color:#30d158">${fmtA(intervalPaces.work)}/km</div></div>
-      ${intervalPaces.recovery?`<div><div style="font-size:11px;color:var(--text-dim)">Allure Récup ${intervalPaces.manual?"(manuel)":`(${intervalPaces.recoveryCount})`}</div><div style="font-size:15px;font-weight:700;color:#98989f">${fmtA(intervalPaces.recovery)}/km</div></div>`:""}
+      <div><div style="font-size:11px;color:var(--text-dim)">Allure Work ${intervalPaces.manual?"(manuel)":`(${intervalPaces.workCount})`}</div><div style="font-size:15px;font-weight:700;color:#C6F432">${fmtA(intervalPaces.work)}/km</div></div>
+      ${intervalPaces.recovery?`<div><div style="font-size:11px;color:var(--text-dim)">Allure Récup ${intervalPaces.manual?"(manuel)":`(${intervalPaces.recoveryCount})`}</div><div style="font-size:15px;font-weight:700;color:#A3A7AD">${fmtA(intervalPaces.recovery)}/km</div></div>`:""}
     </div>`:r.allure?`<div style="margin-top:12px"><div style="font-size:11px;color:var(--text-dim)">Allure moyenne</div><div style="font-size:15px;font-weight:700;color:var(--text)">${fmtA(r.allure)}/km</div></div>`:""}
     ${flagFrac?`<div style="margin-top:10px;padding:8px 10px;background:rgba(255,159,10,0.1);border:1px solid rgba(255,159,10,0.3);border-radius:8px;font-size:12px">
       La FC oscille beaucoup sur cette séance — ça ressemble à un fractionné.
@@ -3708,7 +3755,7 @@ function beginnerGraduationBannerHTML(){
   const plan = programSettings?.beginnerPlan;
   if(!plan || beginnerPlanInProgress()) return "";
   if(resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM)) return "";
-  return `<div class="card" style="border-color:rgba(48,209,88,0.4);background:var(--accent-dim)">
+  return `<div class="card" style="border-color:rgba(198,244,50,0.4);background:var(--accent-dim)">
     <div style="font-size:14px;font-weight:600;margin-bottom:4px">Bravo, tu as terminé le programme marche/course !</div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Tu cours maintenant 30 minutes d'affilée. Fais un 5 km à ton rythme, puis note ton temps : on s'en servira pour calculer tes allures et créer la suite de ton programme.</div>
     <button class="btn-secondary" onclick="goToProgramme()">Renseigner mon chrono</button>
@@ -3820,7 +3867,7 @@ function weekRecapCardHTML(){
   </div>`;
   const dayLetters = ["L","M","M","J","V","S","D"];
   const dotStyle = {
-    fait: "background:var(--accent);border:2px solid var(--accent);color:#000",
+    fait: "background:var(--accent);border:2px solid var(--accent);color:var(--on-accent)",
     manque: "background:rgba(255,159,10,0.2);border:2px solid var(--orange);color:var(--orange)",
     prevu: "background:transparent;border:2px solid var(--text-faint);color:transparent",
     repos: "background:var(--card-2);border:2px solid transparent;color:transparent",
@@ -3864,7 +3911,7 @@ function chargeGaugeHTML(gauge, acwr){
       <span style="font-size:12px;font-weight:600;color:${gauge.color}">${zoneName}</span>
     </div>
     <div class="${animate?"fill-in":""}" style="position:relative;display:flex;height:10px;border-radius:5px;overflow:hidden;margin:0 8px" aria-hidden="true">
-      ${seg(40,"#5ac8fa")}${seg(25,"#30d158")}${seg(35,"#e8a317")}
+      ${seg(40,"#5ac8fa")}${seg(25,"#C6F432")}${seg(35,"#e8a317")}
     </div>
     <div style="position:relative;height:0;margin:0 8px">${marker}</div>
     <div style="font-size:12px;margin-top:10px;color:${gauge.severe?"var(--orange)":"var(--text-dim)"};font-weight:${gauge.severe?700:400}">${phrase}</div>
@@ -3918,10 +3965,10 @@ function celebrationCardHTML(){
   const play = playOnce("celebrate_"+(c.runId||"eff"));
   const sparks = [["-18px","-22px","var(--accent)"],["22px","-18px","#ffd60a"],["30px","6px","var(--accent)"],["-26px","10px","#ffd60a"],["6px","-30px","var(--accent)"],["14px","24px","#ffd60a"]]
     .map(([dx,dy,col])=>`<span class="spark" style="--dx:${dx};--dy:${dy};background:${col}"></span>`).join("");
-  return `<div class="card celebrate-card${play?" play":""}" role="status" style="border-color:rgba(48,209,88,0.4);background:var(--accent-dim)">
+  return `<div class="card celebrate-card${play?" play":""}" role="status" style="border-color:rgba(198,244,50,0.4);background:var(--accent-dim)">
     ${sparks}
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <span style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:#000;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="check-draw" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></span>
+      <span style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="check-draw" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l5 5L20 6"/></svg></span>
       <div style="font-size:16px;font-weight:700">${escHtml(c.title)}</div>
     </div>
     <ul style="margin:0 0 12px;padding-left:18px;font-size:13px;line-height:1.55">${c.items.map(i=>`<li>${escHtml(i)}</li>`).join("")}</ul>
@@ -3979,7 +4026,7 @@ function programSessionCardHTML(session, date){
       ${session.planned_date<=localDateStr(new Date())?`<button class="flt" onclick="openManualRun('${session.id}')">J'ai fait cette séance</button>`:""}
       ${session.pace_zone && session.pace_zone!=="easy"?`<button class="flt" onclick="replaceWithEasy('${session.id}')">Remplacer par easy</button>`:""}
       <button class="flt" onclick="toggleEditSession('${session.id}')">Modifier</button>
-      <button class="flt" style="color:var(--red)" onclick="deleteSession('${session.id}')">Supprimer</button>
+      <button class="flt" style="color:var(--text-3)" onclick="deleteSession('${session.id}')">Supprimer</button>
     </div>
     ${editOpen?`<div style="padding:8px 0 4px">
       <div class="chart-hint" style="margin-top:0">Modifier la séance</div>
@@ -4266,15 +4313,15 @@ function renderContentInner(){
         </div>
         ${hasFrac?`<div class="card"><div class="stitle">Progression allure — Fractionné</div>
           <div class="chart-hint">Allure des intervalles Work et Récup · pointillés = tendance (Work) et projection à 2 mois</div>
-          ${fracExcludedCount>0?`<div class="chart-hint" style="color:#98989f">${fracExcludedCount} séance${fracExcludedCount>1?"s":""} exclue${fracExcludedCount>1?"s":""} du graph (pas assez de données pour calculer Work/Récup)</div>`:""}
+          ${fracExcludedCount>0?`<div class="chart-hint" style="color:#A3A7AD">${fracExcludedCount} séance${fracExcludedCount>1?"s":""} exclue${fracExcludedCount>1?"s":""} du graph (pas assez de données pour calculer Work/Récup)</div>`:""}
           <div style="position:relative;width:100%;height:180px"><canvas id="cFracMini"></canvas></div>
         </div>`:""}
       </div>
       <div class="card"><div class="stitle">Volume ${isMonthly?"mensuel":"hebdomadaire"} (km)</div>
         <div class="chart-hint">${isMonthly&&goals.kmMensuel
-          ?`Couleur = vs objectif de ${goals.kmMensuel} km/mois : <span style="color:#ffd60a">trop bas</span> · <span style="color:#30d158">dans la cible</span> · <span style="color:#ff9f0a">au-dessus</span> · <span style="color:#ff375f">largement dépassé</span>`
+          ?`Couleur = vs objectif de ${goals.kmMensuel} km/mois : <span style="color:#ffd60a">trop bas</span> · <span style="color:#C6F432">dans la cible</span> · <span style="color:#ff9f0a">au-dessus</span> · <span style="color:#ff375f">largement dépassé</span>`
           :isMonthly?`Renseigne un objectif km/mois dans Objectifs pour colorer ce graph par rapport à ta cible.`
-          :`Couleur = part de fractionné/seuil sur la période : <span style="color:#30d158">peu</span> · <span style="color:#ff9f0a">modéré</span> · <span style="color:#ff375f">beaucoup</span>`}</div>
+          :`Couleur = part de fractionné/seuil sur la période : <span style="color:#C6F432">peu</span> · <span style="color:#ff9f0a">modéré</span> · <span style="color:#ff375f">beaucoup</span>`}</div>
         <div style="position:relative;width:100%;height:180px"><canvas id="cVolMini"></canvas></div>
       </div>
       ${withHr.length?`<div class="card"><div class="stitle">Efficience cardiaque</div>
@@ -4334,8 +4381,8 @@ function renderContentInner(){
     if(!secondaireEnabled && activeGoalSlot==="secondaire") activeGoalSlot="principal";
     const slot = goals[activeGoalSlot] || {};
     const slotColorVars = activeGoalSlot==="secondaire"
-      ? "--accent:var(--purple);--accent-dim:var(--purple-dim);"
-      : "--accent:var(--yellow);--accent-dim:var(--yellow-dim);";
+      ? "--accent:var(--select);--accent-dim:var(--select-soft);"
+      : "--accent:var(--select);--accent-dim:var(--select-soft);";
     const isRace = slot.objectifPrincipal==="Préparer une course";
     const blocks = OBJECTIF_BLOCKS[slot.objectifPrincipal] || OBJECTIF_BLOCKS["Autre"];
     // Le volume d'entraînement (séances/semaine, km/mois) est partagé, peu
@@ -4892,7 +4939,7 @@ function guidedTestBannerHTML(){
     let dismissed = false; try{ dismissed = localStorage.getItem("mra_guidedTestSeen")==="1"; }catch(e){}
     if(dismissed) return "";
     const km = String(gt.distanceKm).replace(".", ",");
-    return `<div class="card" style="border-color:rgba(48,209,88,0.4);background:var(--accent-dim)">
+    return `<div class="card" style="border-color:rgba(198,244,50,0.4);background:var(--accent-dim)">
       <div style="font-size:14px;font-weight:600;margin-bottom:4px">Merci, ton test est analysé !</div>
       <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">D'après tes ${km} km en ${Math.round(gt.durationSec/60)} minutes, on a calculé tes allures et créé ton programme. Elles s'affineront au fil de tes séances.</div>
       <button class="btn-secondary" onclick="dismissGuidedTestSeen()">Super</button>
