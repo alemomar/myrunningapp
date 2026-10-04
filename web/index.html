@@ -91,7 +91,6 @@
   --border:var(--line);
   --text-dim:var(--text-3);
   --accent-dim:var(--accent-soft);
-  --orange:var(--attention);
   --radius-lg:var(--r-xl);
   --radius-md:var(--r-md);
   --radius-sm:var(--r-xs);
@@ -527,7 +526,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=52"></script>
+<script src="logic.js?v=53"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -846,7 +845,7 @@ window.goRateSession = (id) => {
 function painPromptBanner(){
   const r = unratedRecentSession();
   if(!r) return "";
-  return `<div class="card" id="painPrompt" style="border-color:rgba(255,159,10,0.4);background:rgba(255,159,10,0.08)">
+  return `<div class="card" id="painPrompt" style="border-color:var(--attention-line);background:var(--attention-bg)">
     <div style="font-size:13px;font-weight:600;margin-bottom:4px">Note ton ressenti — séance du ${r.label}</div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Douleurs, respiration, fatigue... ça aide à adapter ton programme.</div>
     <div style="display:flex;gap:8px">
@@ -1479,7 +1478,7 @@ function renderManualRunSheet(){
         <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">FC moyenne (facultatif)</span>
           <div style="display:flex;align-items:center;gap:4px"><input class="sheet-input" type="number" inputmode="numeric" min="30" max="230" step="1" style="width:80px" value="${f.hr}" oninput="manualRunSet('hr',this.value)"><span style="font-size:12px;color:var(--text-dim)">bpm</span></div></div>
       </div>
-      <div id="mrError" role="alert" style="font-size:13px;color:var(--orange);margin-top:12px;min-height:0">${escHtml(f.error)}</div>
+      <div id="mrError" role="alert" style="font-size:13px;color:var(--attention);margin-top:12px;min-height:0">${escHtml(f.error)}</div>
       <div style="display:flex;gap:8px;margin-top:14px">
         <button class="btn-primary" style="margin-top:0" id="mrSave" ${f.saving?"disabled":""} onclick="saveManualRun()">Enregistrer</button>
         <button class="btn-secondary" onclick="closeManualRun()">Annuler</button>
@@ -1573,7 +1572,7 @@ function mergeAskCardHTML(){
   const m = RUNS.find(r=>r.id===ask[0].manualId), s = RUNS.find(r=>r.id===ask[0].syncedId);
   if(!m || !s) return "";
   const desc = (r) => `${r.dist>0?String(r.dist.toFixed(1)).replace(".",",")+" km, ":""}${Math.round(r.durationSec/60)} min`;
-  return `<div class="card" style="border-color:rgba(232,163,23,0.5);background:rgba(232,163,23,0.08)">
+  return `<div class="card" style="border-color:var(--attention-line);background:var(--attention-bg)">
     <div style="font-size:13px;font-weight:600;margin-bottom:4px">Est-ce la même séance ?</div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ta saisie du ${escHtml(m.label)} (${desc(m)}) et la course synchronisée depuis ta montre (${desc(s)}) ont l'air proches. Si c'est la même, on garde celle de la montre et on y reporte ton ressenti.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1610,7 +1609,7 @@ function attachCardHTML(){
     const cands = attachCandidates({ id:r.id, date:localDateStr(dateFromRun(r)), type:r.type, distKm:r.dist }, plannedSessions);
     if(!cands.length) continue;
     const desc = `${r.dist>0?String(r.dist.toFixed(1)).replace(".",",")+" km, ":""}${Math.round(r.durationSec/60)} min`;
-    return `<div class="card" style="border-color:rgba(232,163,23,0.5);background:rgba(232,163,23,0.08)">
+    return `<div class="card" style="border-color:var(--attention-line);background:var(--attention-bg)">
       <div style="font-size:13px;font-weight:600;margin-bottom:4px">Cette sortie correspond à une séance prévue ?</div>
       <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ta sortie du ${escHtml(r.label)} (${desc}) n'est liée à aucune séance du programme. Si elle remplace l'une d'elles, elle comptera comme faite.</div>
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -1926,7 +1925,7 @@ function progressIndicatorsHTML(){
   const { acwr } = computeProgramInputs();
   const gauge = chargeEntrainementGauge(acwr);
   const effValue = eff.status==="mieux" ? countUpHTML(eff.pct,"pct","ind_eff",{sign:"+"}) : eff.status==="moins" ? countUpHTML(eff.pct,"pct","ind_eff",{sign:"−"}) : { stable:"Stable", insuffisant:"—" }[eff.status];
-  const effColor = { mieux:"var(--accent)", moins:"var(--orange)", stable:"var(--text)", insuffisant:"var(--text-faint)" }[eff.status];
+  const effColor = { mieux:"var(--accent)", moins:"var(--attention)", stable:"var(--text)", insuffisant:"var(--text-faint)" }[eff.status];
   const row = (label, value, color, phrase, first) => `<div style="padding:12px 0;${first?"":"border-top:1px solid var(--border)"}">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
       <span style="font-size:12px;color:var(--text-dim)">${label}</span>
@@ -2775,7 +2774,7 @@ function hrDetailHTML(r, effMaxHr, effRestingHr){
       <div><div style="font-size:11px;color:var(--text-dim)">Allure Work ${intervalPaces.manual?"(manuel)":`(${intervalPaces.workCount})`}</div><div style="font-size:15px;font-weight:700;color:#C6F432">${fmtA(intervalPaces.work)}/km</div></div>
       ${intervalPaces.recovery?`<div><div style="font-size:11px;color:var(--text-dim)">Allure Récup ${intervalPaces.manual?"(manuel)":`(${intervalPaces.recoveryCount})`}</div><div style="font-size:15px;font-weight:700;color:#A3A7AD">${fmtA(intervalPaces.recovery)}/km</div></div>`:""}
     </div>`:r.allure?`<div style="margin-top:12px"><div style="font-size:11px;color:var(--text-dim)">Allure moyenne</div><div style="font-size:15px;font-weight:700;color:var(--text)">${fmtA(r.allure)}/km</div></div>`:""}
-    ${flagFrac?`<div style="margin-top:10px;padding:8px 10px;background:rgba(255,159,10,0.1);border:1px solid rgba(255,159,10,0.3);border-radius:8px;font-size:12px">
+    ${flagFrac?`<div style="margin-top:10px;padding:8px 10px;background:var(--attention-bg);border:1px solid var(--attention-line);border-radius:8px;font-size:12px">
       La FC oscille beaucoup sur cette séance — ça ressemble à un fractionné.
       <div><button class="btn-secondary" style="margin-top:6px" onclick="changeType('${r.id}','Fractionné')">Reclasser en Fractionné</button></div>
     </div>`:""}
@@ -2845,7 +2844,7 @@ function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
   const flagSeuil = !flagFrac && r.type!=="Seuil" && looksLikeSeuil(r.hrSeries, effMaxHr, effRestingHr);
   return `<div class="session-pick" style="margin-top:6px" onclick="toggleHrDetail('${r.id}')">
     <span>${icon(open?"chevronDown":"chevronRight",13)} Détail cardio</span>
-    ${flagFrac?`<span class="badge" style="background:#ff9f0a22;color:#ff9f0a">⚠️ Fractionné détecté</span>`:""}
+    ${flagFrac?`<span class="badge" style="background:var(--attention-bg);color:var(--attention)">⚠️ Fractionné détecté</span>`:""}
     ${flagSeuil?`<span class="badge" style="background:#d7001522;color:#d70015">Zone haute</span>`:""}
   </div>
   ${open?hrDetailHTML(r, effMaxHr, effRestingHr):""}`;
@@ -3276,7 +3275,7 @@ function missedSessionsBanner(){
   const missed = plannedSessions.filter(p=>p.status==="missed" && !dismissedMissedIds().includes(p.id));
   if(!missed.length) return "";
   const p = missed[0];
-  return `<div class="card" style="border-color:rgba(255,159,10,0.4);background:rgba(255,159,10,0.08)">
+  return `<div class="card" style="border-color:var(--attention-line);background:var(--attention-bg)">
     <div style="font-size:13px;font-weight:600;margin-bottom:4px">Une séance n'a pas pu se faire — ${p.title} du ${new Date(p.planned_date).toLocaleDateString('fr-FR')}</div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ça arrive à tout le monde. On peut réorganiser ta semaine pour la replacer, ou tu préfères garder ton plan tel quel ?</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -3363,7 +3362,7 @@ function urgentPainBanner(){
   const todayStr = localDateStr(new Date());
   const next = plannedSessions.filter(p=>p.status==="planned" && p.pace_zone && p.planned_date>=todayStr).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0];
   const why = urgentIssue.reason==="severe" ? "Elle est très forte" : "Elle revient séance après séance";
-  return `<div class="card" style="border-color:rgba(232,163,23,0.9);background:rgba(232,163,23,0.14)">
+  return `<div class="card" style="border-color:var(--attention);background:var(--attention-bg-strong)">
     <div style="font-size:14px;font-weight:600;margin-bottom:6px">Cette douleur au niveau de ${zoneLabel} mérite un avis médical.</div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">${why}. Continuer comme si de rien n'était risque de l'aggraver : on te conseille de consulter un médecin ou un kiné avant de reprendre des efforts qui sollicitent cette zone. Cette application ne pose pas de diagnostic.</div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">En attendant, on peut mettre cette zone en pause : plus d'exercices de mobilité ou de renfo ciblés dessus. Tu peux aussi continuer si tu le souhaites, c'est ton choix.</div>
@@ -3377,7 +3376,7 @@ function urgentPainBanner(){
 }
 function suspendedZonesCard(){
   if(!suspendedZones.length) return "";
-  return `<div class="card" style="border-color:rgba(232,163,23,0.5)">
+  return `<div class="card" style="border-color:var(--attention-line)">
     ${suspendedZones.map(z=>{
       const label = (ZONE_SHORT_LABEL[z.zone]||z.zone).toLowerCase();
       const since = new Date(z.since).toLocaleDateString("fr-FR");
@@ -3416,7 +3415,7 @@ function grosAdaptationBanner(){
   const situation = grosIssue.type==="pain"
     ? `Une douleur assez marquée revient au niveau de ${zoneLabel}.`
     : `Ta charge d'entraînement a augmenté très vite ces derniers jours.`;
-  return `<div class="card" style="border-color:rgba(232,163,23,0.5);background:rgba(232,163,23,0.08)">
+  return `<div class="card" style="border-color:var(--attention-line);background:var(--attention-bg)">
     <div style="font-size:13px;font-weight:600;margin-bottom:4px">${situation}</div>
     <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ce n'est pas anodin — choisis ce qui te convient le mieux :</div>
     <div style="display:flex;flex-direction:column;gap:8px">
@@ -3881,7 +3880,7 @@ function weekRecapCardHTML(){
   const dayLetters = ["L","M","M","J","V","S","D"];
   const dotStyle = {
     fait: "background:var(--accent);border:2px solid var(--accent);color:var(--on-accent)",
-    manque: "background:rgba(255,159,10,0.2);border:2px solid var(--orange);color:var(--orange)",
+    manque: "background:var(--attention-bg-strong);border:2px solid var(--attention);color:var(--attention)",
     prevu: "background:transparent;border:2px solid var(--text-faint);color:transparent",
     repos: "background:var(--card-2);border:2px solid transparent;color:transparent",
   };
@@ -3900,7 +3899,7 @@ function weekRecapCardHTML(){
     </div>
     <div style="display:flex;gap:4px;padding:2px 0 6px">${dots}</div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text-dim);margin-top:8px">
-      <span>✓ fait</span><span>○ prévu</span><span style="color:var(--orange)">! à replacer</span><span>· repos</span>
+      <span>✓ fait</span><span>○ prévu</span><span style="color:var(--attention)">! à replacer</span><span>· repos</span>
     </div>
     ${(()=>{ const note = missedDayNote(days.filter(d=>d.status==="manque").map(d=>d.date), unlinkedRunDatesThisWeek()); return note?`<div style="font-size:12px;color:var(--text-dim);margin-top:8px">${escHtml(note)}</div>`:""; })()}
     ${chargeGaugeHTML(gauge, acwr)}
@@ -3924,10 +3923,10 @@ function chargeGaugeHTML(gauge, acwr){
       <span style="font-size:12px;font-weight:600;color:${gauge.color}">${zoneName}</span>
     </div>
     <div class="${animate?"fill-in":""}" style="position:relative;display:flex;height:10px;border-radius:5px;overflow:hidden;margin:0 8px" aria-hidden="true">
-      ${seg(40,"#5ac8fa")}${seg(25,"#C6F432")}${seg(35,"#e8a317")}
+      ${seg(40,"#5ac8fa")}${seg(25,"#C6F432")}${seg(35,"var(--attention)")}
     </div>
     <div style="position:relative;height:0;margin:0 8px">${marker}</div>
-    <div style="font-size:12px;margin-top:10px;color:${gauge.severe?"var(--orange)":"var(--text-dim)"};font-weight:${gauge.severe?700:400}">${phrase}</div>
+    <div style="font-size:12px;margin-top:10px;color:${gauge.severe?"var(--attention)":"var(--text-dim)"};font-weight:${gauge.severe?700:400}">${phrase}</div>
   </div>`;
 }
 // Message de jour de repos (4.8.e). La citation de Hal Higdon est tirée de
@@ -5151,14 +5150,14 @@ function onboardingHTML(){
   const row = (lbl, val) => `<div class="account-row"><span class="lbl">${lbl}</span><span class="v" style="text-align:right">${val}</span></div>`;
   let warn = "";
   if(f && f.status==="compresse"){
-    warn = `<div style="border:1px solid rgba(232,163,23,0.5);background:rgba(232,163,23,0.08);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.5">
+    warn = `<div style="border:1px solid var(--attention-line);background:var(--attention-bg);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.5">
       Ta date est un peu serrée : pour ce niveau, on recommande au moins ${Math.ceil(f.minWeeks)} semaines pour préparer cette distance (d'après les plans de Hal Higdon), et il t'en reste ${f.weeks}. Tu peux la garder (le plan sera compressé, avec un peu plus de risque de blessure) ou choisir une date plus lointaine.
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
         <button class="btn-secondary" style="width:auto;padding:0 14px" onclick="onbAckCompress()">${onb.compressAck?"Date gardée ✓":"Garder cette date"}</button>
         <button class="btn-secondary" style="width:auto;padding:0 14px" onclick="onbSet('step',1)">Changer ma date ou ma distance</button>
       </div></div>`;
   } else if(f && f.status==="extreme"){
-    warn = `<div style="border:1px solid rgba(232,163,23,0.5);background:rgba(232,163,23,0.08);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.5">
+    warn = `<div style="border:1px solid var(--attention-line);background:var(--attention-bg);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.5">
       Cette date est trop proche : pour ce niveau, on recommande au moins ${Math.ceil(f.minWeeks)} semaines pour préparer cette distance (d'après les plans de Hal Higdon), et il t'en reste ${f.weeks}. On ne peut pas te proposer un plan sûr. Choisis une date plus lointaine ou une distance plus courte.
       <div style="margin-top:10px"><button class="btn-secondary" style="width:auto;padding:0 14px" onclick="onbSet('step',1)">Changer ma date ou ma distance</button></div></div>`;
   }

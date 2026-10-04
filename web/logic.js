@@ -1077,7 +1077,7 @@ function acwrAt(dailySeries, targetDate){
    sous-charge <0,8 ; zone idéale 0,8-1,3 ; attention >1,3 (alerte
    renforcée >1,5, mais reste la même zone "attention" — le CDC ne définit
    qu'une alerte visuelle plus marquée, pas une 4e zone). Zone attention
-   toujours en ambre, jamais en rouge (demande explicite du CDC).
+   toujours en violet (la couleur d'attention de l'app), jamais en rouge (demande explicite du CDC).
    `acwr` : résultat de acwrAt(...).acwr (peut être null, pas assez
    d'historique). Renvoie {zone, color, phrase, severe} — `severe` sert à
    l'UI pour renforcer l'alerte au-delà de 1,5 sans changer de couleur. */
@@ -1086,7 +1086,7 @@ function chargeEntrainementGauge(acwr){
   if(acwr<0.8) return { zone:"sous-charge", color:"#5ac8fa", phrase:"Tu pourrais progresser un peu plus vite — ta charge est en dessous de la zone idéale.", severe:false };
   if(acwr<=1.3) return { zone:"idéale", color:"#C6F432", phrase:"Tu augmentes ta charge à un rythme sûr.", severe:false };
   const severe = acwr>1.5;
-  return { zone:"attention", color:"#e8a317", phrase: severe
+  return { zone:"attention", color:"oklch(0.72 0.17 300)", phrase: severe
     ? "Ta charge augmente très vite — risque de blessure élevé, pense à lever le pied."
     : "Ta charge augmente vite — reste attentif à ton ressenti.", severe };
 }

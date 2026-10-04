@@ -1,7 +1,7 @@
 Polices Barlow et Barlow Condensed (jeu de caractères latin, format woff2).
 Source : Google Fonts (fonts.gstatic.com), récupérées le 03/10/2026 pour la refonte du design.
 Licence : SIL Open Font License 1.1 (usage libre, y compris commercial, redistribution autorisée).
-Auteur : The Barlow Project Authors (https://github.com/jpt/barlow).
+Auteur : The Barlow Project Authors.
 Fichiers : barlow-400/500/600/700.woff2, barlow-condensed-600/700.woff2 (~15 Ko chacun).
 Ne couvrent pas les caractères hors latin (ex. flèches « → »), pour lesquels le navigateur
 utilise la police du système.

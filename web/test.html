@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=52"></script>
+<script src="logic.js?v=53"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -411,8 +411,8 @@ try {
   assertEqual("chargeEntrainementGauge : 1.31 -> attention", chargeEntrainementGauge(1.31).zone, "attention");
   assertEqual("chargeEntrainementGauge : 1.4 -> attention, pas encore sévère", chargeEntrainementGauge(1.4).severe, false);
   assertEqual("chargeEntrainementGauge : 1.6 -> attention sévère (>1.5)", chargeEntrainementGauge(1.6).severe, true);
-  assertEqual("chargeEntrainementGauge : zone attention toujours en ambre, jamais rouge", chargeEntrainementGauge(1.6).color, "#e8a317");
-  assertEqual("chargeEntrainementGauge : zone attention sévère reste ambre aussi", chargeEntrainementGauge(2.0).color, "#e8a317");
+  assertEqual("chargeEntrainementGauge : zone attention toujours en violet, jamais rouge", chargeEntrainementGauge(1.6).color, "oklch(0.72 0.17 300)");
+  assertEqual("chargeEntrainementGauge : zone attention sévère reste violette aussi", chargeEntrainementGauge(2.0).color, "oklch(0.72 0.17 300)");
 }
 
 // --- detectMissedSessions ---
