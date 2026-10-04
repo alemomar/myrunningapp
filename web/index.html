@@ -503,6 +503,57 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .hier-card .hier-title{font-family:var(--font-display);font-weight:700;font-size:26px;line-height:1.1;text-transform:uppercase;margin-bottom:4px}
 .hier-card .hier-value{font-family:var(--font-display);font-weight:700;font-size:34px;line-height:1.1;color:var(--accent);margin-bottom:4px}
 .hier-card .hier-before{font-size:13px;color:var(--text-muted);margin-bottom:12px}
+/* ---------- Carte de séance (design 2d, V1 à V7) ---------- */
+.session-card{position:relative;margin-bottom:14px;padding:18px 16px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl)}
+.sc-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.sc-icon{flex:none;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.sc-overline{flex:1;min-width:0;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-done{flex:none;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:var(--r-pill);background:var(--accent);color:var(--on-accent);font-size:13.5px;font-weight:600}
+.menu-wrap{position:relative;flex:none}
+.sc-menu{position:relative;width:36px;height:36px;border:none;border-radius:50%;background:none;color:var(--text-3);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.sc-menu::after{content:"";position:absolute;inset:-4px}
+.menu-pop{position:absolute;right:0;top:40px;z-index:20;min-width:220px;padding:6px;background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-lift)}
+.menu-pop button{display:flex;align-items:center;width:100%;min-height:44px;padding:0 12px;border:none;border-radius:10px;background:none;color:var(--text);font-family:inherit;font-size:15px;text-align:left;cursor:pointer}
+.menu-pop button.danger{color:var(--text-3)}
+.menu-pop button:active{background:var(--surface-control)}
+.sc-title{font-family:var(--font-display);font-weight:700;font-size:23px;line-height:1.15;text-transform:uppercase}
+.sc-sub{font-size:14px;color:var(--text-muted);margin-top:2px}
+.sc-src{display:inline-block;margin-top:8px;padding:2px 10px;border:1px solid var(--line-field);border-radius:var(--r-pill);font-size:12px;color:var(--text-muted)}
+.sc-metrics{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin:14px 0}
+.sc-big .n,.sc-big .u{font-family:var(--font-display);font-weight:700;font-size:44px;line-height:1;text-transform:uppercase}
+.sc-big .u{margin-left:6px}
+.sc-big .note{margin-top:4px;font-size:13.5px;color:var(--text-muted)}
+.sc-tiles{display:flex;gap:8px;flex:1;min-width:150px}
+.sc-tile{flex:1;min-width:0;padding:8px 12px;border-radius:var(--r-md);background:var(--surface-sunken)}
+.sc-tile .l{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+.sc-tile .l i{flex:none;width:8px;height:8px;border-radius:2px}
+.sc-tile .v{font-family:var(--font-display);font-weight:700;font-size:22px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-tile .v.t{font-size:18px;line-height:1.35}
+.sc-tiles2{display:flex;gap:8px;margin:-2px 0 14px}
+.sc-bar{display:flex;height:14px;gap:2px;margin:0 0 14px}
+.sc-bar>div{border-radius:4px}
+.sc-coach{display:flex;gap:10px;font-size:14px;line-height:1.5;color:var(--text-2)}
+.sc-coach>svg{flex:none;margin-top:3px;color:var(--accent)}
+.sc-coach .chart-hint{margin:6px 0 0;font-size:14px;color:var(--text-2)}
+.sc-coach strong{color:var(--text)}
+.sc-sep{height:1px;margin:16px 0 14px;background:var(--line)}
+.sc-late{display:flex;align-items:center;gap:8px;margin:14px 0 10px;font-size:14px;font-weight:600;color:var(--attention)}
+.btn-outline{display:flex;align-items:center;justify-content:center;width:100%;min-height:var(--btn-h);padding:0 20px;border:1.5px solid var(--accent);border-radius:24px;background:none;color:var(--accent);font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
+.ex-row{position:relative;display:flex;align-items:center;gap:12px;min-height:72px;padding:8px 0;border-top:1px solid var(--line);cursor:pointer}
+.ex-row img{flex:none;width:56px;height:56px;border-radius:12px;background:var(--surface-sunken)}
+.ex-row .nm{font-size:15px;font-weight:600;line-height:1.25}
+.ex-row .fm{margin-top:2px;font-size:13px;color:var(--text-muted)}
+.ex-row .menu-wrap{margin-left:auto}
+.ex-detail-img{display:block;width:200px;height:200px;margin:0 auto 14px;border-radius:var(--r-lg);background:var(--surface-sunken)}
+.ex-detail-meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.ex-detail-meta span{padding:5px 12px;border-radius:var(--r-pill);background:var(--surface-sunken);border:1px solid var(--line-field);font-size:13px;color:var(--text-2)}
+.ex-detail ul{margin:0 0 12px;padding-left:18px;font-size:14.5px;line-height:1.55}
+.ex-nav{display:flex;gap:8px;margin-top:12px}
+.ex-pick{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.ex-pick img{flex:none;width:56px;height:56px;border-radius:12px;background:var(--surface-sunken)}
+.ex-pick .go{flex:none;width:auto;min-height:40px;padding:0 16px;margin-left:auto}
+.toast.has-action{display:flex;align-items:center;gap:14px;pointer-events:auto}
+.toast-action{padding:4px;border:none;background:none;color:var(--on-accent);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
 .sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface-raised);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:var(--shadow-sheet)}
 .sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--grabber);margin:0 auto 14px}
@@ -573,7 +624,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=58"></script>
+<script src="logic.js?v=62"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -629,7 +680,10 @@ const ICONS = {
   recup: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 7-3 5h4l-3 5"/><path d="M14.856 6H16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.935"/><path d="M22 14v-4"/><path d="M5.14 18H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2.936"/></svg>`,
   moveH: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 8 22 12 18 16"/><polyline points="6 8 2 12 6 16"/><line x1="2" x2="22" y1="12" y2="12"/></svg>`,
   alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
+  more: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>`,
+  moreV: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>`,
   chevronRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
+  chevronUp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`,
   chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`,
   calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>`,
@@ -642,14 +696,18 @@ function sheetHeadHTML(title, closeCall, overline){
 }
 // Message blanc en bas de l'écran, 3 s. Les erreurs et pannes restent sobres (jamais rouge ni violet).
 let toastTimer = null;
-window.toast = (message) => {
+// `opts` : { actionLabel, onAction, ms } — ex. « Annuler » pendant 5 s après une suppression.
+window.toast = (message, opts) => {
   const root = document.getElementById("toastRoot");
   if(!root) return;
-  root.innerHTML = `<div class="toast" role="status">${escHtml(message)}</div>`;
+  const o = opts || {};
+  root.innerHTML = `<div class="toast${o.actionLabel?" has-action":""}" role="status"><span>${escHtml(message)}</span>${o.actionLabel?`<button type="button" class="toast-action">${escHtml(o.actionLabel)}</button>`:""}</div>`;
   const el = root.firstChild;
+  const hide = () => { el.classList.remove("show"); setTimeout(()=>{ if(root.firstChild===el) root.innerHTML=""; }, 250); };
+  if(o.actionLabel) el.querySelector(".toast-action").onclick = () => { clearTimeout(toastTimer); hide(); if(o.onAction) o.onAction(); };
   requestAnimationFrame(()=>el.classList.add("show"));
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>{ el.classList.remove("show"); setTimeout(()=>{ if(root.firstChild===el) root.innerHTML=""; }, 250); }, 3000);
+  toastTimer = setTimeout(hide, o.ms || 3000);
 };
 
 function mapRow(r){
@@ -3892,24 +3950,94 @@ function programSettingsFormHTML(profile){
   </div>`;
 }
 
-// Liste d'exercices d'une séance (4.7.d) : la description est enregistrée en
-// texte (une ligne "Nom — format ..." par exercice, voir formatExerciseList) ;
-// chaque exercice est retrouvé par son nom dans la base pour afficher son
-// animation, ses 3 consignes et sa variante. Texte brut si aucun nom reconnu
-// (ex: description saisie à la main).
-function exerciseListHTML(description){
-  const lines = String(description).split("\n").filter(l=>l.trim() && !l.startsWith("   "));
-  const found = lines.map(l=>EXERCISE_LIBRARY.find(ex=>l.startsWith(ex.name+" — "))).filter(Boolean);
+// Exercices d'une séance (4.7.d, D4, D5) : une ligne par exercice avec sa vignette animée, son format et un
+// « ⋮ » (Remplacer, Supprimer de la séance). Toucher la ligne ouvre le détail (feuille V1c). La description est
+// enregistrée en texte (voir parseExerciseBlocks, logic.js) ; un changement ne vaut que pour cette séance.
+let openExMenu = null;      // "idSéance|numéro" du « ⋮ » ouvert
+let exerciseSheet = null;   // { sessionId, index, mode:"detail"|"replace" }
+function exerciseListHTML(description, session){
+  const found = exercisesInDescription(description);
   if(!found.length) return `<div style="font-size:13px;line-height:1.55;white-space:pre-line">${escHtml(description)}</div>`;
-  return found.map(ex=>`<div style="display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--border)">
-    <img src="${ex.visuel}" alt="Animation : ${escHtml(ex.name)}" width="84" height="84" loading="lazy" style="flex:none;width:84px;height:84px;border-radius:12px;background:var(--card-2)">
-    <div style="min-width:0">
-      <div style="font-size:13px;font-weight:600">${escHtml(ex.name)}</div>
-      <div style="font-size:12px;color:var(--text-dim)">${escHtml(ex.format)}${ex.materiel && ex.materiel!=="Aucun" ? " · matériel : "+escHtml(ex.materiel) : ""}</div>
-      <ul style="margin:6px 0 0;padding-left:16px;font-size:12px;line-height:1.45">${ex.consignes.map(c=>`<li>${escHtml(c)}</li>`).join("")}</ul>
-      ${ex.variante ? `<div style="font-size:11px;color:var(--text-dim);margin-top:6px">${escHtml(ex.variante)}</div>` : ""}
-    </div>
-  </div>`).join("");
+  const editable = !!session && session.status==="planned";
+  return found.map((ex,i)=>{
+    const key = session ? session.id+"|"+i : "";
+    const menu = editable ? `<div class="menu-wrap" onclick="event.stopPropagation()"><button type="button" class="sc-menu" aria-label="Actions sur ${escHtml(ex.name)}" aria-haspopup="menu" aria-expanded="${openExMenu===key}" onclick="toggleExMenu('${key}')">${icon("moreV",18)}</button>
+      ${openExMenu===key?`<div class="menu-pop" role="menu"><button type="button" role="menuitem" onclick="openExerciseReplace('${session.id}',${i})">Remplacer</button><button type="button" role="menuitem" class="danger" onclick="removeExercise('${session.id}',${i})">Supprimer de la séance</button></div>`:""}</div>` : "";
+    return `<div class="ex-row"${session?` onclick="openExerciseDetail('${session.id}',${i})"`:""}>
+      <img src="${ex.visuel}" alt="Animation : ${escHtml(ex.name)}" width="56" height="56" loading="lazy">
+      <div style="min-width:0"><div class="nm">${escHtml(ex.name)}</div><div class="fm">${escHtml(ex.format)}${ex.materiel && ex.materiel!=="Aucun" ? " · matériel : "+escHtml(ex.materiel) : ""}</div></div>
+      ${menu}
+    </div>`;
+  }).join("");
+}
+window.toggleExMenu = (key) => { openExMenu = openExMenu===key ? null : key; renderContent(); };
+async function saveSessionDescription(id, description){
+  const s = plannedSessions.find(p=>p.id===id);
+  if(!s) return false;
+  const { error } = await supa.from("planned_sessions").update({ description, updated_at:new Date().toISOString() }).eq("id", id);
+  if(error){ toast("Pas enregistré, vérifie ta connexion."); return false; }
+  s.description = description;
+  return true;
+}
+window.removeExercise = async (sid, i) => {
+  const s = plannedSessions.find(p=>p.id===sid);
+  const ex = s && exercisesInDescription(s.description)[i];
+  if(!ex) return;
+  const before = s.description;
+  openExMenu = null;
+  if(!(await saveSessionDescription(sid, removeExerciseFromDescription(before, ex.name)))) return;
+  closeExerciseSheet(); renderContent();
+  toast("Exercice supprimé de la séance", { actionLabel:"Annuler", ms:5000, onAction: async () => { if(await saveSessionDescription(sid, before)) renderContent(); } });
+};
+window.chooseReplacement = async (sid, i, exId) => {
+  const s = plannedSessions.find(p=>p.id===sid);
+  const ex = s && exercisesInDescription(s.description)[i];
+  const next = EXERCISE_LIBRARY.find(e=>e.id===exId);
+  if(!ex || !next) return;
+  const before = s.description;
+  if(!(await saveSessionDescription(sid, replaceExerciseInDescription(before, ex.name, next)))) return;
+  closeExerciseSheet(); renderContent();
+  toast("Exercice remplacé", { actionLabel:"Annuler", ms:5000, onAction: async () => { if(await saveSessionDescription(sid, before)) renderContent(); } });
+};
+window.openExerciseDetail = (sid, i) => { openExMenu = null; exerciseSheet = { sessionId:sid, index:i, mode:"detail" }; renderExerciseSheet(); };
+window.openExerciseReplace = (sid, i) => { openExMenu = null; exerciseSheet = { sessionId:sid, index:i, mode:"replace" }; renderExerciseSheet(); renderContent(); };
+window.closeExerciseSheet = () => { exerciseSheet = null; document.getElementById("sheetRoot").innerHTML = ""; };
+window.exerciseNav = (delta) => {
+  if(!exerciseSheet) return;
+  const s = plannedSessions.find(p=>p.id===exerciseSheet.sessionId);
+  const n = s ? exercisesInDescription(s.description).length : 0;
+  exerciseSheet.index = Math.max(0, Math.min(n-1, exerciseSheet.index + delta));
+  renderExerciseSheet();
+};
+function renderExerciseSheet(){
+  const root = document.getElementById("sheetRoot");
+  const st = exerciseSheet;
+  const s = st && plannedSessions.find(p=>p.id===st.sessionId);
+  const list = s ? exercisesInDescription(s.description) : [];
+  const ex = list[st ? st.index : 0];
+  if(!st || !s || !ex){ root.innerHTML = ""; return; }
+  const editable = s.status==="planned";
+  const dim = "color:var(--text-3)";
+  if(st.mode==="replace"){
+    const cands = replacementCandidates(ex.name, list.map(e=>e.name));
+    root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeExerciseSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Remplacer ${escHtml(ex.name)}">
+      ${sheetHeadHTML("Remplacer", "closeExerciseSheet()", ex.name)}
+      <div style="font-size:13.5px;color:var(--text-muted);margin-bottom:8px">Ça ne change que cette séance : les prochaines gardent leur liste.</div>
+      ${cands.length ? cands.map(e=>`<div class="ex-pick"><img src="${e.visuel}" alt="" width="56" height="56" loading="lazy"><div style="min-width:0"><div style="font-size:15px;font-weight:600">${escHtml(e.name)}</div><div style="font-size:13px;color:var(--text-muted)">${escHtml(e.zoneTravaillee)} · ${escHtml(e.format)}</div></div><button type="button" class="btn-primary go" onclick="chooseReplacement('${s.id}',${st.index},${e.id})">Choisir</button></div>`).join("")
+        : `<div style="font-size:14px;color:var(--text-2);padding:12px 0">Aucun autre exercice à proposer pour cette zone.</div>`}
+    </div></div>`;
+    return;
+  }
+  root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeExerciseSheet()"><div class="sheet ex-detail" role="dialog" aria-modal="true" aria-label="${escHtml(ex.name)}">
+    ${sheetHeadHTML(ex.name, "closeExerciseSheet()", `${sessionTypeLabel(s.type)} · exercice ${st.index+1} sur ${list.length}`)}
+    <img class="ex-detail-img" src="${ex.visuel}" alt="Animation : ${escHtml(ex.name)}">
+    <div class="ex-detail-meta"><span>${escHtml(ex.zoneTravaillee)}</span><span>${escHtml(ex.format)}</span>${ex.materiel && ex.materiel!=="Aucun" ? `<span>${escHtml(ex.materiel)}</span>` : ""}</div>
+    <ul>${ex.consignes.map(c=>`<li>${escHtml(c)}</li>`).join("")}</ul>
+    ${ex.variante ? `<div style="font-size:13.5px;color:var(--text-muted);margin-bottom:12px">${escHtml(ex.variante)}</div>` : ""}
+    ${editable ? `<button type="button" class="btn-secondary" onclick="openExerciseReplace('${s.id}',${st.index})">Remplacer</button>
+      <button type="button" class="btn-secondary" style="margin-top:8px;${dim}" onclick="removeExercise('${s.id}',${st.index})">Supprimer de la séance</button>` : ""}
+    <div class="ex-nav"><button type="button" class="btn-secondary" ${st.index===0?"disabled":""} onclick="exerciseNav(-1)">Précédent</button><button type="button" class="btn-secondary" ${st.index===list.length-1?"disabled":""} onclick="exerciseNav(1)">Suivant</button></div>
+  </div></div>`;
 }
 // "En savoir plus" (4.10.b) : texte long par type de séance, déplié à la
 // demande dans la carte de séance (Aujourd'hui et Programme).
@@ -3919,12 +4047,13 @@ window.toggleLearnMore = (id) => {
   else { openLearnMore.add(id); justOpenedKey = "lm_"+id; }
   renderContent(); justOpenedKey = null;
 };
-// Barre de structure (4.11.d) : déroulé de la séance d'un coup d'œil, pour les
-// séances marche/course et le test guidé (voir sessionStructureSegments).
+// Barre de structure (4.11.d) : déroulé de la séance d'un coup d'œil, pour les séances marche/course et le test
+// guidé (voir sessionStructureSegments). Hauteur 14 px, segments proportionnels aux durées, écart de 2 px ;
+// la légende (couleur + durée) est portée par les tuiles du haut de la carte.
 const STRUCTURE_STYLE = {
-  marche:{ label:"Marche", color:"#5c5c60" },
+  marche:{ label:"Marche", color:"#3A4047" },
   course:{ label:"Course", color:"var(--accent)" },
-  facile:{ label:"Footing léger", color:"#0a84ff" },
+  facile:{ label:"Footing léger", color:"#8B8F96" },
   test:{ label:"Test", color:"var(--accent)" },
 };
 function sessionStructureBarHTML(session){
@@ -3934,14 +4063,8 @@ function sessionStructureBarHTML(session){
   const byType = {};
   segs.forEach(g=>{ byType[g.type] = (byType[g.type]||0)+g.sec; });
   const animate = playOnce("structure_"+session.id);
-  return `<div style="margin-top:12px">
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px">Structure de la séance</div>
-    <div class="${animate?"fill-in":""}" style="display:flex;height:12px;border-radius:6px;overflow:hidden;gap:1px" role="img" aria-label="Déroulé : ${Object.entries(byType).map(([t,sec])=>STRUCTURE_STYLE[t].label+" "+Math.round(sec/60)+" min").join(", ")}">
-      ${segs.map(g=>`<div style="width:${g.sec/total*100}%;background:${STRUCTURE_STYLE[g.type].color}"></div>`).join("")}
-    </div>
-    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text-dim);margin-top:6px">
-      ${Object.entries(byType).map(([t,sec])=>`<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${STRUCTURE_STYLE[t].color};margin-right:4px"></span>${STRUCTURE_STYLE[t].label} ${Math.round(sec/60)} min</span>`).join("")}
-    </div>
+  return `<div class="sc-bar${animate?" fill-in":""}" role="img" aria-label="Déroulé : ${Object.entries(byType).map(([t,sec])=>STRUCTURE_STYLE[t].label+" "+Math.round(sec/60)+" min").join(", ")}">
+    ${segs.map(g=>`<div style="width:${g.sec/total*100}%;background:${STRUCTURE_STYLE[g.type].color}"></div>`).join("")}
   </div>`;
 }
 function learnMoreHTML(session){
@@ -3949,11 +4072,11 @@ function learnMoreHTML(session){
   if(!key) return "";
   const open = openLearnMore.has(session.id);
   const t = SESSION_LEARN_MORE[key];
-  return `<button type="button" class="flt" style="margin-top:10px" onclick="toggleLearnMore('${session.id}')" aria-expanded="${open}">${open?"Réduire":"En savoir plus"}</button>
-    ${open?`<div class="${justOpenedKey==="lm_"+session.id?"expand-in":""}" style="margin-top:10px;padding:12px 14px;background:var(--card-2);border-radius:12px">
-      <div style="font-size:14px;font-weight:600;margin-bottom:8px">${escHtml(t.title)}</div>
-      ${t.blocks.map(b=>`<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:2px">${escHtml(b.h)}</div><div style="font-size:13px;line-height:1.55">${escHtml(b.p)}</div></div>`).join("")}
-      ${t.sources?`<div style="font-size:11px;color:var(--text-faint);line-height:1.45;margin-top:4px">Sources : ${escHtml(t.sources)}</div>`:""}
+  return `<button type="button" class="flt" style="margin-top:14px;gap:6px" onclick="toggleLearnMore('${session.id}')" aria-expanded="${open}">${open?"Réduire":"En savoir plus"} ${icon(open?"chevronUp":"chevronDown",14)}</button>
+    ${open?`<div class="${justOpenedKey==="lm_"+session.id?"expand-in":""}" style="margin-top:10px;padding:14px;background:var(--surface-sunken);border-radius:var(--r-md)">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">${escHtml(t.title)}</div>
+      ${t.blocks.map(b=>`<div style="margin-bottom:10px"><div style="font-size:12.5px;font-weight:600;color:var(--text-2);margin-bottom:2px">${escHtml(b.h)}</div><div style="font-size:14px;line-height:1.55;color:var(--text-2)">${escHtml(b.p)}</div></div>`).join("")}
+      ${t.sources?`<div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-top:4px">Sources : ${escHtml(t.sources)}</div>`:""}
     </div>`:""}`;
 }
 function escHtml(t){ return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -4185,8 +4308,8 @@ function todayScreenHTML(){
   const date = new Date(todayStr+"T00:00:00");
   const todaySessions = plannedSessions.filter(p=>p.planned_date===todayStr && (p.status==="planned"||p.status==="done"));
   const hasProgram = plannedSessions.some(p=>p.status==="planned"||p.status==="done");
-  let body;
-  if(todaySessions.length) body = todaySessions.map(s=>programSessionCardHTML(s,date)).join("");
+  let body, framed = true;
+  if(todaySessions.length){ body = todaySessions.map(s=>programSessionCardHTML(s,date)).join(""); framed = false; }
   else if(!hasProgram) body = `<div class="chart-hint" style="margin-top:0">Tu n'as pas encore de programme.</div>
     <button class="btn-secondary" style="margin-top:10px" onclick="goToProgramme()">Créer mon programme</button>`;
   else if(runningRuns.some(r=>localDateStr(dateFromRun(r))===todayStr)) body = `<div class="chart-hint" style="margin-top:0">Aucune séance n'était planifiée aujourd'hui, mais tu as couru : bravo !</div>`;
@@ -4201,43 +4324,45 @@ function todayScreenHTML(){
     graduation: need==="graduation", guidedTestPending: need==="guided_test", levelCardShown: picked==="niveau",
     daysSinceRun: last ? Math.floor((new Date() - dateFromRun(last)) / 86400000) : null,
   });
-  return coachBannerHTML(reminder) + urgentTodayHTML() + mergeNoticeCardHTML() + `<div class="card">
+  return coachBannerHTML(reminder) + urgentTodayHTML() + mergeNoticeCardHTML() + (framed ? `<div class="card">
     <div class="stitle" style="margin-bottom:8px">Aujourd'hui</div>
     ${body}
-  </div>` + (picked ? cards[picked] : "") + weekRecapCardHTML();
+  </div>` : body) + (picked ? cards[picked] : "") + weekRecapCardHTML();
 }
-function programSessionCardHTML(session, date){
-  const c = TC[session.type]||TC.Other;
-  const isCouchSession = session.generation_reason==="beginner_plan" || session.generation_reason==="guided_test";
-  const zoneLabel = session.generation_reason==="beginner_plan" ? "Marche/course" : session.generation_reason==="guided_test" ? "Test de niveau" : (session.pace_zone ? (PACE_ZONE_LABEL[session.pace_zone]||session.pace_zone) : session.type);
-  const done = session.status==="done";
-  const editOpen = openEditForm===session.id;
+// Carte de séance (design 2d, V1 à V7). Même carte sur Aujourd'hui et, pour le jour choisi, dans Programme.
+// États : prévue, faite (reçue d'Apple Santé ou saisie à la main : chiffres réels + détail cardio replié),
+// en retard (« Pas encore reçue d'Apple Santé » + « J'ai fait cette séance »).
+let openSessionMenu = null;
+window.toggleSessionMenu = (id) => { openSessionMenu = openSessionMenu===id ? null : id; renderContent(); };
+window.closeSessionMenu = () => { openSessionMenu = null; openExMenu = null; };
+// Toucher ailleurs referme les menus « … » et « ⋮ ».
+document.addEventListener("click", (e) => {
+  if((openSessionMenu || openExMenu) && !e.target.closest(".menu-wrap")){ openSessionMenu = null; openExMenu = null; renderContent(); }
+});
+// Valeur d'une tuile : chiffres et unités en majuscules (« 45 MIN »), texte tel quel (« Élastique »).
+function scTile(label, value, color){
+  const v = String(value), isText = /[a-zA-ZÀ-ÿ]{4,}/.test(v.replace(/\b(min|km)\b/gi,""));
+  return `<div class="sc-tile"><div class="l">${color?`<i style="background:${color}"></i>`:""}${escHtml(label)}</div><div class="v${isText?" t":""}">${escHtml(isText ? v : v.toUpperCase())}</div></div>`;
+}
+function scMetricsHTML(big, tiles){
+  if(!big && !tiles.length) return "";
+  return `<div class="sc-metrics">${big?`<div class="sc-big"><span class="n">${escHtml(big.value)}</span><span class="u">${escHtml(big.unit)}</span>${big.note?`<div class="note">${escHtml(big.note)}</div>`:""}</div>`:""}${tiles.length?`<div class="sc-tiles">${tiles.join("")}</div>`:""}</div>`;
+}
+function sessionMenuHTML(session, todayStr){
+  const items = [];
+  if(session.planned_date<=todayStr) items.push(["J'ai fait cette séance", `openManualRun('${session.id}')`, ""]);
+  items.push(["Modifier la séance", `toggleEditSession('${session.id}')`, ""]);
+  if(session.pace_zone && session.pace_zone!=="easy") items.push(["Remplacer par une EF", `replaceWithEasy('${session.id}')`, ""]);
+  items.push(["Supprimer la séance", `deleteSession('${session.id}')`, "danger"]);
+  const open = openSessionMenu===session.id;
+  return `<div class="menu-wrap"><button type="button" class="sc-menu" aria-label="Plus d'actions" aria-haspopup="menu" aria-expanded="${open}" onclick="toggleSessionMenu('${session.id}')">${icon("more",20)}</button>
+    ${open?`<div class="menu-pop" role="menu">${items.map(([label,call,cls])=>`<button type="button" role="menuitem" class="${cls}" onclick="closeSessionMenu();renderContent();${call}">${escHtml(label)}</button>`).join("")}</div>`:""}</div>`;
+}
+function sessionEditFormHTML(session){
   const paceMin = session.target_pace_sec_per_km ? Math.floor(session.target_pace_sec_per_km/60) : "";
   const paceSec = session.target_pace_sec_per_km ? Math.round(session.target_pace_sec_per_km%60) : "";
-  return `<div class="manage-row" style="opacity:${done?0.6:1}">
-    <div class="manage-top">
-      <div class="session-dot" style="background:${c}22;color:${c}">${icon(TICON[session.type]||"activity",18)}</div>
-      <div class="manage-date">
-        <div style="font-weight:600">${session.title}${done?" ✓":""}</div>
-        <div style="font-size:12px;color:var(--text-dim)">${zoneLabel}${session.target_distance_km?` · ${session.target_distance_km} km`:""}${session.target_pace_sec_per_km?` · ${fmtA(session.target_pace_sec_per_km)}/km`:""}${session.reminder_time?` · ⏰ ${session.reminder_time.slice(0,5)}`:""}</div>
-      </div>
-    </div>
-    <div class="chart-hint" style="margin-top:8px;margin-bottom:0">${session.rationale}</div>
-    ${sessionStructureBarHTML(session)}
-    ${learnMoreHTML(session)}
-    ${session.description?`<div style="margin-top:10px">
-      <div class="chart-hint" style="margin-top:0;margin-bottom:4px">${isCouchSession?"Déroulé de la séance":"Exercices"}${session.target_duration_min?` · environ ${Math.round(session.target_duration_min)} min`:""}</div>
-      ${exerciseListHTML(session.description)}
-    </div>`:""}
-    ${programPaceExplanationHTML(session)}
-    ${!done?`<div class="filters" style="margin-top:10px;margin-bottom:0">
-      ${session.planned_date<=localDateStr(new Date())?`<button class="flt" onclick="openManualRun('${session.id}')">J'ai fait cette séance</button>`:""}
-      ${session.pace_zone && session.pace_zone!=="easy"?`<button class="flt" onclick="replaceWithEasy('${session.id}')">Remplacer par easy</button>`:""}
-      <button class="flt" onclick="toggleEditSession('${session.id}')">Modifier</button>
-      <button class="flt" style="color:var(--text-3)" onclick="deleteSession('${session.id}')">Supprimer</button>
-    </div>
-    ${editOpen?`<div style="padding:8px 0 4px">
-      <div class="chart-hint" style="margin-top:0">Modifier la séance</div>
+  return `<div style="padding:14px 0 4px">
+      <div class="stitle" style="margin-bottom:8px">Modifier la séance</div>
       <div style="margin-top:8px;margin-bottom:10px">
         <span style="font-size:12px;color:var(--text-dim);white-space:nowrap;display:block;margin-bottom:6px">Type</span>
         <div class="filters" data-chipgroup="editType_${session.id}" style="margin-bottom:0">
@@ -4261,11 +4386,67 @@ function programSessionCardHTML(session, date){
         </div>
         <div class="field" style="margin-bottom:0">
           <span style="font-size:12px;color:var(--text-dim)">Rappel (optionnel)</span>
-          <input type="time" id="edit_reminderTime_${session.id}" value="${session.reminder_time?session.reminder_time.slice(0,5):""}" style="background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:8px;font-family:inherit">
+          <input type="time" id="edit_reminderTime_${session.id}" value="${session.reminder_time?session.reminder_time.slice(0,5):""}" style="background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-xs);color:var(--text);font-size:14px;padding:8px;font-family:inherit">
         </div>
       </div>
       <button class="btn-primary" style="margin-top:10px" onclick="saveSessionEdit('${session.id}')">Enregistrer</button>
-    </div>`:""}`:""}
+    </div>`;
+}
+function programSessionCardHTML(session, date){
+  const todayStr = localDateStr(new Date());
+  const state = sessionCardState(session, todayStr);
+  const c = TC[session.type]||TC.Other;
+  const run = state==="done" && session.linked_run_id ? RUNS.find(r=>r.id===session.linked_run_id) : null;
+  const dayTxt = session.planned_date===todayStr ? "Aujourd'hui" : dayLabelShort(new Date(session.planned_date+"T00:00:00"));
+  const { title, subtitle } = sessionDisplayTitle(session);
+  const isCouchSession = session.generation_reason==="beginner_plan" || session.generation_reason==="guided_test";
+  const exercises = state!=="done" && session.description ? exercisesInDescription(session.description) : [];
+  let metrics = "";
+  if(state==="done"){
+    if(run){
+      const big = run.dist>0 ? { value:run.dist.toFixed(1).replace(".",","), unit:"km", note: session.target_distance_km ? `prévu ${String(session.target_distance_km).replace(".",",")} km` : "" }
+        : { value:String(Math.round(run.durationSec/60)), unit:"min", note:"" };
+      const tiles = [scTile("Durée", run.dur)];
+      if(run.dist>0 && run.allure) tiles.push(scTile("Allure /km", fmtA(run.allure)));
+      metrics = scMetricsHTML(big, tiles);
+      if(run.fc) metrics += `<div class="sc-tiles2">${scTile("FC moy.", run.fc, "var(--data-coral)")}${run.peakHr?scTile("FC max", run.peakHr, "var(--data-coral)"):""}</div>`;
+    }
+  } else {
+    const h = sessionHeadline(session, sessionStructureSegments(session));
+    const tiles = h.tiles.map(t=>scTile(t.label, t.value));
+    h.structure.forEach(t=>tiles.push(scTile(STRUCTURE_STYLE[t.type].label, `${t.minutes} min`, STRUCTURE_STYLE[t.type].color)));
+    if(exercises.length){
+      tiles.push(scTile("Exercices", exercises.length));
+      const mats = [...new Set(exercises.map(e=>e.materiel).filter(m=>m && m!=="Aucun"))];
+      if(mats.length) tiles.push(scTile("Matériel", mats.length===1 ? mats[0] : `${mats.length} objets`));
+    }
+    metrics = scMetricsHTML(h.big, tiles);
+  }
+  const effMaxHr = maxHr || estimatedMaxHr();
+  const detailCardio = run ? cardioDetailBlockHTML(run, effMaxHr, restingHr || null) : "";
+  const coach = state==="done" ? "" : `<div class="sc-coach">${icon("sparkle",16)}<div>${session.rationale||""}${programPaceExplanationHTML(session)}</div></div>`;
+  const body = state==="done" ? "" : `${sessionStructureBarHTML(session)}${coach}
+    ${session.description?`<div class="sc-sep"></div>
+      <div class="stitle" style="margin-bottom:6px">${isCouchSession?"Déroulé de la séance":"Exercices"}${session.target_duration_min?` · environ ${Math.round(session.target_duration_min)} min`:""}</div>
+      ${exerciseListHTML(session.description, session)}`:""}
+    ${learnMoreHTML(session)}`;
+  const late = state==="late" ? `<div class="sc-late">${icon("alert",16)}Pas encore reçue d'Apple Santé</div>
+    <button type="button" class="btn-outline" onclick="openManualRun('${session.id}')">J'ai fait cette séance</button>` : "";
+  const editOpen = openEditForm===session.id && state!=="done";
+  return `<div class="session-card" id="sc_${session.id}">
+    <div class="sc-head">
+      <div class="sc-icon" style="background:${c}22;color:${c}">${icon(TICON[session.type]||"activity",18)}</div>
+      <div class="sc-overline">${escHtml(dayTxt)}${run&&run.time?" · "+escHtml(run.time):""}</div>
+      ${state==="done" ? `<span class="sc-done">${icon("check",14)} Fait</span>` : sessionMenuHTML(session, todayStr)}
+    </div>
+    <div class="sc-title">${escHtml(title)}</div>
+    ${subtitle?`<div class="sc-sub">${escHtml(subtitle)}</div>`:""}
+    ${run && run.appleType===MANUAL_RUN_MARKER ? `<span class="sc-src">Saisie à la main</span>` : ""}
+    ${state==="done" ? "" : ""}
+    ${metrics || (state==="done" ? "" : `<div style="height:12px"></div>`)}
+    ${detailCardio}
+    ${body}${late}
+    ${editOpen ? `<div class="sc-sep"></div>${sessionEditFormHTML(session)}` : ""}
   </div>`;
 }
 
@@ -4497,7 +4678,16 @@ function renderContentInner(){
     return;
   }
 
-  if(activeTab==="aujourdhui"){ el.innerHTML = todayScreenHTML(); return; }
+  if(activeTab==="aujourdhui"){
+    el.innerHTML = todayScreenHTML();
+    // « Détail cardio » ouvert sur une séance faite : la courbe de FC se trace après l'affichage.
+    const effMax = maxHr || estimatedMaxHr();
+    plannedSessions.filter(p=>p.status==="done" && p.planned_date===localDateStr(new Date())).forEach(p=>{
+      const run = RUNS.find(r=>r.id===p.linked_run_id);
+      if(run && openHrDetail.has(run.id) && run.hrSeries && run.hrSeries.length>1 && effMax) mkHrCurveChart("cHr_"+run.id, run.hrSeries);
+    });
+    return;
+  }
 
   if(activeTab==="progression"){
     // Progression (3.c, 4.9) : anneaux, indicateurs, chiffres clés, dernière

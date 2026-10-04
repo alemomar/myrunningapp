@@ -1162,6 +1162,45 @@ function hierEfficiencyInfo(pct){
   return { title:"Ton efficience cardiaque progresse !", overline:"EFFICIENCE CARDIAQUE", value:`+${pct} %`, before:"À fréquence cardiaque égale, tu es plus efficace qu'il y a un mois." };
 }
 
+/* ---------- Carte de séance (design 2d, V1 à V7) ----------
+   États : « done » (faite, reçue d'Apple Santé ou saisie à la main), « late » (jour passé, rien reçu :
+   « Pas encore reçue d'Apple Santé » + « J'ai fait cette séance »), « planned » (prévue). */
+function sessionCardState(session, todayStr){
+  if(session.status==="done") return "done";
+  if(session.status==="missed" || (session.planned_date && session.planned_date < todayStr)) return "late";
+  return "planned";
+}
+// Grand chiffre et tuiles du haut de la carte pour une séance PRÉVUE. Distance connue : « 7,5 km » avec
+// allure et durée ; sinon durée seule (« 29 min environ ») avec, pour les séances marche/course et le test,
+// le temps par type de segment (`structure` : [{type, minutes}], course d'abord).
+function sessionHeadline(session, segments){
+  const dist = Number(session.target_distance_km)||0, pace = Number(session.target_pace_sec_per_km)||0;
+  let minutes = Math.round(Number(session.target_duration_min)||0);
+  if(!minutes && dist>0 && pace>0) minutes = Math.round(dist*pace/60);
+  const tiles = [], structure = [];
+  let big = null;
+  if(dist>0){
+    big = { value:String(dist).replace(".",","), unit:"km", note:"" };
+    if(pace>0) tiles.push({ label:"Allure /km", value:fmtA(pace) });
+    if(minutes>0) tiles.push({ label:"Durée", value:`${minutes} min` });
+  } else if(minutes>0){
+    big = { value:String(minutes), unit:"min", note:"environ" };
+  }
+  if(segments && segments.length){
+    const totals = {};
+    segments.forEach(g=>{ totals[g.type] = (totals[g.type]||0) + g.sec; });
+    ["course","test","facile","marche"].forEach(t=>{ if(totals[t]) structure.push({ type:t, minutes:Math.round(totals[t]/60) }); });
+  }
+  return { big, tiles, structure };
+}
+// Titre affiché : « EF » avec le sous-titre « endurance, à allure facile » pour une séance EF ordinaire
+// (la donnée enregistrée garde son titre d'origine, ex. « Sortie easy »).
+function sessionDisplayTitle(session){
+  const ordinary = !session.generation_reason || (session.generation_reason!=="beginner_plan" && session.generation_reason!=="guided_test");
+  if(session.type==="EF" && ordinary) return { title:"EF", subtitle:"endurance, à allure facile" };
+  return { title:session.title||sessionTypeLabel(session.type), subtitle:"" };
+}
+
 /* ---------- Format court/détaillé de la notation post-séance (4.5.b) ----------
    CDC v2, 4.5 : par défaut, formulaire court (note globale 1-5 + "une
    gêne/douleur ?") ; le détaillé (respiration/mental/fatigue + carte du
@@ -1642,6 +1681,43 @@ function formatExerciseList(exercises){
     if(ex.variante) line += `\n   ${ex.variante}`;
     return line;
   }).join("\n");
+}
+
+/* ---------- Remplacer ou supprimer un exercice d'une séance (D4, V1b à V1d) ----------
+   La description d'une séance est un texte : une ligne « Nom — format [· matériel : …] » par exercice,
+   suivie de lignes indentées (variante). Rien à changer en base : on réécrit ce texte, pour la séance
+   du jour seulement (les prochaines séances gardent leur liste). Un exercice est retrouvé par son nom
+   dans la bibliothèque ; toute autre ligne est gardée telle quelle. */
+function parseExerciseBlocks(description, library){
+  const lib = library || EXERCISE_LIBRARY;
+  const blocks = [];
+  String(description||"").split("\n").forEach(line=>{
+    const ex = line.startsWith("   ") ? null : lib.find(e=>line.startsWith(e.name+" — "));
+    if(ex) blocks.push({ kind:"ex", name:ex.name, ex, lines:[line] });
+    else if(line.startsWith("   ") && blocks.length) blocks[blocks.length-1].lines.push(line);
+    else blocks.push({ kind:"text", lines:[line] });
+  });
+  return blocks;
+}
+function exercisesInDescription(description, library){
+  return parseExerciseBlocks(description, library).filter(b=>b.kind==="ex").map(b=>b.ex);
+}
+function removeExerciseFromDescription(description, name, library){
+  return parseExerciseBlocks(description, library).filter(b=>!(b.kind==="ex" && b.name===name)).map(b=>b.lines.join("\n")).join("\n");
+}
+function replaceExerciseInDescription(description, oldName, newEx, library){
+  return parseExerciseBlocks(description, library).map(b=>(b.kind==="ex" && b.name===oldName) ? formatExerciseList([newEx]) : b.lines.join("\n")).join("\n");
+}
+// Exercices proposés pour en remplacer un : même zone travaillée d'abord, puis zone de douleur commune,
+// puis même type. Jamais un exercice déjà dans la séance ; l'exercice remplacé lui-même est exclu.
+function replacementCandidates(exName, currentNames, library){
+  const lib = library || EXERCISE_LIBRARY;
+  const cur = lib.find(e=>e.name===exName);
+  if(!cur) return [];
+  const taken = new Set([...(currentNames||[]), exName]);
+  const shares = (a,b) => (a.zonesDouleur||[]).some(z=>(b.zonesDouleur||[]).includes(z));
+  const rank = e => e.zoneTravaillee===cur.zoneTravaillee ? 0 : shares(e,cur) ? 1 : 2;
+  return lib.filter(e=>e.type===cur.type && !taken.has(e.name)).sort((a,b)=>rank(a)-rank(b) || a.name.localeCompare(b.name,"fr"));
 }
 
 /* ---------- Séance de renfo / mobilité (CDC v2, 4.7.c) ----------

@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=58"></script>
+<script src="logic.js?v=62"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1259,6 +1259,49 @@ try {
   assertEqual("aucun titre ne dit « Merci » ni « Bravo, séance faite »", ["allure_ef","allure_frac","distance","duree","record_5k"].map(key=>hierRecordInfo({key,value:100,label:"5 km"}).title).concat(hierEfficiencyInfo(5).title).some(t=>/Merci|Bravo/.test(t)), false);
   assertEqual("records d'une course : le plus prestigieux d'abord (record de distance avant allure)", sortRecordsForHier([{key:"duree"},{key:"allure_ef"},{key:"record_10k"}]).map(r=>r.key), ["record_10k","allure_ef","duree"]);
   assertEqual("recordsForRun garde la valeur précédente pour « Avant : »", recordsForRun({id:"n", ts:10, type:"EF", distKm:8, durationSec:2400, paceSecKm:400, cleanEf:false}, [{ts:1,distKm:6,durationSec:2000},{ts:2,distKm:7,durationSec:2100},{ts:3,distKm:6.5,durationSec:2050}]).filter(r=>r.key==="distance").map(r=>r.previous), [7]);
+}
+
+// ---------- S4.2 : carte de séance (états, chiffres, titre) ----------
+{
+  assertEqual("état de carte : séance faite", sessionCardState({status:"done", planned_date:"2026-10-01"}, "2026-10-04"), "done");
+  assertEqual("état de carte : séance prévue aujourd'hui", sessionCardState({status:"planned", planned_date:"2026-10-04"}, "2026-10-04"), "planned");
+  assertEqual("état de carte : séance prévue demain", sessionCardState({status:"planned", planned_date:"2026-10-05"}, "2026-10-04"), "planned");
+  assertEqual("état de carte : jour passé sans course reçue = en retard", sessionCardState({status:"planned", planned_date:"2026-10-02"}, "2026-10-04"), "late");
+  assertEqual("état de carte : à replacer = en retard", sessionCardState({status:"missed", planned_date:"2026-10-02"}, "2026-10-04"), "late");
+  assertEqual("chiffres : 7,5 km à 6'00 = allure et durée de 45 min", sessionHeadline({target_distance_km:7.5, target_pace_sec_per_km:360}, null), {big:{value:"7,5", unit:"km", note:""}, tiles:[{label:"Allure /km", value:"6'00''"},{label:"Durée", value:"45 min"}], structure:[]});
+  assertEqual("chiffres : distance entière sans décimale", sessionHeadline({target_distance_km:13}, null).big.value, "13");
+  assertEqual("chiffres : durée de la séance utilisée quand elle est donnée", sessionHeadline({target_distance_km:8, target_pace_sec_per_km:360, target_duration_min:50}, null).tiles[1], {label:"Durée", value:"50 min"});
+  const seg=[{type:"marche",sec:300},{type:"course",sec:60},{type:"marche",sec:90},{type:"course",sec:60},{type:"marche",sec:300}];
+  assertEqual("chiffres : durée seule + temps course/marche", sessionHeadline({target_duration_min:29}, seg), {big:{value:"29", unit:"min", note:"environ"}, tiles:[], structure:[{type:"course", minutes:2},{type:"marche", minutes:12}]});
+  assertEqual("chiffres : séance sans distance ni durée (yoga) = pas de grand chiffre", sessionHeadline({type:"Yoga"}, null).big, null);
+  assertEqual("titre : séance EF ordinaire = EF + endurance, à allure facile", sessionDisplayTitle({type:"EF", title:"Sortie easy", pace_zone:"easy"}), {title:"EF", subtitle:"endurance, à allure facile"});
+  assertEqual("titre : marche/course garde son titre", sessionDisplayTitle({type:"EF", title:"Marche/course — semaine 2, séance 3", generation_reason:"beginner_plan"}), {title:"Marche/course — semaine 2, séance 3", subtitle:""});
+  assertEqual("titre : test guidé garde son titre", sessionDisplayTitle({type:"EF", title:"Test de 20 minutes", generation_reason:"guided_test"}).subtitle, "");
+  assertEqual("titre : renfo", sessionDisplayTitle({type:"Renfo", title:"Renfo"}), {title:"Renfo", subtitle:""});
+}
+
+// ---------- S4.3 : remplacer ou supprimer un exercice (D4) ----------
+{
+  const lib=[
+    {name:"Pont fessier", type:"Renfo", zoneTravaillee:"Grand fessier", zonesDouleur:["genoux"], format:"3x15", materiel:"Aucun", variante:null},
+    {name:"Clamshell", type:"Renfo", zoneTravaillee:"Moyen fessier", zonesDouleur:["bassin"], format:"3x15/côté", materiel:"Élastique", variante:"Sans élastique."},
+    {name:"Marche latérale", type:"Renfo", zoneTravaillee:"Moyen fessier", zonesDouleur:["bassin","genoux"], format:"3x10", materiel:"Élastique", variante:null},
+    {name:"Fente arrière", type:"Renfo", zoneTravaillee:"Quadriceps", zonesDouleur:["genoux"], format:"3x10/côté", materiel:"Aucun", variante:null},
+    {name:"Planche", type:"Renfo", zoneTravaillee:"Gainage", zonesDouleur:["dos"], format:"3x30 s", materiel:"Aucun", variante:null},
+    {name:"Étirement mollet", type:"Mobilité", zoneTravaillee:"Mollet", zonesDouleur:["mollets"], format:"2x30 s", materiel:"Aucun", variante:null},
+  ];
+  const desc="Pont fessier — 3x15\nClamshell — 3x15/côté · matériel : Élastique\n   Sans élastique.\nFente arrière — 3x10/côté";
+  assertEqual("exercices d'une description : 3 trouvés dans l'ordre", exercisesInDescription(desc, lib).map(e=>e.name), ["Pont fessier","Clamshell","Fente arrière"]);
+  assertEqual("exercices : une description libre n'en contient aucun", exercisesInDescription("Marche 5 min puis courir 1 min", lib), []);
+  assertEqual("supprimer un exercice retire sa ligne et sa variante", removeExerciseFromDescription(desc, "Clamshell", lib), "Pont fessier — 3x15\nFente arrière — 3x10/côté");
+  assertEqual("supprimer un exercice absent ne change rien", removeExerciseFromDescription(desc, "Planche", lib), desc);
+  assertEqual("supprimer le dernier exercice", removeExerciseFromDescription("Pont fessier — 3x15", "Pont fessier", lib), "");
+  assertEqual("remplacer un exercice écrit le nouveau à sa place, avec matériel et variante", replaceExerciseInDescription(desc, "Pont fessier", lib[2], lib), "Marche latérale — 3x10 · matériel : Élastique\nClamshell — 3x15/côté · matériel : Élastique\n   Sans élastique.\nFente arrière — 3x10/côté");
+  assertEqual("remplacer garde les autres lignes (texte libre)", replaceExerciseInDescription("Intro\nPont fessier — 3x15", "Pont fessier", lib[3], lib), "Intro\nFente arrière — 3x10/côté");
+  assertEqual("candidats : même zone travaillée d'abord, jamais un exercice déjà dans la séance", replacementCandidates("Clamshell", ["Pont fessier","Clamshell","Fente arrière"], lib).map(e=>e.name), ["Marche latérale","Planche"]);
+  assertEqual("candidats : zone de douleur commune avant les autres", replacementCandidates("Pont fessier", ["Pont fessier"], lib).map(e=>e.name), ["Fente arrière","Marche latérale","Clamshell","Planche"]);
+  assertEqual("candidats : un type différent n'est pas proposé (mobilité ≠ renfo)", replacementCandidates("Pont fessier", ["Pont fessier"], lib).some(e=>e.type!=="Renfo"), false);
+  assertEqual("candidats : exercice inconnu = aucun", replacementCandidates("Inconnu", [], lib), []);
 }
 
 document.getElementById("summary").innerHTML =
