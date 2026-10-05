@@ -947,8 +947,9 @@ function isBeginnerPlanEligible(niveau, frequence, dureeMaxMin){
 // pas de date ; 0 si la date est passée ou imminente.
 function weeksUntilDate(dateStr, todayStr){
   if(!dateStr) return null;
-  const parse = (str) => { const [y,m,d] = str.split("-").map(Number); return new Date(y, m-1, d); };
-  const days = Math.ceil((parse(dateStr) - parse(todayStr)) / 86400000);
+  // Jours en UTC : avec des dates locales, le changement d'heure d'octobre ajoutait un jour (donc parfois une semaine de trop).
+  const utc = (str) => { const [y,m,d] = str.split("-").map(Number); return Date.UTC(y, m-1, d); };
+  const days = Math.round((utc(dateStr) - utc(todayStr)) / 86400000);
   return Math.max(0, Math.ceil(days/7));
 }
 // Lundi où démarre le programme marche/course : cette semaine si on est du
@@ -2596,6 +2597,73 @@ function checkGoalTimelineFeasibility(distanceKey, niveau, weeksAvailable){
   if(weeksAvailable >= minWeeks) return { status:"ok", minWeeks };
   if(weeksAvailable >= minWeeks*EXTREME_GAP_FACTOR) return { status:"compresse", minWeeks };
   return { status:"extreme", minWeeks };
+}
+
+/* ---------- Parcours de démarrage : date de course (S10, journal 11b, #32 ; D59) ----------
+   À l'étape « Objectif », avant de connaître le niveau : sous « Confirmé », le niveau n'a pas d'effet sur la durée
+   minimale (Débutant et Intermédiaire comptent pareil), donc on juge sans niveau (ou avec celui qu'on connaît déjà).
+   Trois états : correct (rien à dire), « Date un peu serrée » (au moins 60 % du minimum : on peut la garder, le
+   programme sera plus prudent) et « Date trop proche » (moins de 60 % : on propose la première date possible). */
+const RACE_WITH_ARTICLE = { "5km":"un 5 km", "10km":"un 10 km", "15km":"un 15 km", "Semi":"un semi-marathon", "Marathon":"un marathon" };
+function weeksText(n){ return n<1 ? "Moins d'une semaine" : `${n} semaine${n>1?"s":""}`; }
+function addDaysToStr(dateStr, n){
+  const [y,m,d] = dateStr.split("-").map(Number), t = new Date(y, m-1, d+n);
+  return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+}
+// Première date à partir de laquelle la date n'est plus « trop proche » (aujourd'hui + 60 % du minimum, arrondi au jour
+// supérieur : un jour de moins, et on resterait en dessous du seuil).
+function firstPossibleDate(distanceKey, niveau, todayStr){
+  if(HIGDON_MIN_WEEKS[distanceKey]==null) return null;
+  for(let days=1; days<=800; days++){
+    const date = addDaysToStr(todayStr, days), check = checkGoalTimelineFeasibility(distanceKey, niveau, weeksUntilDate(date, todayStr));
+    if(check && check.status!=="extreme") return date;
+  }
+  return null;
+}
+// Ce que l'écran affiche pour une date de course : état, textes du design, première date possible. null si rien à juger.
+function dateCheckModel(distanceKey, niveau, dateStr, todayStr){
+  if(!dateStr || HIGDON_MIN_WEEKS[distanceKey]==null) return null;
+  const weeks = weeksUntilDate(dateStr, todayStr), check = checkGoalTimelineFeasibility(distanceKey, niveau, weeks);
+  if(!check || check.status==="ok") return check ? { status:"ok", weeks, minWeeks:check.minWeeks } : null;
+  const what = RACE_WITH_ARTICLE[distanceKey], advised = Math.ceil(check.minWeeks), required = Math.ceil(check.minWeeks*EXTREME_GAP_FACTOR);
+  const first = check.status==="extreme" ? firstPossibleDate(distanceKey, niveau, todayStr) : null;
+  return {
+    status:check.status, weeks, minWeeks:check.minWeeks, advisedWeeks:advised, requiredWeeks:required,
+    title: check.status==="compresse" ? "Date un peu serrée" : "Date trop proche",
+    text: check.status==="compresse"
+      ? `${weeksText(weeks)} pour ${what}, c'est court à ton niveau. On te conseille au moins ${advised} semaines. Tu peux garder cette date : le programme sera plus prudent.`
+      : `${weeksText(weeks)} pour ${what}, c'est trop court pour te préparer sans risque de blessure. Il faut au moins ${required} semaines à ton niveau.`,
+    firstDate:first, firstDateFr:first ? isoToFr(first) : "",
+  };
+}
+// Peut-on passer à l'étape suivante ? `choice` : « first » (première date prise), « none » (sans date), « other » (autre date à choisir),
+// « keep » (date un peu serrée gardée). Une date trop proche bloque tant qu'aucune date possible n'est choisie ; « sans date » débloque.
+function dateStepBlocked(model, choice){
+  if(!model || model.status==="ok") return false;
+  if(choice==="first") return false;     // la première date possible a été prise : on n'en demande pas plus
+  if(model.status==="compresse") return choice!=="keep";
+  return choice!=="none";
+}
+
+/* ---------- Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13 ; D60) ----------
+   4 étapes : installer RunSync, se connecter avec le même email, autoriser Apple Santé, recevoir les courses. Les trois
+   premières se cochent toutes seules quand on revient dans l'app après les avoir ouvertes ; la quatrième attend l'arrivée
+   des premières courses (interrogation régulière), puis « C'est connecté » ; au bout de 90 s sans rien : « Rien reçu ». */
+const SYNC_GUIDE_TITLES = ["Installe RunSync", "Connecte-toi avec ton email", "Autorise Apple Santé", "On reçoit tes courses"];
+const SYNC_WAIT_EMPTY_SEC = 90;
+// `done` : [bool, bool, bool] pour les trois premières étapes ; `received` : courses reçues d'Apple Santé ; `waitedSec` : attente à l'étape 4.
+function syncGuideModel(done, received, waitedSec){
+  const d = [!!(done&&done[0]), !!(done&&done[1]), !!(done&&done[2])];
+  const connected = (received||0)>0;
+  const firstTodo = d.findIndex(x=>!x);
+  const active = connected ? 4 : (firstTodo<0 ? 4 : firstTodo+1);
+  const phase = connected ? "ok" : (firstTodo<0 ? ((waitedSec||0)>=SYNC_WAIT_EMPTY_SEC ? "empty" : "wait") : null);
+  return {
+    active, phase, connected,
+    // Les courses sont arrivées : les trois premières étapes sont cochées d'office (RunSync était déjà en place) et la 4e reste ouverte (« C'est connecté »).
+    steps: SYNC_GUIDE_TITLES.map((title,i)=>({ n:i+1, title, state: i<3 ? (d[i] || connected ? "done" : i+1===active ? "active" : "todo") : (active===4 ? "active" : "todo") })),
+    summary: connected ? `C'est connecté · ${received} course${received>1?"s":""} reçue${received>1?"s":""}` : "",
+  };
 }
 
 /* ---------- Structure macro par objectif ----------

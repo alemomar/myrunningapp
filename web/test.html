@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=79"></script>
+<script src="logic.js?v=80"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1751,6 +1751,37 @@ try {
   assertEqual("célébration : les autres records (allure, plus longue sortie, durée) n'ont pas de plein écran (A2)", celebrationRecord([{ key:"allure_ef", value:343, previous:350 }, { key:"distance", value:15.4, previous:13.1 }, { key:"duree", value:5100, previous:4800 }]), null);
   assertEqual("célébration : aucun record, rien", [celebrationRecord([]), celebrationRecord(undefined)], [null, null]);
   assertEqual("célébration : plein écran une seule fois par sortie", [celebrationToShow([rec5], "r1", []) !== null, celebrationToShow([rec5], "r1", ["r1"])], [true, null]);
+}
+
+// --- S10.1 : date de course du parcours de démarrage et guide RunSync (D59, D60) ---
+{
+  const T = "2026-10-03";
+  assertEqual("première date possible : un semi depuis le 3 oct. -> 22/11 (comme la maquette)", firstPossibleDate("Semi", "Intermédiaire", T), "2026-11-22");
+  assertEqual("première date possible : le jour d'avant est encore « trop proche », ce jour-là non", [dateCheckModel("Semi","Débutant","2026-11-21",T).status, dateCheckModel("Semi","Débutant","2026-11-22",T).status], ["extreme","compresse"]);
+  assertEqual("première date possible : marathon, 5 km, 10 km, 15 km", ["Marathon","5km","10km","15km"].map(k=>firstPossibleDate(k,"Débutant",T)), ["2026-12-13","2026-11-01","2026-11-01","2026-11-08"]);
+  assertEqual("première date possible : niveau Confirmé, plus tôt (−25 %)", firstPossibleDate("Semi","Confirmé",T) < firstPossibleDate("Semi","Intermédiaire",T), true);
+  assertEqual("semaines jusqu'à la date : indépendant du changement d'heure d'octobre (49 jours = 7 semaines)", weeksUntilDate("2026-11-21", T), 7);
+  assertEqual("première date possible : distance inconnue", firstPossibleDate("Ultra","Débutant",T), null);
+  const tight = dateCheckModel("Semi", "Intermédiaire", "2026-12-05", T);
+  assertEqual("date un peu serrée : 9 semaines pour un semi (textes de la maquette)", [tight.status, tight.title, tight.text], ["compresse", "Date un peu serrée", "9 semaines pour un semi-marathon, c'est court à ton niveau. On te conseille au moins 12 semaines. Tu peux garder cette date : le programme sera plus prudent."]);
+  const extreme = dateCheckModel("Semi", "Intermédiaire", "2026-10-25", T);
+  assertEqual("date trop proche : 4 semaines pour un semi (la 1re date possible est celle de la maquette)", [extreme.status, extreme.title, extreme.text, extreme.firstDate, extreme.firstDateFr], ["extreme", "Date trop proche", "4 semaines pour un semi-marathon, c'est trop court pour te préparer sans risque de blessure. Il faut au moins 8 semaines à ton niveau.", "2026-11-22", "22/11/2026"]);
+  assertEqual("date correcte : rien à dire (statut ok, pas de texte)", dateCheckModel("Semi", "Intermédiaire", "2027-03-14", T).status, "ok");
+  assertEqual("date : niveau Confirmé, la même date n'est plus « trop proche »", [dateCheckModel("Semi","Intermédiaire","2026-11-08",T).status, dateCheckModel("Semi","Confirmé","2026-11-08",T).status], ["extreme","compresse"]);
+  assertEqual("date : une semaine pour un 5 km, trop proche", [dateCheckModel("5km","Débutant","2026-10-05",T).text.startsWith("1 semaine pour un 5 km"), dateCheckModel("5km","Débutant","2026-10-05",T).status], [true, "extreme"]);
+  assertEqual("date : sans date ou sans distance, rien à juger", [dateCheckModel("Semi","Débutant","",T), dateCheckModel("","Débutant","2026-11-08",T)], [null, null]);
+  assertEqual("étape date : correcte -> libre ; serrée -> bloquée tant qu'on ne la garde pas ; trop proche -> bloquée sauf « sans date » ou première date possible prise", [
+    dateStepBlocked(dateCheckModel("Semi","Intermédiaire","2027-03-14",T), null),
+    dateStepBlocked(tight, null), dateStepBlocked(tight, "keep"),
+    dateStepBlocked(extreme, null), dateStepBlocked(extreme, "other"), dateStepBlocked(extreme, "first"), dateStepBlocked(extreme, "none"),
+    dateStepBlocked(null, null)], [false, true, false, true, true, false, false, false]);
+
+  assertEqual("guide : au départ, étape 1 active", syncGuideModel([false,false,false], 0, 0).steps.map(x=>x.state), ["active","todo","todo","todo"]);
+  assertEqual("guide : étapes cochées au retour dans l'app", syncGuideModel([true,true,false], 0, 0).steps.map(x=>x.state), ["done","done","active","todo"]);
+  assertEqual("guide : trois étapes faites, on attend les courses", [syncGuideModel([true,true,true], 0, 10).phase, syncGuideModel([true,true,true], 0, 10).active], ["wait", 4]);
+  assertEqual("guide : rien reçu au bout de 90 s", syncGuideModel([true,true,true], 0, 90).phase, "empty");
+  assertEqual("guide : connecté, les trois premières étapes sont cochées même si on n'a rien cliqué (RunSync déjà en place), la 4e reste ouverte", [syncGuideModel([false,false,false], 12, 0).steps.map(x=>x.state), syncGuideModel([false,false,false], 12, 0).summary], [["done","done","done","active"], "C'est connecté · 12 courses reçues"]);
+  assertEqual("guide : une seule course reçue, au singulier", syncGuideModel([true,true,true], 1, 0).summary, "C'est connecté · 1 course reçue");
 }
 
 document.getElementById("summary").innerHTML =
