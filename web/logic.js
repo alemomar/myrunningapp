@@ -1336,10 +1336,13 @@ function recordPhrase(record){
   if(record.key==="allure_frac") return `Ta meilleure allure en fractionné : ${fmtA(record.value)}/km !`;
   return "";
 }
-// Une séance n'est célébrée que si elle est récente (3 jours, pour ne pas
-// fêter tout l'historique au premier lancement) et pas déjà célébrée.
+// Une séance n'est célébrée que si elle date d'aujourd'hui ou d'hier (D57 : la carte « Hier » disparaît le
+// lendemain, comme les autres ; cela évite aussi de fêter tout l'historique au premier lancement) et si elle
+// n'a pas déjà été célébrée ou fermée.
 function shouldCelebrateRun(runTs, nowTs, runId, celebratedIds){
-  return (nowTs - runTs) <= 3*86400000 && (nowTs - runTs) >= 0 && !(celebratedIds||[]).includes(runId);
+  const day = (ts) => { const d = new Date(ts); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); };
+  const age = Math.round((day(nowTs) - day(runTs)) / 86400000);
+  return age>=0 && age<=1 && !(celebratedIds||[]).includes(runId);
 }
 // Amélioration d'efficience à fêter : fenêtres 30 j / 30 j d'avant (comme
 // efficiencyTrend), seuil de 5% avec allure réellement meilleure
@@ -1449,6 +1452,42 @@ function hierRecordInfo(record){
 // Efficience cardiaque qui progresse : même carte, sans valeur de record.
 function hierEfficiencyInfo(pct){
   return { title:"Ton efficience cardiaque progresse !", overline:"EFFICIENCE CARDIAQUE", value:`+${pct} %`, before:"À fréquence cardiaque égale, tu es plus efficace qu'il y a un mois." };
+}
+
+/* ---------- Célébration plein écran (S9 ; D55, D56, D57 ; journal 10b-4) ----------
+   Réservée aux records de distance (5 km, 10 km, semi, marathon) : l'écran s'ouvre une seule fois à l'ouverture de
+   l'app, avec le petit bonhomme (record-man.js) qui efface l'ancien temps et écrit le nouveau ; puis la carte « Hier »
+   prend le relais. Les autres records (allure, plus longue sortie ou durée) et l'efficience gardent la carte simple. */
+// Gain de temps en toutes lettres courtes : « −34 s », « −1 min 25 s », « −2 min », « −1 h 02 min ».
+function formatTimeGain(sec){
+  const s = Math.round(Math.abs(sec));
+  if(s<60) return `−${s} s`;
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), r = s%60;
+  if(h>0) return `−${h} h ${String(m).padStart(2,"0")} min`;
+  return r ? `−${m} min ${String(r).padStart(2,"0")} s` : `−${m} min`;
+}
+// La même durée en mots, pour les lecteurs d'écran : « 34 secondes », « 1 minute 25 secondes ».
+function timeGainWords(sec){
+  const s = Math.round(Math.abs(sec)), pl = (n, unit) => `${n} ${unit}${n>1?"s":""}`;
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), r = s%60;
+  return [h>0 ? pl(h,"heure") : "", m>0 ? pl(m,"minute") : "", (r>0 || s===0) && h===0 ? pl(r,"seconde") : ""].filter(Boolean).join(" ");
+}
+// Le record de distance à fêter en plein écran parmi ceux d'une sortie (le plus long d'abord), ou null :
+// textes de l'animation (ancien temps, nouveau temps, distance en majuscules, gain) et libellé pour les lecteurs d'écran.
+function celebrationRecord(records){
+  const r = sortRecordsForHier(records).find(x=>x.key && x.key.startsWith("record_") && x.previous!=null && x.value<x.previous);
+  if(!r) return null;
+  const gain = r.previous - r.value;
+  return {
+    key:r.key, label:r.label, newText:fmtDur(r.value), oldText:fmtDur(r.previous),
+    distanceText:String(r.label).toUpperCase(), gainText:formatTimeGain(gain),
+    ariaLabel:`Nouveau record sur ${r.label} : ${fmtDur(r.value)}, contre ${fmtDur(r.previous)} avant, soit ${timeGainWords(gain)} de mieux.`,
+  };
+}
+// Le plein écran n'est ouvert qu'une fois par sortie (`shownIds` : mémoire locale à l'appareil).
+function celebrationToShow(records, runId, shownIds){
+  if((shownIds||[]).includes(runId)) return null;
+  return celebrationRecord(records);
 }
 
 /* ---------- Carte de séance (design 2d, V1 à V7) ----------

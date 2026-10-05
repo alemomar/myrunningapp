@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=78"></script>
+<script src="logic.js?v=79"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -840,6 +840,9 @@ try {
   const now = Date.UTC(2026,9,2,12);
   assertEqual("shouldCelebrateRun : séance d'hier non célébrée -> oui", shouldCelebrateRun(now-DAY, now, "a", []), true);
   assertEqual("shouldCelebrateRun : séance de 5 jours -> non (pas tout l'historique)", shouldCelebrateRun(now-5*DAY, now, "a", []), false);
+  assertEqual("shouldCelebrateRun : séance d'aujourd'hui -> oui, d'avant-hier -> non (la carte « Hier » disparaît le lendemain, D57)", [shouldCelebrateRun(now-3600000, now, "a", []), shouldCelebrateRun(now-2*DAY, now, "a", [])], [true, false]);
+  assertEqual("shouldCelebrateRun : séance de 23 h hier, vue à 7 h aujourd'hui -> oui (jours calendaires)", shouldCelebrateRun(new Date(2026,9,4,23,0).getTime(), new Date(2026,9,5,7,0).getTime(), "a", []), true);
+  assertEqual("shouldCelebrateRun : séance de 7 h avant-hier, vue à 23 h aujourd'hui (40 h plus tard) -> non", shouldCelebrateRun(new Date(2026,9,3,7,0).getTime(), new Date(2026,9,5,23,0).getTime(), "a", []), false);
   assertEqual("shouldCelebrateRun : déjà célébrée -> non", shouldCelebrateRun(now-DAY, now, "a", ["a"]), false);
   const d=(n)=>{ const x=new Date(2026,9,2); x.setDate(x.getDate()-n); return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0"); };
   const eff=[{date:d(40),allure:360,fc:150},{date:d(50),allure:360,fc:150},{date:d(2),allure:342,fc:150},{date:d(10),allure:342,fc:150}];
@@ -1731,6 +1734,23 @@ try {
   assertEqual("carte : plus de renfo + niveau, deux mentions au plus", programChangeInfo(s1, programSignature({ ...g1, frequenceAutre:"0", niveau:"Confirmé" }), 3).headline, "Plus de renfo ni de mobilité · Niveau : Confirmé");
   assertEqual("carte : jours indisponibles en toutes lettres", programChangeInfo(s1, programSignature({ ...g1, joursIndisponibles:"0,2,6" }), 5).rows.slice(0,1).map(r=>[r.from,r.to]), [["lundi, dimanche","lundi, mercredi, dimanche"]]);
   assertEqual("carte : rien à signaler quand rien n'a changé", programChangeInfo(s1, s1, 5), null);
+}
+
+// --- S9.1 : célébration plein écran (D55, D56, D57) ---
+{
+  assertEqual("gain de temps : moins d'une minute", [formatTimeGain(34), formatTimeGain(1), formatTimeGain(59.4)], ["−34 s", "−1 s", "−59 s"]);
+  assertEqual("gain de temps : minutes et secondes", [formatTimeGain(85), formatTimeGain(120), formatTimeGain(605)], ["−1 min 25 s", "−2 min", "−10 min 05 s"]);
+  assertEqual("gain de temps : plus d'une heure", formatTimeGain(3720), "−1 h 02 min");
+  assertEqual("gain en mots : secondes, minutes, heures", [timeGainWords(34), timeGainWords(1), timeGainWords(85), timeGainWords(120), timeGainWords(3720)], ["34 secondes", "1 seconde", "1 minute 25 secondes", "2 minutes", "1 heure 2 minutes"]);
+  const rec5 = { key:"record_5k", value:1661, previous:1695, distKm:5, label:"5 km" };
+  assertEqual("célébration : record de 5 km (28:15 -> 27:41, comme la maquette)", celebrationRecord([rec5]), {
+    key:"record_5k", label:"5 km", newText:"27:41", oldText:"28:15", distanceText:"5 KM", gainText:"−34 s",
+    ariaLabel:"Nouveau record sur 5 km : 27:41, contre 28:15 avant, soit 34 secondes de mieux." });
+  assertEqual("célébration : le record de distance le plus long l'emporte", celebrationRecord([{ key:"record_5k", value:1500, previous:1534, label:"5 km" }, { key:"record_10k", value:3100, previous:3200, label:"10 km" }]).key, "record_10k");
+  assertEqual("célébration : semi et marathon en majuscules", [celebrationRecord([{ key:"record_semi", value:6000, previous:6100, label:"Semi" }]).distanceText, celebrationRecord([{ key:"record_marathon", value:13000, previous:13500, label:"Marathon" }]).distanceText], ["SEMI", "MARATHON"]);
+  assertEqual("célébration : les autres records (allure, plus longue sortie, durée) n'ont pas de plein écran (A2)", celebrationRecord([{ key:"allure_ef", value:343, previous:350 }, { key:"distance", value:15.4, previous:13.1 }, { key:"duree", value:5100, previous:4800 }]), null);
+  assertEqual("célébration : aucun record, rien", [celebrationRecord([]), celebrationRecord(undefined)], [null, null]);
+  assertEqual("célébration : plein écran une seule fois par sortie", [celebrationToShow([rec5], "r1", []) !== null, celebrationToShow([rec5], "r1", ["r1"])], [true, null]);
 }
 
 document.getElementById("summary").innerHTML =
