@@ -821,6 +821,99 @@ button.pg-rec-row{cursor:pointer}
 .up-row{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:var(--r-md);background:var(--surface-sunken);font-size:14.5px}
 .up-row .k{color:var(--text-muted)}
 .up-row .v{font-weight:600;text-align:right}
+/* Parcours de démarrage (S10, journal 11b) */
+.on-screen{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;gap:18px;max-width:520px;margin:0 auto;padding:max(14px,env(safe-area-inset-top)) 0 calc(22px + env(safe-area-inset-bottom));box-sizing:border-box}
+@media (prefers-reduced-motion: no-preference){
+  .on-screen.anim-fwd .on-head,.on-screen.anim-fwd .on-body{animation:onbInR .28s ease}
+  .on-screen.anim-back .on-head,.on-screen.anim-back .on-body{animation:onbInL .28s ease}
+  .on-bar i.now{animation:onbFill .25s ease-out;transform-origin:left}
+}
+@media (prefers-reduced-motion: reduce){ .on-screen.anim-fwd .on-head,.on-screen.anim-fwd .on-body,.on-screen.anim-back .on-head,.on-screen.anim-back .on-body{animation:onbFade .2s ease} }
+@keyframes onbInR{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes onbInL{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+@keyframes onbFill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes onbFade{from{opacity:0}to{opacity:1}}
+.on-top{display:flex;align-items:center;gap:12px}
+.on-back{width:44px;height:44px;margin-left:-10px;flex:none;display:flex;align-items:center;justify-content:center;border:none;background:none;color:var(--text);cursor:pointer}
+.on-bar{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.on-bar i{height:4px;border-radius:2px;background:var(--line);display:block}
+.on-bar i.on{background:var(--accent)}
+.on-count{font-size:12px;letter-spacing:.1em;color:var(--text-muted);flex:none}
+.on-head{display:flex;flex-direction:column;gap:8px}
+.on-title{font:700 34px/1 var(--font-display);text-transform:uppercase;text-wrap:pretty}
+.on-sub{font-size:15px;line-height:1.45;color:var(--text-3);text-wrap:pretty}
+.on-body{display:flex;flex-direction:column;gap:18px}
+.on-group{display:flex;flex-direction:column;gap:10px}
+.on-lbl{font-size:13.5px;color:var(--text-2)}
+.on-hint{font-size:12.5px;color:var(--text-muted);text-align:center}
+.on-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.on-tile{min-height:76px;border-radius:var(--r-lg);padding:12px;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line-field);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.on-tile .ic{width:36px;height:36px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface-control);color:var(--text-2)}
+.on-tile .t{font-size:15px;font-weight:600;line-height:1.2}
+.on-tile.sel{background:var(--select-soft);border:1.5px solid var(--select)}
+.on-tile.sel .ic{background:var(--select);color:var(--on-accent)}
+.on-date{position:relative;display:block;height:52px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--line-field)}
+.on-date input{width:100%;height:100%;background:none;border:none;outline:none;color:var(--text);font:inherit;font-size:16px;padding:0 44px 0 16px;box-sizing:border-box;-webkit-appearance:none;appearance:none;text-align:left}
+.on-date .ic{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--text-muted);display:flex;pointer-events:none}
+.on-date input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.on-date.warn{border-color:var(--attention)}
+.on-warn{border-radius:var(--r-lg);padding:14px;background:var(--attention-bg);box-shadow:inset 0 0 0 1px var(--attention-line);display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.45}
+.on-warn.strong{background:var(--attention-bg-strong);box-shadow:inset 0 0 0 1.5px var(--attention)}
+.on-warn .hd{display:flex;align-items:center;gap:8px;color:var(--attention);font-size:15px}
+.on-warn .first{font-size:13.5px;color:var(--text-2)}
+.on-opts{display:flex;flex-direction:column;gap:8px}
+.on-opt{display:flex;align-items:center;gap:12px;width:100%;padding:14px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--line-field);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.on-opt .ic{width:36px;height:36px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface-control);color:var(--text-2)}
+.on-opt b{display:block;font-size:15px;font-weight:600}
+.on-opt small{display:block;font-size:13px;color:var(--text-3)}
+.on-opt.sel{background:var(--select-soft);border:1.5px solid var(--select)}
+.on-opt.sel .ic{background:var(--select);color:var(--on-accent)}
+.on-chrono{display:flex;flex-direction:column;gap:10px;padding:2px 0 4px 14px;border-left:2px solid var(--line-field)}
+.on-nums button{height:44px}
+.on-rows{display:flex;flex-direction:column;gap:8px}
+.on-row{display:flex;justify-content:space-between;gap:12px;padding:14px;border-radius:var(--r-md);background:var(--surface);font-size:14.5px}
+.on-row .k{color:var(--text-muted);flex:none}
+.on-row .v{font-weight:600;text-align:right}
+.on-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:6px}
+.on-next.off{background:var(--surface-control);color:var(--text-faint)}
+.on-cancel{border:none;background:none;color:var(--text-muted);font:inherit;font-size:13px;padding:10px;cursor:pointer}
+.on-logo{display:flex;justify-content:center;padding-top:40px}
+.on-screen.welcome .on-logo{margin-top:auto;padding-top:0}
+.on-text{font-size:14.5px;color:var(--text-2);line-height:1.45}
+/* Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13) */
+.sg-list{display:flex;flex-direction:column;gap:10px;margin:12px 0 8px}
+.sg-item{border-radius:var(--r-lg);padding:14px;display:flex;flex-direction:column;gap:12px;background:#131518;border:1px solid var(--surface-control)}
+.sg-item.active{background:var(--surface);border:1.5px solid var(--select)}
+.sg-item .hd{display:flex;align-items:center;gap:12px}
+.sg-item .n{width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font:700 16px var(--font-display);background:var(--surface-control);color:var(--text-muted)}
+.sg-item.active .n{background:var(--select);color:var(--on-accent)}
+.sg-item.done .n{background:var(--accent);color:var(--on-accent)}
+.sg-item .t{flex:1;font-size:15.5px;font-weight:600;color:var(--text-muted)}
+.sg-item.active .t{color:var(--text)}
+.sg-item .f{font-size:12.5px;color:var(--text-muted)}
+.sg-tx{font-size:14px;line-height:1.45;color:var(--text-2)}
+.sg-tx b{color:var(--text)}
+.sg-flow{display:flex;align-items:center;gap:8px;padding:12px;border-radius:var(--r-md);background:var(--surface-sunken)}
+.sg-flow .c{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;font-size:11.5px;color:var(--text-3);text-align:center}
+.sg-flow .c svg{color:var(--text)}
+.sg-flow .c.me svg{color:var(--accent)}
+.sg-flow .ar{color:var(--text-faint);flex:none}
+.sg-note{display:flex;gap:10px;font-size:13.5px;line-height:1.4}
+.sg-note svg{color:var(--text-muted);flex:none;margin-top:1px}
+.sg-mail{display:flex;align-items:center;justify-content:space-between;gap:10px;height:52px;padding:0 6px 0 14px;border-radius:var(--r-md);background:var(--surface-sunken);border:1px solid var(--line-field);font-size:15px}
+.sg-mail span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sg-mail button{height:40px;padding:0 14px;border:none;border-radius:20px;background:var(--surface-control);color:var(--text);font:inherit;font-size:14px;font-weight:600;cursor:pointer;flex:none}
+.sg-apple{border-radius:var(--r-md);background:var(--surface-sunken);padding:12px 14px;display:flex;flex-direction:column;gap:10px;font-size:13.5px}
+.sg-apple .cap{font-size:11px;letter-spacing:.14em;color:var(--text-muted);text-transform:uppercase}
+.sg-apple .r{display:flex;justify-content:space-between;align-items:center;color:var(--text-2)}
+.sg-apple .r.all{color:var(--text);font-weight:600}
+.sg-apple i{display:inline-block;width:32px;height:19px;border-radius:10px;background:var(--accent);position:relative;flex:none}
+.sg-apple i::after{content:"";position:absolute;right:2px;top:2px;width:15px;height:15px;border-radius:50%;background:#fff}
+.sg-wait{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text-2)}
+.sg-wait .spinner{width:18px;height:18px;margin:0}
+.sg-tips{margin:0;padding-left:18px;font-size:13.5px;line-height:1.5;color:var(--text-2)}
+.sg-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sg-skip{border:none;background:none;color:var(--text-3);font:inherit;font-size:13.5px;padding:4px 0;cursor:pointer;align-self:flex-start;text-decoration:underline}
 /* Historique (S7, design 7g) */
 .page-back{width:36px;height:36px;margin:-4px 4px -4px -8px;border:none;border-radius:50%;background:none;color:var(--text);display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;cursor:pointer}
 .page-action.outline{background:none;box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent);font-size:13px}
@@ -975,7 +1068,7 @@ button.pg-rec-row{cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=79"></script>
+<script src="logic.js?v=80"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1051,6 +1144,8 @@ const ICONS = {
   trophy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`,
   calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>`,
   timer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="2" x2="14" y2="2"/><line x1="12" y1="14" x2="15" y2="11"/><circle cx="12" cy="14" r="8"/></svg>`,
+  calendarClock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14v2.2l1.6 1"/><path d="M16 2v4"/><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M3 10h5"/><path d="M8 2v4"/><circle cx="16" cy="16" r="6"/></svg>`,
+  arrowUpRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>`,
   help: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>`,
 };
 function icon(name,size=18){ return ICONS[name].replace("<svg ",`<svg width="${size}" height="${size}" `); }
@@ -3532,7 +3627,7 @@ window.saveRestingHrField = async (el) => {
   restingHr = v; restingHrUpdatedAt = stamp; restingHrIsManual = !!v; flashFieldSaved(el);
 };
 // Guide « Voir comment » : arrive avec S10.
-window.openSyncGuide = () => { if(typeof showSyncGuide==="function") showSyncGuide(); else toast("Le guide arrive bientôt."); };
+
 
 // Feuille de la jauge de charge (4c) : barre à 3 zones, courbe des 8 dernières semaines, ligne du coach ; le « i » ouvre l'explication (D22, A7).
 let chargeSheet = null; // "gauge" | "info"
@@ -5326,6 +5421,7 @@ function refreshSheet(){
   else if(typeof renderChargeSheet==="function" && renderChargeSheet()) { /* jauge de charge */ }
   else if(typeof renderRunSheet==="function" && renderRunSheet()) { /* détail d'une séance faite */ }
   else if(typeof renderObjectiveSheet==="function" && renderObjectiveSheet()) { /* objectif */ }
+  else if(typeof renderSyncGuide==="function" && renderSyncGuide()) { /* guide de connexion RunSync */ }
   else if(typeof renderLevelSheet==="function" && renderLevelSheet()) { /* niveau */ }
   else if(typeof renderNewPacesSheet==="function" && renderNewPacesSheet()) { /* nouvelles allures */ }
   else if(typeof renderUpdateSheet==="function" && renderUpdateSheet()) { /* mettre à jour ton programme */ }
@@ -5473,6 +5569,7 @@ function setPageTitle(){
     : activeTab==="progression" ? `<button type="button" class="page-action" onclick="openHistory()"><span style="color:var(--text-muted);display:flex">${icon("history",15)}</span>Historique<span style="color:var(--text-muted);display:flex">${icon("chevronRight",14)}</span></button>` : "";
 }
 function renderContent(){
+  if(onbConnect) return;      // l'écran « Connecte tes courses » du parcours ne doit pas être remplacé par l'app
   renderContentInner();
   setPageTitle();
   if(sessionSheetId || runSheet) refreshSheet(); // la feuille ouverte (carte de séance, détail d'une séance) suit les changements
@@ -5571,6 +5668,7 @@ async function boot(){
   await loadData();
   renderApp();
   maybeCelebrate();
+  resumeSyncGuide();
   runProgramMaintenance();
 }
 
@@ -5592,7 +5690,7 @@ function renderApp(){
     onboardingCompletedAt = new Date().toISOString();
     upsertProfile({ onboarding_completed_at: onboardingCompletedAt });
   }
-  if(!onboardingCompletedAt){
+  if(!onboardingCompletedAt || onbConnect){
     tabsEl.style.display = "none";
     document.querySelector(".topbar").style.display = "none";
     document.getElementById("content").innerHTML = onboardingHTML();
@@ -5658,10 +5756,13 @@ window.dismissGuidedTestSeen = () => {
   renderContent();
 };
 
-// ---------- Parcours guidé : état, écrans, enregistrement ----------
-// [libellé affiché, clé utilisée dans les données] — même ordre que
-// ONBOARDING_DUREE_OPTIONS ([libellé, valeur]) pour onbChips.
+// ---------- Parcours de démarrage (S10, journal 11b ; D58, D59, D61) ----------
+// Plein écran : retour en chevron, barre en 5 segments, un seul bouton citron en bas. 0 Bienvenue, 1 Objectif, 2 Niveau
+// (l'écran « Ton niveau »), 3 Disponibilités, 4 Récapitulatif ; une fois le programme créé, 5 Connecte tes courses.
+// [libellé affiché, clé utilisée dans les données] — même ordre que ONBOARDING_DUREE_OPTIONS ([libellé, valeur]).
 const ONB_RACES = [["5 km","5km"],["10 km","10km"],["15 km","15km"],["Semi-marathon","Semi"],["Marathon","Marathon"]];
+let onbConnect = false;   // étape 5 : le programme est créé, le parcours est enregistré, on propose de connecter les courses
+const onbToday = () => localDateStr(new Date());
 function onbInit(){
   const principal = goals?.principal || {};
   const detected = detectLevelFromHistory(
@@ -5674,18 +5775,21 @@ function onbInit(){
     objectif: principal.objectifPrincipal && principal.objectifPrincipal!=="Autre" ? principal.objectifPrincipal : "",
     distanceCourse: principal.distanceCourse || "",
     dateCible: principal.dateCible || "",
+    dateChoice: null,            // « first » (première date possible prise), « keep » (date un peu serrée gardée), « none » (sans date)
     detected,
     niveau: detected || goals?.niveau || "",
     niveauManual: false,
     frequenceHistorique: "",
     dureeMax: null,
+    chronoMode: refSec ? "known" : "",   // « known » : « Je connais un chrono récent » ; « unknown » : « Je ne sais pas » (test guidé plus tard)
     chronoDistance: chronoKey,
     chronoH: refSec ? String(Math.floor(refSec/3600)) : "",
     chronoM: refSec ? String(Math.floor((refSec%3600)/60)) : "",
     chronoS: refSec ? String(refSec%60) : "",
     frequence: Number(goals?.frequence) || 3,
     joursIndisponibles: (goals?.joursIndisponibles ? goals.joursIndisponibles.split(",").map(Number) : []),
-    compressAck: false,
+    reality: levelReality(),
+    saving: false, _anim: null,
   };
 }
 function onbChronoSec(){
@@ -5693,32 +5797,87 @@ function onbChronoSec(){
   return h*3600+m*60+sec;
 }
 function onbBeginner(){ return isBeginnerPlanEligible(onb.niveau, onb.frequenceHistorique, onb.dureeMax); }
+// Chrono saisi à l'étape 2 : mêmes garde-fous que « Ton niveau » (temps possible, avertissement « trop rapide »).
+function onbChronoCheck(){
+  return levelChronoCheck({ distanceKm:RACE_DISTANCES_KM[onb.chronoDistance]||0, h:onb.chronoH, m:onb.chronoM, s:onb.chronoS, month:onbToday().slice(0,7) }, onbToday(), onb.reality);
+}
+function onbChronoKnown(){ return onb.chronoMode==="known" && !onbBeginner(); }
 function onbPatch(){
+  const known = onbChronoKnown();
   return onboardingProfilePatch({
     objectif:onb.objectif, distanceCourse:onb.distanceCourse, dateCible:onb.dateCible, niveau:onb.niveau,
     frequenceHistorique:onb.frequenceHistorique, dureeMax:onb.dureeMax, frequence:onb.frequence, joursIndisponibles:onb.joursIndisponibles,
-    chronoDistance:onb.chronoDistance, chronoSec:onbChronoSec(),
-  }, goals, programSettings, RACE_DISTANCES_KM, beginnerPlanStartMonday(localDateStr(new Date())), localDateStr(new Date()));
+    chronoDistance:known ? onb.chronoDistance : "", chronoSec:known ? onbChronoSec() : 0,
+  }, goals, programSettings, RACE_DISTANCES_KM, beginnerPlanStartMonday(onbToday()), onbToday());
 }
 function onbRecomputeLevel(){
   if(onb.detected || onb.niveauManual) return;
   if(!onb.frequenceHistorique || onb.dureeMax==null) return;
   onb.niveau = classifyLevelFromQuestionnaire(onb.frequenceHistorique, onb.dureeMax);
 }
+// Date de course jugée avec le niveau connu ; sans niveau, comme un coureur non confirmé (la durée minimale est la même
+// pour Débutant et Intermédiaire, seul « Confirmé » la réduit : on ne prévient donc jamais à tort).
+function onbDateModel(){
+  if(onb.objectif!=="Préparer une course" || !onb.distanceCourse || !onb.dateCible) return null;
+  return dateCheckModel(onb.distanceCourse, onb.niveau || onb.detected || "", onb.dateCible, onbToday());
+}
+function onbCanContinue(){
+  if(onb.saving) return false;
+  if(onb.step===1){
+    if(!onb.objectif) return false;
+    if(onb.objectif!=="Préparer une course") return true;
+    return !!onb.distanceCourse && !dateStepBlocked(onbDateModel(), onb.dateChoice);
+  }
+  if(onb.step===2){
+    if(!onb.niveau) return false;
+    if(!onb.detected && (!onb.frequenceHistorique || onb.dureeMax==null)) return false;
+    return !onbChronoKnown() || onbChronoCheck().ok;
+  }
+  if(onb.step===4) return !dateStepBlocked(onbDateModel(), onb.dateChoice);
+  return true;
+}
 window.onbSet = (key, value) => {
   onb[key] = value;
   if(key==="niveau") onb.niveauManual = true;
   if(key==="frequenceHistorique" || key==="dureeMax") onbRecomputeLevel();
-  if(key==="distanceCourse" || key==="dateCible" || key==="niveau") onb.compressAck = false;
+  if(key==="distanceCourse" || key==="dateCible") onb.dateChoice = null;
   renderApp();
 };
 window.onbSetField = (key, value) => { onb[key] = value; };
+// Saisie du chrono : on ne redessine pas les champs (le clavier resterait coupé), seulement l'avertissement et le bouton.
+window.onbChronoInput = (key, value) => {
+  onb[key] = String(value).replace(/\D/g,"").slice(0,2);
+  onbRefreshChrono();
+};
+function onbRefreshChrono(){
+  const chk = onbChronoCheck(), msg = document.getElementById("onbChronoMsg");
+  if(msg) msg.innerHTML = chk.tooFast ? `<div class="ms-alert" role="status">${icon("alert",16)}<span>Vérifie ce temps : il est bien plus rapide que ce que tu cours en ce moment.</span></div>` : "";
+  document.querySelectorAll(".on-chrono .lv-times .pf-row").forEach(el=>el.classList.toggle("warn", chk.tooFast));
+  onbRefreshNext();
+}
+function onbRefreshNext(){
+  const btn = document.getElementById("onbNext");
+  if(btn) btn.classList.toggle("off", !onbCanContinue());
+}
 window.onbToggleDay = (i) => {
   onb.joursIndisponibles = onb.joursIndisponibles.includes(i) ? onb.joursIndisponibles.filter(d=>d!==i) : [...onb.joursIndisponibles, i];
   renderApp();
 };
-window.onbGo = (delta) => { onb.step = Math.max(0, Math.min(4, onb.step+delta)); renderApp(); };
-window.onbAckCompress = () => { onb.compressAck = true; renderApp(); };
+window.onbGo = (delta) => {
+  if(delta>0 && !onbCanContinue()) return;
+  onb._anim = delta>0 ? "fwd" : "back";
+  onb.step = Math.max(0, Math.min(4, onb.step+delta));
+  renderApp();
+};
+// « Garder cette date », « Prendre le … », « Sans date » : réponses aux états « Date un peu serrée » et « Date trop proche ».
+window.onbDateChoice = (choice) => {
+  const model = onbDateModel();
+  if(choice==="first" && model && model.firstDate) onb.dateCible = model.firstDate;
+  if(choice==="none") onb.dateCible = "";
+  onb.dateChoice = choice;
+  renderApp();
+};
+window.onbFocusDate = () => { const el = document.getElementById("onbDate"); if(el){ el.focus(); try{ el.showPicker && el.showPicker(); }catch(e){} } };
 window.restartOnboarding = () => {
   onbPreviousCompletedAt = onboardingCompletedAt;
   onb = null; onbRestarting = true; onboardingCompletedAt = null;
@@ -5726,156 +5885,265 @@ window.restartOnboarding = () => {
 };
 window.cancelOnboarding = () => {
   onboardingCompletedAt = onbPreviousCompletedAt || new Date().toISOString();
-  onb = null; onbRestarting = false;
+  onb = null; onbRestarting = false; onbConnect = false;
   renderApp();
 };
 
-function onbFeasibility(){
-  if(onb.objectif!=="Préparer une course" || !onb.distanceCourse || !onb.dateCible || !onb.niveau) return null;
-  const weeks = weeksUntilDate(onb.dateCible, localDateStr(new Date()));
-  const check = checkGoalTimelineFeasibility(onb.distanceCourse, onb.niveau, weeks);
-  return check ? { ...check, weeks } : null;
+// --- écrans ---
+const onbChipsHTML = (options, current, handler) => `<div class="pf-chips">${options.map(o=>{
+  const [label, value] = Array.isArray(o) ? o : [o, o];
+  return `<button type="button" class="pf-chip${current===value?" active":""}" aria-pressed="${current===value}" onclick="${handler}(${JSON.stringify(value).replace(/"/g,"&quot;")})">${escHtml(label)}</button>`;
+}).join("")}</div>`;
+const onbLevelBoxesHTML = () => `<div class="lv-levels" role="group" aria-label="Niveau">${NIVEAUX.map(([lbl,sub])=>`<button type="button" aria-pressed="${onb.niveau===lbl}" onclick="onbSet('niveau','${lbl}')"><div class="n">${lbl}</div><div class="s">${escHtml(sub)}</div></button>`).join("")}</div>`;
+const onbInfoHTML = (html) => `<div class="lv-info" style="margin-top:0">${icon("info",16)}<span>${html}</span></div>`;
+// Cadre d'un écran : barre du haut (retour, 5 segments, « N / 5 »), titre, corps, un seul bouton citron en bas.
+// `o` : { step, title, sub, body, next:{label, call, off, hint}, secondary:{label, call}, back }
+function onbScreenHTML(o){
+  const anim = onb._anim ? ` anim-${onb._anim}` : ""; onb._anim = null;
+  const top = o.step>=1 ? `<div class="on-top">
+      ${o.back===false ? `<span class="on-back"></span>` : `<button type="button" class="on-back" aria-label="Retour" onclick="onbGo(-1)">${icon("chevronLeft",22)}</button>`}
+      <div class="on-bar" role="progressbar" aria-valuemin="1" aria-valuemax="5" aria-valuenow="${o.step}">${[1,2,3,4,5].map(i=>`<i class="${i<=o.step?"on":""}${i===o.step?" now":""}"></i>`).join("")}</div>
+      <span class="on-count">${o.step} / 5</span></div>` : "";
+  const foot = `<div class="on-foot">
+      <button type="button" class="btn-primary on-next${o.next.off?" off":""}" id="onbNext" onclick="${o.next.call}">${o.next.label}</button>
+      ${o.next.hint ? `<div class="on-hint">${o.next.hint}</div>` : ""}
+      ${o.secondary ? `<button type="button" class="btn-secondary on-second" onclick="${o.secondary.call}">${o.secondary.label}</button>` : ""}
+      ${onbRestarting && o.step<5 ? `<button type="button" class="on-cancel" onclick="cancelOnboarding()">Annuler et revenir à l'app</button>` : ""}
+    </div>`;
+  return `<div class="on-screen${anim}${o.step===0?" welcome":""}">${top}
+    ${o.hero||""}
+    <div class="on-head"><div class="on-title">${o.title}</div>${o.sub?`<div class="on-sub">${o.sub}</div>`:""}</div>
+    <div class="on-body">${o.body||""}</div>${foot}</div>`;
 }
-function onbCanContinue(){
-  if(onb.step===1) return !!onb.objectif && (onb.objectif!=="Préparer une course" || !!onb.distanceCourse);
-  if(onb.step===2) return !!onb.niveau && (!!onb.detected || (!!onb.frequenceHistorique && onb.dureeMax!=null));
-  if(onb.step===4){
-    const f = onbFeasibility();
-    return !f || f.status==="ok" || (f.status==="compresse" && onb.compressAck);
+function onbDateBlockHTML(model){
+  if(!model || model.status==="ok" || onb.dateChoice==="first" || onb.dateChoice==="none") return "";
+  const c = onb.dateChoice;
+  if(model.status==="compresse"){
+    return `<div class="on-warn" role="status"><div class="hd">${icon("calendarClock",18)}<b>${escHtml(model.title)}</b></div><div class="tx">${escHtml(model.text)}</div>
+      <div class="pf-chips"><button type="button" class="pf-chip" onclick="onbFocusDate()">Choisir une autre date</button>
+      <button type="button" class="pf-chip${c==="keep"?" active":""}" aria-pressed="${c==="keep"}" onclick="onbDateChoice('keep')">Garder cette date</button></div></div>`;
   }
-  return true;
+  return `<div class="on-warn strong" role="status"><div class="hd">${icon("calendarClock",18)}<b>${escHtml(model.title)}</b></div><div class="tx">${escHtml(model.text)}</div>
+    <div class="first">Première date possible : <b>le ${model.firstDateFr}</b></div>
+    <div class="pf-chips"><button type="button" class="pf-chip${c===null?" active":""}" onclick="onbDateChoice('first')">Prendre le ${model.firstDateFr}</button>
+    <button type="button" class="pf-chip" onclick="onbFocusDate()">Une autre date</button>
+    <button type="button" class="pf-chip" onclick="onbDateChoice('none')">Sans date</button></div></div>`;
 }
-function onbShell(title, subtitle, body, nextLabel){
-  const stepNum = onb.step; // 1..4 pour les écrans de questions
-  const dots = [1,2,3,4].map(i=>`<span style="width:${i===stepNum?22:8}px;height:8px;border-radius:4px;background:${i<=stepNum?"var(--accent)":"var(--card-2)"};transition:width .2s"></span>`).join("");
-  const ok = onbCanContinue();
-  return `<div class="card">
-    ${stepNum>=1?`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="display:flex;gap:6px;align-items:center">${dots}</div>
-      <span style="font-size:12px;color:var(--text-dim)">Étape ${stepNum} sur 4</span>
-    </div>`:""}
-    <div style="font-size:20px;font-weight:700;margin-bottom:6px">${title}</div>
-    ${subtitle?`<div style="font-size:13px;color:var(--text-dim);line-height:1.5;margin-bottom:16px">${subtitle}</div>`:""}
-    ${body}
-    <div style="display:flex;gap:10px;margin-top:20px">
-      ${stepNum>=1?`<button class="btn-secondary" style="flex:0 0 auto;width:auto;padding:0 18px" onclick="onbGo(-1)">Retour</button>`:""}
-      <button class="btn-primary" style="margin-top:0;flex:1;${ok?"":"opacity:.4;pointer-events:none"}" onclick="${onb.step===4?"onbFinish()":"onbGo(1)"}">${nextLabel||"Continuer"}</button>
-    </div>
-    ${onbRestarting?`<div style="text-align:center;margin-top:12px"><a href="#" onclick="cancelOnboarding();return false" style="font-size:12px;color:var(--text-dim)">Annuler et revenir à l'app</a></div>`:""}
-  </div>`;
+function onbStepObjectif(){
+  const tiles = OBJECTIF_ICONS.map(([label,ic])=>`<button type="button" class="on-tile${label===onb.objectif?" sel":""}" aria-pressed="${label===onb.objectif}" onclick="onbSet('objectif','${label}')"><span class="ic">${icon(ic,18)}</span><span class="t">${label}</span></button>`).join("");
+  let course = "", hint = "";
+  if(onb.objectif==="Préparer une course"){
+    const model = onbDateModel(), warn = model && model.status!=="ok" && onb.dateChoice!=="first" && onb.dateChoice!=="none";
+    course = `<div class="on-group"><div class="on-lbl">Quelle distance ?</div>${onbChipsHTML(ONB_RACES, onb.distanceCourse, "onbSet.bind(null,'distanceCourse')")}</div>
+      <div class="on-group"><div class="on-lbl">À quelle date ? (facultatif)</div>
+        <label class="on-date${warn?" warn":""}"><input type="date" id="onbDate" value="${onb.dateCible}" aria-label="Date de la course" onchange="onbSet('dateCible', this.value)"><span class="ic">${icon("calendar",18)}</span></label>
+        <div class="on-hint" style="text-align:left">${escHtml(weeksUntilText(onb.dateCible))}</div></div>
+      ${onbDateBlockHTML(model)}`;
+    hint = model && model.status==="extreme" && onb.dateChoice===null ? "Choisis une date possible, ou « Sans date », pour continuer." : "";
+  }
+  return onbScreenHTML({ step:1, title:"Quel est ton objectif ?", sub:"Choisis ce qui te motive le plus en ce moment. Tu pourras en ajouter un second plus tard dans Profil.",
+    body:`<div class="on-tiles">${tiles}</div>${course}`, next:{ label:"Continuer", call:"onbGo(1)", off:!onbCanContinue(), hint } });
 }
-function onbChips(options, current, onclickFn, valueOf){
-  return `<div class="filters" style="margin-bottom:0">${options.map(o=>{
-    const [label, value] = Array.isArray(o) ? o : [o, o];
-    return `<button type="button" class="flt${current===value?" active":""}" onclick="${onclickFn}(${JSON.stringify(value).replace(/"/g,"&quot;")})">${label}</button>`;
-  }).join("")}</div>`;
+function onbStepNiveau(){
+  const beginner = onbBeginner(), known = onbChronoKnown();
+  let body = "";
+  if(onb.detected){
+    body += onbInfoHTML(`On a regardé tes courses des 8 dernières semaines : ton niveau semble être <strong>${onb.detected}</strong>. Tu peux le corriger si ça ne te ressemble pas.`);
+  } else {
+    body += `<div class="on-group"><div class="on-lbl">Tu cours à quelle fréquence en ce moment ?</div>${onbChipsHTML(QUESTIONNAIRE_FREQUENCE_OPTIONS, onb.frequenceHistorique, "onbSet.bind(null,'frequenceHistorique')")}</div>
+      <div class="on-group"><div class="on-lbl">Combien de temps peux-tu courir sans t'arrêter ?</div>${onbChipsHTML(ONBOARDING_DUREE_OPTIONS, onb.dureeMax, "onbSet.bind(null,'dureeMax')")}</div>`;
+  }
+  if(!beginner){
+    const box = (field, unit, label, ph) => `<div class="pf-row stack"><input type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="${label}" placeholder="${ph}" value="${escHtml(onb[field])}" oninput="onbChronoInput('${field}', this.value)"><span class="u">${unit}</span></div>`;
+    const chk = known ? onbChronoCheck() : null;
+    const fields = known ? `<div class="on-chrono">${onbChipsHTML(ONB_RACES, onb.chronoDistance, "onbSet.bind(null,'chronoDistance')")}
+        <div class="lv-times">${box("chronoH","h","Heures","0")}${box("chronoM","min","Minutes","00")}${box("chronoS","s","Secondes","00")}</div>
+        <div id="onbChronoMsg">${chk.tooFast ? `<div class="ms-alert" role="status">${icon("alert",16)}<span>Vérifie ce temps : il est bien plus rapide que ce que tu cours en ce moment.</span></div>` : ""}</div></div>` : "";
+    body += `<div class="on-group"><div class="on-lbl">Un chrono récent ?</div><div class="on-opts">
+      <button type="button" class="on-opt${known?" sel":""}" aria-pressed="${known}" onclick="onbSet('chronoMode','known')"><span class="ic">${icon("timer",18)}</span><span><b>Je connais un chrono récent</b><small>un temps approximatif suffit</small></span></button>${fields}
+      <button type="button" class="on-opt${onb.chronoMode==="unknown"?" sel":""}" aria-pressed="${onb.chronoMode==="unknown"}" onclick="onbSet('chronoMode','unknown')"><span class="ic">${icon("help",18)}</span><span><b>Je ne sais pas</b><small>test guidé de 20 min, à faire plus tard</small></span></button>
+    </div></div>`;
+  }
+  if(onb.niveau) body += `<div class="on-group"><div class="on-lbl">${onb.detected ? "Ton niveau" : "Ton niveau estimé : tu peux le corriger"}</div>${onbLevelBoxesHTML()}</div>`;
+  if(!onb.detected) body += onbInfoHTML("Si tu n'as jamais couru, on te proposera une alternance de marche et de course pour démarrer en douceur (le programme « Couch to 5K » du NHS, le service de santé britannique).");
+  if(beginner) body += onbInfoHTML("<strong>Programme marche/course :</strong> pendant 9 semaines, 3 séances par semaine qui alternent marche et course, jusqu'à pouvoir courir 30 minutes d'affilée.");
+  return onbScreenHTML({ step:2, title:"Quel est ton niveau ?", sub:onb.detected ? "" : "Quelques questions pour estimer ton niveau, sans test.", body, next:{ label:"Continuer", call:"onbGo(1)", off:!onbCanContinue() } });
 }
-function onbLevelCards(){
-  return `<div class="goal-level-cards">${NIVEAUX.map(([lbl,sub])=>`<div class="goal-level-card${onb.niveau===lbl?" active":""}" onclick="onbSet('niveau','${lbl}')">
-    <div class="lbl">${lbl}</div><div class="sub">${sub}</div></div>`).join("")}</div>`;
+function onbStepDispos(){
+  const beginner = onbBeginner();
+  if(beginner && onb.frequence!==3) onb.frequence = 3;
+  const nums = ["1","2","3","4","5","6","7"].map(o=>`<button type="button" class="${String(onb.frequence)===o?"active":""}" aria-pressed="${String(onb.frequence)===o}" ${beginner?"disabled":""} onclick="onbSet('frequence',${o})">${o}</button>`).join("");
+  const body = `<div class="on-group"><div class="on-lbl">Combien de séances de course par semaine ?</div><div class="pf-nums on-nums n7">${nums}</div>
+      <div class="on-hint" style="text-align:left">${beginner ? "Le programme marche/course comporte toujours 3 séances par semaine." : escHtml(FREQUENCE_HINTS[String(onb.frequence)]||"")}</div></div>
+    <div class="on-group"><div class="on-lbl">Des jours où tu ne peux jamais courir ?</div><div class="pf-chips">${JOURS_OPTIONS.map((d,i)=>`<button type="button" class="pf-chip${onb.joursIndisponibles.includes(i)?" active":""}" aria-pressed="${onb.joursIndisponibles.includes(i)}" onclick="onbToggleDay(${i})">${d}</button>`).join("")}</div></div>`;
+  return onbScreenHTML({ step:3, title:"Tes disponibilités", sub:"On placera tes séances sur les autres jours.", body, next:{ label:"Continuer", call:"onbGo(1)" } });
+}
+function onbStepRecap(){
+  const raceLabel = (ONB_RACES.find(r=>r[1]===onb.distanceCourse)||[])[0];
+  const jours = onb.joursIndisponibles.length ? onb.joursIndisponibles.slice().sort((a,b)=>a-b).map(i=>JOURS_OPTIONS[i]).join(", ") : "aucun";
+  const row = (lbl, val) => `<div class="on-row"><span class="k">${lbl}</span><span class="v">${escHtml(val)}</span></div>`;
+  const needsTest = onbPatch().needsGuidedTest;
+  const programme = onbBeginner() ? "Marche/course sur 9 semaines (NHS)" : (needsTest ? "Test de 20 minutes, puis programme personnalisé" : "Programme personnalisé");
+  const objectif = onb.objectif + (onb.objectif==="Préparer une course" ? ` · ${raceLabel||""}${onb.dateCible?" · le "+isoToFr(onb.dateCible):""}` : "");
+  const body = `<div class="on-rows">${row("Objectif", objectif)}${row("Niveau", onb.niveau)}${row("Séances de course", onb.frequence+" par semaine")}${row("Jours indisponibles", jours)}${row("Programme", programme)}</div>
+    ${needsTest ? onbInfoHTML("Comme tu n'as pas de chrono, ta première séance sera un <strong>test de 20 minutes</strong> : la distance que tu parcours nous sert à calculer tes allures. Tu pourras aussi donner un chrono plus tard, dans « Ton niveau ».") : ""}`;
+  return onbScreenHTML({ step:4, title:"Voilà ce qu'on a compris", sub:"Tout pourra être modifié dans Profil.", body,
+    next:{ label:onb.saving ? "Création de ton programme…" : "Créer mon programme", call:"onbFinish()", off:!onbCanContinue() } });
+}
+function onbStepConnect(){
+  const body = `<div class="on-text">Sans montre, tu pourras aussi les saisir à la main.</div>`;
+  return onbScreenHTML({ step:5, back:false, title:"Connecte tes courses", sub:"L'app iOS RunSync envoie tes courses depuis Apple Santé. Elles arrivent ici toutes seules, avec ta fréquence cardiaque.", body,
+    next:{ label:"Voir comment", call:"openSyncGuide()" }, secondary:{ label:"Plus tard", call:"onbLeave()" } });
 }
 function onboardingHTML(){
   if(!onb) onbInit();
-  const info = (txt) => `<div style="background:var(--accent-dim);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-top:14px">${txt}</div>`;
   if(onb.step===0){
-    return `<div class="card" style="text-align:center;padding:32px 20px">
-      <div style="font-size:22px;font-weight:700;margin-bottom:10px">Bienvenue sur MyRunningApp</div>
-      <div style="color:var(--text-dim);font-size:14px;line-height:1.55;margin-bottom:24px">En quelques questions, on prépare un programme adapté à toi : ton objectif, ton niveau et tes disponibilités. Ça prend 2 minutes, et tu pourras tout modifier ensuite dans Profil.</div>
-      <button class="btn-primary" style="margin-top:0" onclick="onbGo(1)">C'est parti</button>
-      ${onbRestarting?`<div style="margin-top:12px"><a href="#" onclick="cancelOnboarding();return false" style="font-size:12px;color:var(--text-dim)">Annuler et revenir à l'app</a></div>`:""}
-    </div>`;
+    return onbScreenHTML({ step:0, hero:`<div class="on-logo"><img src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="168" height="168"></div>`, title:"Bienvenue sur MyRunningApp",
+      sub:"En quelques questions, on prépare un programme adapté à toi : ton objectif, ton niveau et tes disponibilités. Ça prend 2 minutes, et tu pourras tout modifier ensuite dans Profil.", next:{ label:"C'est parti", call:"onbGo(1)" } });
   }
-  if(onb.step===1){
-    const cards = `<div class="goal-principal-cards">${OBJECTIF_ICONS.map(([label,ic])=>`<div class="goal-principal-card${label===onb.objectif?" active":""}" onclick="onbSet('objectif','${label}')">
-        <span class="icon-wrap">${icon(ic,17)}</span><span class="lbl">${label}</span></div>`).join("")}</div>`;
-    const course = onb.objectif==="Préparer une course" ? `
-      <div class="chart-hint" style="margin-top:16px">Quelle distance ?</div>
-      ${onbChips(ONB_RACES, onb.distanceCourse, "onbSet.bind(null,'distanceCourse')")}
-      <div class="chart-hint" style="margin-top:14px">À quelle date ? (facultatif)</div>
-      <input type="date" value="${onb.dateCible}" onchange="onbSet('dateCible', this.value)" style="background:var(--card-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:10px;font-family:inherit;width:100%;box-sizing:border-box">
-      <div class="chart-hint" style="margin-top:4px">${weeksUntilText(onb.dateCible)}</div>` : "";
-    return onbShell("Quel est ton objectif ?", "Choisis ce qui te motive le plus en ce moment. Tu pourras en ajouter un second plus tard dans Profil.", cards+course);
-  }
-  if(onb.step===2){
-    let body;
-    if(onb.detected){
-      body = info(`On a regardé tes courses des 8 dernières semaines : ton niveau semble être <strong>${onb.detected}</strong>. Tu peux le corriger si ça ne te ressemble pas.`)+`<div style="margin-top:14px">${onbLevelCards()}</div>`;
-    } else {
-      body = `<div class="chart-hint" style="margin-top:0">Tu cours à quelle fréquence en ce moment ?</div>
-        ${onbChips(QUESTIONNAIRE_FREQUENCE_OPTIONS, onb.frequenceHistorique, "onbSet.bind(null,'frequenceHistorique')")}
-        <div class="chart-hint" style="margin-top:16px">Combien de temps peux-tu courir sans t'arrêter ?</div>
-        ${onbChips(ONBOARDING_DUREE_OPTIONS, onb.dureeMax, "onbSet.bind(null,'dureeMax')")}
-        <div class="chart-hint" style="margin-top:16px">Un chrono récent ? (facultatif, un temps approximatif suffit)</div>
-        ${onbChips(ONB_RACES, onb.chronoDistance, "onbSet.bind(null,'chronoDistance')")}
-        <div style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--text-dim)">
-          <input type="number" min="0" max="9" inputmode="numeric" placeholder="h" value="${onb.chronoH}" oninput="onbSetField('chronoH',this.value)" class="time-input" style="width:52px"> h
-          <input type="number" min="0" max="59" inputmode="numeric" placeholder="min" value="${onb.chronoM}" oninput="onbSetField('chronoM',this.value)" class="time-input" style="width:60px"> min
-          <input type="number" min="0" max="59" inputmode="numeric" placeholder="s" value="${onb.chronoS}" oninput="onbSetField('chronoS',this.value)" class="time-input" style="width:52px"> s
-        </div>`;
-      if(onb.niveau){
-        body += `<div class="chart-hint" style="margin-top:18px">Ton niveau estimé : tu peux le corriger</div>${onbLevelCards()}`;
-      }
-      body += info("Si tu n'as jamais couru, on te proposera une alternance de marche et de course pour démarrer en douceur (le programme « Couch to 5K » du NHS, le service de santé britannique).");
-    }
-    if(onbBeginner()) body += info("<strong>Programme marche/course :</strong> pendant 9 semaines, 3 séances par semaine qui alternent marche et course, jusqu'à pouvoir courir 30 minutes d'affilée.");
-    return onbShell("Quel est ton niveau ?", onb.detected ? "" : "Quelques questions pour estimer ton niveau, sans test.", body);
-  }
-  if(onb.step===3){
-    const beginner = onbBeginner();
-    if(beginner && onb.frequence!==3) onb.frequence = 3;
-    const body = `<div class="chart-hint" style="margin-top:0">Combien de séances de course par semaine ?</div>
-      <div class="filters" style="margin-bottom:0">${["1","2","3","4","5","6","7"].map(o=>`<button type="button" class="flt${String(onb.frequence)===o?" active":""}" ${beginner?"disabled style=\"opacity:.5\"":""} onclick="onbSet('frequence',${o})">${o}</button>`).join("")}</div>
-      <div class="chart-hint" style="margin-top:6px">${beginner ? "Le programme marche/course comporte toujours 3 séances par semaine." : (FREQUENCE_HINTS[String(onb.frequence)]||"")}</div>
-      <div class="chart-hint" style="margin-top:16px">Des jours où tu ne peux jamais courir ?</div>
-      <div class="filters" style="margin-bottom:0">${JOURS_OPTIONS.map((d,i)=>`<button type="button" class="flt${onb.joursIndisponibles.includes(i)?" active":""}" onclick="onbToggleDay(${i})">${d}</button>`).join("")}</div>`;
-    return onbShell("Tes disponibilités", "On placera tes séances sur les autres jours.", body);
-  }
-  // étape 4 : récapitulatif
-  const f = onbFeasibility();
-  const raceLabel = (ONB_RACES.find(r=>r[1]===onb.distanceCourse)||[])[0];
-  const jours = onb.joursIndisponibles.length ? onb.joursIndisponibles.slice().sort((a,b)=>a-b).map(i=>JOURS_OPTIONS[i]).join(", ") : "aucun";
-  const row = (lbl, val) => `<div class="account-row"><span class="lbl">${lbl}</span><span class="v" style="text-align:right">${val}</span></div>`;
-  let warn = "";
-  if(f && f.status==="compresse"){
-    warn = `<div style="border:1px solid var(--attention-line);background:var(--attention-bg);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.5">
-      Ta date est un peu serrée : pour ce niveau, on recommande au moins ${Math.ceil(f.minWeeks)} semaines pour préparer cette distance (d'après les plans de Hal Higdon), et il t'en reste ${f.weeks}. Tu peux la garder (le plan sera compressé, avec un peu plus de risque de blessure) ou choisir une date plus lointaine.
-      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-        <button class="btn-secondary" style="width:auto;padding:0 14px" onclick="onbAckCompress()">${onb.compressAck?"Date gardée ✓":"Garder cette date"}</button>
-        <button class="btn-secondary" style="width:auto;padding:0 14px" onclick="onbSet('step',1)">Changer ma date ou ma distance</button>
-      </div></div>`;
-  } else if(f && f.status==="extreme"){
-    warn = `<div style="border:1px solid var(--attention-line);background:var(--attention-bg);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.5">
-      Cette date est trop proche : pour ce niveau, on recommande au moins ${Math.ceil(f.minWeeks)} semaines pour préparer cette distance (d'après les plans de Hal Higdon), et il t'en reste ${f.weeks}. On ne peut pas te proposer un plan sûr. Choisis une date plus lointaine ou une distance plus courte.
-      <div style="margin-top:10px"><button class="btn-secondary" style="width:auto;padding:0 14px" onclick="onbSet('step',1)">Changer ma date ou ma distance</button></div></div>`;
-  }
-  const needsTest = onbPatch().needsGuidedTest;
-  const programme = onbBeginner() ? "Marche/course sur 9 semaines (NHS)" : (needsTest ? "Test de 20 minutes, puis programme personnalisé" : "Programme personnalisé");
-  const chronoNote = needsTest ? info("Comme tu n'as pas de chrono, ta première séance sera un <strong>test de 20 minutes</strong> : la distance que tu parcours nous sert à calculer tes allures. Tu peux aussi saisir un chrono plus tard dans Programme.") : "";
-  const body = `${row("Objectif", onb.objectif + (onb.objectif==="Préparer une course" ? ` · ${raceLabel||""}${onb.dateCible?" · le "+new Date(onb.dateCible+"T00:00:00").toLocaleDateString("fr-FR"):""}` : ""))}
-    ${row("Niveau", onb.niveau)}
-    ${row("Séances de course", onb.frequence+" par semaine")}
-    ${row("Jours indisponibles", jours)}
-    ${row("Programme", programme)}
-    ${warn}${chronoNote}`;
-  return onbShell("Voilà ce qu'on a compris", "Tout pourra être modifié dans Profil.", body, "Créer mon programme");
+  if(onb.step===1) return onbStepObjectif();
+  if(onb.step===2) return onbStepNiveau();
+  if(onb.step===3) return onbStepDispos();
+  if(onb.step===4) return onbStepRecap();
+  return onbStepConnect();
 }
+// Crée le programme : enregistre les réponses, génère la première semaine (ou planifie le test de 20 minutes), puis propose
+// de connecter les courses (étape 5), sauf si des courses sont déjà arrivées d'Apple Santé.
 window.onbFinish = async function(){
   if(!onbCanContinue()) return;
+  onb.saving = true; renderApp();
   const patch = onbPatch();
   const completedAt = new Date().toISOString();
   const ok = await upsertProfile({ goals: patch.goals, program_settings: patch.programSettings, onboarding_completed_at: completedAt });
-  if(!ok) return;
+  if(!ok){ onb.saving = false; renderApp(); return; }
   goals = patch.goals; programSettings = patch.programSettings; onboardingCompletedAt = completedAt;
-  onb = null; onbRestarting = false;
-  // Première semaine générée tout de suite (silencieusement : sans temps de
-  // référence le moteur ne génère rien, voir generateProgram).
+  onbRestarting = false; onbConnect = true;      // l'écran du parcours reste affiché pendant la génération
   try{
     if(patch.needsGuidedTest) await window.scheduleGuidedTest(true);
     else await window.generateProgram(mondayOf(new Date()), {silent:true});
   }catch(e){ console.error("Génération initiale :", e); }
+  if(receivedRuns().length>0){ onbLeave(); return; }
+  onb.saving = false; onb.step = 5; onb._anim = "fwd";
+  renderApp();
+};
+window.onbLeave = () => {
+  onbConnect = false; onb = null; onbRestarting = false;
   activeTab = "aujourdhui"; persistActiveTab();
   renderApp();
 };
+// Courses arrivées d'Apple Santé (pas celles saisies à la main) : le guide de connexion s'appuie dessus.
+function receivedRuns(){ return RUNS.filter(r=>r.appleType && r.appleType!==MANUAL_RUN_MARKER); }
+
+// ---------- Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13 ; D60) ----------
+// 4 étapes dans une feuille, une seule ouverte : installer RunSync, s'y connecter avec le même email, autoriser Apple Santé,
+// recevoir les courses. Les trois premières se cochent toutes seules quand on revient dans l'app après les avoir ouvertes ;
+// la quatrième interroge régulièrement l'arrivée des premières courses. Ouvert depuis la fin du parcours (étape 5) et depuis
+// Mon compte › Synchronisation. L'état est gardé sur l'appareil : si l'app est rechargée pendant qu'on est dans TestFlight ou
+// RunSync, le guide se rouvre où on l'avait laissé.
+const RUNSYNC_INSTALL_URL = "";            // lien TestFlight puis App Store : à fournir par Omar (tant qu'il est vide, le bouton l'explique)
+const RUNSYNC_OPEN_URL = "myrunningapp://";   // schéma déclaré par l'app iOS RunSync (Info.plist)
+const SYNC_GUIDE_KEY = "mra_syncGuide";
+let syncGuide = null;      // { done:[b,b,b], pending:0|1|2|3, waitStart, received, fromOnb }
+let syncPollTimer = null;
+function saveSyncGuide(){
+  try{ if(syncGuide) localStorage.setItem(SYNC_GUIDE_KEY, JSON.stringify({ open:true, done:syncGuide.done, pending:syncGuide.pending })); else localStorage.removeItem(SYNC_GUIDE_KEY); }catch(e){}
+}
+const syncWaited = () => syncGuide && syncGuide.waitStart ? (Date.now()-syncGuide.waitStart)/1000 : 0;
+// Retour dans l'app après avoir ouvert TestFlight ou RunSync : l'étape correspondante se coche toute seule.
+function settleSyncGuide(){
+  if(!syncGuide || !syncGuide.pending) return;
+  syncGuide.done[syncGuide.pending-1] = true; syncGuide.pending = 0; saveSyncGuide();
+}
+function syncGuideModelNow(){
+  const m = syncGuideModel(syncGuide.done, syncGuide.received, syncWaited());
+  if(m.phase==="wait" && !syncGuide.waitStart) syncGuide.waitStart = Date.now();
+  return m;
+}
+window.openSyncGuide = () => {
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem(SYNC_GUIDE_KEY)||"null"); }catch(e){}
+  syncGuide = { done:(saved && saved.done) || [false,false,false], pending:(saved && saved.pending) || 0, waitStart:null, received:receivedRuns().length, fromOnb:onbConnect };
+  settleSyncGuide(); saveSyncGuide();
+  refreshSheet(); startSyncPoll();
+};
+// Si l'app a été rechargée pendant le guide (l'utilisateur était dans TestFlight ou RunSync), on le rouvre où il en était.
+function resumeSyncGuide(){
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem(SYNC_GUIDE_KEY)||"null"); }catch(e){}
+  if(!saved || !saved.open || syncGuide) return;
+  if(receivedRuns().length>0){ try{ localStorage.removeItem(SYNC_GUIDE_KEY); }catch(e){} return; }
+  openSyncGuide();
+}
+window.closeSyncGuide = (leave) => {
+  const fromOnb = syncGuide && syncGuide.fromOnb;
+  stopSyncPoll(); syncGuide = null; saveSyncGuide(); refreshSheet();
+  if(leave && fromOnb && onbConnect) onbLeave(); else if(!onbConnect) renderContent();
+};
+function stopSyncPoll(){ if(syncPollTimer){ clearInterval(syncPollTimer); syncPollTimer = null; } }
+function startSyncPoll(){ stopSyncPoll(); syncPollTimer = setInterval(syncPollOnce, 4000); }
+// À l'étape 4 : combien de courses sont arrivées d'Apple Santé ? (requête légère, sans tout recharger)
+async function syncPollOnce(){
+  if(!syncGuide){ stopSyncPoll(); return; }
+  const m = syncGuideModelNow();
+  if(m.connected || m.active<4){ refreshSheet(); return; }
+  const { count, error } = await supa.from("runs").select("id", { count:"exact", head:true }).not("apple_type","is",null).neq("apple_type", MANUAL_RUN_MARKER);
+  if(error || !syncGuide) return;
+  if((count||0)>0 && !syncGuide.received){ syncGuide.received = count; stopSyncPoll(); await loadData(); }
+  refreshSheet();
+}
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState==="visible" && syncGuide){ settleSyncGuide(); refreshSheet(); syncPollOnce(); }
+});
+window.syncInstall = () => {
+  if(!RUNSYNC_INSTALL_URL){ toast("Le lien d'installation de RunSync arrive bientôt."); return; }
+  syncGuide.pending = 1; saveSyncGuide(); window.open(RUNSYNC_INSTALL_URL, "_blank");
+};
+window.syncOpenRunSync = (step) => {
+  syncGuide.pending = step; saveSyncGuide();
+  window.location.href = RUNSYNC_OPEN_URL;
+  setTimeout(()=>{ if(document.visibilityState==="visible" && syncGuide && syncGuide.pending===step) toast("RunSync ne s'ouvre pas ? Ouvre-le depuis ton écran d'accueil."); }, 1800);
+};
+window.syncMarkDone = (step) => { syncGuide.done[step-1] = true; syncGuide.pending = 0; saveSyncGuide(); refreshSheet(); };
+window.syncCopyEmail = async () => {
+  try{ await navigator.clipboard.writeText(userEmail||""); toast("Email copié."); }catch(e){ toast("Sélectionne l'email pour le copier."); }
+};
+window.syncRetry = () => { syncGuide.waitStart = Date.now(); refreshSheet(); startSyncPoll(); syncPollOnce(); };
+function syncStepBodyHTML(m, n){
+  const next = (label, call) => `<button type="button" class="btn-primary" style="min-height:48px" onclick="${call}">${label}</button>`;
+  const skip = (step) => `<button type="button" class="sg-skip" onclick="syncMarkDone(${step})">C'est déjà fait</button>`;
+  if(n===1) return `<div class="sg-tx">RunSync est une petite app relais : elle récupère tes courses dans Apple Santé et les envoie ici, toute seule.</div>
+    <div class="sg-flow"><div class="c">${icon("heart",20)}<span>Apple Santé</span></div><span class="ar">${icon("arrowRight",16)}</span><div class="c">${icon("refresh",20)}<span>RunSync</span></div><span class="ar">${icon("arrowRight",16)}</span><div class="c me">${icon("runner",20)}<span>MyRunningApp</span></div></div>
+    <div class="sg-note">${icon("info",16)}<span>Tu n'auras pas besoin de l'ouvrir ensuite : une fois installée, elle travaille en arrière-plan. Tout se passe ici.</span></div>
+    ${next(`Installer RunSync ${icon("arrowUpRight",16)}`, "syncInstall()")}${skip(1)}`;
+  if(n===2) return `<div class="sg-tx">Dans RunSync, connecte-toi avec <b>le même email et le même mot de passe</b> que dans MyRunningApp.</div>
+    <div class="sg-mail"><span>${escHtml(userEmail||"")}</span><button type="button" onclick="syncCopyEmail()">Copier</button></div>
+    ${next("Ouvrir RunSync", "syncOpenRunSync(2)")}${skip(2)}`;
+  if(n===3) return `<div class="sg-tx">Dans RunSync, touche « Synchroniser mes courses ». Apple te demande l'accès : touche simplement <b>Tout activer</b>, puis Autoriser.</div>
+    <div class="sg-apple" aria-hidden="true"><div class="cap">Écran d'Apple</div><div class="r all"><span>Tout activer</span><i></i></div><div class="r"><span>Entraînements</span><i></i></div><div class="r"><span>Fréquence cardiaque</span><i></i></div><div class="r"><span>Distance</span><i></i></div><div class="r"><span>+ Calories, Nombre de pas</span><i></i></div></div>
+    ${next("Ouvrir RunSync", "syncOpenRunSync(3)")}
+    <div class="sg-note">${icon("info",16)}<span>On ne lit que tes séances de sport. Rien d'autre.</span></div>${skip(3)}`;
+  if(m.phase==="ok") return `<div class="sg-tx"><b>${escHtml(m.summary.replace("C'est connecté · ",""))}.</b> Les prochaines arriveront toutes seules.</div>${next("Continuer", "closeSyncGuide(true)")}`;
+  if(m.phase==="empty") return `<div class="sg-tx">Rien reçu pour l'instant. Pas grave si tu n'as encore jamais couru avec ta montre ou ton téléphone : ta prochaine course arrivera toute seule.</div>
+    <ul class="sg-tips"><li>Ouvre RunSync et touche « Forcer une synchronisation »</li><li>Vérifie l'accès : Réglages → Santé → Accès → RunSync</li></ul>
+    <div class="sg-btns"><button type="button" class="btn-secondary" style="min-height:48px" onclick="closeSyncGuide(true)">Continuer sans attendre</button><button type="button" class="btn-secondary" style="min-height:48px" onclick="syncRetry()">Réessayer</button></div>`;
+  return `<div class="sg-wait"><div class="spinner" aria-hidden="true"></div><span>Synchronisation de tes courses…</span></div>`;
+}
+function renderSyncGuide(){
+  if(!syncGuide) return false;
+  const m = syncGuideModelNow();
+  const items = m.steps.map(st => {
+    if(st.state==="done") return `<div class="sg-item done"><div class="hd"><span class="n">${icon("check",16)}</span><span class="t">${escHtml(st.title)}</span><span class="f">fait</span></div></div>`;
+    if(st.state==="active") return `<div class="sg-item active"><div class="hd"><span class="n">${st.n}</span><span class="t">${escHtml(st.title)}</span></div>${syncStepBodyHTML(m, st.n)}</div>`;
+    return `<div class="sg-item"><div class="hd"><span class="n">${st.n}</span><span class="t">${escHtml(st.title)}</span></div></div>`;
+  }).join("");
+  document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeSyncGuide()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Connecter Apple Santé">
+    ${sheetHeadHTML("Connecter Apple Santé", "closeSyncGuide()")}
+    <div class="np-intro">4 étapes, environ 2 minutes. On coche chaque étape tout seul quand tu reviens.</div>
+    <div class="sg-list">${items}</div>
+    ${m.connected ? "" : `<button type="button" class="btn-ghost" onclick="closeSyncGuide(false)">Je le ferai plus tard</button>`}
+  </div></div>`;
+  return true;
+}
 
 supa.auth.getSession().then(({ data }) => {
   if (data.session) boot();

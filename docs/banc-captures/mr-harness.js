@@ -357,13 +357,29 @@
     RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; show("progression");
   } else if(scen==="vide_programme"){
     RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; programViewMode="week"; programWeekOffset=0; show("programme");
+  } else if(/^guide_(etape[123]|attente|ok|vide)$/.test(scen)){
+    // S10 : guide « Voir comment » (connecter RunSync), depuis Mon compte › Synchronisation
+    celebrationOff(); plannedSessions=[...wkSessions, ...future]; setProfilSectionState("compte"); show("profil");
+    RUNS=RUNS.filter(r=>r.appleType===MANUAL_RUN_MARKER); runningRuns=RUNS.filter(r=>r.includeInStats); try{ localStorage.removeItem("mra_syncGuide"); }catch(e){}
+    openSyncGuide(); stopSyncPoll();
+    const done = scen==="guide_etape1" ? [false,false,false] : scen==="guide_etape2" ? [true,false,false] : scen==="guide_etape3" ? [true,true,false] : [true,true,true];
+    syncGuide.done = done;
+    if(scen==="guide_attente") syncGuide.waitStart = Date.now();
+    if(scen==="guide_vide") syncGuide.waitStart = Date.now()-100000;
+    if(scen==="guide_ok") syncGuide.received = 12;
+    refreshSheet();
   } else if(scen.startsWith("onboarding")){
-    RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbRestarting=false;
+    RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbRestarting=false; onbConnect=false;
     renderApp();
-    if(scen==="onboarding_bienvenue") { /* écran d'accueil du parcours */ } else {
+    const inDays = (n)=>localDateStr(new Date(Date.now()+n*86400000));
+    if(scen==="onboarding_bienvenue") { /* écran d'accueil du parcours */ } else if(scen==="onboarding_connexion"){
+      // étape 5 : programme créé, on propose de connecter les courses
+      onbInit(); onb.step=5; onbConnect=true; onboardingCompletedAt="2026-06-01T08:00:00Z"; renderApp();
+    } else {
     onbGo(1);
-    onbSet("objectif","Préparer une course"); onbSet("distanceCourse","10km"); onbSet("dateCible","2026-12-13");
-    if(scen==="onboarding_niveau"||scen==="onboarding_recap"){ onbGo(1); onbSet("frequenceHistorique","2 à 3 fois par semaine"); onbSet("dureeMax",40); onbSetField("chronoM","47"); onbSet("chronoDistance","10km"); }
+    onbSet("objectif","Préparer une course"); onbSet("distanceCourse", /date_/.test(scen) ? "Semi" : "10km");
+    onbSet("dateCible", scen==="onboarding_date_serree" ? inDays(63) : scen==="onboarding_date_proche" ? inDays(28) : "2026-12-13");
+    if(scen==="onboarding_niveau"||scen==="onboarding_niveau_chrono"||scen==="onboarding_recap"){ onbGo(1); onbSet("frequenceHistorique","2 à 3 fois par semaine"); onbSet("dureeMax",40); if(scen!=="onboarding_niveau"){ onbSet("chronoMode","known"); onbSet("chronoDistance","10km"); onbSetField("chronoM","47"); } }
     if(scen==="onboarding_dispos"){ onbGo(1); onbSet("frequenceHistorique","2 à 3 fois par semaine"); onbSet("dureeMax",40); onbGo(1); onbToggleDay(6); onbToggleDay(2); }
     if(scen==="onboarding_recap"){ onbGo(1); onbToggleDay(6); onbGo(1); }
     }
