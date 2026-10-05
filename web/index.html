@@ -6129,7 +6129,7 @@ function receivedRuns(){ return RUNS.filter(r=>r.appleType && r.appleType!==MANU
 // la quatrième interroge régulièrement l'arrivée des premières courses. Ouvert depuis la fin du parcours (étape 5) et depuis
 // Mon compte › Synchronisation. L'état est gardé sur l'appareil : si l'app est rechargée pendant qu'on est dans TestFlight ou
 // RunSync, le guide se rouvre où on l'avait laissé.
-const RUNSYNC_INSTALL_URL = "";            // lien TestFlight puis App Store : à fournir par Omar (tant qu'il est vide, le bouton l'explique)
+const RUNSYNC_INSTALL_URL = "https://testflight.apple.com/join/vYx5KKUw";   // lien public TestFlight fourni par Omar (groupe « Amis_Testeurs », limite de testeurs fixée dans App Store Connect) ; builds valables jusqu'au 25/12/2026 environ ; à remplacer par le lien App Store à la sortie ; s'il est vide, le bouton l'explique
 const RUNSYNC_OPEN_URL = "myrunningapp://";   // schéma déclaré par l'app iOS RunSync (Info.plist)
 const SYNC_GUIDE_KEY = "mra_syncGuide";
 let syncGuide = null;      // { done:[b,b,b], pending:0|1|2|3, waitStart, received, fromOnb }
