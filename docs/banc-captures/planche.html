@@ -30,8 +30,8 @@
 const SCENARIOS = [
   "aujourdhui_course","aujourdhui_renfo","aujourdhui_repos","aujourdhui_savoir_plus","seance_faite","seance_retard","hier",
   "programme_semaine","programme_mois","programme_ajout",
-  "progression","progression_allure","progression_regularite","progression_forme","jauge_charge","jauge_info","historique","historique_mois","detail_seance","detail_cardio","detail_suppression","ressenti","ressenti_corps","ressenti_dos","saisie_doublon","profil_objectifs","objectif_feuille","niveau_feuille","profil_compte",
-  "merge","merge_ask","attach","carte_corps","celebration_record",
+  "progression","progression_allure","progression_regularite","progression_forme","jauge_charge","jauge_info","historique","historique_mois","detail_seance","detail_cardio","detail_suppression","ressenti","ressenti_corps","ressenti_dos","saisie_doublon","profil_objectifs","objectif_feuille","niveau_feuille","niveau_chrono","niveau_chrono_alerte","niveau_chrono_ancien","niveau_reprise","niveau_reprise_choix","niveau_carte_reprise","niveau_carte_ancien","niveau_programme","profil_compte",
+  "merge","merge_ask","attach","celebration_record",
   "douleur_forte","zone_pause","rappels","marche_course","test_niveau",
   "composants","feuille_saisie",
   "vide_aujourdhui","vide_programme","vide_progression",
@@ -78,6 +78,7 @@ function mesurer(f, largeur) {
     debordePage: e.scrollWidth > e.clientWidth + 1,
     hauteur: e.scrollHeight,
     erreurHarnais: (d.title || "").startsWith("DIAG ERR"),
+    erreursConsole: ((f.contentWindow && f.contentWindow.__errs) || []).slice(0, 3),
     elements: debordants(d, largeur).slice(0, 4)
   };
 }
@@ -107,11 +108,12 @@ function ligne(res) {
   tr.append(cell(res.scenario));
   const details = [];
   for (const m of res.mesures) {
-    const mauvais = m.erreur || m.debordePage || m.erreurHarnais || m.elements.length > 0;
+    const mauvais = m.erreur || m.debordePage || m.erreurHarnais || m.elements.length > 0 || (m.erreursConsole && m.erreursConsole.length > 0);
     tr.append(cell(mauvais ? "à voir" : "OK", mauvais ? "ko" : "ok"));
     if (m.erreur) details.push(m.largeur + " : " + m.erreur);
     else {
       if (m.erreurHarnais) details.push(m.largeur + " : erreur du jeu de données");
+      if (m.erreursConsole && m.erreursConsole.length) details.push(m.largeur + " : erreur de console : " + m.erreursConsole.join(" ; "));
       if (m.debordePage) details.push(m.largeur + " : la page défile à l'horizontale (" + m.scrollW + " px)");
       if (m.elements.length) details.push(m.largeur + " : " + m.elements.join(", "));
     }
@@ -128,8 +130,8 @@ function ligne(res) {
     window.__planche.resultats.push(res);
     ligne(res);
   }
-  const mauvais = window.__planche.resultats.filter((r) => r.mesures.some((m) => m.erreur || m.debordePage || m.erreurHarnais || m.elements.length));
-  statut.textContent = "Terminé : " + (liste.length - mauvais.length) + "/" + liste.length + " scénarios sans débordement à 375 px et 360 px.";
+  const mauvais = window.__planche.resultats.filter((r) => r.mesures.some((m) => m.erreur || m.debordePage || m.erreurHarnais || m.elements.length || (m.erreursConsole && m.erreursConsole.length)));
+  statut.textContent = "Terminé : " + (liste.length - mauvais.length) + "/" + liste.length + " scénarios sans débordement ni erreur de console à 375 px et 360 px.";
   window.__planche.fini = true;
 })();
 </script>

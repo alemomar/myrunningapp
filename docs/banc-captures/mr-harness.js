@@ -20,7 +20,9 @@
   onboardingCompletedAt = "2026-06-01T08:00:00Z";
   goals = { principal:{objectifPrincipal:"Préparer une course", distanceCourse:"10km", dateCible:"2026-12-13", pbExistant:"Oui", pbSec:2820, terrainCourse:"Plat", objectifChrono:"Oui", tempsViseSec:2700},
             secondaire:{}, niveau:"Intermédiaire", frequence:"3", frequenceAutre:"1", kmMensuel:"90", terrain:"Route", equipement:"Apple Watch", joursIndisponibles:"6" };
-  programSettings = {};
+  // « Ton niveau » (S8) : un chrono de 10 km (47:00) daté du mois dernier ; le programme est construit avec ces réglages.
+  const lastMonth = (()=>{ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-15"; })();
+  programSettings = { refDistanceKm:10, refTimeSec:2820, refDate:lastMonth, refSource:"chrono", programSignature:programSignature(goals) };
 
   // --- séances réelles fictives (14 semaines)
   const startOf = (n)=>{ const d=new Date(); d.setDate(d.getDate()-n); d.setHours(7,20+Math.floor(R()*20),0,0); return d; };
@@ -266,6 +268,25 @@
   } else if(scen==="objectif_feuille" || scen==="niveau_feuille"){
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; setProfilSectionState("objectifs"); show("profil");
     if(scen==="objectif_feuille") openObjectiveSheet("principal"); else openLevelSheet();
+  } else if(/^niveau_(chrono|chrono_alerte|chrono_ancien|reprise|reprise_choix|carte_reprise|carte_ancien|programme)$/.test(scen)){
+    // « Ton niveau » (S8) : formulaire de chrono, avertissement « temps trop rapide », plus de 6 mois, question de reprise, cartes
+    celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, ...future];
+    try{ localStorage.setItem("mra_notLinked", JSON.stringify(rows.map(r=>r.id))); }catch(e){}      // pas de carte de rattachement : la carte « Ton niveau » est seule
+    if(/reprise|programme/.test(scen)) programSettings = {};                      // compte dont les allures reposaient sur le record
+    if(scen==="niveau_carte_ancien"){ const d=new Date(); d.setMonth(d.getMonth()-8); programSettings = { ...programSettings, refDate:localDateStr(d) }; }
+    if(scen==="niveau_programme"){ show("programme"); }
+    else if(scen==="niveau_carte_reprise" || scen==="niveau_carte_ancien"){ show("aujourdhui"); }
+    else {
+      setProfilSectionState("objectifs"); show("profil");
+      openLevelSheet(/reprise/.test(scen) ? "resume" : "chrono");
+      if(/^niveau_chrono/.test(scen)){
+        levelPickDistance("10km"); levelFormInput("h","0"); levelFormInput("m", scen==="niveau_chrono_alerte" ? "38" : "47"); levelFormInput("s","0");
+        const d=new Date(); d.setMonth(d.getMonth()-1); levelFormInput("month", d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));
+        if(scen==="niveau_chrono_ancien") levelFormInput("month","old");
+        refreshSheet();
+      }
+      if(scen==="niveau_reprise_choix") levelResumePick("recent");
+    }
   } else if(scen==="jauge_charge" || scen==="jauge_info"){
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; openMonths=null; openManageRow=new Set(); show("progression");
     openChargeSheet(); if(scen==="jauge_info") toggleChargeInfo();
@@ -278,11 +299,6 @@
   } else if(scen==="programme_ajout"){
     celebrationOff(); rateYesterday(); wkSessions[0].status="done"; plannedSessions=[...wkSessions, ...future];
     const sunday=localDateStr(at(mondayOff+6)); programViewMode="week"; programWeekOffset=0; programSelectedDate=sunday; openAddForm=sunday; show("programme");
-  } else if(scen==="carte_corps"){
-    celebrationOff(); plannedSessions=[...wkSessions, ...future]; openMonths=null; openManageRow=new Set([lastRun.id]); show("progression");
-    const prefix="sess_"+lastRun.id; setRatingNote(prefix,2); setRatingGene(prefix,true); bodyZoneTap(prefix,"genoux_g"); bodyZoneTap(prefix,"dos");
-    const row=document.getElementById("hist_"+lastRun.id); const wrap=row.nextElementSibling; const holder=document.createElement("div"); holder.className="card"; holder.append(row.cloneNode(true), wrap.cloneNode(true));
-    const c=document.getElementById("content"); c.innerHTML=""; c.append(holder);
   } else if(scen==="celebration_record"){
     rateYesterday(); localStorage.removeItem("mra_celebratedRuns"); plannedSessions=[...wkSessions, ...future]; show("aujourdhui");
   } else if(scen==="douleur_forte" || scen==="zone_pause"){

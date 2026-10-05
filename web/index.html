@@ -758,6 +758,37 @@ button.pg-rec-row{cursor:pointer}
 .pf-ta{width:100%;min-height:80px;background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-md);color:var(--text);font:inherit;font-size:14px;padding:12px;resize:vertical}
 .obj-sheet .card{background:var(--surface-sunken);border:none;border-radius:var(--r-lg);padding:14px;margin-bottom:12px}
 .obj-sheet .stitle{margin-bottom:10px}
+/* Ton niveau (S8, journal 12b et A10) */
+.lv-info{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r-md);background:var(--surface);font-size:13.5px;line-height:1.45;color:var(--text-2);margin-top:12px}
+.lv-info svg{color:var(--text-muted);flex:none;margin-top:1px}
+.lv-lbl{font-size:12.5px;color:var(--text-2);margin:14px 0 8px}
+.lv-levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.lv-levels button{border-radius:var(--r-md);padding:10px 6px;text-align:center;background:var(--surface);border:1px solid var(--line-field);color:var(--text);font:inherit;cursor:pointer;min-height:64px}
+.lv-levels .n{font-size:14px;font-weight:700}
+.lv-levels .s{font-size:11.5px;line-height:1.3;color:var(--text-3);margin-top:2px}
+.lv-levels button[aria-pressed="true"]{background:var(--select);border-color:var(--select);color:var(--on-accent)}
+.lv-levels button[aria-pressed="true"] .s{color:var(--on-accent);opacity:.7}
+.lv-choices{display:flex;flex-direction:column;gap:8px}
+.lv-choice{display:flex;align-items:center;gap:12px;width:100%;padding:14px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--line-field);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.lv-choice:disabled{opacity:.6;cursor:default}
+.lv-choice .ic{width:36px;height:36px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface-control);color:var(--text-2)}
+.lv-choice .t{font-size:15px;font-weight:600}
+.lv-choice .s{font-size:13px;color:var(--text-3)}
+.lv-times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.lv-times .pf-row{height:52px;font-size:17px}
+.lv-times .pf-row input{font-size:17px}
+.lv-times .pf-row.warn{border-color:var(--attention)}
+.lv-date select{appearance:none;-webkit-appearance:none;text-align:left;font-size:16px}
+.lv-date .u{display:flex}
+.lv-err{font-size:13px;font-weight:600;color:var(--attention);margin-top:10px}
+.lv-err:empty{display:none}
+.lv-q{font-size:14px;line-height:1.45;color:var(--text-2)}
+.lv-ref{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:var(--r-md);background:var(--surface-sunken);font-size:15px;margin-top:12px}
+.lv-ref span{color:var(--text-muted)}
+.lv-ref b{font:700 18px var(--font-display)}
+.lv-radios{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.lv-radio{min-height:44px;padding:0 14px;border-radius:var(--r-sm);display:flex;align-items:center;font:inherit;font-size:14.5px;background:var(--surface-sunken);border:none;color:var(--text);text-align:left;cursor:pointer}
+.lv-radio.on{background:var(--select);color:var(--on-accent);font-weight:600}
 /* Historique (S7, design 7g) */
 .page-back{width:36px;height:36px;margin:-4px 4px -4px -8px;border:none;border-radius:50%;background:none;color:var(--text);display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;cursor:pointer}
 .page-action.outline{background:none;box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent);font-size:13px}
@@ -985,6 +1016,8 @@ const ICONS = {
   info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`,
   trophy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`,
   calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>`,
+  timer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="2" x2="14" y2="2"/><line x1="12" y1="14" x2="15" y2="11"/><circle cx="12" cy="14" r="8"/></svg>`,
+  help: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>`,
 };
 function icon(name,size=18){ return ICONS[name].replace("<svg ",`<svg width="${size}" height="${size}" `); }
 // En-tête commun des feuilles : sur-titre facultatif, titre Condensed, bouton × de 36 px
@@ -1146,6 +1179,21 @@ const BODY_ZONES=[
   ["tendons_g","Tendons G"],["tendons_d","Tendons D"],
   ["pied_g","Pied G"],["pied_d","Pied D"],
 ];
+// Nom court d'une zone, sans gauche / droite : phrases des alertes douleur, zones en pause, mobilité ciblée.
+const ZONE_SHORT_LABEL={
+  epaules_g:"Épaule", epaules_d:"Épaule",
+  dos:"Dos", abdos:"Abdos",
+  psoas_g:"Psoas", psoas_d:"Psoas",
+  bassin:"Bassin",
+  fessiers_g:"Fessier", fessiers_d:"Fessier",
+  cuisse_g:"Cuisse", cuisse_d:"Cuisse",
+  ischios_g:"Ischio", ischios_d:"Ischio",
+  genoux_g:"Genou", genoux_d:"Genou",
+  tibias_g:"Tibia", tibias_d:"Tibia",
+  mollets_g:"Mollet", mollets_d:"Mollet",
+  tendons_g:"Tendon", tendons_d:"Tendon",
+  pied_g:"Pied", pied_d:"Pied",
+};
 // [clé, label, texte à gauche du curseur (0), texte à droite (10)]
 const WELLBEING_EXTRA=[
   ["fatigue","Fatigue générale","Plein d'énergie","Complètement épuisé"],
@@ -1331,7 +1379,7 @@ window.saveSyncSinceDate = async (value) => {
 // Champs propres à un objectif (principal OU secondaire) — "niveau" et
 // "autre" restent partagés entre les deux (ils décrivent le coureur, pas
 // un objectif en particulier).
-const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","allureEfVisee","allureWorkVisee","vmaConnue","vma","dureeArret","zoneConcernee","joursDisponibles","freins","motivation","rappelPref","runsLast3Months","autresActivites","motivationForme","objectifsChiffres"];
+const GOAL_SLOT_FIELDS = ["objectifPrincipal","distanceCourse","terrainCourse","dateCible","pbExistant","objectifChrono","allureEfVisee","allureWorkVisee","vmaConnue","vma","vmaDate","dureeArret","zoneConcernee","joursDisponibles","freins","motivation","rappelPref","runsLast3Months","autresActivites","motivationForme","objectifsChiffres"];
 const RACE_DISTANCES_KM = {"5km":5,"10km":10,"15km":15,"Semi":21.0975,"Marathon":42.195};
 // Quels blocs afficher selon le type d'objectif — pour ne demander que ce
 // qui est pertinent (retour d'audit). "Autre" et un objectif pas encore
@@ -2220,10 +2268,10 @@ function recordsCardHTML(){
     const inner = `<span class="k">${escHtml(r.label)}</span><span class="d">${escHtml(r.dateText)}</span><span class="t${r.timeText?"":" none"}">${r.timeText||"—"}</span>`;
     return r.runId ? `<button type="button" class="pg-rec-row" onclick="openHistoryRun('${r.runId}')">${inner}</button>` : `<div class="pg-rec-row">${inner}</div>`;
   }).join("");
-  // Chrono déclaré : repris de ce que l'app utilise aujourd'hui comme temps de référence (S8 le limitera à « Ton niveau »).
+  // Chrono déclaré dans « Ton niveau » (S8) : à part, en gris, jamais célébré. Un test guidé ou une VMA n'est pas un chrono de course.
   const prof = runnerProfile();
   let declared = "";
-  if(prof && prof.source!=="goal_vma" && prof.timeSec>0){
+  if(prof && prof.source==="level_chrono" && prof.timeSec>0){
     const known = RECORD_DISTANCES.find(d=>Math.abs(d.km-prof.distanceKm)<0.05);
     const label = known ? known.label : fmtKm1(prof.distanceKm)+" km";
     declared = `<div class="pg-rec-sub"><div class="pg-over">Déclaré dans « Ton niveau »</div><div class="pg-rec-row"><span class="k">${escHtml(label)}</span><span class="d">déclaré</span><span class="t" style="color:var(--text-muted)">${fmtDur(prof.timeSec)}</span></div></div>`;
@@ -2816,23 +2864,192 @@ function profilObjectifsHTML(){
     </div>
     <button type="button" class="pf-lvl" onclick="openLevelSheet()"><span class="k">Ton niveau</span><span class="r"><span class="v">${escHtml(goals.niveau||"à choisir")}</span>${icon("chevronRight",16)}</span></button>`;
 }
-// Ton niveau : feuille provisoire avec les trois niveaux déclarés (l'écran « Ton niveau » complet arrive avec S8).
-let levelSheetOpen = false;
-window.openLevelSheet = () => { levelSheetOpen = true; refreshSheet(); };
-window.closeLevelSheet = () => { levelSheetOpen = false; refreshSheet(); };
+// ---------- Ton niveau (S8, journal 12b et A10) ----------
+// Un seul écran, ouvert depuis le Profil, Aujourd'hui et le démarrage. Source UNIQUE des allures conseillées (D76) :
+// « Je connais un chrono récent » (effort à fond de moins de 6 mois) ou « Je ne sais pas » (test guidé de 20 min).
+// Trois vues dans une même feuille : « main » (niveau déclaré + les deux choix), « chrono » (formulaire A10),
+// « resume » (question de reprise des comptes existants : date du temps qui servait avant).
+let levelSheet = null; // { view, form:{distanceKm,h,m,s,month}, reality, resumeAnswer, error, saving }
+window.openLevelSheet = (view) => {
+  const wanted = view || "main";
+  levelSheet = { view:(wanted==="resume" && !levelResumeInfo(goals, programSettings, RACE_DISTANCES_KM)) ? "main" : wanted,
+    form:{ distanceKm:0, h:"", m:"", s:"", month:"" }, reality:null, resumeAnswer:null, error:"", saving:false };
+  if(levelSheet.view==="chrono") levelSheet.reality = levelReality();
+  refreshSheet();
+};
+window.closeLevelSheet = () => { levelSheet = null; refreshSheet(); renderContent(); };
+// Les vraies sorties faciles des 8 dernières semaines : sert au garde-fou « temps trop rapide » (D76, point 4).
+function levelReality(){
+  const from = Date.now() - 8*7*86400000;
+  const maxEff = maxHr || estimatedMaxHr();
+  const runs = runningRuns.filter(r=>r.type==="EF" && dateFromRun(r).getTime()>=from)
+    .map(r=>({ ts:dateFromRun(r).getTime(), type:r.type, distKm:r.dist||0, paceSecKm:r.allure||0, qualitatif:efQualitatif(r.hrSeries, maxEff, restingHr||null) }));
+  return easyPaceReality(runs, Date.now());
+}
+function plannedGuidedTest(){ return plannedSessions.find(p=>p.generation_reason==="guided_test" && p.status==="planned") || null; }
+function levelMainHTML(){
+  const profile = runnerProfile(), st = levelStatus(profile), planned = plannedGuidedTest();
+  const resume = levelResumeInfo(goals, programSettings, RACE_DISTANCES_KM);
+  const levels = NIVEAUX.map(([lbl,sub])=>`<button type="button" aria-pressed="${goals.niveau===lbl}" onclick="saveNiveau('${lbl}')"><div class="n">${lbl}</div><div class="s">${escHtml(sub)}</div></button>`).join("");
+  const status = st
+    ? `<div class="lv-info">${icon("info",16)}<span>${escHtml(st.text)}</span></div>
+       ${st.stale ? `<div class="ms-alert" role="status">${icon("alert",16)}<span>Ce temps date de plus de 6 mois. Refais un chrono ou le test guidé pour garder des allures justes.</span></div>` : ""}
+       ${resume ? `<button type="button" class="pf-btn" style="margin-top:10px" onclick="levelGoResume()">Préciser la date de ce temps</button>` : ""}`
+    : `<div class="lv-info">${icon("info",16)}<span>Pour calculer tes allures conseillées, il nous faut un chrono récent, ou le résultat du test guidé de 20 minutes.</span></div>`;
+  const plannedText = planned ? `planifié ${escHtml(dayLabelShort(new Date(planned.planned_date+"T00:00:00")))}` : "test guidé de 20 min, à faire plus tard";
+  return `<div class="lv-lbl" style="margin-top:2px">Ton niveau estimé : tu peux le corriger</div>
+    <div class="lv-levels" role="group" aria-label="Niveau">${levels}</div>
+    <div class="pg-over" style="margin:18px 0 0">Tes allures conseillées</div>
+    ${status}
+    <div class="lv-choices" style="margin-top:12px">
+      <button type="button" class="lv-choice" onclick="levelGoChrono()"><span class="ic">${icon("timer",18)}</span><span><div class="t">Je connais un chrono récent</div><div class="s">un temps approximatif suffit</div></span></button>
+      <button type="button" class="lv-choice" ${planned?"disabled":""} onclick="planGuidedTestFromLevel()"><span class="ic">${icon("help",18)}</span><span><div class="t">${planned?"Test de 20 minutes":"Je ne sais pas"}</div><div class="s">${plannedText}</div></span></button>
+    </div>`;
+}
+// Ce qui change quand on tape : avertissement violet, consigne si plus de 6 mois, libellé du bouton.
+function levelChronoDynamic(chk){
+  const old = chk.stale;
+  return {
+    warn: chk.tooFast ? `<div class="ms-alert" role="status">${icon("alert",16)}<span>Vérifie ce temps : il est bien plus rapide que ce que tu cours en ce moment.</span></div>` : "",
+    note: old ? `<div class="ms-alert" role="status">${icon("alert",16)}<span>Un temps de plus de 6 mois ne reflète plus ton niveau actuel. Fais plutôt le test guidé de 20 minutes.</span></div>`
+      : `<div class="pf-hint" style="margin-top:6px">Moins de 6 mois. Sinon, fais le test guidé de 20 min.</div>`,
+    btn: old ? "Faire le test de 20 minutes" : "Calculer mes allures conseillées",
+  };
+}
+function levelChronoHTML(){
+  const st = levelSheet, f = st.form, today = localDateStr(new Date());
+  const chk = levelChronoCheck({ distanceKm:f.distanceKm, h:f.h, m:f.m, s:f.s, month:f.month }, today, st.reality);
+  const dyn = levelChronoDynamic(chk);
+  const chips = Object.keys(RACE_DISTANCES_KM).map(k=>`<button type="button" class="rt-pill" aria-pressed="${f.distanceKm===RACE_DISTANCES_KM[k]}" onclick="levelPickDistance('${k}')">${RACE_LABELS[k]}</button>`).join("");
+  const box = (field, unit, label, ph) => `<div class="pf-row stack${chk.tooFast?" warn":""}"><input type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="${label}" placeholder="${ph}" value="${escHtml(f[field])}" oninput="levelFormInput('${field}', this.value)"><span class="u">${unit}</span></div>`;
+  const months = levelMonthOptions(today).map(o=>`<option value="${o.value}"${f.month===o.value?" selected":""}>${o.label}</option>`).join("");
+  return `<div class="lv-info" style="margin-top:0">${icon("info",16)}<span>Ton temps sur une course ou un effort à fond, récent. Pas ton record de toute une vie, pas ta sortie tranquille : à partir de là, on calcule tes allures faciles, plus lentes.</span></div>
+    <div class="lv-lbl">Distance</div>
+    <div class="rt-pills" role="group" aria-label="Distance">${chips}</div>
+    <div class="lv-lbl">Temps</div>
+    <div class="lv-times">${box("h","h","Heures","0")}${box("m","min","Minutes","00")}${box("s","s","Secondes","00")}</div>
+    <div id="lvWarn">${dyn.warn}</div>
+    <div class="lv-lbl">Date de ce temps</div>
+    <div class="pf-row stack lv-date"><select id="lvMonth" aria-label="Date de ce temps" onchange="levelFormInput('month', this.value)">
+      <option value=""${f.month?"":" selected"} disabled hidden>Choisis le mois</option>${months}<option value="old"${f.month==="old"?" selected":""}>Il y a plus de 6 mois</option></select><span class="u">${icon("calendar",18)}</span></div>
+    <div id="lvNote">${dyn.note}</div>
+    <div class="lv-err" id="lvErr" role="alert">${escHtml(st.error)}</div>
+    <button type="button" class="btn-primary" id="lvGo" style="margin-top:14px" ${st.saving?"disabled":""} onclick="levelChronoSubmit()">${dyn.btn}</button>`;
+}
+function levelResumeHTML(){
+  const info = levelResumeInfo(goals, programSettings, RACE_DISTANCES_KM);
+  if(!info) return levelMainHTML();
+  const t = levelResumeTexts(info), a = levelSheet.resumeAnswer;
+  const choices = [["recent","Il y a moins de 6 mois"],["old","Il y a plus de 6 mois"],["unknown","Je ne sais plus"]];
+  return `<div class="lv-q">${escHtml(t.question)}</div>
+    <div class="lv-ref"><span>${escHtml(t.rowLabel)}</span><b>${escHtml(t.rowValue)}</b></div>
+    <div class="lv-radios" role="radiogroup" aria-label="Date de ce temps">${choices.map(([k,l])=>`<button type="button" role="radio" aria-checked="${a===k}" class="lv-radio${a===k?" on":""}" onclick="levelResumePick('${k}')">${l}</button>`).join("")}</div>
+    <div class="pf-hint" style="margin-top:10px">Si c'est plus ancien, ou si tu ne sais plus, un nouveau chrono ou le test guidé de 20 minutes donnera des allures plus justes.</div>
+    <button type="button" class="btn-primary" style="margin-top:14px" ${a?"":"disabled"} onclick="levelResumeContinue()">Continuer</button>`;
+}
 function renderLevelSheet(){
-  if(!levelSheetOpen) return false;
-  document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeLevelSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Ton niveau">
-    ${sheetHeadHTML("Ton niveau", "closeLevelSheet()")}
-    <div class="goal-level-cards" style="flex-direction:column;gap:8px">${NIVEAUX.map(([lbl,sub])=>`<div class="goal-level-card${goals.niveau===lbl?" active":""}" style="text-align:left;padding:12px 14px" role="button" tabindex="0" onclick="saveNiveau('${lbl}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();saveNiveau('${lbl}')}"><div class="lbl" style="font-size:15px">${lbl}</div><div class="sub" style="font-size:12.5px">${sub}</div></div>`).join("")}</div>
-  </div></div>`;
+  if(!levelSheet) return false;
+  const v = levelSheet.view;
+  const head = v==="chrono" ? sheetHeadHTML("Ton niveau", "closeLevelSheet()", "Chrono récent") : v==="resume" ? sheetHeadHTML("Ton niveau", "closeLevelSheet()") : sheetHeadHTML("Ton niveau", "closeLevelSheet()", "Ton niveau actuel");
+  const body = v==="chrono" ? levelChronoHTML() : v==="resume" ? levelResumeHTML() : levelMainHTML();
+  document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeLevelSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Ton niveau">${head}${body}</div></div>`;
   return true;
 }
+window.levelGoChrono = () => { if(!levelSheet) return; levelSheet.view = "chrono"; levelSheet.reality = levelReality(); levelSheet.error = ""; refreshSheet(); };
+window.levelGoResume = () => { if(!levelSheet) return; levelSheet.view = "resume"; refreshSheet(); };
+window.levelPickDistance = (key) => { if(!levelSheet) return; levelSheet.form.distanceKm = RACE_DISTANCES_KM[key]; levelSheet.error = ""; refreshSheet(); };
+// Saisie dans le formulaire : on ne redessine pas les champs (le clavier resterait coupé), seulement ce qui dépend du temps.
+window.levelFormInput = (field, value) => {
+  const st = levelSheet; if(!st) return;
+  st.form[field] = field==="month" ? value : String(value).replace(/\D/g,"").slice(0,2);
+  st.error = "";
+  const chk = levelChronoCheck({ distanceKm:st.form.distanceKm, h:st.form.h, m:st.form.m, s:st.form.s, month:st.form.month }, localDateStr(new Date()), st.reality);
+  const dyn = levelChronoDynamic(chk), set = (id, html) => { const el = document.getElementById(id); if(el) el.innerHTML = html; };
+  set("lvWarn", dyn.warn); set("lvNote", dyn.note); set("lvErr", "");
+  const go = document.getElementById("lvGo"); if(go) go.textContent = dyn.btn;
+  document.querySelectorAll(".lv-times .pf-row").forEach(el=>el.classList.toggle("warn", chk.tooFast));
+};
+window.levelChronoSubmit = async () => {
+  const st = levelSheet; if(!st || st.saving) return;
+  const f = st.form;
+  const chk = levelChronoCheck({ distanceKm:f.distanceKm, h:f.h, m:f.m, s:f.s, month:f.month }, localDateStr(new Date()), st.reality);
+  if(chk.stale) return planGuidedTestFromLevel();
+  if(!chk.ok){
+    st.error = chk.errors.distance || chk.errors.time || chk.errors.month || "";
+    const el = document.getElementById("lvErr"); if(el) el.textContent = st.error;
+    return;
+  }
+  st.saving = true;
+  const ok = await finishLevelChange({ source:"chrono", distanceKm:chk.distanceKm, timeSec:chk.timeSec, date:chk.date });
+  if(!ok && levelSheet){ levelSheet.saving = false; }
+};
+// Enregistre un nouveau temps de référence (chrono ou test), met à jour les allures des séances à venir, relance la
+// construction du programme. Les séances faites ou choisies à la main ne bougent jamais.
+async function applyLevelRef(newRef){
+  const ps = { ...programSettings, refDistanceKm:newRef.distanceKm, refTimeSec:newRef.timeSec, refDate:newRef.date, refSource:newRef.source };
+  delete ps.refDateApprox; delete ps.pendingLevel;
+  if(!(await upsertProfile({ program_settings: ps }))) return false;
+  programSettings = ps;
+  await repaceFutureSessions();
+  programAdjustmentChecked = false;
+  return true;
+}
+async function repaceFutureSessions(){
+  const prof = runnerProfile();
+  const zones = prof ? levelPaceZones(prof.distanceKm, prof.timeSec) : null;
+  if(!zones) return 0;
+  const todo = sessionsToRepace(plannedSessions, localDateStr(new Date())).filter(s=>zones[s.pace_zone] && zones[s.pace_zone]!==Number(s.target_pace_sec_per_km));
+  if(!todo.length) return 0;
+  const now = new Date().toISOString();
+  await Promise.all(todo.map(s=>supa.from("planned_sessions").update({ target_pace_sec_per_km:zones[s.pace_zone], updated_at:now }).eq("id", s.id)));
+  await loadData();
+  return todo.length;
+}
+// Après un nouveau chrono : si les allures changent d'au moins 5 s/km, on propose (feuille « Tes nouvelles allures »),
+// sinon on enregistre simplement. Premier calcul (aucun ancien temps) : on enregistre et le programme se construit.
+async function finishLevelChange(newRef){
+  const oldRef = runnerProfile();
+  const proposal = oldRef && typeof openNewPacesSheet==="function" ? newPaceProposal(oldRef, newRef) : null;
+  if(proposal){ levelSheet = null; openNewPacesSheet({ oldRef, newRef, proposal }); return true; }
+  if(!(await applyLevelRef(newRef))) return false;
+  levelSheet = null; refreshSheet(); renderContent(); runProgramMaintenance();
+  toast(oldRef ? "Niveau enregistré. Tes allures restent proches des précédentes." : "Allures conseillées calculées. Ton programme se construit.");
+  return true;
+}
+window.planGuidedTestFromLevel = async () => {
+  if(plannedGuidedTest()){ closeLevelSheet(); toast("Ton test de 20 minutes est déjà planifié."); return; }
+  levelSheet = null; refreshSheet();
+  await scheduleGuidedTest(true);
+  const t = plannedGuidedTest();
+  toast(t ? `Test de 20 minutes planifié : ${dayLabelShort(new Date(t.planned_date+"T00:00:00"))}.` : "Pas enregistré, vérifie ta connexion.");
+};
+window.levelResumePick = (answer) => { if(!levelSheet) return; levelSheet.resumeAnswer = answer; refreshSheet(); };
+window.levelResumeContinue = async () => {
+  const st = levelSheet, info = levelResumeInfo(goals, programSettings, RACE_DISTANCES_KM);
+  if(!st || !info || !st.resumeAnswer) return;
+  const patch = levelResumePatch(info, st.resumeAnswer, localDateStr(new Date()));
+  if(!patch){ st.view = "main"; refreshSheet(); return; }   // plus de 6 mois ou « je ne sais plus » : nouveau chrono ou test guidé
+  let ok = false;
+  if(patch.programSettings){
+    const ps = { ...programSettings, ...patch.programSettings };
+    ok = await upsertProfile({ program_settings: ps });
+    if(ok) programSettings = ps;
+  } else if(patch.vmaDate){
+    const g = { ...goals, [patch.slotKey]: { ...goals[patch.slotKey], vmaDate:patch.vmaDate } };
+    ok = await upsertProfile({ goals: g });
+    if(ok) goals = g;
+  }
+  if(!ok) return;
+  levelSheet = null; refreshSheet();
+  programAdjustmentChecked = false; renderContent(); runProgramMaintenance();
+  toast("Merci, ton niveau est enregistré.");
+};
 window.saveNiveau = async (value) => {
+  if(goals.niveau===value) return;
   const prev = goals.niveau;
   goals = { ...goals, niveau: value };
   if(!(await upsertProfile({ goals }))){ goals = { ...goals, niveau: prev }; return; }
-  levelSheetOpen = false; refreshSheet(); renderContent();
+  refreshSheet(); renderContent();
   toast("Niveau enregistré.");
 };
 window.saveAutre = async (el) => {
@@ -2846,6 +3063,13 @@ window.openObjectiveSheet = (slot) => { activeGoalSlot = slot; objSheet = { slot
 window.closeObjectiveSheet = () => { objSheet = null; refreshSheet(); renderContent(); };
 window.addSecondaryGoal = async () => { await toggleSecondaryGoal(true); openObjectiveSheet("secondaire"); };
 window.removeSecondaryGoal = async () => { objSheet = null; await toggleSecondaryGoal(false); refreshSheet(); };
+// Date du test de VMA : les 7 derniers mois, ou « plus de 6 mois » (une VMA sans date récente ne calcule pas les allures, D76).
+function vmaDateSelectHTML(slot){
+  const today = localDateStr(new Date()), cur = slot.vmaDate || "", opts = levelMonthOptions(today);
+  const months = opts.map(o=>{ const v = levelDateFromMonth(o.value, today); return `<option value="${v}"${cur && cur.slice(0,7)===o.value ? " selected" : ""}>${o.label}</option>`; }).join("");
+  const old = cur==="old" || (cur && !opts.some(o=>cur.slice(0,7)===o.value));
+  return `<select id="goal_vmaDate" aria-label="Date de ce test" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1"><option value=""${cur ? "" : " selected"} disabled hidden>Choisis le mois</option>${months}<option value="old"${old ? " selected" : ""}>Il y a plus de 6 mois</option></select>`;
+}
 function objectiveFormHTML(){
     const chipRow = (field, options, current) => `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
       ${options.map(o=>`<button type="button" class="flt${o===current?" active":""}" data-value="${o}" onclick="selectChip('${field}','${o}')">${o}</button>`).join("")}
@@ -2943,6 +3167,7 @@ function objectiveFormHTML(){
               <input type="hidden" id="goal_pbAllure" value="${pbPaceInit||""}">
             </div>
           </div>
+          <div class="chart-hint" style="margin-top:8px">Ton record sert à suivre ta progression. Il ne calcule pas tes allures : elles viennent de « Ton niveau ».</div>
         </div>
 
         <div class="chart-hint" style="margin-top:14px">Type d'objectif</div>
@@ -3062,8 +3287,13 @@ function objectiveFormHTML(){
           <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">VMA (km/h)</span>
           <input type="number" min="8" max="25" step="0.1" id="goal_vma" value="${slot.vma||""}" placeholder="ex: 15" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
         </div>
+        <div class="field" style="margin:10px 0 0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Date de ce test</span>
+          ${vmaDateSelectHTML(slot)}
+        </div>
+        <div class="chart-hint" style="margin-top:8px">Ta VMA ne sert à calculer tes allures conseillées que si ce test date de moins de 6 mois et si tu n'as pas donné de chrono dans « Ton niveau ».</div>
       </div>
-      <div id="vmaNonHint" class="chart-hint" style="margin-top:8px;display:${slot.vmaConnue==="Non"?"":"none"}">Pas de souci — un test pour l'estimer arrivera dans une prochaine étape.</div>`:`<input type="hidden" id="goal_vmaConnue" value="${slot.vmaConnue||""}"><input type="hidden" id="goal_vma" value="${slot.vma||""}">`}
+      <div id="vmaNonHint" class="chart-hint" style="margin-top:8px;display:${slot.vmaConnue==="Non"?"":"none"}">Pas de souci — un test pour l'estimer arrivera dans une prochaine étape.</div>`:`<input type="hidden" id="goal_vmaConnue" value="${slot.vmaConnue||""}"><input type="hidden" id="goal_vma" value="${slot.vma||""}"><input type="hidden" id="goal_vmaDate" value="${slot.vmaDate||""}">`}
     </div>`:`<input type="hidden" id="goal_allureEfVisee" value="${slot.allureEfVisee||""}"><input type="hidden" id="goal_allureWorkVisee" value="${slot.allureWorkVisee||""}">`}
     ${!blocks.blessure?`<input type="hidden" id="goal_dureeArret" value="${slot.dureeArret||""}"><input type="hidden" id="goal_zoneConcernee" value="${slot.zoneConcernee||""}">`:""}
     </div>`;
@@ -3408,12 +3638,8 @@ function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
    ============================================================ */
 
 const PACE_ZONE_LABEL = { easy:"Easy", marathon:"Marathon", threshold:"Seuil", interval:"Fractionné", repetition:"Répétition" };
-function programProfileSourceLabel(profile){
-  if(!profile) return "";
-  if(profile.source==="goal_pb") return "ton record personnel renseigné dans Objectifs";
-  if(profile.source==="goal_vma") return "ta VMA renseignée dans Objectifs";
-  return "ton temps de référence saisi"; // pas "le temps de référence que tu as saisi" : "à partir de le..." est une faute (élision manquante), corrigé en "à partir de ton..."
-}
+// « calculée à partir de ton chrono sur 10 km (47:00) » : d'après quoi les allures sont calculées (« Ton niveau » seulement).
+function programProfileSourceLabel(profile){ return levelSourceText(profile); }
 // Explique l'allure visée en langage clair (ZONE_FRIENDLY, logic.js) — pas
 // de jargon non expliqué (VDOT, %...), pensé pour un débutant. Complétée
 // (4.3.b) par la vraie consigne d'intensité : ressenti + plafond de FC pour
@@ -3672,23 +3898,6 @@ window.generateProgram = async (mondayDate, opts) => {
   await loadData();
   if(!opts.silent){ renderContent(); flashSaved("programSaved"); } else { renderContent(); }
   } finally { programGenerationInFlight.delete(mondayStr); }
-};
-
-// Séances/semaine et jours indisponibles vivent désormais dans Objectifs
-// ("Ton profil coureur", tronc commun) — plus besoin de les redemander ici,
-// ce formulaire ne sert plus qu'au repli temps de référence (VDOT) quand
-// aucun PB/VMA n'est trouvé dans Objectifs.
-window.saveProgramSettings = async () => {
-  const refDistanceSel = document.getElementById("prog_refDistance")?.value;
-  const refH = parseInt(document.getElementById("prog_refH")?.value,10)||0;
-  const refM = parseInt(document.getElementById("prog_refM")?.value,10)||0;
-  const refTimeSec = (refH*3600+refM*60) || programSettings.refTimeSec || null;
-  const refDistanceKm = refDistanceSel ? RACE_DISTANCES_KM[refDistanceSel] : programSettings.refDistanceKm || null;
-  const value = { ...programSettings, refDistanceKm, refTimeSec };
-  if(!(await upsertProfile({ program_settings: value }))) return;
-  programSettings = value;
-  flashSaved("programSettingsSaved");
-  renderContent();
 };
 
 // Édition manuelle directe (distance/allure) — simple UPDATE comme
@@ -4275,51 +4484,23 @@ async function applyProgramAdjustments(){
   }
 }
 
-// Handler dédié au formulaire Programme (repli temps de référence
-// uniquement désormais) — volontairement indépendant de selectChip
-// (Objectifs) qui déclenche un saveGoals() automatique : le réutiliser ici
-// sauvegarderait par erreur l'onglet Objectifs.
-window.progSelectRefDistance = (d) => {
-  const hidden = document.getElementById("prog_refDistance");
-  if(hidden) hidden.value = d;
-  document.querySelectorAll('[data-chipgroup="prog_refDistance"] [data-value]').forEach(el=>el.classList.toggle("active", el.dataset.value===d));
-};
-
-// Séances/semaine et jours indisponibles viennent maintenant d'Objectifs
-// ("Ton profil coureur") — ce formulaire ne sert plus qu'au repli temps de
-// référence (VDOT), et seulement quand aucun PB/VMA n'est trouvé. Rien à
-// afficher/configurer ici une fois le profil résolu.
-// Plan marche/course en cours (semaines 1 à 9, ou pas encore démarré) : pas de
-// temps de référence à demander. Après la semaine 9 : graduation (voir
-// beginnerGraduationBannerHTML).
+// Plan marche/course en cours (semaines 1 à 9, ou pas encore démarré) : pas de temps de référence à demander. Après la
+// semaine 9 : graduation (voir beginnerGraduationBannerHTML).
 function beginnerPlanInProgress(){
   const plan = programSettings?.beginnerPlan;
   if(!plan) return false;
   return couchWeekNumber(plan.startMonday, localDateStr(mondayOf(new Date()))) <= COUCH_WEEKS;
 }
-function programSettingsFormHTML(profile){
+// Sans temps de référence (« Ton niveau »), pas de programme : une carte mène à l'écran « Ton niveau » (S8, D76).
+function programNeedLevelHTML(profile){
   if(profile || beginnerPlanInProgress()) return "";
+  const resume = levelResumeInfo(goals, programSettings, RACE_DISTANCES_KM), planned = plannedGuidedTest();
+  const text = planned ? `Ton test de 20 minutes est planifié ${dayLabelShort(new Date(planned.planned_date+"T00:00:00"))} : ton programme se construira juste après.`
+    : resume ? `On utilisait ${levelResumeWhat(resume)} pour calculer tes allures. Dis-nous de quand il date, ou donne-nous un chrono récent.`
+    : "Pour construire ton programme, il nous faut ton niveau en course : un chrono récent, ou le test guidé de 20 minutes.";
   return `<div class="al-need" role="status">
-    <div class="ttl">${icon("alert",18)}<span>Il nous manque ton objectif et tes disponibilités pour construire ton programme. Complète-les, ou indique un temps de référence plus bas.</span></div>
-    <button type="button" class="btn-secondary" onclick="setTab('objectifs')">Compléter mon profil</button>
-  </div>
-  <div class="card">
-    <div class="stitle">Temps de référence</div>
-    <div class="chart-hint" style="margin-top:0">Pour calculer tes allures personnalisées, indique une performance récente : le temps que tu mets à parcourir une distance donnée, à l'entraînement ou en course (par exemple ton chrono sur un 10 km, même approximatif). Plus ce chrono reflète ton niveau actuel, plus les allures calculées seront justes. Tu n'as pas besoin de refaire cette saisie si tu renseignes un record ou une VMA dans Objectifs, ça prendra le relais automatiquement.</div>
-    <div class="chart-hint" style="margin-top:8px;margin-bottom:0">Distance</div>
-    <div class="filters" data-chipgroup="prog_refDistance" style="margin-bottom:0">
-      ${Object.keys(RACE_DISTANCES_KM).map(d=>`<button type="button" class="flt" data-value="${d}" onclick="progSelectRefDistance('${d}')">${d}</button>`).join("")}
-    </div>
-    <input type="hidden" id="prog_refDistance" value="">
-    <div class="field" style="margin-top:10px;margin-bottom:0">
-      <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Temps réalisé</span>
-      <div style="display:flex;align-items:center;gap:6px">
-        <input type="number" min="0" max="99" class="time-input" id="prog_refH" placeholder="0"> <span style="font-size:12px;color:var(--text-dim)">h</span>
-        <input type="number" min="0" max="59" class="time-input" id="prog_refM" placeholder="0"> <span style="font-size:12px;color:var(--text-dim)">min</span>
-      </div>
-    </div>
-    <button class="btn-primary" style="margin-top:14px" onclick="saveProgramSettings()">Enregistrer</button>
-    <div id="programSettingsSaved" class="save-confirm"></div>
+    <div class="ttl">${icon("info",18)}<span>${escHtml(text)}</span></div>
+    ${planned ? "" : `<button type="button" class="btn-secondary" onclick="openLevelSheet('${resume?"resume":"main"}')">Renseigner mon niveau</button>`}
   </div>`;
 }
 
@@ -4551,13 +4732,17 @@ const GUIDED_TEST_SEEN_KEY = "mra_guidedTestSeen";
 function guidedTestSeen(){ try{ return localStorage.getItem(GUIDED_TEST_SEEN_KEY)==="1"; }catch(e){ return false; } }
 // Besoin de niveau : « test_done » (confirmation du test), « guided_test » (test à planifier) ou
 // « graduation » (plan débutant fini, chrono à renseigner).
+function levelResumeWhat(info){ return info.kind==="vma" ? "ta VMA" : info.kind==="record" ? "ton record" : info.fromTest ? "ton test de 20 minutes" : "ton chrono"; }
+// S8 : « reprise » (comptes dont les allures reposaient sur un record, une VMA ou un temps sans date : on demande la date)
+// et « stale » (le temps de référence a plus de 6 mois : on propose de le mettre à jour, sans arrêter le programme).
 function levelNeed(){
-  const gt = programSettings?.guidedTest;
+  const gt = programSettings?.guidedTest, profile = runnerProfile();
   if(gt && gt.status==="done" && !guidedTestSeen()) return "test_done";
-  if(gt && gt.status==="pending" && !runnerProfile() && !beginnerPlanInProgress()
-     && !plannedSessions.some(p=>p.status==="planned" && p.generation_reason==="guided_test")) return "guided_test";
+  if(gt && gt.status==="pending" && !profile && !beginnerPlanInProgress() && !plannedGuidedTest()) return "guided_test";
   const plan = programSettings?.beginnerPlan;
-  if(plan && !beginnerPlanInProgress() && !runnerProfile()) return "graduation";
+  if(plan && !beginnerPlanInProgress() && !profile) return "graduation";
+  if(!beginnerPlanInProgress() && levelResumeInfo(goals, programSettings, RACE_DISTANCES_KM)) return "reprise";
+  if(profile && profile.stale) return "stale";
   return null;
 }
 function levelCardHTML(){
@@ -4576,10 +4761,19 @@ function levelCardHTML(){
       : gt.lastFailure==="distance" ? "Ton dernier test n'a pas pu servir : la distance parcourue est trop courte."
       : "Pour calculer tes allures et créer ton programme, on a besoin de ton niveau en course.";
     action = `<button class="btn-primary" onclick="scheduleGuidedTest()">Planifier mon test</button>`;
+  } else if(need==="reprise"){
+    const info = levelResumeInfo(goals, programSettings, RACE_DISTANCES_KM);
+    title = "Une question sur ton niveau";
+    text = `${info.kind==="undated" ? "On se sert de" : "On utilisait"} ${levelResumeWhat(info)} pour calculer tes allures. Seul un effort récent (moins de 6 mois) donne des allures justes : dis-nous de quand il date.`;
+    action = `<button class="btn-primary" onclick="openLevelSheet('resume')">Répondre</button>`;
+  } else if(need==="stale"){
+    title = "Mets ton niveau à jour";
+    text = "Ton temps de référence date de plus de 6 mois. Refais un chrono ou le test de 20 minutes : tes allures resteront justes.";
+    action = `<button class="btn-primary" onclick="openLevelSheet('main')">Mettre à jour mon niveau</button>`;
   } else {
     title = "Bravo, tu as terminé le programme marche/course !";
     text = "Tu cours maintenant 30 minutes d'affilée. Fais un 5 km à ton rythme, puis note ton temps : on s'en servira pour calculer tes allures et créer la suite de ton programme.";
-    action = `<button class="btn-primary" onclick="goToProgramme()">Renseigner mon chrono</button>`;
+    action = `<button class="btn-primary" onclick="openLevelSheet('chrono')">Renseigner mon chrono</button>`;
   }
   return `<div class="card">
     <div class="stitle" style="margin-bottom:8px">Ton niveau</div>
@@ -4594,7 +4788,7 @@ const COACH_TEXT = {
   guided_test: () => "Pour calculer tes allures, planifie ton test de 20 minutes.",
   no_recent_run: (r) => `Ça fait ${r.days} jours que tu n'as pas couru. Une petite sortie facile te remettrait en route ?`,
 };
-window.coachAction = (key) => { if(key==="guided_test") scheduleGuidedTest(); else goToProgramme(); };
+window.coachAction = (key) => { if(key==="guided_test") scheduleGuidedTest(); else if(key==="graduation") openLevelSheet("chrono"); else goToProgramme(); };
 function coachBannerHTML(reminder){
   if(!reminder) return "";
   return `<button class="coach" type="button" onclick="coachAction('${reminder.key}')">
@@ -5134,7 +5328,7 @@ function renderContentInner(){
       ${ready ? adjustmentInfoHTML() : ""}
       ${programBannersHTML()}
       ${suspendedZonesCard()}
-      ${programSettingsFormHTML(profile)}
+      ${programNeedLevelHTML(profile)}
       ${ready ? programCalendarHTML() + programSelectedDayPanelHTML() : ""}
     `;
     runProgramMaintenance();
@@ -5285,7 +5479,7 @@ function onbPatch(){
     objectif:onb.objectif, distanceCourse:onb.distanceCourse, dateCible:onb.dateCible, niveau:onb.niveau,
     frequenceHistorique:onb.frequenceHistorique, dureeMax:onb.dureeMax, frequence:onb.frequence, joursIndisponibles:onb.joursIndisponibles,
     chronoDistance:onb.chronoDistance, chronoSec:onbChronoSec(),
-  }, goals, programSettings, RACE_DISTANCES_KM, beginnerPlanStartMonday(localDateStr(new Date())));
+  }, goals, programSettings, RACE_DISTANCES_KM, beginnerPlanStartMonday(localDateStr(new Date())), localDateStr(new Date()));
 }
 function onbRecomputeLevel(){
   if(onb.detected || onb.niveauManual) return;

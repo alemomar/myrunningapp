@@ -28,7 +28,11 @@ import sys, pathlib
 cache = pathlib.Path(sys.argv[1])
 html = (cache / "index.html").read_text(encoding="utf-8")
 tag = '<script src="mr-harness.js"></script>\n'
+# Collecteur d'erreurs de la page (lues par la planche : une erreur de console = un écran « à voir »)
+collecteur = '<script>window.__errs=[];window.addEventListener("error",function(e){window.__errs.push(String(e.message||e.error))});window.addEventListener("unhandledrejection",function(e){window.__errs.push(String((e.reason&&e.reason.message)||e.reason))});</script>\n'
 assert "</body>" in html, "index.html sans </body>"
+assert "<head>" in html, "index.html sans <head>"
+html = html.replace("<head>", "<head>\n" + collecteur, 1)
 (cache / "mr.html").write_text(html.replace("</body>", tag + "</body>", 1), encoding="utf-8")
 PY
 }

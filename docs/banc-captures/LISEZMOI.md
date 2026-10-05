@@ -6,8 +6,9 @@ Sert à contrôler chaque tranche (S1 à S13) à **375 px et 360 px**, avec des 
 
 | Fichier | Rôle |
 |---|---|
-| `mr-harness.js` | Jeu de données fictives (Camille, 14 semaines de courses, programme) et 28 scénarios choisis par l'adresse `mr.html#nom` |
-| `planche.html` | Joue les 28 scénarios aux deux largeurs, mesure les débordements, affiche un tableau |
+| `mr-harness.js` | Jeu de données fictives (Camille, 14 semaines de courses, programme) et les scénarios choisis par l'adresse `mr.html#nom` |
+| `planche.html` | Joue tous les scénarios aux deux largeurs, mesure les débordements et les erreurs de console, affiche un tableau |
+| `verifier-noms.js` | Contrôle statique : aucun nom utilisé n'est déclaré nulle part (`node docs/banc-captures/verifier-noms.js`) |
 | `rafraichir.sh` | Copie `web/` vers le cache d'aperçu, fabrique `mr.html`, copie les maquettes |
 
 ## Utilisation
@@ -20,7 +21,7 @@ Sert à contrôler chaque tranche (S1 à S13) à **375 px et 360 px**, avec des 
 
 2. Démarrer l'aperçu `myrunningapp-web` (port 8765).
 3. Pages utiles :
-   - `http://localhost:8765/planche.html` : les 28 scénarios, tableau « OK / à voir » (environ 2 min 30).
+   - `http://localhost:8765/planche.html` : tous les scénarios, tableau « OK / à voir » (environ 15 à 20 min).
    - `http://localhost:8765/planche.html?s=progression` : un seul scénario, laissé à l'écran pour une capture.
    - `http://localhost:8765/mr.html#progression` : l'app seule sur un scénario.
    - `http://localhost:8765/maq/phase6.html` : la maquette du design (Phase 6) pour comparer.
@@ -30,14 +31,15 @@ Sert à contrôler chaque tranche (S1 à S13) à **375 px et 360 px**, avec des 
 - La page défile-t-elle à l'horizontale (largeur de contenu supérieure à l'écran) ?
 - Un élément dépasse-t-il le bord droit, hors zones qui défilent exprès (graphiques, carrousels) ?
 - Le jeu de données a-t-il signalé une erreur ?
+- La page a-t-elle levé une **erreur de console** (nom introuvable, fonction absente…) ? Un écran qui lève une erreur est marqué « à voir ». Ce contrôle a été ajouté en S8, après qu'une régression de S7 (`ZONE_SHORT_LABEL` supprimée par erreur) soit passée inaperçue.
 
 Le détecteur a été vérifié le 03/10/2026 : il voit les hauteurs réelles des pages et détecte un élément de 500 px forcé dans un écran de 360 px.
 
-## Scénarios (28)
+## Scénarios
 
 Aujourd'hui : `aujourdhui_course`, `aujourdhui_renfo`, `aujourdhui_repos`, `aujourdhui_savoir_plus`, `douleur_forte`, `zone_pause`, `rappels`, `merge`, `merge_ask`, `attach`, `celebration_record`, `marche_course`, `test_niveau`.
 Programme : `programme_semaine`, `programme_mois`, `programme_ajout`.
-Progression et Profil : `progression`, `carte_corps`, `profil_objectifs`, `profil_compte`.
+Progression et Profil : `progression`, `profil_objectifs`, `profil_compte`.
 États vides : `vide_aujourdhui`, `vide_programme`, `vide_progression`.
 Démarrage : `onboarding_bienvenue`, `onboarding`, `onboarding_niveau`, `onboarding_dispos`, `onboarding_recap`.
 
