@@ -970,8 +970,8 @@ function beginnerPlanStartMonday(todayStr){
    programSettings.refDistanceKm/refTimeSec/refDate/refSource), jamais un record
    (pbSec). Sans date précise (« chrono récent »), il est daté d'il y a 3 mois
    environ (refDateApprox) quand `todayStr` est fourni. Le programme mémorise
-   les réglages avec lesquels il sera construit (programSignature), pour
-   signaler plus tard un changement (D62).
+   les réglages avec lesquels il sera construit (programSignature, s'il n'en
+   avait pas déjà une), pour signaler plus tard un changement (D62).
    Le plan débutant garde sa date de départ s'il est déjà en cours. */
 function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, startMondayStr, todayStr){
   const prev = goals || {};
@@ -1002,7 +1002,8 @@ function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, 
   const hasReference = !!(ps.refTimeSec);
   const needsGuidedTest = !beginner && !hasReference;
   if(needsGuidedTest) ps.guidedTest = ps.guidedTest || { status:"pending" };
-  ps.programSignature = programSignature(newGoals);
+  // Un compte qui a déjà un programme garde sa signature : un changement d'objectif fait avec le parcours sera signalé (D62).
+  if(!ps.programSignature) ps.programSignature = programSignature(newGoals);
   return { goals:newGoals, programSettings:ps, beginner, needsGuidedTest };
 }
 

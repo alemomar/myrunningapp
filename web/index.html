@@ -789,6 +789,27 @@ button.pg-rec-row{cursor:pointer}
 .lv-radios{display:flex;flex-direction:column;gap:6px;margin-top:12px}
 .lv-radio{min-height:44px;padding:0 14px;border-radius:var(--r-sm);display:flex;align-items:center;font:inherit;font-size:14.5px;background:var(--surface-sunken);border:none;color:var(--text);text-align:left;cursor:pointer}
 .lv-radio.on{background:var(--select);color:var(--on-accent);font-weight:600}
+/* Tes nouvelles allures (S8, N3) */
+.np-intro{font-size:14px;line-height:1.45;color:var(--text-2);margin-bottom:6px}
+.np-row{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.np-row .k{font-size:14.5px}
+.np-row .old{font:700 18px var(--font-display);color:var(--text-muted);text-decoration:line-through}
+.np-row svg{color:var(--text-faint)}
+.np-row .new{font:700 20px var(--font-display);color:var(--accent)}
+.np-note{font-size:12.5px;color:var(--text-muted);margin:12px 0 14px}
+/* Ton objectif a changé (S8, N4) et Mettre à jour ton programme */
+.oc-card{background:var(--surface);border-radius:var(--r-xl);padding:16px;margin-bottom:14px;display:flex;flex-direction:column;gap:12px}
+.oc-head{display:flex;align-items:center;gap:10px}
+.oc-head .ic{width:32px;height:32px;border-radius:10px;background:var(--surface-control);color:var(--text);display:flex;align-items:center;justify-content:center}
+.oc-title{font-size:15px;font-weight:600}
+.oc-text{font-size:14px;line-height:1.45;color:var(--text-2)}
+.oc-btns{display:grid;grid-template-columns:1fr;gap:8px}
+.oc-btns.two{grid-template-columns:1fr 48px}
+.oc-x{width:48px;height:48px;border:none;border-radius:24px;background:var(--surface-control);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.up-rows{display:flex;flex-direction:column;gap:8px;margin:12px 0 14px}
+.up-row{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:var(--r-md);background:var(--surface-sunken);font-size:14.5px}
+.up-row .k{color:var(--text-muted)}
+.up-row .v{font-weight:600;text-align:right}
 /* Historique (S7, design 7g) */
 .page-back{width:36px;height:36px;margin:-4px 4px -4px -8px;border:none;border-radius:50%;background:none;color:var(--text);display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;cursor:pointer}
 .page-action.outline{background:none;box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent);font-size:13px}
@@ -942,7 +963,7 @@ button.pg-rec-row{cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=77"></script>
+<script src="logic.js?v=78"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -2990,6 +3011,12 @@ async function applyLevelRef(newRef){
   delete ps.refDateApprox; delete ps.pendingLevel;
   if(!(await upsertProfile({ program_settings: ps }))) return false;
   programSettings = ps;
+  // Un chrono donné alors qu'un test de 20 minutes était planifié : le test n'a plus d'objet, on le met de côté.
+  const plannedTest = newRef.source==="chrono" ? plannedGuidedTest() : null;
+  if(plannedTest){
+    await supa.from("planned_sessions").update({ status:"replaced", updated_at:new Date().toISOString() }).eq("id", plannedTest.id);
+    await loadData();
+  }
   await repaceFutureSessions();
   programAdjustmentChecked = false;
   return true;
@@ -3009,7 +3036,7 @@ async function repaceFutureSessions(){
 // sinon on enregistre simplement. Premier calcul (aucun ancien temps) : on enregistre et le programme se construit.
 async function finishLevelChange(newRef){
   const oldRef = runnerProfile();
-  const proposal = oldRef && typeof openNewPacesSheet==="function" ? newPaceProposal(oldRef, newRef) : null;
+  const proposal = oldRef ? newPaceProposal(oldRef, newRef) : null;
   if(proposal){ levelSheet = null; openNewPacesSheet({ oldRef, newRef, proposal }); return true; }
   if(!(await applyLevelRef(newRef))) return false;
   levelSheet = null; refreshSheet(); renderContent(); runProgramMaintenance();
@@ -3051,6 +3078,124 @@ window.saveNiveau = async (value) => {
   if(!(await upsertProfile({ goals }))){ goals = { ...goals, niveau: prev }; return; }
   refreshSheet(); renderContent();
   toast("Niveau enregistré.");
+};
+// ---------- Tes nouvelles allures (S8, N3 ; D72, D76) ----------
+// Après un nouveau chrono ou un nouveau test, si l'allure facile change d'au moins 5 s/km : ancienne allure barrée, nouvelle
+// en citron. « Appliquer » met à jour les séances à venir (jamais celles déjà faites ni celles choisies à la main) ;
+// « Garder les anciennes » ne change rien. Un record trouvé dans les courses ne l'ouvre jamais.
+let newPacesSheet = null; // { oldRef, newRef:{source,distanceKm,timeSec,date}, proposal, saving }
+window.openNewPacesSheet = ({ oldRef, newRef, proposal }) => { newPacesSheet = { oldRef, newRef, proposal, saving:false }; refreshSheet(); };
+// Le × ne change rien : un chrono n'est pas enregistré, un test garde sa proposition en attente (carte sur Aujourd'hui).
+window.closeNewPacesSheet = () => { newPacesSheet = null; refreshSheet(); renderContent(); };
+function renderNewPacesSheet(){
+  const st = newPacesSheet;
+  if(!st) return false;
+  const { newRef, proposal } = st;
+  const rows = proposal.rows.map(r=>`<div class="np-row"><span class="k">${escHtml(r.label)}</span><span class="old">${fmtA(r.oldSec)}</span>${icon("arrowRight",14)}<span class="new">${fmtA(r.newSec)}</span></div>`).join("");
+  document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeNewPacesSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Tes nouvelles allures">
+    ${sheetHeadHTML("Tes nouvelles allures", "closeNewPacesSheet()", newPacesOverline(newRef.source))}
+    <div class="np-intro">${escHtml(newPacesIntro(newRef.source, newRef.distanceKm, newRef.timeSec, proposal.faster))}</div>
+    <div>${rows}</div>
+    <div class="np-note">S'applique aux séances à venir, pas à celles déjà faites.</div>
+    <button type="button" class="btn-primary" ${st.saving?"disabled":""} onclick="applyNewPaces()">Appliquer</button>
+    <button type="button" class="btn-secondary" style="margin-top:8px" onclick="keepOldPaces()">Garder les anciennes</button>
+  </div></div>`;
+  return true;
+}
+window.applyNewPaces = async () => {
+  const st = newPacesSheet;
+  if(!st || st.saving) return;
+  st.saving = true;
+  if(!(await applyLevelRef(st.newRef))){ st.saving = false; return; }
+  newPacesSheet = null; refreshSheet(); renderContent(); runProgramMaintenance();
+  toast("Tes nouvelles allures sont appliquées aux séances à venir.");
+};
+window.keepOldPaces = async () => {
+  if(!newPacesSheet) return;
+  if(programSettings?.pendingLevel){
+    const ps = { ...programSettings }; delete ps.pendingLevel;
+    if(await upsertProfile({ program_settings: ps })) programSettings = ps;
+  }
+  newPacesSheet = null; refreshSheet(); renderContent();
+  toast("Tes allures actuelles sont conservées.");
+};
+// Carte « Tes nouvelles allures sont prêtes » (nouveau test) : rouvre la feuille avec la proposition en attente.
+window.openPendingNewPaces = async () => {
+  const pend = programSettings?.pendingLevel, oldRef = runnerProfile();
+  const proposal = pend && oldRef ? newPaceProposal(oldRef, pend) : null;
+  if(proposal){ openNewPacesSheet({ oldRef, newRef:pend, proposal }); return; }
+  const ps = { ...programSettings }; delete ps.pendingLevel;     // plus de différence notable : la proposition n'a plus d'objet
+  if(await upsertProfile({ program_settings: ps })) programSettings = ps;
+  renderContent();
+};
+// ---------- Ton objectif a changé / Mettre à jour ton programme (S8, N3 et N4 ; D62, D73) ----------
+// Le programme mémorise les réglages avec lesquels ses séances ont été construites (programSettings.programSignature).
+// Si l'objectif, les séances par semaine, le renfo, les jours indisponibles ou le niveau ont changé depuis, une carte le
+// signale : sur Aujourd'hui (carte d'action n° 3, avec un × mémorisé sur l'appareil) et, sans ×, sur Programme. Elle s'affiche
+// sur ces deux écrans seulement, jamais pendant qu'on règle son profil (chaque champ s'enregistre tout seul, D64).
+const OBJ_CHANGED_KEY = "mra_objChangedDismissed";
+function programChangeNow(){
+  const prev = programSettings?.programSignature;
+  if(!prev || beginnerPlanInProgress()) return null;
+  const n = recalculableSessions(plannedSessions, localDateStr(new Date())).length;
+  return n ? programChangeInfo(prev, programSignature(goals), n) : null;
+}
+function objChangedDismissed(){ try{ return localStorage.getItem(OBJ_CHANGED_KEY)===JSON.stringify(programSignature(goals)); }catch(e){ return false; } }
+window.dismissObjectiveChanged = () => { try{ localStorage.setItem(OBJ_CHANGED_KEY, JSON.stringify(programSignature(goals))); }catch(e){} renderContent(); };
+function objectiveChangedCardHTML(onToday){
+  const info = programChangeNow();
+  if(!info || (onToday && objChangedDismissed())) return "";
+  return `<div class="oc-card" id="objChanged" role="status">
+    <div class="oc-head"><div class="ic">${icon("flag",16)}</div><span class="pg-over">${escHtml(info.overline)}</span></div>
+    <div class="oc-title">${escHtml(info.headline)}</div>
+    <div class="oc-text">${escHtml(info.text)}</div>
+    <div class="oc-btns${onToday?" two":""}"><button type="button" class="btn-primary" onclick="openUpdateProgram()">Mettre à jour</button>${onToday?`<button type="button" class="oc-x" aria-label="Fermer" onclick="dismissObjectiveChanged()">${icon("x",18)}</button>`:""}</div>
+  </div>`;
+}
+async function saveProgramSignature(){
+  const ps = { ...programSettings, programSignature:programSignature(goals) };
+  if(await upsertProfile({ program_settings: ps })) programSettings = ps;
+}
+let updateSheet = null; // { saving }
+window.openUpdateProgram = () => { if(!programChangeNow()){ renderContent(); return; } updateSheet = { saving:false }; refreshSheet(); };
+window.closeUpdateProgram = () => { updateSheet = null; refreshSheet(); };   // « Plus tard » ou ×
+function renderUpdateSheet(){
+  if(!updateSheet) return false;
+  const info = programChangeNow();
+  if(!info){ updateSheet = null; return false; }
+  const rows = info.rows.map(r=>`<div class="up-row"><span class="k">${escHtml(r.label)}</span><span class="v">${escHtml(r.from!=null ? `${r.from} → ${r.to}` : r.to)}</span></div>`).join("");
+  document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeUpdateProgram()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Mettre à jour ton programme">
+    ${sheetHeadHTML("Mettre à jour ton programme", "closeUpdateProgram()")}
+    <div class="np-intro">${escHtml(info.intro)}</div>
+    <div class="up-rows">${rows}</div>
+    <div class="np-note" style="margin-top:-2px">Tes séances faites et celles que tu as ajoutées toi-même ne changent pas.</div>
+    <button type="button" class="btn-primary" ${updateSheet.saving?"disabled":""} onclick="confirmUpdateProgram()">Mettre à jour</button>
+    <button type="button" class="btn-secondary" style="margin-top:8px" onclick="closeUpdateProgram()">Plus tard</button>
+  </div></div>`;
+  return true;
+}
+// Les séances générées à venir sont mises de côté (statut « replaced », jamais supprimées), puis les semaines concernées
+// sont régénérées à partir d'aujourd'hui avec les réglages actuels. Séances faites ou ajoutées à la main : conservées.
+async function recalculateProgram(){
+  const todayStr = localDateStr(new Date());
+  const old = recalculableSessions(plannedSessions, todayStr);
+  if(old.length){
+    const { error } = await supa.from("planned_sessions").update({ status:"replaced", updated_at:new Date().toISOString() }).in("id", old.map(p=>p.id));
+    if(error){ toast("Pas enregistré, vérifie ta connexion."); return false; }
+    await loadData();
+    for(const week of [...new Set(old.map(p=>p.week_start_date))].sort()) await window.generateProgram(parseDay(week), { silent:true, fromToday:true });
+  }
+  await saveProgramSignature();
+  return true;
+}
+window.confirmUpdateProgram = async () => {
+  const st = updateSheet;
+  if(!st || st.saving) return;
+  st.saving = true;
+  const ok = await recalculateProgram();
+  if(!ok){ st.saving = false; return; }
+  updateSheet = null; refreshSheet(); renderContent();
+  toast("Ton programme est à jour.");
 };
 window.saveAutre = async (el) => {
   goals = { ...goals, autre: el.value };
@@ -3782,6 +3927,8 @@ function profileMissingToast(){
 window.generateProgram = async (mondayDate, opts) => {
   opts = opts || {};
   const mondayStr = localDateStr(mondayDate);
+  // Aucune séance générée à venir avant cet appel : celles qu'on crée ici reflètent les réglages actuels (voir programSignature).
+  const hadRecalculable = recalculableSessions(plannedSessions, localDateStr(new Date())).length>0;
   if(programGenerationInFlight.has(mondayStr)) return;
   programGenerationInFlight.add(mondayStr);
   try{
@@ -3800,6 +3947,7 @@ window.generateProgram = async (mondayDate, opts) => {
   // "en existe-t-il au moins une" : sinon une seule séance ajoutée à la
   // main (ex: 1 renfo alors que 2/semaine sont visées) faisait croire la
   // semaine "complète" et masquait le bouton pour ajouter le reste.
+  const minDayIndex = opts.fromToday && mondayStr===localDateStr(mondayOf(new Date())) ? dayIndexOf(localDateStr(new Date())) : 0;
   const desiredRunning = isCouch ? 3 : (Number(goals.frequence) || 3);
   const desiredCross = Number(goals.frequenceAutre) || 0;
   const actualRunning = existing.filter(p=>p.pace_zone).length;
@@ -3822,8 +3970,10 @@ window.generateProgram = async (mondayDate, opts) => {
   let generated = [];
   let runningRows = [];
   if(missingRunning>0){
-    const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d) && !dayBlockedForRun.includes(d));
-    if(isCouch){
+    // `opts.fromToday` (mise à jour du programme) : jamais de séance dans le passé de la semaine en cours.
+    const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d) && !dayBlockedForRun.includes(d) && d>=minDayIndex);
+    if(minDayIndex>0 && !isCouch && !availableDayIndexes.length){ /* plus de jour disponible cette semaine */ }
+    else if(isCouch){
       // Cette semaine : pas de séance dans le passé.
       const todayIndex = mondayStr===localDateStr(mondayOf(new Date())) ? dayIndexOf(localDateStr(new Date())) : 0;
       const days = pickSpacedDays(availableDayIndexes.filter(d=>d>=todayIndex), missingRunning);
@@ -3869,7 +4019,7 @@ window.generateProgram = async (mondayDate, opts) => {
     const dayBeforeRunning = allRunningDayIndexes.map(d=>d-1).filter(d=>d>=0);
     const nextMondayStr = addDaysStr(mondayDate, 7);
     const hasRunningNextMonday = plannedSessions.some(p=>p.planned_date===nextMondayStr && p.pace_zone && (p.status==="planned"||p.status==="done"));
-    const avoidDayIndexes = [...dayBeforeRunning, ...(hasRunningNextMonday ? [6] : [])];
+    const avoidDayIndexes = [...dayBeforeRunning, ...(hasRunningNextMonday ? [6] : []), ...Array.from({length:minDayIndex}, (_,d)=>d)];
     const crossTraining = generateCrossTrainingSessions(missingCross, allRunningDayIndexes, weekIndex, avoidDayIndexes, takenCrossDayIndexes);
     // Exercices concrets (4.7.c) pour Renfo/Mobilité ; Yoga reste sans liste
     // (pas dans la base d'exercices).
@@ -3896,6 +4046,7 @@ window.generateProgram = async (mondayDate, opts) => {
   const { error } = await supa.from("planned_sessions").insert(rows);
   if(error){ if(!opts.silent) toast("Ta semaine n'a pas pu être générée, vérifie ta connexion et réessaie."); return; }
   await loadData();
+  if(!isCouch && !hadRecalculable) await saveProgramSignature();
   if(!opts.silent){ renderContent(); flashSaved("programSaved"); } else { renderContent(); }
   } finally { programGenerationInFlight.delete(mondayStr); }
 };
@@ -4467,6 +4618,9 @@ async function applyProgramAdjustments(){
     const everTouched = plannedSessions.some(p=>p.week_start_date===localDateStr(monday));
     if(!everTouched) await window.generateProgram(monday, {silent:true});
   }
+  // Compte existant sans mémoire de ses réglages (avant S8) : on suppose que son programme correspond aux réglages actuels ;
+  // à partir de là, tout changement d'objectif, de séances, de renfo, de jours ou de niveau sera signalé (D62).
+  if(!programSettings?.programSignature && plannedSessions.some(p=>p.source==="generated" && p.status!=="replaced")) await saveProgramSignature();
 
   const todayStr = localDateStr(new Date());
   // pace_zone truthy uniquement : les séances complémentaires (renfo/
@@ -4741,6 +4895,7 @@ function levelNeed(){
   if(gt && gt.status==="pending" && !profile && !beginnerPlanInProgress() && !plannedGuidedTest()) return "guided_test";
   const plan = programSettings?.beginnerPlan;
   if(plan && !beginnerPlanInProgress() && !profile) return "graduation";
+  if(programSettings?.pendingLevel) return "new_paces";
   if(!beginnerPlanInProgress() && levelResumeInfo(goals, programSettings, RACE_DISTANCES_KM)) return "reprise";
   if(profile && profile.stale) return "stale";
   return null;
@@ -4766,6 +4921,10 @@ function levelCardHTML(){
     title = "Une question sur ton niveau";
     text = `${info.kind==="undated" ? "On se sert de" : "On utilisait"} ${levelResumeWhat(info)} pour calculer tes allures. Seul un effort récent (moins de 6 mois) donne des allures justes : dis-nous de quand il date.`;
     action = `<button class="btn-primary" onclick="openLevelSheet('resume')">Répondre</button>`;
+  } else if(need==="new_paces"){
+    title = "Tes nouvelles allures sont prêtes";
+    text = "Ton nouveau test de 20 minutes donne des allures différentes. Tu choisis de les appliquer ou de garder les anciennes.";
+    action = `<button class="btn-primary" onclick="openPendingNewPaces()">Voir mes nouvelles allures</button>`;
   } else if(need==="stale"){
     title = "Mets ton niveau à jour";
     text = "Ton temps de référence date de plus de 6 mois. Refais un chrono ou le test de 20 minutes : tes allures resteront justes.";
@@ -4882,8 +5041,8 @@ function todayScreenHTML(){
   else body = restDayMessageHTML();
   // Une seule carte d'action sous la séance du jour (D11) ; le bandeau coach laisse la place aux
   // rappels de niveau quand la carte « Ton niveau » est déjà affichée (D53).
-  const cards = { merge_ask: mergeAskCardHTML(), attach: attachCardHTML(), hier: hierCardHTML(), niveau: levelCardHTML() };
-  const picked = pickTodayActionCard({ merge_ask:!!cards.merge_ask, attach:!!cards.attach, hier:!!cards.hier, niveau:!!cards.niveau });
+  const cards = { merge_ask: mergeAskCardHTML(), attach: attachCardHTML(), hier: hierCardHTML(), objectif: objectiveChangedCardHTML(true), niveau: levelCardHTML() };
+  const picked = pickTodayActionCard({ merge_ask:!!cards.merge_ask, attach:!!cards.attach, hier:!!cards.hier, objectif:!!cards.objectif, niveau:!!cards.niveau });
   const need = levelNeed();
   const last = runningRuns[runningRuns.length-1];
   const reminder = coachReminder({
@@ -5115,7 +5274,7 @@ function renderSessionSheet(){
     <button type="button" class="btn-secondary" style="margin-top:14px" onclick="closeSessionSheet()">Fermer</button>
   </div></div>`;
 }
-// Une seule feuille à l'écran, par priorité : saisie à la main, exercice, ajout/modification, carte de séance.
+// Une seule feuille à l'écran, par priorité : saisie à la main, ressenti, exercice, ajout/modification, jauge, détail d'une séance, objectif, niveau, nouvelles allures, carte de séance.
 function refreshSheet(){
   const root = document.getElementById("sheetRoot");
   if(!root) return;
@@ -5127,6 +5286,8 @@ function refreshSheet(){
   else if(typeof renderRunSheet==="function" && renderRunSheet()) { /* détail d'une séance faite */ }
   else if(typeof renderObjectiveSheet==="function" && renderObjectiveSheet()) { /* objectif */ }
   else if(typeof renderLevelSheet==="function" && renderLevelSheet()) { /* niveau */ }
+  else if(typeof renderNewPacesSheet==="function" && renderNewPacesSheet()) { /* nouvelles allures */ }
+  else if(typeof renderUpdateSheet==="function" && renderUpdateSheet()) { /* mettre à jour ton programme */ }
   else if(sessionSheetId) renderSessionSheet();
   else root.innerHTML = "";
 }
@@ -5325,6 +5486,7 @@ function renderContentInner(){
         <button type="button" role="tab" aria-selected="${programViewMode==="week"}" class="${programViewMode==="week"?"active":""}" onclick="setProgramView('week')">Semaine</button>
         <button type="button" role="tab" aria-selected="${programViewMode==="month"}" class="${programViewMode==="month"?"active":""}" onclick="setProgramView('month')">Mois</button>
       </div>`:""}
+      ${ready ? objectiveChangedCardHTML(false) : ""}
       ${ready ? adjustmentInfoHTML() : ""}
       ${programBannersHTML()}
       ${suspendedZonesCard()}
@@ -5427,12 +5589,27 @@ window.scheduleGuidedTest = async (silent) => {
 // devient le temps de référence, puis le programme complet est généré.
 async function applyGuidedTestResult(run){
   const ev = evaluateGuidedTestRun(run.dist, run.durationSec);
-  let ps;
-  if(ev.ok) ps = { ...programSettings, refDistanceKm:ev.refDistanceKm, refTimeSec:ev.refTimeSec, guidedTest:{ status:"done", distanceKm:ev.refDistanceKm, durationSec:ev.refTimeSec } };
-  else ps = { ...programSettings, guidedTest:{ status:"pending", lastFailure:ev.reason } };
+  if(!ev.ok){
+    const ps = { ...programSettings, guidedTest:{ status:"pending", lastFailure:ev.reason } };
+    if(await upsertProfile({ program_settings: ps })) programSettings = ps;
+    return;
+  }
+  const newRef = { source:"test", distanceKm:ev.refDistanceKm, timeSec:ev.refTimeSec, date:localDateStr(dateFromRun(run)) };
+  const oldRef = runnerProfile();
+  const guidedTest = { status:"done", distanceKm:ev.refDistanceKm, durationSec:ev.refTimeSec };
+  // Un nouveau test qui change l'allure facile d'au moins 5 s/km : on propose (carte, puis feuille « Tes nouvelles allures »),
+  // rien n'est appliqué avant le choix (D72). Premier test, ou écart faible : on enregistre et le programme se construit.
+  if(oldRef && newPaceProposal(oldRef, newRef)){
+    const ps = { ...programSettings, guidedTest, pendingLevel:newRef };
+    if(await upsertProfile({ program_settings: ps })) programSettings = ps;
+    return;
+  }
+  const ps = { ...programSettings, refDistanceKm:newRef.distanceKm, refTimeSec:newRef.timeSec, refDate:newRef.date, refSource:"test", guidedTest };
+  delete ps.refDateApprox; delete ps.pendingLevel;
   if(!(await upsertProfile({ program_settings: ps }))) return;
   programSettings = ps;
-  if(ev.ok){ programAdjustmentChecked = false; await applyProgramAdjustments(); }
+  if(oldRef) await repaceFutureSessions();
+  programAdjustmentChecked = false; await applyProgramAdjustments();
 }
 window.dismissGuidedTestSeen = () => {
   try{ localStorage.setItem("mra_guidedTestSeen","1"); }catch(e){}

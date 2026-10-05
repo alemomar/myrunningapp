@@ -24,10 +24,11 @@ cp "$BANC/planche.html" "$BANC/comparaison.html" "$CACHE/"
 # mr.html = index.html + le jeu de données fictives, juste avant </body>
 fabriquer_mr() {
 python3 - "$1" <<'PY'
-import sys, pathlib
+import sys, pathlib, time
 cache = pathlib.Path(sys.argv[1])
 html = (cache / "index.html").read_text(encoding="utf-8")
-tag = '<script src="mr-harness.js"></script>\n'
+# Numéro de version : sans lui, le navigateur d'aperçu garde une ancienne copie du jeu de données (scénarios qui restent vides)
+tag = '<script src="mr-harness.js?v=%d"></script>\n' % int(time.time())
 # Collecteur d'erreurs de la page (lues par la planche : une erreur de console = un écran « à voir »)
 collecteur = '<script>window.__errs=[];window.addEventListener("error",function(e){window.__errs.push(String(e.message||e.error))});window.addEventListener("unhandledrejection",function(e){window.__errs.push(String((e.reason&&e.reason.message)||e.reason))});</script>\n'
 assert "</body>" in html, "index.html sans </body>"

@@ -12,6 +12,8 @@
     insert(row){ const id="m"+(++insId); window.__calls.push(["insert",table,row]); if(table==="runs") inserted.push({id, ...row}); const pr=Promise.resolve({error:null}); pr.select=()=>({single:async()=>({data:{id},error:null})}); return pr; },
     upsert: async()=>({error:null}),
     delete(){ return {eq: async(col,val)=>{ window.__calls.push(["delete",table,val]); const i=inserted.findIndex(x=>x.id===val); if(i>=0) inserted.splice(i,1); const j=rows.findIndex(x=>x.id===val); if(j>=0) rows.splice(j,1); return {error:null}; }}; } });
+  // .in("id", [...]) : mise de côté de plusieurs séances d'un coup (recalcul du programme)
+  { const _from = supa.from; supa.from = (table)=>{ const t=_from(table); const _upd=t.update; t.update=(patch)=>{ const o=_upd(patch); o.in = async(col,vals)=>{ for(const v of vals) await o.eq(col,v); return {error:null}; }; return o; }; return t; }; }
   window.loadData = async()=>{ if(typeof rows!=="undefined"){ RUNS=[...rows,...inserted].sort((a,b)=>new Date(a.start_date)-new Date(b.start_date)).map(mapRow); runningRuns=RUNS.filter(r=>r.includeInStats); efRuns=runningRuns.filter(r=>r.type==="EF"); fracRuns=runningRuns.filter(r=>r.type==="Fractionné"); } };
 
   // --- profil fictif
@@ -268,6 +270,24 @@
   } else if(scen==="objectif_feuille" || scen==="niveau_feuille"){
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; setProfilSectionState("objectifs"); show("profil");
     if(scen==="objectif_feuille") openObjectiveSheet("principal"); else openLevelSheet();
+  } else if(/^(objectif_change_(aujourdhui|programme|feuille)|nouvelles_allures(_test)?|niveau_carte_nouvelles)$/.test(scen)){
+    // S8 : « Ton objectif a changé » (N4), « Mettre à jour ton programme », « Tes nouvelles allures » (N3)
+    celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, ...future];
+    try{ localStorage.setItem("mra_notLinked", JSON.stringify(rows.map(r=>r.id))); }catch(e){}
+    if(/^objectif_change/.test(scen)){
+      const prev = programSignature(goals); prev.niveau = "Débutant";            // le programme a été construit pour un 10 km et un niveau Débutant
+      programSettings = { ...programSettings, programSignature:prev };
+      goals.principal = { ...goals.principal, distanceCourse:"Semi", dateCible:"2027-03-14" };
+      if(scen==="objectif_change_programme") show("programme"); else show("aujourdhui");
+      if(scen==="objectif_change_feuille") openUpdateProgram();
+    } else if(scen==="niveau_carte_nouvelles"){
+      programSettings = { ...programSettings, pendingLevel:{ source:"test", distanceKm:4.6, timeSec:1200, date:localDateStr(new Date()) } };
+      show("aujourdhui");
+    } else {
+      const oldRef = runnerProfile();
+      const newRef = scen==="nouvelles_allures_test" ? { source:"test", distanceKm:4.6, timeSec:1200, date:localDateStr(new Date()) } : { source:"chrono", distanceKm:10, timeSec:2700, date:localDateStr(new Date()) };
+      show("progression"); openNewPacesSheet({ oldRef, newRef, proposal:newPaceProposal(oldRef, newRef) });
+    }
   } else if(/^niveau_(chrono|chrono_alerte|chrono_ancien|reprise|reprise_choix|carte_reprise|carte_ancien|programme)$/.test(scen)){
     // « Ton niveau » (S8) : formulaire de chrono, avertissement « temps trop rapide », plus de 6 mois, question de reprise, cartes
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, ...future];

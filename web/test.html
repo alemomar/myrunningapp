@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=77"></script>
+<script src="logic.js?v=78"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1704,6 +1704,8 @@ try {
   assertEqual("parcours : chrono avec sa date -> date exacte, pas d'estimation", [p2.programSettings.refDate, "refDateApprox" in p2.programSettings], ["2026-09-15", false]);
   assertEqual("parcours : le programme mémorise les réglages de départ", p1.programSettings.programSignature, { objectif:"Préparer une course", distance:"10km", date:"2026-12-20", secondaire:"", niveau:"Intermédiaire", frequence:3, frequenceAutre:0, jours:[2,6] });
   assertEqual("parcours : le profil obtenu donne bien des allures", resolveRunnerProfile(p1.goals, p1.programSettings, T)!==null, true);
+  const oldSig = { objectif:"Rester en forme", distance:"", date:"", secondaire:"", niveau:"Débutant", frequence:2, frequenceAutre:0, jours:[] };
+  assertEqual("parcours : un compte qui a déjà un programme garde sa signature (le changement sera signalé)", onboardingProfilePatch(baseOnb, {}, { programSignature:oldSig }, RACE, "2026-10-05", T).programSettings.programSignature, oldSig);
 
   // Programme à mettre à jour
   const g1 = { principal:{ objectifPrincipal:"Préparer une course", distanceCourse:"10km", dateCible:"2027-01-10", pbSec:2820, tempsViseSec:2700 }, niveau:"Débutant", frequence:"3", frequenceAutre:"1", joursIndisponibles:"0,6" };
