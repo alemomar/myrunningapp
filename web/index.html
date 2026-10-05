@@ -398,37 +398,19 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 /* Programme : calendrier semaine (colonnes) / mois (empilement de
    plateaux-semaine, un par semaine du mois affiché) — les 7 jours
    tiennent toujours sans swipe horizontal (colonnes à largeur égale,
-   `.prog-board` ne scrolle plus). Drag and drop d'une séance déclenché
-   par un appui long (~0,5s), volontairement PAS en drag-and-drop HTML5
+   la vue ne scrolle pas). Drag and drop d'une séance déclenché
+   par un appui long (0,4 s), volontairement PAS en drag-and-drop HTML5
    natif (dragstart/dragover) : ce dernier ne fonctionne pas de façon
    fiable au doigt sur mobile/Safari, or l'usage principal de l'app est
    la PWA iPhone. Implémenté avec les Pointer Events (unifie souris/
    tactile), voir progDragStart/Move/End.
-   .prog-card-mini.draggable (uniquement les cartes séance, pas les cases
-   "Repos") a `touch-action:none` STATIQUE (pas posé en JS à l'armement) :
+   .wk-tile.draggable (uniquement les tuiles de séance prévue, pas les
+   jours de repos) a `touch-action:none` STATIQUE (pas posé en JS à l'armement) :
    Safari iOS décide dès le premier contact si le doigt peut déclencher un
    scroll natif, et l'imposer plus tard en JS n'a aucun effet sur le geste
    déjà en cours — sans ça, dès que le doigt bouge vers un autre jour, iOS
    bascule en scroll natif et annule le pointeur (pointercancel), donc la
    carte s'arme mais ne se déplace jamais. */
-.prog-board{display:flex;gap:3px}
-.prog-daycol{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;border-radius:10px;padding:4px 1px;border:1px solid transparent;transition:background .15s,border-color .15s}
-.prog-daycol.outmonth{opacity:0.35}
-.prog-daycol.selected{background:var(--card-2)}
-.prog-daycol.dragover{background:var(--accent-dim);border-color:var(--accent)}
-.prog-daycol-hdr{font-size:9px;color:var(--text-dim);text-align:center;text-transform:uppercase;line-height:1.3;margin-bottom:4px}
-.prog-daycol-hdr b{display:block;font-size:13px;font-weight:700;color:var(--text)}
-.prog-daycol.today .prog-daycol-hdr b{color:var(--accent)}
-.prog-card-mini{width:100%;min-height:46px;box-sizing:border-box;border-radius:9px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:5px 1px;cursor:pointer;position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-.prog-card-mini.draggable{touch-action:none}
-.prog-card-mini + .prog-card-mini{margin-top:4px}
-.prog-card-mini.rest{background:var(--card-2);color:var(--text-dim);font-size:9px;border-style:dashed}
-.prog-card-mini-lbl{font-size:8px;font-weight:600;color:var(--text);text-align:center;line-height:1.2}
-.prog-card-mini-check{position:absolute;top:2px;right:3px;font-size:9px;color:var(--accent);font-weight:700}
-.prog-card-mini.prog-armed{transform:scale(1.12);box-shadow:0 8px 20px rgba(0,0,0,0.35);z-index:5}
-.prog-ghost{position:fixed;z-index:999;pointer-events:none;opacity:0.92;transform:scale(1.12);box-shadow:0 10px 24px rgba(0,0,0,0.4);border-radius:9px;box-sizing:border-box}
-.prog-week-label{font-size:11px;font-weight:600;color:var(--text-dim);margin:14px 0 6px}
-.prog-week-label:first-child{margin-top:0}
 .account-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
 .account-row:last-child{border-bottom:none}
 .account-row .lbl{font-size:13px;color:var(--text-dim)}
@@ -552,7 +534,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .ex-pick{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
 .ex-pick img{flex:none;width:56px;height:56px;border-radius:12px;background:var(--surface-sunken)}
 .ex-pick .go{flex:none;width:auto;min-height:40px;padding:0 16px;margin-left:auto}
-.toast.has-action{display:flex;align-items:center;gap:14px;pointer-events:auto}
+.toast{display:flex;align-items:center;gap:10px}
+.toast.has-action{gap:14px;pointer-events:auto}
 .toast-action{padding:4px;border:none;background:none;color:var(--on-accent);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
 /* ---------- Ta semaine (design 3c) ---------- */
 .wk-stats{display:flex;gap:12px;margin:12px 0 18px}
@@ -579,6 +562,59 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .wk-msg .bang{flex:none;width:20px;height:20px;border-radius:50%;background:var(--attention);color:var(--on-accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .wk-charge{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;width:100%;min-height:52px;margin-top:12px;padding:12px 0 0;border:none;border-top:1px solid var(--line);background:none;color:inherit;font-family:inherit;font-size:14px;text-align:left;cursor:pointer}
 .wk-charge .r{display:flex;align-items:center;gap:6px;margin-left:auto}
+/* ---------- Programme : en-tête, calendrier semaine / mois, petites cartes (design 8, V5) ---------- */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.page-action{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border:none;border-radius:var(--r-pill);background:var(--surface-control);color:var(--text);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.seg{display:flex;padding:3px;margin:0 0 14px;border-radius:var(--r-pill);background:var(--surface)}
+.seg button{flex:1;height:34px;border:none;border-radius:var(--r-pill);background:none;color:var(--text-muted);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.seg button.active{background:var(--select);color:var(--on-accent)}
+.pg-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.pg-arrow{width:40px;height:40px;border:none;border-radius:12px;background:var(--surface-control);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.pg-range{font-family:var(--font-display);font-weight:700;font-size:19px;text-transform:uppercase;text-align:center;flex:1;padding:0 8px}
+.pg-letters{display:flex;gap:4px;margin-bottom:2px}
+.pg-letters span{flex:1;text-align:center;font-size:12.5px;color:var(--text-muted)}
+.pg-row{display:flex;gap:4px}
+.pg-month .pg-row{margin-bottom:8px}
+.prog-daycol{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:3px 0;border:2px solid transparent;border-radius:14px;cursor:pointer;transition:background var(--t-fast),border-color var(--t-fast)}
+.prog-daycol .pg-letter{font-size:12.5px;color:var(--text-muted)}
+.prog-daycol .pg-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;color:var(--text-muted)}
+.prog-daycol.today .pg-num{box-shadow:0 0 0 1.5px var(--select);color:var(--select);font-weight:700}
+.prog-daycol.selected{background:var(--select-soft)}
+.prog-daycol.out{opacity:.4}
+.prog-daycol .wk-tile{touch-action:pan-y;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.prog-daycol .wk-tile.draggable{touch-action:none}
+.pg-month .wk-tile{max-width:36px;height:36px;border-radius:10px}
+.pg-month .wk-tile .wk-bang{top:-5px;left:-5px;width:14px;height:14px;font-size:10px}
+.pg-month .wk-tile .wk-plus{top:-5px;right:-5px;width:15px;height:15px;font-size:12px}
+.prog-daycol.dragover{background:var(--select-soft);border-color:var(--select)}
+.prog-daycol.origin .wk-tile{background:none !important;border:1.5px dashed #5A6068 !important;color:transparent !important}
+.prog-daycol.origin .wk-tile>*{visibility:hidden}
+.prog-ghost{position:fixed;z-index:999;pointer-events:none;transform:scale(1.08) rotate(-6deg);box-shadow:var(--shadow-lift);border-radius:12px}
+.pg-help{margin:12px 0 0;font-size:13.5px;color:var(--text-2);text-align:center}
+.pg-day-title{margin:16px 2px 10px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+.sv5{display:flex;align-items:center;gap:12px;width:100%;margin-bottom:8px;padding:12px 14px;border:none;border-radius:var(--r-lg);background:var(--surface);color:inherit;font-family:inherit;text-align:left;cursor:pointer}
+.sv5 .ic{flex:none;width:36px;height:36px;border:1.5px solid;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.sv5.fait .ic{border-color:transparent;color:var(--on-accent)}
+.sv5 .st{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+.sv5.late .st{color:var(--attention)}
+.sv5 .tt{font-family:var(--font-display);font-weight:700;font-size:20px;line-height:1.15;text-transform:uppercase}
+.sv5 .chev{margin-left:auto;flex:none;color:var(--text-muted);display:flex}
+.pg-rest{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border-radius:var(--r-lg);background:var(--surface);color:var(--text-2);font-size:14px}
+.pg-add{flex:none;width:44px;height:44px;border:none;border-radius:50%;background:var(--surface-control);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.sheet .session-card{margin:0;padding:4px 0 0;background:none;border:none}
+/* ---------- Feuilles Ajouter / Modifier la séance (design 8) ---------- */
+.psheet .l{display:block;margin:14px 0 6px;font-size:12.5px;color:var(--text-2)}
+.psheet .sheet-input{width:100%;min-height:var(--field-h);border-radius:var(--r-md)}
+.psheet textarea.sheet-input{min-height:72px;resize:vertical;font-family:inherit}
+.ps-pills{display:flex;flex-wrap:wrap;gap:8px}
+.ps-pills .flt i{display:inline-block;width:10px;height:10px;margin-right:7px;border-radius:3px}
+.ps-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ps-unit{display:flex;align-items:center;gap:8px}
+.ps-unit span{color:var(--text-muted);font-size:14px;white-space:nowrap}
+.ps-pace{display:flex;align-items:center;gap:6px}
+.ps-pace .sheet-input{text-align:center;min-width:0}
+.ps-err{margin-top:12px;font-size:13.5px;font-weight:600;color:var(--text)}
+.link-gray{display:block;width:100%;margin-top:6px;padding:14px 12px;border:none;background:none;color:var(--text-3);font-family:inherit;font-size:14.5px;cursor:pointer}
 .sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface-raised);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:var(--shadow-sheet)}
 .sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--grabber);margin:0 auto 14px}
@@ -637,6 +673,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <div id="appView">
   <div class="topbar">
     <div class="topbar-title" id="pageTitle"></div>
+    <div id="pageAction"></div>
   </div>
 
   <div id="content"></div>
@@ -649,7 +686,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=64"></script>
+<script src="logic.js?v=66"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -707,6 +744,9 @@ const ICONS = {
   alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
   more: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>`,
   moreV: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>`,
+  plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`,
+  chevronLeft: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`,
+  undo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>`,
   chevronRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
   chevronUp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`,
   chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
@@ -726,7 +766,7 @@ window.toast = (message, opts) => {
   const root = document.getElementById("toastRoot");
   if(!root) return;
   const o = opts || {};
-  root.innerHTML = `<div class="toast${o.actionLabel?" has-action":""}" role="status"><span>${escHtml(message)}</span>${o.actionLabel?`<button type="button" class="toast-action">${escHtml(o.actionLabel)}</button>`:""}</div>`;
+  root.innerHTML = `<div class="toast${o.actionLabel?" has-action":""}" role="status">${o.icon?icon(o.icon,16):""}<span>${escHtml(message)}</span>${o.actionLabel?`<button type="button" class="toast-action">${escHtml(o.actionLabel)}</button>`:""}</div>`;
   const el = root.firstChild;
   const hide = () => { el.classList.remove("show"); setTimeout(()=>{ if(root.firstChild===el) root.innerHTML=""; }, 250); };
   if(o.actionLabel) el.querySelector(".toast-action").onclick = () => { clearTimeout(toastTimer); hide(); if(o.onAction) o.onAction(); };
@@ -846,8 +886,6 @@ let onboardingCompletedAt = null;
 let suspendedZones = [];
 let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
 let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
-let openEditForm = null; // id de la séance en cours d'édition manuelle (distance/allure)
-let openAddForm = null; // date (YYYY-MM-DD) du jour pour lequel le formulaire d'ajout manuel est ouvert
 let programSelectedDate = null; // jour affiché dans le panneau de détail sous le calendrier
 // Refonte complète du check-in douleur (retour d'audit : trop lourd à
 // remplir, confus, pas terrible visuellement). Zones simplifiées — plus de
@@ -1581,7 +1619,7 @@ window.openManualRun = (sessionId) => {
 };
 window.closeManualRun = () => {
   manualRunForm = null;
-  document.getElementById("sheetRoot").innerHTML = "";
+  refreshSheet();
 };
 window.manualRunSet = (field, value) => { if(manualRunForm) manualRunForm[field] = value; };
 window.manualRunSetType = (value) => { manualRunSet("type", value); renderManualRunSheet(); };
@@ -3300,10 +3338,6 @@ window.saveProgramSettings = async () => {
   renderContent();
 };
 
-window.toggleEditSession = (id) => {
-  openEditForm = openEditForm===id ? null : id;
-  renderContent();
-};
 // Édition manuelle directe (distance/allure) — simple UPDATE comme
 // valider/décaler, pas le pattern "supersede" : c'est l'utilisateur qui
 // choisit sa propre valeur, ce n'est pas le moteur qui "régénère" pour un
@@ -3318,49 +3352,8 @@ function warnIfDayBeforeRun(dateStr, type){
   if(!NON_RUNNING_TYPES.includes(type)) return;
   const nextDateStr = addDaysStr(new Date(dateStr+"T00:00:00"), 1);
   const hasRunNextDay = plannedSessions.some(p=>p.planned_date===nextDateStr && p.pace_zone && (p.status==="planned"||p.status==="done"));
-  if(hasRunNextDay) alert("Petit conseil : tu as une course prévue le lendemain de cette séance. Des jambes courbaturées peuvent rendre la course plus difficile, tu peux la déplacer si tu préfères.");
+  if(hasRunNextDay) toast("Petit conseil : tu as une course prévue le lendemain. Des jambes courbaturées rendent la course plus difficile, tu peux la déplacer si tu préfères.", { ms:6000 });
 }
-window.saveSessionEdit = async (id) => {
-  const session = plannedSessions.find(p=>p.id===id);
-  const newType = document.getElementById("edit_type_"+id)?.value;
-  const distanceKm = parseFloat(document.getElementById("edit_distance_"+id)?.value);
-  const paceMin = parseInt(document.getElementById("edit_paceMin_"+id)?.value, 10);
-  const paceSec = parseInt(document.getElementById("edit_paceSec_"+id)?.value, 10);
-  const reminderTime = document.getElementById("edit_reminderTime_"+id)?.value;
-  const patch = { source:"manual_edit", updated_at:new Date().toISOString(), reminder_time: reminderTime || null };
-  // Changer le type retire l'allure calculée (pace_zone) : on ne peut pas
-  // déduire fiablement une nouvelle zone d'allure à partir d'un simple
-  // libellé de type (ex: passer de "Fractionné" à "Renfo") — la séance
-  // devient une séance "personnalisée" sans allure algorithmique, comme
-  // une séance ajoutée manuellement. La justification affichée ET la
-  // distance/allure calculées restent sinon celles de l'ANCIEN type (bug
-  // constaté : passer de Mobilité à Renfo gardait le texte "mobilité", et
-  // passer d'une course à du yoga gardait sa distance/allure, qui n'ont
-  // plus de sens pour ce nouveau type). Pour un nouveau type non-course,
-  // on ignore volontairement les champs distance/allure du formulaire
-  // (même s'ils affichent encore les anciennes valeurs préremplies) : les
-  // lire les aurait réappliquées telles quelles juste en dessous.
-  const clearingForNonRunning = !!(newType && session && newType!==session.type && NON_RUNNING_TYPES.includes(newType));
-  if(newType && session && newType!==session.type){
-    patch.type = newType; patch.title = newType; patch.pace_zone = null;
-    patch.rationale = CROSS_TRAINING_RATIONALE[newType] || `Séance de ${newType}, modifiée manuellement.`;
-    if(clearingForNonRunning){ patch.target_distance_km = null; patch.target_pace_sec_per_km = null; }
-  }
-  if(session && newType && newType!==session.type){
-    const clash = plannedSessions.some(o=>o.id!==id && o.planned_date===session.planned_date && (o.status==="planned"||o.status==="done") && !sessionsCanShareDay({type:newType, pace_zone:null}, o));
-    if(clash){ alert(SAME_DAY_REFUSAL); return; }
-  }
-  if(session) warnIfDayBeforeRun(session.planned_date, newType||session.type);
-  if(!clearingForNonRunning && !isNaN(distanceKm) && distanceKm>0) patch.target_distance_km = distanceKm;
-  if(!clearingForNonRunning && (!isNaN(paceMin) || !isNaN(paceSec))){
-    const sec = (paceMin||0)*60 + (paceSec||0);
-    if(sec>0) patch.target_pace_sec_per_km = sec;
-  }
-  const { error } = await supa.from("planned_sessions").update(patch).eq("id", id);
-  if(error){ alert("Erreur : "+error.message); return; }
-  openEditForm = null;
-  await loadData(); renderContent();
-};
 // Retire une séance du calendrier — status='skipped' plutôt qu'un vrai
 // DELETE, cohérent avec le reste du Programme (jamais de suppression
 // silencieuse ni de perte d'historique, voir le pattern "supersede" de
@@ -3373,41 +3366,7 @@ window.deleteSession = async (id) => {
   if(error){ alert("Erreur : "+error.message); return; }
   await loadData(); renderContent();
 };
-window.toggleAddForm = (dateStr) => {
-  openAddForm = openAddForm===dateStr ? null : dateStr;
-  renderContent();
-};
-// Ajout manuel très basique (bouton "+" sur un jour) : tous les champs
-// sauf le type sont optionnels. Refuse si la nouvelle séance ne peut pas
-// partager ce jour avec celles déjà là (deux courses, du renfo avec une
-// course... voir sessionsCanShareDay).
-const SAME_DAY_REFUSAL = "On ne peut pas mettre ces deux séances le même jour : une course accepte une séance légère (yoga, mobilité, étirements), mais pas une autre course ni du renfo, pour que tu récupères entre deux efforts.";
-window.addManualSession = async (dateStr) => {
-  const type = document.getElementById("addSession_type")?.value || "EF";
-  const distanceKm = parseFloat(document.getElementById("addSession_distance")?.value);
-  const durationMin = parseFloat(document.getElementById("addSession_duration")?.value);
-  const reminderTime = document.getElementById("addSession_reminderTime")?.value;
-  const notes = document.getElementById("addSession_notes")?.value?.trim();
-  const incompatible = plannedSessions.some(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done") && !sessionsCanShareDay({type, pace_zone:null}, p));
-  if(incompatible){ alert(SAME_DAY_REFUSAL); return; }
-  warnIfDayBeforeRun(dateStr, type);
-  const { data:{user} } = await supa.auth.getUser();
-  if(!user) return;
-  const monday = mondayOf(new Date(dateStr+"T00:00:00"));
-  const row = {
-    user_id:user.id, planned_date:dateStr, week_start_date:localDateStr(monday),
-    type, pace_zone:null, title:type, description: notes||null,
-    target_distance_km: (!isNaN(distanceKm) && distanceKm>0) ? distanceKm : null,
-    target_duration_min: (!isNaN(durationMin) && durationMin>0) ? durationMin : null,
-    reminder_time: reminderTime || null,
-    rationale:"Ajoutée manuellement.",
-    status:"planned", source:"manual_add",
-  };
-  const { error } = await supa.from("planned_sessions").insert(row);
-  if(error){ alert("Erreur : "+error.message); return; }
-  openAddForm = null;
-  await loadData(); renderContent();
-};
+const SAME_DAY_REFUSAL = "On ne peut pas mettre ces deux séances le même jour : une course accepte une séance légère, mais pas une autre course ni du renfo, pour que tu récupères entre deux efforts.";
 // Une séance planifiée passe automatiquement à "faite" dès qu'une séance
 // réelle synchronisée (HealthKit) existe le même jour — inutile de
 // demander confirmation à l'utilisateur, la synchro fait foi. Le ressenti
@@ -3707,15 +3666,23 @@ window.progSelectDay = (dateStr) => {
 // contenu de la séance ne change pas, seule sa date change, donc rien à
 // tracer côté contenu). Refuse si le jour cible contient une séance qui ne
 // peut pas cohabiter avec celle-ci (voir sessionsCanShareDay).
-window.moveSessionToDate = async (id, newDateStr) => {
+window.moveSessionToDate = async (id, newDateStr, opts) => {
   const s = plannedSessions.find(p=>p.id===id);
   if(!s || s.planned_date===newDateStr) return;
   const incompatible = plannedSessions.some(p=>p.id!==id && p.planned_date===newDateStr && (p.status==="planned"||p.status==="done") && !sessionsCanShareDay(s, p));
-  if(incompatible){ alert(SAME_DAY_REFUSAL); return; }
+  if(incompatible){
+    if(navigator.vibrate) navigator.vibrate([30,40,30]);
+    toast(SAME_DAY_REFUSAL, { ms:6000, icon:"undo" });
+    return;
+  }
+  const oldDate = s.planned_date;
   const monday = mondayOf(new Date(newDateStr+"T00:00:00"));
   const { error } = await supa.from("planned_sessions").update({planned_date:newDateStr, week_start_date:localDateStr(monday), updated_at:new Date().toISOString()}).eq("id", id);
-  if(error){ alert("Erreur : "+error.message); return; }
+  if(error){ toast("Pas enregistré, vérifie ta connexion."); return; }
   await loadData(); renderContent();
+  if(opts && opts.silent) return;
+  const label = new Date(newDateStr+"T00:00:00").toLocaleDateString("fr-FR",{weekday:"long", day:"numeric"});
+  toast(`${sessionTypeLabel(s.type)} déplacé au ${label}.`, { actionLabel:"Annuler", ms:5000, onAction: () => window.moveSessionToDate(id, oldDate, { silent:true }) });
 };
 
 // Glisser-déposer par appui long (~0,5s), via Pointer Events plutôt que le
@@ -3738,7 +3705,7 @@ function progDragStart(e, id){
   if(e.pointerType==="mouse" && e.button!==0) return;
   if(progDrag) progDragCancel(); // geste précédent mal terminé (rare) : on repart propre
   progDrag = { id, pointerId:e.pointerId, el:e.currentTarget, startX:e.clientX, startY:e.clientY, armed:false, ghost:null, timer:null };
-  progDrag.timer = setTimeout(progArmDrag, 500);
+  progDrag.timer = setTimeout(progArmDrag, 400);
   document.addEventListener("pointermove", progDragMove, {passive:false});
   document.addEventListener("pointerup", progDragEnd);
   document.addEventListener("pointercancel", progDragCancel);
@@ -3748,6 +3715,8 @@ function progArmDrag(){
   progDrag.armed = true;
   progDrag.el.style.touchAction = "none";
   progDrag.el.classList.add("prog-armed");
+  progDrag.col = progDrag.el.closest(".prog-daycol");
+  if(progDrag.col) progDrag.col.classList.add("origin");
   if(navigator.vibrate) navigator.vibrate(12);
   const r = progDrag.el.getBoundingClientRect();
   const ghost = progDrag.el.cloneNode(true);
@@ -3781,7 +3750,15 @@ function progDragMove(e){
   progDrag.ghost.style.display = "";
   document.querySelectorAll(".prog-daycol.dragover").forEach(c=>c.classList.remove("dragover"));
   const col = under?.closest(".prog-daycol");
-  if(col) col.classList.add("dragover");
+  if(col && col!==progDrag.col) col.classList.add("dragover");
+  const help = document.getElementById("pgHelp");
+  if(help){
+    if(col && col!==progDrag.col){
+      const d = new Date(col.dataset.date+"T00:00:00");
+      help.textContent = `Lâche sur ${d.toLocaleDateString("fr-FR",{weekday:"long", day:"numeric"})}…`;
+    } else help.textContent = "Fais glisser sur un autre jour";
+    help.style.display = "";
+  }
 }
 function progDragEnd(e){
   if(!progDrag || e.pointerId!==progDrag.pointerId) return;
@@ -3792,6 +3769,8 @@ function progDragEnd(e){
   if(!progDrag.armed){ progDrag = null; return; }
   progDrag.ghost?.remove();
   document.querySelectorAll(".prog-daycol.dragover").forEach(c=>c.classList.remove("dragover"));
+  document.querySelectorAll(".prog-daycol.origin").forEach(c=>c.classList.remove("origin"));
+  const helpEl = document.getElementById("pgHelp"); if(helpEl) helpEl.style.display = "none";
   progDrag.el.classList.remove("prog-armed");
   progDrag.el.style.touchAction = "";
   const under = document.elementFromPoint(e.clientX, e.clientY);
@@ -3813,6 +3792,8 @@ function progDragCancel(e){
   progDrag.el.classList.remove("prog-armed");
   progDrag.el.style.touchAction = "";
   document.querySelectorAll(".prog-daycol.dragover").forEach(c=>c.classList.remove("dragover"));
+  document.querySelectorAll(".prog-daycol.origin").forEach(c=>c.classList.remove("origin"));
+  const helpCancel = document.getElementById("pgHelp"); if(helpCancel) helpCancel.style.display = "none";
   progDrag = null;
 }
 // Remplace une séance par une version ajustée SANS jamais supprimer
@@ -4026,7 +4007,7 @@ window.chooseReplacement = async (sid, i, exId) => {
 };
 window.openExerciseDetail = (sid, i) => { openExMenu = null; exerciseSheet = { sessionId:sid, index:i, mode:"detail" }; renderExerciseSheet(); };
 window.openExerciseReplace = (sid, i) => { openExMenu = null; exerciseSheet = { sessionId:sid, index:i, mode:"replace" }; renderExerciseSheet(); renderContent(); };
-window.closeExerciseSheet = () => { exerciseSheet = null; document.getElementById("sheetRoot").innerHTML = ""; };
+window.closeExerciseSheet = () => { exerciseSheet = null; refreshSheet(); };
 window.exerciseNav = (delta) => {
   if(!exerciseSheet) return;
   const s = plannedSessions.find(p=>p.id===exerciseSheet.sessionId);
@@ -4399,46 +4380,12 @@ function scMetricsHTML(big, tiles){
 function sessionMenuHTML(session, todayStr){
   const items = [];
   if(session.planned_date<=todayStr) items.push(["J'ai fait cette séance", `openManualRun('${session.id}')`, ""]);
-  items.push(["Modifier la séance", `toggleEditSession('${session.id}')`, ""]);
+  items.push(["Modifier la séance", `openEditSheet('${session.id}')`, ""]);
   if(session.pace_zone && session.pace_zone!=="easy") items.push(["Remplacer par une EF", `replaceWithEasy('${session.id}')`, ""]);
   items.push(["Supprimer la séance", `deleteSession('${session.id}')`, "danger"]);
   const open = openSessionMenu===session.id;
   return `<div class="menu-wrap"><button type="button" class="sc-menu" aria-label="Plus d'actions" aria-haspopup="menu" aria-expanded="${open}" onclick="toggleSessionMenu('${session.id}')">${icon("more",20)}</button>
     ${open?`<div class="menu-pop" role="menu">${items.map(([label,call,cls])=>`<button type="button" role="menuitem" class="${cls}" onclick="closeSessionMenu();renderContent();${call}">${escHtml(label)}</button>`).join("")}</div>`:""}</div>`;
-}
-function sessionEditFormHTML(session){
-  const paceMin = session.target_pace_sec_per_km ? Math.floor(session.target_pace_sec_per_km/60) : "";
-  const paceSec = session.target_pace_sec_per_km ? Math.round(session.target_pace_sec_per_km%60) : "";
-  return `<div style="padding:14px 0 4px">
-      <div class="stitle" style="margin-bottom:8px">Modifier la séance</div>
-      <div style="margin-top:8px;margin-bottom:10px">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap;display:block;margin-bottom:6px">Type</span>
-        <div class="filters" data-chipgroup="editType_${session.id}" style="margin-bottom:0">
-          ${PROGRAM_TYPE_OPTIONS.map(t=>`<button type="button" class="flt${t===session.type?" active":""}" data-value="${t}" onclick="progSelectEditType('${session.id}','${t}')" style="display:inline-flex;align-items:center;gap:5px"><span style="color:${TC[t]||TC.Other};display:flex">${icon(TICON[t]||"activity",13)}</span>${sessionTypeLabel(t)}</button>`).join("")}
-        </div>
-        <input type="hidden" id="edit_type_${session.id}" value="${session.type}">
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:flex-end">
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim)">Distance (optionnel)</span>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input type="number" min="0" step="0.1" class="time-input" style="width:56px" id="edit_distance_${session.id}" value="${session.target_distance_km||""}"> <span style="font-size:12px;color:var(--text-dim)">km</span>
-          </div>
-        </div>
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim)">Allure (optionnel)</span>
-          <div style="display:flex;align-items:center;gap:4px">
-            <input type="number" min="0" max="59" class="time-input" id="edit_paceMin_${session.id}" value="${paceMin}"> <span style="font-size:12px;color:var(--text-dim)">'</span>
-            <input type="number" min="0" max="59" class="time-input" id="edit_paceSec_${session.id}" value="${paceSec}"> <span style="font-size:12px;color:var(--text-dim)">''/km</span>
-          </div>
-        </div>
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim)">Rappel (optionnel)</span>
-          <input type="time" id="edit_reminderTime_${session.id}" value="${session.reminder_time?session.reminder_time.slice(0,5):""}" style="background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-xs);color:var(--text);font-size:14px;padding:8px;font-family:inherit">
-        </div>
-      </div>
-      <button class="btn-primary" style="margin-top:10px" onclick="saveSessionEdit('${session.id}')">Enregistrer</button>
-    </div>`;
 }
 function programSessionCardHTML(session, date){
   const todayStr = localDateStr(new Date());
@@ -4480,7 +4427,6 @@ function programSessionCardHTML(session, date){
     ${learnMoreHTML(session)}`;
   const late = state==="late" ? `<div class="sc-late">${icon("alert",16)}Pas encore reçue d'Apple Santé</div>
     <button type="button" class="btn-outline" onclick="openManualRun('${session.id}')">J'ai fait cette séance</button>` : "";
-  const editOpen = openEditForm===session.id && state!=="done";
   return `<div class="session-card" id="sc_${session.id}">
     <div class="sc-head">
       <div class="sc-icon" style="background:${c}22;color:${c}">${icon(TICON[session.type]||"activity",18)}</div>
@@ -4494,143 +4440,281 @@ function programSessionCardHTML(session, date){
     ${metrics || (state==="done" ? "" : `<div style="height:12px"></div>`)}
     ${detailCardio}
     ${body}${late}
-    ${editOpen ? `<div class="sc-sep"></div>${sessionEditFormHTML(session)}` : ""}
   </div>`;
 }
 
-// En-tête de nav semaine/mois : boutons ronds compacts (comme .pace-stepper)
-// plutôt que .btn-secondary (width:100%, prévu pour des boutons pleine
-// largeur) qui forçait un retour à la ligne moche sur mobile ; texte en
-// style normal plutôt que .stitle (uppercase) pour rester lisible sur une
-// plage de dates.
+// Tuile d'un jour : classe de statut, style (couleur du type) et contenu (icône, « ! », « + »). Partagée par
+// « Ta semaine » (Aujourd'hui) et le calendrier de Programme. Couleur = type, plein = fait, contour = prévu,
+// pointillés violets + « ! » = à replacer, pointillés gris = repos, « + » = 2e séance.
+function dayTileParts(day){
+  const m = day.main, sec = day.second;
+  const c = m ? (TC[m.type]||TC.Other) : null;
+  let style = "";
+  if(m && m.status==="fait") style = `background:${c};`;
+  else if(m && m.status==="prevu") style = `border-color:${c};color:${c};`;
+  else if(m && m.status==="manque") style = `color:${c};`;
+  const bang = m && m.status==="manque" ? `<span class="wk-bang" aria-hidden="true">!</span>` : "";
+  let plus = "";
+  if(sec){
+    const sc = TC[sec.type]||TC.Other;
+    plus = sec.status==="fait"
+      ? `<span class="wk-plus" style="background:${sc};color:var(--on-accent)" aria-hidden="true">+</span>`
+      : `<span class="wk-plus" style="background:var(--surface-sunken);border:1.5px solid ${sc};color:${sc}" aria-hidden="true">+</span>`;
+  }
+  return { cls: m ? m.status : "repos", style, inner: (m ? icon(TICON[m.type]||"activity",18) : "") + bang + plus };
+}
+function dayAriaLabel(day){
+  const d = new Date(day.date+"T00:00:00");
+  const base = d.toLocaleDateString("fr-FR",{weekday:"long", day:"numeric", month:"long"});
+  const m = day.main, sec = day.second;
+  return `${base}${day.isToday?", aujourd'hui":""}, ${m ? `${sessionTypeLabel(m.type)} ${WEEK_STATUS_LABEL[m.status]}` : "repos"}${sec ? `, 2e séance ${sessionTypeLabel(sec.type)} ${WEEK_STATUS_LABEL[sec.status]}` : ""}`;
+}
+
+// ---------- Programme : calendrier semaine et mois (design 8a, 8b) ----------
+// Une colonne par jour : lettre (semaine), numéro (halo blanc aujourd'hui), tuile. Toucher un jour affiche ses
+// séances dessous. Glisser-déposer (vue semaine) : appui long sur une tuile de séance prévue (voir progDragStart).
+function programDayModels(dates){
+  const todayStr = localDateStr(new Date());
+  const runs = runningRuns.map(r=>({ date:localDateStr(dateFromRun(r)), distKm:r.dist||0, durationSec:r.durationSec||0, type:r.type }));
+  return dates.map(d=>dayTileModel(d, plannedSessions, runs, todayStr));
+}
+function programDayColHTML(day, i, month){
+  const parts = dayTileParts(day);
+  const sess = day.mainId ? plannedSessions.find(p=>p.id===day.mainId) : null;
+  const draggable = !month && !!sess && sess.status==="planned";
+  const num = new Date(day.date+"T00:00:00").getDate();
+  const selected = programSelectedDate===day.date;
+  return `<div class="prog-daycol${day.isToday?" today":""}${selected?" selected":""}${month && !month.inMonth?" out":""}" data-date="${day.date}" role="button" tabindex="0" aria-label="${escHtml(dayAriaLabel(day))}" onclick="progSelectDay('${day.date}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();progSelectDay('${day.date}')}">
+    ${month?"":`<span class="pg-letter">${WEEK_LETTERS[i]}</span>`}
+    <span class="pg-num">${num}</span>
+    <span class="wk-tile ${parts.cls}${draggable?" draggable":""}" style="${parts.style}"${draggable?` onpointerdown="progDragStart(event,'${sess.id}')"`:""}>${parts.inner}</span>
+  </div>`;
+}
 function programNavHeaderHTML(label){
-  return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <button onclick="programNavWeek(-1)" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--card-2);color:var(--text);font-size:15px;cursor:pointer;flex-shrink:0">←</button>
-    <span style="font-size:14px;font-weight:600;text-align:center;flex:1;padding:0 8px">${label}</span>
-    <button onclick="programNavWeek(1)" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--card-2);color:var(--text);font-size:15px;cursor:pointer;flex-shrink:0">→</button>
+  return `<div class="pg-nav">
+    <button type="button" class="pg-arrow" aria-label="${programViewMode==="week"?"Semaine précédente":"Mois précédent"}" onclick="programNavWeek(-1)">${icon("chevronLeft",20)}</button>
+    <span class="pg-range">${escHtml(label)}</span>
+    <button type="button" class="pg-arrow" aria-label="${programViewMode==="week"?"Semaine suivante":"Mois suivant"}" onclick="programNavWeek(1)">${icon("chevronRight",20)}</button>
+  </div>`;
+}
+const PROGRAM_LEGEND = `<div class="wk-legend" style="margin:12px 0 0">
+  <span><i style="background:var(--text-muted)"></i>fait</span>
+  <span><i style="border:1.5px solid var(--text-muted)"></i>prévu</span>
+  <span style="color:var(--attention)"><i style="border:1.5px dashed var(--attention)"></i>à replacer</span>
+  <span><i style="border:1.5px dashed var(--line-field)"></i>repos</span>
+</div>`;
+function programCalendarHTML(){
+  if(programViewMode==="week"){
+    const monday = addDays(mondayOf(new Date()), programWeekOffset*7);
+    const weekSessions = plannedSessions.filter(p=>p.week_start_date===localDateStr(monday) && (p.status==="planned"||p.status==="done"));
+    const actualRunning = weekSessions.filter(p=>p.pace_zone).length;
+    const actualCross = weekSessions.filter(p=>!p.pace_zone).length;
+    const complete = actualRunning>=(Number(goals.frequence)||3) && actualCross>=(Number(goals.frequenceAutre)||0);
+    const genLabel = (actualRunning===0 && actualCross===0) ? "Générer cette semaine" : "Compléter cette semaine";
+    const dates = Array.from({length:7},(_,i)=>localDateStr(addDays(monday,i)));
+    if(programSelectedDate===null && dates.includes(localDateStr(new Date()))) programSelectedDate = localDateStr(new Date());
+    const fmt = d => d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+    return `<div class="card">
+      ${programNavHeaderHTML(`${fmt(monday)} – ${fmt(addDays(monday,6))}`)}
+      <div class="pg-row">${programDayModels(dates).map((d,i)=>programDayColHTML(d,i,null)).join("")}</div>
+      ${PROGRAM_LEGEND}
+      <div class="pg-help" id="pgHelp" style="display:none"></div>
+      ${complete?"":`<button class="btn-primary" style="margin-top:14px" onclick="generateProgram(new Date('${monday.toISOString()}'))">${genLabel}</button>`}
+    </div>`;
+  }
+  const monthDate = new Date(); monthDate.setDate(1); monthDate.setMonth(monthDate.getMonth()+programWeekOffset);
+  const today = new Date();
+  if(programSelectedDate===null && monthDate.getFullYear()===today.getFullYear() && monthDate.getMonth()===today.getMonth()) programSelectedDate = localDateStr(today);
+  const monthLabel = monthDate.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const weeks = monthWeeks(monthDate.getFullYear(), monthDate.getMonth());
+  return `<div class="card pg-month">
+    ${programNavHeaderHTML(monthLabel)}
+    <div class="pg-letters">${WEEK_LETTERS.map(l=>`<span>${l}</span>`).join("")}</div>
+    ${weeks.map(w=>`<div class="pg-row">${programDayModels(w.map(x=>x.date)).map((d,i)=>programDayColHTML(d,i,w[i])).join("")}</div>`).join("")}
+    ${PROGRAM_LEGEND}
   </div>`;
 }
 
-// Vue semaine = un tableau de colonnes jour par jour (façon Google Agenda
-// vue semaine, sans grille d'heures : une séance de course n'a pas besoin
-// d'heure précise), les 7 colonnes tenant toujours sans swipe horizontal.
-// Chaque carte séance est glissable (appui long, voir progDragStart) vers
-// une autre colonne pour la replanifier ; un tap court sélectionne le jour
-// et affiche son détail dans programSelectedDayPanelHTML. `monthDate`
-// optionnel (vue mois uniquement) : estompe les jours hors du mois affiché.
-function programDayColHTML(date, monthDate){
-  const dateStr = localDateStr(date);
-  // Plusieurs séances possibles le même jour (course + séance légère) :
-  // une mini-carte par séance, empilées.
-  const sessions = plannedSessions.filter(p=>p.planned_date===dateStr && (p.status==="planned"||p.status==="done"));
-  const isToday = dateStr===localDateStr(new Date());
-  const selected = programSelectedDate===dateStr;
-  const outmonth = monthDate && date.getMonth()!==monthDate.getMonth();
-  const miniCard = (session) => {
-    const draggable = session.status==="planned";
-    const c = TC[session.type]||TC.Other;
-    const dragAttrs = draggable ? `onpointerdown="progDragStart(event,'${session.id}')"` : "";
-    return `<div class="prog-card-mini${draggable?" draggable":""}" style="background:${c}1c;border-color:${c}55" ${dragAttrs} onclick="progSelectDay('${dateStr}')">
-          <div style="color:${c}">${icon(TICON[session.type]||"activity",14)}</div>
-          <div class="prog-card-mini-lbl">${session.target_distance_km?session.target_distance_km+"km":(PACE_ZONE_LABEL[session.pace_zone]||"")}</div>
-          ${session.status==="done"?`<div class="prog-card-mini-check">✓</div>`:""}
-        </div>`;
-  };
-  return `<div class="prog-daycol${isToday?" today":""}${selected?" selected":""}${outmonth?" outmonth":""}" data-date="${dateStr}">
-    <div class="prog-daycol-hdr">${date.toLocaleDateString('fr-FR',{weekday:'short'}).slice(0,2)}<b>${date.getDate()}</b></div>
-    ${sessions.length
-      ? sessions.map(miniCard).join("")
-      : `<div class="prog-card-mini rest" onclick="progSelectDay('${dateStr}')">Repos</div>`}
-  </div>`;
-}
-function programWeekBoardHTML(monday, monthDate){
-  const days = Array.from({length:7}, (_,i)=>addDays(monday,i));
-  return `<div class="prog-board">${days.map(d=>programDayColHTML(d, monthDate)).join("")}</div>`;
-}
-
-// Vue mois = empilement des mêmes plateaux-semaine (une rangée de 7
-// colonnes par semaine du mois affiché), plutôt qu'une grille séparée à
-// petits points colorés — les jours hors du mois (début/fin de la
-// première/dernière semaine) restent affichés en estompé mais restent des
-// cibles de dépôt valides (ex. déplacer une séance du 30 vers le 1er).
-function programMonthStackHTML(monthDate){
-  const firstOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-  const lastOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth()+1, 0);
-  const weeks = [];
-  for(let cursor=mondayOf(firstOfMonth); cursor<=lastOfMonth; cursor=addDays(cursor,7)) weeks.push(new Date(cursor));
-  return weeks.map(w=>`
-    <div class="prog-week-label">Semaine du ${w.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div>
-    ${programWeekBoardHTML(w, monthDate)}
-  `).join("");
-}
-
-// Panneau de détail du jour sélectionné (tap sur une colonne/cellule) —
-// affiche la carte séance complète (justification + actions) sous le
-// calendrier, plutôt que dans des cartes empilées : les colonnes/cellules
-// restent compactes pour laisser de la place au glisser-déposer.
+// Jour choisi : une petite carte par séance (V5 : icône pleine si faite, type et distance, chevron) ; toucher
+// une carte ouvre la carte complète en feuille, sur le même modèle qu'Aujourd'hui. Les séances « à replacer »
+// y figurent (D6). Une course sans séance prévue y figure aussi (elle ouvre l'historique).
+let sessionSheetId = null;
 function programSelectedDayPanelHTML(){
   if(!programSelectedDate) return "";
+  const todayStr = localDateStr(new Date());
   const date = new Date(programSelectedDate+"T00:00:00");
-  const sessions = plannedSessions.filter(p=>p.planned_date===programSelectedDate && (p.status==="planned"||p.status==="done"));
-  const addOpen = openAddForm===programSelectedDate;
-  return `<div class="card" style="margin-top:10px">
-    <div class="chart-hint" style="margin-top:0;margin-bottom:4px;text-transform:capitalize">${dayLabelShort(date)}</div>
-    ${sessions.length ? sessions.map(s=>programSessionCardHTML(s,date)).join("") : `<div class="chart-hint" style="margin-top:0">Repos — aucune séance planifiée.</div>`}
-    <button class="flt" style="margin-top:10px" onclick="toggleAddForm('${programSelectedDate}')">${addOpen?"Annuler":"+ Ajouter une séance"}</button>
-    ${addOpen?programAddFormHTML(programSelectedDate):""}
-  </div>`;
+  const sessions = plannedSessions.filter(p=>p.planned_date===programSelectedDate && ["planned","done","missed"].includes(p.status))
+    .sort((a,b)=>(sessionCategory(b)==="run"?1:0)-(sessionCategory(a)==="run"?1:0));
+  const lonely = runningRuns.filter(r=>localDateStr(dateFromRun(r))===programSelectedDate && !runIsLinked(r.id));
+  const stLabel = { done:"Faite", planned:"Prévue", late:"À replacer" };
+  const cards = sessions.map(s=>{
+    const state = sessionCardState(s, todayStr);
+    const c = TC[s.type]||TC.Other;
+    const cls = state==="done" ? "fait" : state==="late" ? "late" : "prevu";
+    const icStyle = state==="done" ? `background:${c}` : state==="late" ? `border-style:dashed;border-color:var(--attention);color:${c}` : `border-color:${c};color:${c}`;
+    return `<button type="button" class="sv5 ${cls}" onclick="openSessionSheet('${s.id}')">
+      <span class="ic" style="${icStyle}">${icon(TICON[s.type]||"activity",18)}</span>
+      <span><div class="st">${stLabel[state]}</div><div class="tt">${escHtml(sessionSmallTitle(s))}</div></span>
+      <span class="chev">${icon("chevronRight",18)}</span>
+    </button>`;
+  }).concat(lonely.map(r=>{
+    const c = TC[r.type]||TC.Other;
+    return `<button type="button" class="sv5 fait" onclick="goRateSession('${r.id}')">
+      <span class="ic" style="background:${c}">${icon(TICON[r.type]||"activity",18)}</span>
+      <span><div class="st">Faite</div><div class="tt">${escHtml(sessionTypeLabel(r.type))}${r.dist>0?" · "+String(r.dist.toFixed(1)).replace(".",",")+" km":""}</div></span>
+      <span class="chev">${icon("chevronRight",18)}</span>
+    </button>`;
+  }));
+  return `<div class="pg-day-title">${escHtml(dayLabelShort(date))}${programSelectedDate===todayStr?" · aujourd'hui":""}</div>
+    ${cards.length ? cards.join("") : `<div class="pg-rest"><span>Repos — aucune séance planifiée.</span><button type="button" class="pg-add" aria-label="Ajouter une séance" onclick="openAddSheet('${programSelectedDate}')">${icon("plus",20)}</button></div>`}`;
 }
-// Formulaire d'ajout manuel très basique : seul le type est requis (repli
-// EF), tout le reste est optionnel. Réutilise TYPE_OPTIONS/le sélecteur
-// déjà utilisé pour les séances loguées (Séances) — même vocabulaire de
-// types partout dans l'app (course ET renfo/mobilité/yoga y figurent déjà).
-// Sélecteur de type avec logo (pas un <select> natif : les <option> ne
-// peuvent pas afficher d'icône, surtout sur le picker natif iOS) — chips
-// réutilisant TC/TICON, comme partout ailleurs dans l'app.
-window.progSelectAddType = (t) => {
-  const hidden = document.getElementById("addSession_type");
-  if(hidden) hidden.value = t;
-  document.querySelectorAll('[data-chipgroup="addSession_type_group"] [data-value]').forEach(el=>el.classList.toggle("active", el.dataset.value===t));
-};
-window.progSelectEditType = (id, t) => {
-  const hidden = document.getElementById("edit_type_"+id);
-  if(hidden) hidden.value = t;
-  document.querySelectorAll(`[data-chipgroup="editType_${id}"] [data-value]`).forEach(el=>el.classList.toggle("active", el.dataset.value===t));
-};
-function programAddFormHTML(dateStr){
-  return `<div style="margin-top:10px">
-    <div style="margin-bottom:10px">
-      <span style="font-size:12px;color:var(--text-dim);white-space:nowrap;display:block;margin-bottom:6px">Type</span>
-      <div class="filters" data-chipgroup="addSession_type_group" style="margin-bottom:0">
-        ${PROGRAM_TYPE_OPTIONS.map(t=>`<button type="button" class="flt${t==="EF"?" active":""}" data-value="${t}" onclick="progSelectAddType('${t}')" style="display:inline-flex;align-items:center;gap:5px"><span style="color:${TC[t]||TC.Other};display:flex">${icon(TICON[t]||"activity",13)}</span>${sessionTypeLabel(t)}</button>`).join("")}
-      </div>
-      <input type="hidden" id="addSession_type" value="EF">
-    </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <div class="field" style="margin-bottom:0">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Distance (optionnel)</span>
-        <div style="display:flex;align-items:center;gap:4px">
-          <input type="number" min="0" step="0.1" class="time-input" style="width:56px" id="addSession_distance"> <span style="font-size:12px;color:var(--text-dim)">km</span>
-        </div>
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Durée (optionnel)</span>
-        <div style="display:flex;align-items:center;gap:4px">
-          <input type="number" min="0" class="time-input" id="addSession_duration"> <span style="font-size:12px;color:var(--text-dim)">min</span>
-        </div>
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Rappel (optionnel)</span>
-        <input type="time" id="addSession_reminderTime" style="background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;padding:8px;font-family:inherit">
-      </div>
-    </div>
-    <div class="field" style="margin-top:0">
-      <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Note</span>
-      <input type="text" id="addSession_notes" placeholder="Optionnel" style="width:100%;background:transparent;border:none;color:var(--text);font-size:14px;font-family:inherit">
-    </div>
-    <button class="btn-primary" style="margin-top:4px" onclick="addManualSession('${dateStr}')">Ajouter</button>
-  </div>`;
+window.openSessionSheet = (id) => { sessionSheetId = id; refreshSheet(); };
+window.closeSessionSheet = () => { sessionSheetId = null; closeSessionMenu(); refreshSheet(); };
+function renderSessionSheet(){
+  const root = document.getElementById("sheetRoot");
+  const s = sessionSheetId && plannedSessions.find(p=>p.id===sessionSheetId);
+  if(!s){ sessionSheetId = null; root.innerHTML = ""; return; }
+  root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeSessionSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="${escHtml(sessionDisplayTitle(s).title)}">
+    ${programSessionCardHTML(s, new Date(s.planned_date+"T00:00:00"))}
+    <button type="button" class="btn-secondary" style="margin-top:14px" onclick="closeSessionSheet()">Fermer</button>
+  </div></div>`;
 }
+// Une seule feuille à l'écran, par priorité : saisie à la main, exercice, ajout/modification, carte de séance.
+function refreshSheet(){
+  const root = document.getElementById("sheetRoot");
+  if(!root) return;
+  if(manualRunForm) renderManualRunSheet();
+  else if(exerciseSheet) renderExerciseSheet();
+  else if(typeof renderProgramSheet==="function" && renderProgramSheet()) { /* feuille Ajouter / Modifier */ }
+  else if(sessionSheetId) renderSessionSheet();
+  else root.innerHTML = "";
+}
+
+// ---------- Feuilles « Ajouter » et « Modifier la séance » (design 8, D47) ----------
+// Type en pastilles, date, puis pour une course distance, allure, durée (deux remplis, la 3e se calcule dans
+// les deux sens : voir solveRunTriplet), notes seulement pour une séance ajoutée à la main (A8). Pas de champ
+// « Rappel ». Changer la date déplace la séance (même règle de cohabitation que le glisser-déposer).
+let programSheet = null; // { mode:"add"|"edit", sessionId, form, order, error }
+const PS_RUN_TYPES = ["EF","Long","Fractionné","Seuil","Course"];
+function psPaceParts(sec){ return sec>0 ? [String(Math.floor(sec/60)), String(Math.round(sec%60))] : ["",""]; }
+window.openAddSheet = (dateStr) => {
+  sessionSheetId = null; closeSessionMenu();
+  const d = (typeof dateStr==="string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) ? dateStr : (programSelectedDate || localDateStr(new Date()));
+  programSheet = { mode:"add", sessionId:null, order:[], error:"", form:{ type:"EF", date:d, distKm:"", paceMin:"", paceSec:"", durationMin:"", notes:"" } };
+  refreshSheet();
+};
+window.openEditSheet = (id) => {
+  const s = plannedSessions.find(p=>p.id===id);
+  if(!s) return;
+  sessionSheetId = null; closeSessionMenu();
+  const [pm, ps] = psPaceParts(Number(s.target_pace_sec_per_km)||0);
+  let dur = Number(s.target_duration_min)||0;
+  if(!dur && s.target_distance_km && s.target_pace_sec_per_km) dur = Math.round(s.target_distance_km*s.target_pace_sec_per_km/60);
+  programSheet = { mode:"edit", sessionId:id, order:[], error:"", form:{ type:s.type, date:s.planned_date,
+    distKm: s.target_distance_km ? String(s.target_distance_km).replace(".",",") : "", paceMin:pm, paceSec:ps,
+    durationMin: dur ? String(Math.round(dur)) : "", notes: s.source==="manual_add" ? (s.description||"") : "" } };
+  refreshSheet();
+};
+window.closeProgramSheet = () => { programSheet = null; refreshSheet(); };
+window.psSetType = (t) => { if(!programSheet) return; programSheet.form.type = t; programSheet.error = ""; refreshSheet(); };
+window.psField = (name, value) => {
+  const st = programSheet;
+  if(!st) return;
+  const f = st.form;
+  f[name] = value;
+  const triplet = { distKm:"distKm", paceMin:"paceSecKm", paceSec:"paceSecKm", durationMin:"durationMin" }[name];
+  if(!triplet || String(value).trim()==="") return;
+  st.order = st.order.filter(k=>k!==triplet).concat(triplet);
+  const out = solveRunTriplet({ distKm:String(f.distKm).replace(",","."), paceSecKm:(Number(f.paceMin)||0)*60+(Number(f.paceSec)||0), durationMin:f.durationMin }, st.order);
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
+  if(out.computed==="distKm"){ f.distKm = String(out.distKm).replace(".",","); set("ps_distKm", f.distKm); }
+  else if(out.computed==="durationMin"){ f.durationMin = String(out.durationMin); set("ps_durationMin", f.durationMin); }
+  else if(out.computed==="paceSecKm"){ const [pm,ps] = psPaceParts(out.paceSecKm); f.paceMin = pm; f.paceSec = ps; set("ps_paceMin", pm); set("ps_paceSec", ps); }
+};
+function renderProgramSheet(){
+  const st = programSheet;
+  const root = document.getElementById("sheetRoot");
+  if(!st) return false;
+  const f = st.form;
+  const s = st.mode==="edit" ? plannedSessions.find(p=>p.id===st.sessionId) : null;
+  if(st.mode==="edit" && !s){ programSheet = null; return false; }
+  const isRun = PS_RUN_TYPES.includes(f.type);
+  const showNotes = st.mode==="add" || (s && s.source==="manual_add");
+  const d = new Date(f.date+"T00:00:00");
+  const overline = st.mode==="edit" ? `${isNaN(d) ? "" : dayLabelShort(d)} · prévue` : "Programme";
+  const pills = PROGRAM_TYPE_OPTIONS.map(t=>`<button type="button" class="flt${t===f.type?" active":""}" onclick="psSetType('${t}')" aria-pressed="${t===f.type}"><i style="background:${TC[t]||TC.Other}"></i>${escHtml(sessionTypeLabel(t))}</button>`).join("");
+  const dur = `<div><label class="l" for="ps_durationMin">Durée</label><div class="ps-unit"><input class="sheet-input" id="ps_durationMin" type="number" inputmode="numeric" min="0" step="1" value="${escHtml(f.durationMin)}" oninput="psField('durationMin',this.value)"><span>min</span></div></div>`;
+  const runFields = `<div class="ps-grid">
+      <div><label class="l" for="ps_distKm">Distance</label><div class="ps-unit"><input class="sheet-input" id="ps_distKm" type="text" inputmode="decimal" value="${escHtml(f.distKm)}" oninput="psField('distKm',this.value)"><span>km</span></div></div>
+      <div><label class="l" for="ps_paceMin">Allure</label><div class="ps-pace"><input class="sheet-input" id="ps_paceMin" type="number" inputmode="numeric" min="0" max="59" value="${escHtml(f.paceMin)}" aria-label="Allure, minutes" oninput="psField('paceMin',this.value)"><span>'</span><input class="sheet-input" id="ps_paceSec" type="number" inputmode="numeric" min="0" max="59" value="${escHtml(f.paceSec)}" aria-label="Allure, secondes" oninput="psField('paceSec',this.value)"><span style="color:var(--text-muted);font-size:13px;white-space:nowrap">''/km</span></div></div>
+      ${dur}
+    </div>`;
+  root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeProgramSheet()"><div class="sheet psheet" role="dialog" aria-modal="true" aria-label="${st.mode==="edit"?"Modifier la séance":"Ajouter une séance"}">
+    ${sheetHeadHTML(st.mode==="edit" ? "Modifier la séance" : "Ajouter une séance", "closeProgramSheet()", overline)}
+    <span class="l" style="margin-top:4px">Type</span>
+    <div class="ps-pills">${pills}</div>
+    <label class="l" for="ps_date">Date</label>
+    <input class="sheet-input" id="ps_date" type="date" value="${escHtml(f.date)}" oninput="psField('date',this.value)">
+    ${isRun ? runFields : `<div class="ps-grid" style="grid-template-columns:1fr">${dur}</div>`}
+    ${showNotes ? `<label class="l" for="ps_notes">Notes <span style="color:var(--text-muted)">(facultatif)</span></label><textarea class="sheet-input" id="ps_notes" oninput="psField('notes',this.value)">${escHtml(f.notes)}</textarea>` : ""}
+    <div class="ps-err" id="psError" role="alert">${escHtml(st.error||"")}</div>
+    <button type="button" class="btn-primary" style="margin-top:16px" onclick="saveProgramSheet()" ${st.saving?"disabled":""}>${st.mode==="edit" ? "Enregistrer" : "Ajouter au programme"}</button>
+    ${st.mode==="edit" ? `<button type="button" class="link-gray" onclick="deleteSessionFromSheet('${st.sessionId}')">Supprimer la séance</button>` : ""}
+  </div></div>`;
+  return true;
+}
+window.deleteSessionFromSheet = (id) => { programSheet = null; refreshSheet(); deleteSession(id); };
+window.saveProgramSheet = async () => {
+  const st = programSheet;
+  if(!st || st.saving) return;
+  const f = st.form;
+  const isRun = PS_RUN_TYPES.includes(f.type);
+  const dist = Number(String(f.distKm).replace(",","."))||0;
+  const pace = (Number(f.paceMin)||0)*60 + (Number(f.paceSec)||0);
+  const dur = Number(f.durationMin)||0;
+  const fail = (msg) => { st.error = msg; const el = document.getElementById("psError"); if(el) el.textContent = msg; };
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(f.date||"")) return fail("Choisis la date de la séance.");
+  if(isRun && dist>250) return fail("Plus de 250 km : vérifie la distance.");
+  if(dur>720) return fail("Plus de 12 heures : vérifie la durée.");
+  const s = st.mode==="edit" ? plannedSessions.find(p=>p.id===st.sessionId) : null;
+  const typeChanged = !!s && f.type!==s.type;
+  // Cohabitation (A1) : une course accepte une séance légère, jamais une 2e course ni du renfo avec une course.
+  const probe = { type:f.type, pace_zone: s && !typeChanged ? s.pace_zone : null };
+  const clash = plannedSessions.some(p=>p.id!==st.sessionId && p.planned_date===f.date && (p.status==="planned"||p.status==="done") && !sessionsCanShareDay(probe, p));
+  if(clash){ if(navigator.vibrate) navigator.vibrate([30,40,30]); toast(SAME_DAY_REFUSAL, { ms:6000, icon:"undo" }); return; }
+  st.saving = true;
+  const now = new Date().toISOString();
+  const monday = localDateStr(mondayOf(new Date(f.date+"T00:00:00")));
+  let error;
+  if(st.mode==="add"){
+    const { data:{user} } = await supa.auth.getUser();
+    if(!user){ st.saving = false; return fail("Tu n'es plus connecté."); }
+    const row = { user_id:user.id, planned_date:f.date, week_start_date:monday, type:f.type, pace_zone:null, title:f.type,
+      description: (f.notes||"").trim() || null,
+      target_distance_km: isRun && dist>0 ? dist : null, target_pace_sec_per_km: isRun && pace>0 ? pace : null,
+      target_duration_min: dur>0 ? dur : null, rationale:"Ajoutée manuellement.", status:"planned", source:"manual_add" };
+    ({ error } = await supa.from("planned_sessions").insert(row));
+  } else {
+    const patch = { source: s.source==="manual_add" ? "manual_add" : "manual_edit", updated_at:now };
+    if(typeChanged){
+      patch.type = f.type; patch.title = f.type; patch.pace_zone = null;
+      patch.rationale = CROSS_TRAINING_RATIONALE[f.type] || `Séance de ${sessionTypeLabel(f.type)}, modifiée manuellement.`;
+    }
+    patch.target_distance_km = isRun && dist>0 ? dist : null;
+    patch.target_pace_sec_per_km = isRun && pace>0 ? pace : null;
+    patch.target_duration_min = dur>0 ? dur : null;
+    if(s.source==="manual_add") patch.description = (f.notes||"").trim() || null;
+    if(f.date!==s.planned_date){ patch.planned_date = f.date; patch.week_start_date = monday; }
+    ({ error } = await supa.from("planned_sessions").update(patch).eq("id", st.sessionId));
+  }
+  st.saving = false;
+  if(error){ fail("Pas enregistré, vérifie ta connexion."); return; }
+  programSheet = null;
+  await loadData(); renderContent(); refreshSheet();
+  toast(st.mode==="add" ? "Séance ajoutée au programme." : "Séance enregistrée.");
+  warnIfDayBeforeRun(f.date, f.type);
+};
+
 function addDays(base,n){ const d=new Date(base); d.setDate(d.getDate()+n); return d; }
 
 // Wrapper autour de renderContentInner : celle-ci a plusieurs "return"
@@ -4704,10 +4788,13 @@ function setPageTitle(){
   if(!el) return;
   const names = { programme:"Programme", progression:"Progression", profil:"Profil" };
   el.textContent = activeTab==="aujourdhui" ? dayLabelShort(new Date()) : (names[activeTab]||"");
+  const act = document.getElementById("pageAction");
+  if(act) act.innerHTML = activeTab==="programme" ? `<button type="button" class="page-action" onclick="openAddSheet()">${icon("plus",16)} Ajouter</button>` : "";
 }
 function renderContent(){
   renderContentInner();
   setPageTitle();
+  if(sessionSheetId) refreshSheet(); // la carte de séance ouverte en feuille suit les changements
   if(document.querySelector("#tabs .tabs-bar")) renderTabs();
   runCountUps();
   const el = document.getElementById("content");
@@ -5245,46 +5332,16 @@ function renderContentInner(){
     const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
     const ready = !!profile;
     el.innerHTML = `
-      <div class="card">
-        <div class="stitle">Programme</div>
-        <div class="chart-hint" style="margin-top:0">Calendrier de séances généré à partir de tes objectifs, ton profil coureur et ton ressenti récent — reste modifiable séance par séance.</div>
-      </div>
+      ${ready?`<div class="seg" role="tablist" aria-label="Affichage du calendrier">
+        <button type="button" role="tab" aria-selected="${programViewMode==="week"}" class="${programViewMode==="week"?"active":""}" onclick="setProgramView('week')">Semaine</button>
+        <button type="button" role="tab" aria-selected="${programViewMode==="month"}" class="${programViewMode==="month"?"active":""}" onclick="setProgramView('month')">Mois</button>
+      </div>`:""}
       ${missedSessionsBanner()}
       ${urgentPainBanner()}
       ${suspendedZonesCard()}
       ${grosAdaptationBanner()}
       ${programSettingsFormHTML(profile)}
-      ${ready?`
-      <div class="card">
-        <div class="filters" style="margin-bottom:0">
-          <button class="flt${programViewMode==="week"?" active":""}" onclick="setProgramView('week')">Semaine</button>
-          <button class="flt${programViewMode==="month"?" active":""}" onclick="setProgramView('month')">Mois</button>
-        </div>
-      </div>
-      ${programViewMode==="week"?(()=>{
-        const monday = addDays(mondayOf(new Date()), programWeekOffset*7);
-        const weekSessions = plannedSessions.filter(p=>p.week_start_date===localDateStr(monday) && (p.status==="planned"||p.status==="done"));
-        const actualRunning = weekSessions.filter(p=>p.pace_zone).length;
-        const actualCross = weekSessions.filter(p=>!p.pace_zone).length;
-        const complete = actualRunning>=(Number(goals.frequence)||3) && actualCross>=(Number(goals.frequenceAutre)||0);
-        const genLabel = (actualRunning===0 && actualCross===0) ? "Générer cette semaine" : "Compléter cette semaine";
-        const weekDates = Array.from({length:7},(_,i)=>localDateStr(addDays(monday,i)));
-        if(programSelectedDate===null && weekDates.includes(localDateStr(new Date()))) programSelectedDate = localDateStr(new Date());
-        return `<div class="card">
-          ${programNavHeaderHTML(`${monday.toLocaleDateString('fr-FR',{day:'numeric',month:'long'})} – ${addDays(monday,6).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}`)}
-          ${programWeekBoardHTML(monday)}
-          ${complete?"":`<button class="btn-primary" style="margin-top:10px" onclick="generateProgram(new Date('${monday.toISOString()}'))">${genLabel}</button>`}
-        </div>${programSelectedDayPanelHTML()}`;
-      })():(()=>{
-        const monthDate = new Date(); monthDate.setDate(1); monthDate.setMonth(monthDate.getMonth()+programWeekOffset);
-        const today = new Date();
-        if(programSelectedDate===null && monthDate.getFullYear()===today.getFullYear() && monthDate.getMonth()===today.getMonth()) programSelectedDate = localDateStr(today);
-        const monthLabel = monthDate.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
-        return `<div class="card">
-          ${programNavHeaderHTML(monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1))}
-          ${programMonthStackHTML(monthDate)}
-        </div>${programSelectedDayPanelHTML()}`;
-      })()}`:""}
+      ${ready ? programCalendarHTML() + programSelectedDayPanelHTML() : ""}
     `;
     runProgramMaintenance();
   }

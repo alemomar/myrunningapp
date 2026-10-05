@@ -1201,6 +1201,29 @@ function sessionDisplayTitle(session){
   return { title:session.title||sessionTypeLabel(session.type), subtitle:"" };
 }
 
+/* ---------- Feuilles Ajouter / Modifier : distance, allure, durée (D47) ----------
+   Sur ces trois champs, on en remplit deux et la troisième se calcule, dans les deux sens (décision
+   d'Omar). Le champ modifié en dernier est gardé : on recalcule celui qui a été modifié le moins
+   récemment (`order` : champs dans l'ordre de leurs modifications, le plus récent en dernier ; un champ
+   jamais modifié passe avant tous les autres, par priorité durée, distance, allure). Avec deux champs
+   remplis seulement, c'est le champ vide qui est calculé. Unités : distKm (km), paceSecKm (s/km),
+   durationMin (min). */
+const RUN_TRIPLET_FIELDS = ["durationMin","distKm","paceSecKm"];
+function solveRunTriplet(vals, order){
+  const v = { distKm:Number(vals.distKm)||0, paceSecKm:Number(vals.paceSecKm)||0, durationMin:Number(vals.durationMin)||0 };
+  const filled = RUN_TRIPLET_FIELDS.filter(k=>v[k]>0);
+  if(filled.length<2) return { ...v, computed:null };
+  const rank = k => (order||[]).lastIndexOf(k);
+  let target;
+  if(filled.length===2) target = RUN_TRIPLET_FIELDS.find(k=>!(v[k]>0));
+  else target = RUN_TRIPLET_FIELDS.slice().sort((a,b)=>rank(a)-rank(b) || RUN_TRIPLET_FIELDS.indexOf(a)-RUN_TRIPLET_FIELDS.indexOf(b))[0];
+  const out = { ...v, computed:target };
+  if(target==="distKm") out.distKm = Math.round(v.durationMin*60/v.paceSecKm*100)/100;
+  else if(target==="paceSecKm") out.paceSecKm = Math.round(v.durationMin*60/v.distKm);
+  else out.durationMin = Math.round(v.distKm*v.paceSecKm/60);
+  return out;
+}
+
 /* ---------- Format court/détaillé de la notation post-séance (4.5.b) ----------
    CDC v2, 4.5 : par défaut, formulaire court (note globale 1-5 + "une
    gêne/douleur ?") ; le détaillé (respiration/mental/fatigue + carte du
@@ -1476,6 +1499,66 @@ function acutePainTrigger(ratingsHistory, zoneKeys){
   return null;
 }
 
+/* ---------- Tuile d'un jour (design 3c et 8, D18, D48) ----------
+   Modèle d'un jour pour « Ta semaine » et pour le calendrier de Programme (semaine et mois).
+   `status` (une seule valeur par jour) : « fait » si une séance est faite ou une vraie course existe ce
+   jour ; « manque » si une course prévue n'a pas été faite ; « prevu » s'il reste une séance à venir ;
+   sinon « repos ». `main` : la séance principale (la course d'abord), `second` : la 2e séance (pastille
+   « + ») ; `mainId` / `secondId` : leurs identifiants de séance prévue (null pour une course sans séance
+   prévue). Une séance légère passée et non faite reste neutre (aucune entrée). */
+function dayTileModel(date, plannedSessions, runs, todayStr){
+  const sessions = (plannedSessions||[]).filter(p=>["planned","done","missed"].includes(p.status) && p.planned_date===date);
+  const hasRun = (runs||[]).some(r=>r.date===date);
+  const missed = sessions.some(p => p.status==="missed" || (p.status==="planned" && p.pace_zone && date<todayStr));
+  let status;
+  if(hasRun || sessions.some(p=>p.status==="done")) status = "fait";
+  else if(missed) status = "manque";
+  else if(sessions.some(p=>p.status==="planned") && date>=todayStr) status = "prevu";
+  else status = "repos";
+  const entries = [];
+  sessions.forEach(p=>{
+    const isRun = sessionCategory(p)==="run";
+    let st = null;
+    if(p.status==="done") st = "fait";
+    else if(p.status==="missed" || (p.status==="planned" && p.pace_zone && date<todayStr)) st = "manque";
+    else if(p.status==="planned" && date>=todayStr) st = "prevu";
+    if(st) entries.push({ type:normalizeSessionType(p.type)||"Other", status:st, isRun, id:p.id||null });
+  });
+  const dayRuns = (runs||[]).filter(r=>r.date===date);
+  if(dayRuns.length){
+    // une vraie course valide la course prévue du jour ; sinon elle compte seule
+    const runEntry = entries.find(e=>e.isRun);
+    if(runEntry) runEntry.status = "fait";
+    else entries.push({ type:dayRuns[0].type||"EF", status:"fait", isRun:true, id:null });
+  }
+  entries.sort((a,b)=>(b.isRun?1:0)-(a.isRun?1:0));
+  const strip = e => e ? { type:e.type, status:e.status } : null;
+  return { date, status, isToday: date===todayStr, main:strip(entries[0]), second:strip(entries[1]),
+    mainId: entries[0] ? entries[0].id : null, secondId: entries[1] ? entries[1].id : null };
+}
+// Grille d'un mois (design 8b) : semaines du lundi au dimanche qui couvrent le mois ; `inMonth` estompe les
+// jours des mois voisins. `monthIndex` : 0 = janvier.
+function monthWeeks(year, monthIndex){
+  const fmt = (d) => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const first = new Date(year, monthIndex, 1), last = new Date(year, monthIndex+1, 0);
+  const start = new Date(first); start.setDate(start.getDate() - ((first.getDay()+6)%7));
+  const weeks = [];
+  for(let cursor=new Date(start); cursor<=last; cursor.setDate(cursor.getDate()+7)){
+    weeks.push(Array.from({length:7}, (_,i)=>{ const d = new Date(cursor); d.setDate(d.getDate()+i); return { date:fmt(d), inMonth:d.getMonth()===monthIndex }; }));
+  }
+  return weeks;
+}
+// Titre d'une petite carte de séance (V5) : « EF · 7,5 KM », « Yoga · 30 MIN » (la mise en majuscules est faite
+// par l'habillage). Sans distance ni durée : le type seul.
+function sessionSmallTitle(session){
+  const type = sessionTypeLabel(session.type);
+  const dist = Number(session.target_distance_km)||0;
+  const min = Math.round(Number(session.target_duration_min)||0);
+  if(dist>0) return `${type} · ${String(dist).replace(".",",")} km`;
+  if(min>0) return `${type} · ${min} min`;
+  return type;
+}
+
 /* ---------- Récap de la semaine (CDC v2, 4.8.a / 4.8.b) ----------
    Semaine = lundi-dimanche (comme le reste de l'app). Les 3 chiffres
    (distance, nombre de séances, durée) ne comptent que les courses ; la
@@ -1507,38 +1590,7 @@ function weekRecap(runs, plannedSessions, todayStr){
     };
   };
   const active = (plannedSessions||[]).filter(p=>["planned","done","missed"].includes(p.status));
-  const days = Array.from({length:7}, (_,i) => {
-    const date = fmt(addDays(monday, i));
-    const sessions = active.filter(p=>p.planned_date===date);
-    const hasRun = (runs||[]).some(r=>r.date===date);
-    const missed = sessions.some(p => p.status==="missed" || (p.status==="planned" && p.pace_zone && date<todayStr));
-    let status;
-    if(hasRun || sessions.some(p=>p.status==="done")) status = "fait";
-    else if(missed) status = "manque";
-    else if(sessions.some(p=>p.status==="planned") && date>=todayStr) status = "prevu";
-    else status = "repos";
-    // Tuile du jour (design 3c) : la séance principale (la course d'abord) et, s'il y en a une, la 2e
-    // séance (pastille « + »). Une séance légère passée et non faite reste neutre (aucune entrée).
-    const entries = [];
-    sessions.forEach(p=>{
-      const isRun = sessionCategory(p)==="run";
-      let st = null;
-      if(p.status==="done") st = "fait";
-      else if(p.status==="missed" || (p.status==="planned" && p.pace_zone && date<todayStr)) st = "manque";
-      else if(p.status==="planned" && date>=todayStr) st = "prevu";
-      if(st) entries.push({ type:normalizeSessionType(p.type)||"Other", status:st, isRun });
-    });
-    const dayRuns = (runs||[]).filter(r=>r.date===date);
-    if(dayRuns.length){
-      // une vraie course valide la course prévue du jour ; sinon elle compte seule
-      const runEntry = entries.find(e=>e.isRun);
-      if(runEntry) runEntry.status = "fait";
-      else entries.push({ type:dayRuns[0].type||"EF", status:"fait", isRun:true });
-    }
-    entries.sort((a,b)=>(b.isRun?1:0)-(a.isRun?1:0));
-    const strip = e => e ? { type:e.type, status:e.status } : null;
-    return { date, status, isToday: date===todayStr, main:strip(entries[0]), second:strip(entries[1]) };
-  });
+  const days = Array.from({length:7}, (_,i) => dayTileModel(fmt(addDays(monday, i)), plannedSessions, runs, todayStr));
   const plannedThisWeek = active.filter(p => inRange(p.planned_date, monday, nextMonday)).length;
   return { thisWeek: sum(monday, nextMonday), lastWeek: sum(lastMonday, monday), days, plannedThisWeek };
 }

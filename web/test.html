@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=64"></script>
+<script src="logic.js?v=66"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1340,6 +1340,47 @@ try {
   assertEqual("ligne de charge : au-dessus", chargeLineInfo({zone:"attention", color:"x"}, 1.456).label, "Au-dessus de la zone");
   assertEqual("ligne de charge : pas d'historique, pas de chiffre", chargeLineInfo({zone:"inconnue", color:"#A3A7AD"}, null), {label:"Pas encore de repère", value:"", color:"#A3A7AD"});
   assertEqual("charge sous la zone : gris lisible (le cyan est réservé aux données)", chargeEntrainementGauge(0.5).color, "#8B8F96");
+}
+
+// ---------- S5.1 : tuile d'un jour, grille du mois, titre de petite carte ----------
+{
+  const T="2026-10-07";
+  const m1 = dayTileModel("2026-10-07", [
+    {id:"a", planned_date:"2026-10-07", status:"planned", pace_zone:null, type:"Yoga"},
+    {id:"b", planned_date:"2026-10-07", status:"planned", pace_zone:"easy", type:"EF"},
+  ], [], T);
+  assertEqual("jour : la course prévue est la principale, le yoga la 2e (identifiants)", [m1.main.type, m1.mainId, m1.second.type, m1.secondId, m1.status, m1.isToday], ["EF","b","Yoga","a","prevu",true]);
+  const m2 = dayTileModel("2026-10-06", [], [{date:"2026-10-06", type:"Long", distKm:12, durationSec:4000}], T);
+  assertEqual("jour : course réelle sans séance prévue = faite, sans identifiant", [m2.main, m2.mainId], [{type:"Long", status:"fait"}, null]);
+  assertEqual("jour : aucune séance = repos", [dayTileModel("2026-10-09", [], [], T).status, dayTileModel("2026-10-09", [], [], T).main], ["repos", null]);
+  assertEqual("jour : séance annulée ou remplacée ignorée", dayTileModel("2026-10-09", [{id:"x", planned_date:"2026-10-09", status:"skipped", pace_zone:"easy", type:"EF"}], [], T).main, null);
+  const oct = monthWeeks(2026, 9);
+  assertEqual("mois : octobre 2026 = 5 semaines de 7 jours", [oct.length, oct.every(w=>w.length===7)], [5, true]);
+  assertEqual("mois : la grille commence le lundi 28 septembre", [oct[0][0].date, oct[0][0].inMonth, oct[0][3].date, oct[0][3].inMonth], ["2026-09-28", false, "2026-10-01", true]);
+  assertEqual("mois : la dernière semaine finit le dimanche 1er novembre", [oct[4][6].date, oct[4][6].inMonth], ["2026-11-01", false]);
+  assertEqual("mois : février 2027 (lundi 1er) = 4 semaines", monthWeeks(2027, 1).length, 4);
+  assertEqual("mois : mai 2026 finit un dimanche, pas de semaine en trop", [monthWeeks(2026, 4).length, monthWeeks(2026, 4).slice(-1)[0][6].date, monthWeeks(2026, 4).slice(-1)[0][6].inMonth], [5, "2026-05-31", true]);
+  assertEqual("mois : août 2026 finit un lundi, 6e semaine", [monthWeeks(2026, 7).length, monthWeeks(2026, 7).slice(-1)[0][0].date], [6, "2026-08-31"]);
+  assertEqual("petite carte : distance", sessionSmallTitle({type:"EF", target_distance_km:7.5}), "EF · 7,5 km");
+  assertEqual("petite carte : durée", sessionSmallTitle({type:"Yoga", target_duration_min:29.6}), "Yoga · 30 min");
+  assertEqual("petite carte : type seul", sessionSmallTitle({type:"Other"}), "Autre");
+  assertEqual("petite carte : Souplesse s'affiche Étirements", sessionSmallTitle({type:"Souplesse", target_duration_min:15}), "Étirements · 15 min");
+}
+
+// ---------- S5.3 : calcul distance / allure / durée (D47) ----------
+{
+  const r=(vals,order)=>{ const o=solveRunTriplet(vals,order); return [o.distKm,o.paceSecKm,o.durationMin,o.computed]; };
+  assertEqual("calcul : distance + allure = durée (10 km à 6'00 = 60 min)", r({distKm:10,paceSecKm:360},[]), [10,360,60,"durationMin"]);
+  assertEqual("calcul : distance + durée = allure (10 km en 50 min = 5'00)", r({distKm:10,durationMin:50},[]), [10,300,50,"paceSecKm"]);
+  assertEqual("calcul : allure + durée = distance (5'00 pendant 50 min = 10 km)", r({paceSecKm:300,durationMin:50},[]), [10,300,50,"distKm"]);
+  assertEqual("calcul : un seul champ rempli = rien à calculer", r({distKm:10},[]), [10,0,0,null]);
+  assertEqual("calcul : aucun champ rempli", r({},[]), [0,0,0,null]);
+  assertEqual("calcul : durée modifiée en dernier, on recalcule le moins récent (la distance)", r({distKm:8,paceSecKm:360,durationMin:60},["distKm","paceSecKm","durationMin"]), [10,360,60,"distKm"]);
+  assertEqual("calcul : distance modifiée en dernier, on recalcule l'allure (modifiée avant la durée)", r({distKm:12,paceSecKm:360,durationMin:60},["paceSecKm","durationMin","distKm"]), [12,300,60,"paceSecKm"]);
+  assertEqual("calcul : séance générée (rien de modifié), on change l'allure -> la durée suit", r({distKm:8,paceSecKm:300,durationMin:48},["paceSecKm"]), [8,300,40,"durationMin"]);
+  assertEqual("calcul : séance générée, on change la durée -> la distance suit", r({distKm:8,paceSecKm:360,durationMin:60},["durationMin"]), [10,360,60,"distKm"]);
+  assertEqual("calcul : arrondis (distance au centième, allure à la seconde, durée à la minute)", r({paceSecKm:347,durationMin:47},[]), [8.13,347,47,"distKm"]);
+  assertEqual("calcul : valeurs texte acceptées", r({distKm:"10",paceSecKm:"360"},[]), [10,360,60,"durationMin"]);
 }
 
 document.getElementById("summary").innerHTML =
