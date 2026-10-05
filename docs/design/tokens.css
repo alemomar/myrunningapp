@@ -1,0 +1,108 @@
+/* MyRunningApp — jetons de design (journal v45, 3 oct. 2026)
+   Thème sombre uniquement. Polices : Barlow Condensed (titres, chiffres, majuscules) + Barlow (texte).
+   Icônes : Lucide (https://lucide.dev). Graphiques : Chart.js 4.4.1. */
+
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap");
+
+:root {
+  /* — Fonds et surfaces — */
+  --bg: #0C0D0F;               /* fond de page */
+  --surface: #17191C;          /* cartes, tuiles, bandeau coach */
+  --surface-sunken: #0F1113;   /* champs, mini-tuiles dans une carte */
+  --surface-raised: #1B1E21;   /* feuilles (bottom sheets) */
+  --surface-control: #22252A;  /* boutons secondaires, squelettes */
+  --line: #26292E;             /* séparateurs, pistes de jauge/anneau */
+  --line-field: #2A2E33;       /* bord de champ et de pastille */
+  --line-empty: #33373D;       /* pointillés « rien encore » */
+  --grabber: #3A4047;          /* poignée de feuille */
+
+  /* — Texte — */
+  --text: #F2F3F0;             /* texte principal, sélection (blanc) */
+  --text-2: #C9CCD0;           /* texte secondaire */
+  --text-3: #A3A7AD;           /* sous-titres, valeurs, « Supprimer » */
+  --text-muted: #8B8F96;       /* libellés, sur-titres, icônes inactives */
+  --text-faint: #5A6068;       /* placeholders, chiffres à 0, désactivé */
+  --on-accent: #0C0D0F;        /* texte sur citron, blanc ou violet */
+
+  /* — Couleurs de rôle (règle validée) — */
+  --accent: #C6F432;                       /* citron : action principale, EF/facile, progrès */
+  --accent-soft: rgba(198, 244, 50, .12);  /* fond « Enregistré », icône sur citron */
+  --select: #F2F3F0;                       /* blanc : réglages et sélections */
+  --select-soft: rgba(242, 243, 240, .07);
+  --attention: oklch(0.72 0.17 300);       /* violet : à replacer, alertes, douleur ≥ 6 */
+  --attention-bg: oklch(0.72 0.17 300 / .10);
+  --attention-bg-strong: oklch(0.72 0.17 300 / .16); /* date « extrême » */
+  --attention-line: oklch(0.72 0.17 300 / .40);
+
+  /* — Données (graphiques) — */
+  --data-cyan: oklch(0.85 0.13 200);       /* série secondaire */
+  --data-coral: oklch(0.7 0.19 25);        /* efficience cardiaque, cardio */
+  --data-heart: oklch(0.62 0.22 25);       /* cœur, type Course, drapeau course officielle */
+  --data-neutral: #8B8F96;                 /* Z3 seul, moyenne, objectif */
+
+  /* — Types de séance — */
+  --type-ef: #C6F432;
+  --type-long: oklch(0.8 0.12 160);
+  --type-fractionne: oklch(0.62 0.13 45);  /* terre battue */
+  --type-seuil: oklch(0.74 0.11 80);
+  --type-course: oklch(0.62 0.22 25);
+  --type-recup: oklch(0.86 0.01 250);      /* gris perle, icône battery-charging — ni citron ni bleu */
+  --type-marche: oklch(0.74 0.05 70);      /* taupe, icône person-standing */
+  --type-renfo: oklch(0.72 0.14 250);
+  --type-souple: oklch(0.75 0.13 330);     /* Mobilité, Yoga, Pilates, Kiné */
+  --type-etirements: oklch(0.82 0.09 350); /* rose clair, icône move-horizontal */
+  --type-autre: #8B8F96;
+
+  /* — Typographie — */
+  --font-display: "Barlow Condensed", sans-serif; /* 600/700, majuscules */
+  --font-text: "Barlow", sans-serif;
+  --fs-hero: 56px;      /* record plein écran */
+  --fs-h1: 34px;        /* titre d'étape du démarrage */
+  --fs-h2: 28px;        /* titre de page (date, Programme…) */
+  --fs-h3: 22px;        /* titre de feuille / carte */
+  --fs-num: 22px;       /* chiffres de tuiles */
+  --fs-body: 15px;
+  --fs-small: 13.5px;
+  --fs-caption: 12.5px;
+  --fs-overline: 11px;  /* sur-titres : majuscules, letter-spacing .14em */
+
+  /* — Espacements — */
+  --sp-1: 4px; --sp-2: 6px; --sp-3: 8px; --sp-4: 10px; --sp-5: 12px;
+  --sp-6: 14px; --sp-7: 16px; --sp-8: 18px; --sp-9: 22px; --sp-10: 28px;
+  --page-pad: 16px;
+
+  /* — Arrondis — */
+  --r-xs: 10px;   /* tuiles jour 40 px */
+  --r-sm: 12px;   /* lignes de choix */
+  --r-md: 14px;   /* champs, mini-tuiles */
+  --r-lg: 18px;   /* bandeau coach, cartes de choix */
+  --r-xl: 22px;   /* cartes */
+  --r-sheet: 26px;
+  --r-pill: 999px;
+
+  /* — Tailles — */
+  --tap-min: 44px;     /* cible tactile minimale */
+  --btn-h: 48px;       /* bouton standard */
+  --btn-h-lg: 52px;    /* bouton du démarrage */
+  --field-h: 48px;
+  --chip-h: 36px;      /* pastilles de type (44 px dans le démarrage) */
+  --tile-day: 40px;
+  --nav-item: 48px;
+
+  /* — Ombres — */
+  --shadow-sheet: 0 -10px 40px rgba(0, 0, 0, .5);
+  --shadow-lift: 0 14px 30px rgba(0, 0, 0, .6); /* glisser-déposer */
+
+  /* — Animations — */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --t-fast: 200ms;
+  --t-step: 280ms;     /* étapes du démarrage */
+  --t-pulse: 1.4s;     /* squelettes */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-fast: 0ms; --t-step: 0ms; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+html, body { background: var(--bg); color: var(--text); font-family: var(--font-text); }

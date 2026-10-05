@@ -85,17 +85,6 @@
   --shadow-lift:0 14px 30px rgba(0,0,0,.6);
   --ease:cubic-bezier(.2,.8,.2,1);
   --t-fast:200ms;
-
-  /* Anciens noms, gardés le temps de la refonte pour que l'existant se recolore
-     d'un coup. À supprimer quand les écrans auront migré (tranches S4 à S11). */
-  --card:var(--surface);
-  --card-2:var(--surface-control);
-  --border:var(--line);
-  --text-dim:var(--text-3);
-  --accent-dim:var(--accent-soft);
-  --radius-lg:var(--r-xl);
-  --radius-md:var(--r-md);
-  --radius-sm:var(--r-xs);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{-webkit-font-smoothing:antialiased}
@@ -114,7 +103,7 @@ button,input,select,textarea{font-family:inherit}
   max-width:360px;margin:0 auto;padding:32px 24px;
 }
 .auth-logo{display:block;width:220px;max-width:70%;height:auto;margin:0 auto 18px}
-#authView .tagline{text-align:center;color:var(--text-dim);font-size:14px;margin-top:6px;margin-bottom:32px}
+#authView .tagline{text-align:center;color:var(--text-3);font-size:14px;margin-top:6px;margin-bottom:32px}
 .field{
   display:flex;align-items:center;gap:10px;
   background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-md);
@@ -127,14 +116,14 @@ button,input,select,textarea{font-family:inherit}
 }
 .field input::placeholder{color:var(--text-faint)}
 .goal-level-cards{display:flex;gap:6px}
-.goal-level-card{flex:1;padding:7px 6px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
+.goal-level-card{flex:1;padding:7px 6px;border-radius:var(--r-xs);border:1px solid var(--line);background:var(--surface);cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
 .goal-level-card.active{border-color:var(--select);background:var(--select-soft)}
 .goal-level-card .lbl{font-size:12px;font-weight:600}
-.goal-level-card .sub{font-size:9px;color:var(--text-dim);margin-top:1px;line-height:1.2}
+.goal-level-card .sub{font-size:9px;color:var(--text-3);margin-top:1px;line-height:1.2}
 .goal-principal-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.goal-principal-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);cursor:pointer;transition:border-color .15s,background .15s}
+.goal-principal-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--r-xs);border:1px solid var(--line);background:var(--surface);cursor:pointer;transition:border-color .15s,background .15s}
 .goal-principal-card.active{border-color:var(--select);background:var(--select-soft)}
-.goal-principal-card .icon-wrap{width:32px;height:32px;border-radius:50%;background:var(--card-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-dim);transition:color .15s,background .15s}
+.goal-principal-card .icon-wrap{width:32px;height:32px;border-radius:50%;background:var(--surface-control);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-3);transition:color .15s,background .15s}
 .goal-principal-card.active .icon-wrap{color:var(--select);background:var(--select-soft)}
 .goal-principal-card .lbl{font-size:12.5px;font-weight:600;line-height:1.25}
 @media (prefers-reduced-motion: no-preference){
@@ -247,7 +236,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 /* ---------- Content cards ---------- */
 #content{padding:0 20px}
 .card{
-  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);
   padding:18px;margin-bottom:14px;
 }
 .tutorial-modal-backdrop{
@@ -265,14 +254,14 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
   .card-row>.card{flex:1;min-width:0}
 }
 
-.session-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.session-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
 .session-row:last-child{border-bottom:none}
 .session-main{flex:1;min-width:0}
 .session-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
-.session-sub{font-size:12px;color:var(--text-dim);margin-top:2px}
+.session-sub{font-size:12px;color:var(--text-3);margin-top:2px}
 .session-right{text-align:right;flex-shrink:0}
 .session-pace{font-size:14px;font-weight:700;color:var(--accent)}
-.session-hr{font-size:11px;color:var(--text-dim);margin-top:2px}
+.session-hr{font-size:11px;color:var(--text-3);margin-top:2px}
 
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
 .toggle{position:relative;width:42px;height:25px;flex-shrink:0}
@@ -287,21 +276,21 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .flt{display:inline-flex;align-items:center;min-height:var(--chip-h);padding:0 14px;border-radius:var(--r-pill);font-size:13px;cursor:pointer;background:var(--surface-sunken);color:var(--text-3);border:1px solid var(--line-field);font-weight:500;white-space:nowrap}
 .flt.active{background:var(--select);border-color:var(--select);color:var(--on-accent);font-weight:600}
 
-.empty-state{text-align:center;padding:40px 20px;color:var(--text-dim)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-3)}
 .empty-state svg{color:var(--text-faint);margin-bottom:14px}
 .empty-state .title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
 .empty-state .sub{font-size:13px;line-height:1.5}
 
 
 .loading{display:flex;justify-content:center;padding:60px 0}
-.spinner{width:26px;height:26px;border-radius:50%;border:3px solid var(--card-2);border-top-color:var(--accent);animation:spin .7s linear infinite}
+.spinner{width:26px;height:26px;border-radius:50%;border:3px solid var(--surface-control);border-top-color:var(--accent);animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 .soon-card{text-align:center;padding:44px 22px}
 .soon-card svg{color:var(--text-faint);margin-bottom:16px}
-.soon-badge{display:inline-block;background:var(--accent-dim);color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin-bottom:12px}
+.soon-badge{display:inline-block;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin-bottom:12px}
 .soon-card h3{font-size:17px;font-weight:700;margin-bottom:8px}
-.soon-card p{font-size:13px;color:var(--text-dim);line-height:1.6;max-width:320px;margin:0 auto}
+.soon-card p{font-size:13px;color:var(--text-3);line-height:1.6;max-width:320px;margin:0 auto}
 
 
 /* Programme : calendrier semaine (colonnes) / mois (empilement de
@@ -320,9 +309,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
    déjà en cours — sans ça, dès que le doigt bouge vers un autre jour, iOS
    bascule en scroll natif et annule le pointeur (pointercancel), donc la
    carte s'arme mais ne se déplace jamais. */
-.account-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+.account-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
 .account-row:last-child{border-bottom:none}
-.account-row .lbl{font-size:13px;color:var(--text-dim)}
+.account-row .lbl{font-size:13px;color:var(--text-3)}
 .account-row .v{font-size:13px;font-weight:600}
 .btn-secondary{
   width:100%;min-height:var(--btn-h);padding:0 20px;border-radius:24px;border:none;
@@ -354,7 +343,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .cel-btns{display:flex;flex-direction:column;gap:8px}
 @media (prefers-reduced-motion: no-preference){ .cel{animation:sheetFade var(--t-step,280ms) ease-out} }
 /* ---------- Carte de séance (design 2d, V1 à V7) ---------- */
-.session-card{position:relative;margin-bottom:14px;padding:18px 16px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl)}
+.session-card{position:relative;margin-bottom:14px;padding:18px 16px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl)}
 .sc-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .sc-icon{flex:none;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center}
 .sc-overline{flex:1;min-width:0;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -875,11 +864,45 @@ button.pg-rec-row{cursor:pointer}
 .on-row .k{color:var(--text-muted);flex:none}
 .on-row .v{font-weight:600;text-align:right}
 .on-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:6px}
+.on-next{min-height:52px}
 .on-next.off{background:var(--surface-control);color:var(--text-faint)}
 .on-cancel{border:none;background:none;color:var(--text-muted);font:inherit;font-size:13px;padding:10px;cursor:pointer}
 .on-logo{display:flex;justify-content:center;padding-top:40px}
 .on-screen.welcome .on-logo{margin-top:auto;padding-top:0}
 .on-text{font-size:14.5px;color:var(--text-2);line-height:1.45}
+/* Hors ligne (S12, journal 13) : bandeau gris en haut, sans rouge ni violet */
+.offline-bar{position:sticky;top:0;z-index:450;display:flex;align-items:center;justify-content:center;gap:8px;padding:max(8px,env(safe-area-inset-top)) 16px 8px;background:var(--surface-control);color:var(--text-2);font-size:13px}
+.offline-bar svg{color:var(--text-muted);flex:none}
+/* États vides et chargement par squelettes (S12, journal 13) : tuiles en pointillés, chiffres à 0 en gris, une seule action citron */
+.sk{background:var(--surface-control);border-radius:var(--r-xl);animation:skPulse 1.4s ease-in-out infinite}
+.sk-title{height:30px;width:55%;border-radius:8px;margin:6px 4px 0}
+.sk-stack{display:flex;flex-direction:column;gap:14px}
+@keyframes skPulse{0%,100%{opacity:.45}50%{opacity:1}}
+.load-pill{display:flex;align-items:center;gap:10px;width:max-content;margin:0 auto 14px;padding:8px 14px;border-radius:var(--r-pill);background:var(--surface);font-size:13px;color:var(--text-2)}
+.load-pill i{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spin .9s linear infinite}
+@media (prefers-reduced-motion: reduce){ .sk{animation:none;opacity:.7} .load-pill i{animation:none} }
+.wk-num.zero{color:var(--text-faint)}
+.ec-row{display:flex;align-items:center;gap:12px}
+.ec-ic{width:32px;height:32px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;flex:none}
+.ec-t{font-size:15px;font-weight:600}
+.empty-hero{text-align:center;padding:26px 8px 18px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty-hero svg{color:var(--text-faint)}
+.empty-hero .title{font:700 26px/1.1 var(--font-display);text-transform:uppercase}
+.empty-hero .sub{font-size:14px;line-height:1.5;color:var(--text-3);max-width:320px}
+.empty-hero .btn-primary,.empty-hero .btn-secondary{max-width:340px}
+.ghost-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.ghost-tile{border:1px dashed var(--line-empty);border-radius:var(--r-lg);padding:14px;min-height:104px;display:flex;flex-direction:column;gap:6px}
+.ghost-tile .gt{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint)}
+.ghost-tile .gs{font-size:12.5px;line-height:1.4;color:var(--text-muted)}
+/* « On prépare ton programme… » (S12, 13c) */
+.pp-list{display:flex;flex-direction:column;gap:14px;margin:22px 0}
+.pp-item{display:flex;align-items:center;gap:12px;font-size:16px;color:var(--text-faint)}
+.pp-item.now{color:var(--text)}
+.pp-item.done{color:var(--text-2)}
+.pp-ic{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line-field);display:flex;align-items:center;justify-content:center;flex:none}
+.pp-item.done .pp-ic{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.pp-item.now .pp-ic i{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spin .9s linear infinite}
+@media (prefers-reduced-motion: reduce){ .pp-item.now .pp-ic i{animation:none} }
 /* Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13) */
 .sg-list{display:flex;flex-direction:column;gap:10px;margin:12px 0 8px}
 .sg-item{border-radius:var(--r-lg);padding:14px;display:flex;flex-direction:column;gap:12px;background:#131518;border:1px solid var(--surface-control)}
@@ -1033,6 +1056,7 @@ button.pg-rec-row{cursor:pointer}
 </style>
 </head>
 <body>
+<div id="offlineBar"></div>
 
 <div id="authView">
   <img class="auth-logo" src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="220" height="136">
@@ -1146,6 +1170,10 @@ const ICONS = {
   timer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="2" x2="14" y2="2"/><line x1="12" y1="14" x2="15" y2="11"/><circle cx="12" cy="14" r="8"/></svg>`,
   calendarClock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14v2.2l1.6 1"/><path d="M16 2v4"/><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M3 10h5"/><path d="M8 2v4"/><circle cx="16" cy="16" r="6"/></svg>`,
   arrowUpRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>`,
+  wifiOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></svg>`,
+  cloudOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/></svg>`,
+  calendarPlus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/><path d="M3 10h18"/><path d="M16 19h6"/><path d="M19 16v6"/></svg>`,
+  heartPulse: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>`,
   help: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>`,
 };
 function icon(name,size=18){ return ICONS[name].replace("<svg ",`<svg width="${size}" height="${size}" `); }
@@ -1338,9 +1366,31 @@ const TABS=[
   {key:"profil", label:"Profil", icon:"user"},
 ];
 
+// Erreurs sans fenêtre du navigateur (S12, journal 13 ; D70) : un message en bas avec « Réessayer » (jamais de rouge ni de
+// violet) ; un chargement impossible laisse un bloc gris à la place du contenu, ou, si on a déjà des données, les garde.
+let loadError = "", loadedOnce = false;
+const toastRetry = (message, retry, ms) => toast(message, { actionLabel:"Réessayer", onAction:retry, ms:ms||8000 });
+window.retryLoad = async () => {
+  const ok = await loadData();
+  if(ok) renderApp(); else if(!loadedOnce) renderApp();
+};
+function loadErrorHTML(){
+  return `<div class="empty-state err">${icon("cloudOff",44)}<div class="title">Impossible de charger tes séances</div><div class="sub">Ça vient de chez nous, pas de toi.</div><button type="button" class="btn-secondary" style="margin-top:16px" onclick="retryLoad()">Réessayer</button></div>`;
+}
+function renderOfflineBar(){
+  const el = document.getElementById("offlineBar");
+  if(el) el.innerHTML = navigator.onLine===false ? `<div class="offline-bar" role="status">${icon("wifiOff",16)}<span>Tu es hors ligne. On garde ce qui est affiché.</span></div>` : "";
+}
+window.addEventListener("offline", renderOfflineBar);
+window.addEventListener("online", () => { renderOfflineBar(); if(loadError) retryLoad(); });
 async function loadData() {
   const { data, error } = await supa.from("runs").select("*").order("start_date", { ascending: true });
-  if (error) { alert("Erreur de chargement : " + error.message); return; }
+  if (error) {
+    loadError = error.message;
+    if(loadedOnce) toastRetry("Pas pu actualiser tes séances. On garde ce qui est affiché.", retryLoad);
+    return false;
+  }
+  loadError = ""; loadedOnce = true;
   RUNS = (data || []).map(mapRow);
   runningRuns = RUNS.filter(r=>r.includeInStats);
   efRuns = runningRuns.filter(r=>r.type==="EF");
@@ -1357,7 +1407,7 @@ async function loadData() {
   const { data: profile, error: profileError } = await supa.from("profiles").select("sync_since_date, goals, max_hr, resting_hr, resting_hr_updated_at, resting_hr_is_manual, vo2_max, vo2_max_updated_at, vo2_max_is_manual, avatar_url, pseudo, age, gender, cities, dashboard_period, program_settings, onboarding_completed_at, suspended_zones").maybeSingle();
   if(profileError){
     console.error("Erreur de chargement du profil :", profileError);
-    alert("Erreur de chargement du profil : "+profileError.message+"\n\nTes réglages (Mon compte, Objectifs) risquent d'apparaître vides même s'ils sont bien enregistrés. Contacte-moi avec ce message.");
+    toastRetry("Tes réglages n'ont pas pu être chargés : ils peuvent apparaître vides sans être perdus.", retryLoad, 10000);
   }
   syncSinceDate = profile?.sync_since_date || null;
   goals = migrateGoals(profile?.goals || {});
@@ -1380,8 +1430,10 @@ async function loadData() {
   const { data: plannedData, error: plannedError } = await supa.from("planned_sessions").select("*").order("planned_date", { ascending: true });
   if(plannedError){
     console.error("Erreur de chargement du programme :", plannedError);
+    toastRetry("Ton programme n'a pas pu être chargé.", retryLoad, 10000);
   }
   plannedSessions = (plannedData || []).map(p=>({ ...p, type: normalizeSessionType(p.type) }));
+  return true;
 }
 
 // Formule 220-âge par défaut : plus fiable que le pic FC observé en
@@ -1490,14 +1542,15 @@ function flashSaved(elId, text="Enregistré"){
 // rien" remonté sur Mon compte).
 async function upsertProfile(fields){
   const { data: { user }, error: authError } = await supa.auth.getUser();
-  if(authError || !user){ alert("Session expirée — recharge la page et reconnecte-toi."); return false; }
+  if(authError || !user){ toast("Ta session a expiré. Recharge la page et reconnecte-toi.", { actionLabel:"Recharger", onAction:()=>location.reload(), ms:10000 }); return false; }
   const { error } = await supa.from("profiles").upsert({ user_id: user.id, ...fields });
-  if(error) alert("Erreur d'enregistrement : "+error.message);
+  // Écriture en échec : on la garde pour la rejouer telle quelle, puis on recharge (l'écran n'avait pas été mis à jour).
+  if(error) toastRetry("Pas enregistré, vérifie ta connexion.", async ()=>{ if(await upsertProfile(fields)){ await loadData(); renderContent(); toast("Enregistré."); } });
   return !error;
 }
 async function updateRun(id, fields){
   const { error } = await supa.from("runs").update(fields).eq("id", id);
-  if(error) alert("Erreur d'enregistrement : "+error.message);
+  if(error) toastRetry("Pas enregistré, vérifie ta connexion.", async ()=>{ if(await updateRun(id, fields)){ await loadData(); renderContent(); toast("Enregistré."); } });
   return !error;
 }
 
@@ -3390,7 +3443,7 @@ function objectiveFormHTML(){
         <input type="hidden" id="goal_terrainCourse" value="${slot.terrainCourse||""}">
 
         <div class="field" style="margin-top:14px;margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Date de la course</span>
+          <span style="font-size:12px;color:var(--text-3);white-space:nowrap">Date de la course</span>
           <input type="date" id="goal_dateCible" value="${slot.dateCible||""}" oninput="updateWeeksUntil()" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
         </div>
         <div class="chart-hint" id="weeksUntilOut" style="margin-top:4px">${weeksUntilText(slot.dateCible)}</div>
@@ -3405,9 +3458,9 @@ function objectiveFormHTML(){
               <div class="chart-hint" style="margin:0 0 6px">Temps</div>
               <div style="display:flex;align-items:center;gap:6px">
                 <input type="number" min="0" max="99" class="time-input" id="goal_pbH" value="${pbH||""}" placeholder="0" oninput="updatePbPaceGoal()" onchange="saveGoals()">
-                <span style="font-size:12px;color:var(--text-dim)">h</span>
+                <span style="font-size:12px;color:var(--text-3)">h</span>
                 <input type="number" min="0" max="59" class="time-input" id="goal_pbM" value="${pbM||""}" placeholder="0" oninput="updatePbPaceGoal()" onchange="saveGoals()">
-                <span style="font-size:12px;color:var(--text-dim)">min</span>
+                <span style="font-size:12px;color:var(--text-3)">min</span>
               </div>
             </div>
             <div>
@@ -3433,9 +3486,9 @@ function objectiveFormHTML(){
             <div class="chart-hint" style="margin:0 0 6px">Temps visé</div>
             <div style="display:flex;align-items:center;gap:6px">
               <input type="number" min="0" max="99" class="time-input" id="goal_tempsH" value="${tH||""}" placeholder="0" oninput="updateRacePaceGoal()" onchange="saveGoals()">
-              <span style="font-size:12px;color:var(--text-dim)">h</span>
+              <span style="font-size:12px;color:var(--text-3)">h</span>
               <input type="number" min="0" max="59" class="time-input" id="goal_tempsM" value="${tM||""}" placeholder="0" oninput="updateRacePaceGoal()" onchange="saveGoals()">
-              <span style="font-size:12px;color:var(--text-dim)">min</span>
+              <span style="font-size:12px;color:var(--text-3)">min</span>
             </div>
           </div>
           <div>
@@ -3456,7 +3509,7 @@ function objectiveFormHTML(){
       <div class="stitle">Ta situation actuelle</div>
       ${stats.map(([label,val])=>`<div class="account-row"><span class="lbl">${label}</span><span class="v">${val}</span></div>`).join("")}
       ${isReguliere?`<div class="field" style="margin-top:10px;margin-bottom:0">
-        <span style="font-size:12px;color:var(--text-dim)">Courses ces 3 derniers mois (estimation)</span>
+        <span style="font-size:12px;color:var(--text-3)">Courses ces 3 derniers mois (estimation)</span>
         <input type="number" min="0" max="200" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}" placeholder="ex: 20" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;text-align:right">
       </div>`:`<input type="hidden" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}">`}
     </div>`:`<input type="hidden" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}">`}
@@ -3510,7 +3563,7 @@ function objectiveFormHTML(){
         <span class="v">${efPaceRef!=null?fmtA(efPaceRef)+"/km":"pas encore assez de données"}</span>
       </div>`:""}
       <div class="field" style="${isAmelioAllure?"margin-top:10px":""}">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure EF</span>
+        <span style="font-size:12px;color:var(--text-3);white-space:nowrap">Allure EF</span>
         <div class="pace-stepper">
           <button type="button" onclick="adjustPaceGoal('allureEfVisee',-5,360)">−</button>
           <span class="val" id="allureEfVisee_display">${slot.allureEfVisee?fmtA(Number(slot.allureEfVisee)):"—"}</span>
@@ -3523,7 +3576,7 @@ function objectiveFormHTML(){
         <span class="v">${intensiveFreqRef!=null?intensiveFreqRef+"/semaine":"pas encore assez de données"}</span>
       </div>`:""}
       <div class="field" style="margin-bottom:0;${isAmelioAllure?"margin-top:10px":""}">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure Work (fractionné)</span>
+        <span style="font-size:12px;color:var(--text-3);white-space:nowrap">Allure Work (fractionné)</span>
         <div class="pace-stepper">
           <button type="button" onclick="adjustPaceGoal('allureWorkVisee',-5,300)">−</button>
           <span class="val" id="allureWorkVisee_display">${slot.allureWorkVisee?fmtA(Number(slot.allureWorkVisee)):"—"}</span>
@@ -3537,11 +3590,11 @@ function objectiveFormHTML(){
       <input type="hidden" id="goal_vmaConnue" value="${slot.vmaConnue||""}">
       <div id="vmaBlock" style="margin-top:10px;display:${slot.vmaConnue==="Oui"?"":"none"}">
         <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">VMA (km/h)</span>
+          <span style="font-size:12px;color:var(--text-3);white-space:nowrap">VMA (km/h)</span>
           <input type="number" min="8" max="25" step="0.1" id="goal_vma" value="${slot.vma||""}" placeholder="ex: 15" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
         </div>
         <div class="field" style="margin:10px 0 0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Date de ce test</span>
+          <span style="font-size:12px;color:var(--text-3);white-space:nowrap">Date de ce test</span>
           ${vmaDateSelectHTML(slot)}
         </div>
         <div class="chart-hint" style="margin-top:8px">Ta VMA ne sert à calculer tes allures conseillées que si ce test date de moins de 6 mois et si tu n'as pas donné de chrono dans « Ton niveau ».</div>
@@ -3571,6 +3624,9 @@ function profilCompteHTML(){
   const estMaxHr = estimatedMaxHr();
   const synced = RUNS.filter(r=>r.appleType && r.appleType!==MANUAL_RUN_MARKER);
   const lastSynced = synced.length ? synced.reduce((a,b)=>dateFromRun(a)>dateFromRun(b)?a:b) : null;
+  // Synchro muette (journal 13) : au bout de 7 jours sans course reçue, le point passe au gris avec un conseil RunSync.
+  const silentDays = lastSynced ? Math.max(0, daysBetween(localDateStr(dateFromRun(lastSynced)), localDateStr(new Date()))) : 0;
+  const silentDaysShown = silentDays>=7 ? silentDays : 0;
   return `<div class="pf-card sm">
       <div class="pf-title">Profil</div>
       <div style="display:flex;align-items:center;gap:12px"><div style="width:52px;height:52px;border-radius:50%;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text-muted);flex:none">${avatarUrl?`<img src="${escHtml(avatarUrl)}" alt="" style="width:100%;height:100%;object-fit:cover">`:icon("user",24)}</div><div style="font-size:14px;color:var(--text-3);min-width:0;overflow:hidden;text-overflow:ellipsis">${escHtml(userEmail||"—")}</div></div>
@@ -3591,8 +3647,9 @@ function profilCompteHTML(){
     </div>
     <div class="pf-card sm">
       <div class="pf-title">Synchronisation</div>
-      <div class="pf-sync${lastSynced?"":" off"}"><i></i><span>Apple Santé · ${lastSynced?"Connecté":"Pas encore connecté"}</span></div>
+      <div class="pf-sync${lastSynced && !silentDaysShown ? "" : " off"}"><i></i><span>Apple Santé · ${!lastSynced ? "Pas encore connecté" : silentDaysShown ? `aucune course depuis ${silentDaysShown} jours` : "Connecté"}</span></div>
       ${lastSynced ? `<div class="pf-hint" style="margin-top:-6px">Dernière course reçue : ${escHtml(relativeDayTime(dateFromRun(lastSynced).getTime(), Date.now()))}</div>` : `<div class="pf-hint" style="margin-top:-6px">Aucune course reçue pour l'instant.</div>`}
+      ${silentDaysShown ? `<div class="pf-hint" style="margin-top:-6px">Pas de souci si tu n'as pas couru. Sinon, ouvre RunSync et touche « Forcer une synchronisation ».</div>` : ""}
       <button type="button" class="pf-btn" onclick="location.href='myrunningapp://sync'">Synchroniser mes courses</button>
       ${lastSynced ? "" : `<button type="button" class="pf-btn" onclick="openSyncGuide()">Voir comment</button>`}
       <div class="pf-hint">Ouvre l'app iOS et lance la synchronisation : fonctionne uniquement depuis Safari sur ton iPhone.</div>
@@ -4181,11 +4238,18 @@ function warnIfDayBeforeRun(dateStr, type){
 // regenerateSession). 'skipped' n'apparaît dans aucune vue active
 // (programDayColHTML/programMonthCellHTML filtrent sur planned/done), le
 // jour redevient donc "Repos".
+// La séance est retirée tout de suite (statut « skipped », rien n'est effacé) ; un message de 5 s permet d'annuler.
 window.deleteSession = async (id) => {
-  if(!confirm("Retirer cette séance du calendrier ?")) return;
+  const before = plannedSessions.find(p=>p.id===id);
+  const previous = before ? before.status : "planned";
   const { error } = await supa.from("planned_sessions").update({status:"skipped", updated_at:new Date().toISOString()}).eq("id", id);
-  if(error){ alert("Erreur : "+error.message); return; }
+  if(error){ toastRetry("Pas enregistré, vérifie ta connexion.", ()=>deleteSession(id)); return; }
   await loadData(); renderContent();
+  toast("Séance retirée du calendrier.", { actionLabel:"Annuler", ms:5000, onAction: async () => {
+    const { error:e2 } = await supa.from("planned_sessions").update({status:previous, updated_at:new Date().toISOString()}).eq("id", id);
+    if(e2){ toast("Pas rétablie, vérifie ta connexion."); return; }
+    await loadData(); renderContent();
+  } });
 };
 const SAME_DAY_REFUSAL = "On ne peut pas mettre ces deux séances le même jour : une course accepte une séance légère, mais pas une autre course ni du renfo, pour que tu récupères entre deux efforts.";
 // Une séance planifiée passe automatiquement à "faite" dès qu'une séance
@@ -4317,7 +4381,7 @@ function suspendedZonesCard(){
       const label = (ZONE_SHORT_LABEL[z.zone]||z.zone).toLowerCase();
       const since = new Date(z.since).toLocaleDateString("fr-FR");
       return `<div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">
-        <div style="font-size:12px"><b>Zone en pause : ${label}</b>, depuis le ${since}.<br><span style="color:var(--text-dim)">Pense à consulter un médecin ou un kiné.</span></div>
+        <div style="font-size:12px"><b>Zone en pause : ${label}</b>, depuis le ${since}.<br><span style="color:var(--text-3)">Pense à consulter un médecin ou un kiné.</span></div>
         <button class="btn-secondary" onclick="resumeZone('${z.zone}')">Ça va mieux, reprendre</button>
       </div>`;
     }).join('<div style="height:10px"></div>')}
@@ -4935,8 +4999,8 @@ function weekRecapCardHTML(){
   const { thisWeek, lastWeek, days } = recap;
   const { acwr } = computeProgramInputs();
   const gauge = chargeEntrainementGauge(acwr);
-  const stat = (value, label, last) => `<div class="wk-stat">
-    <div class="wk-num">${value}</div>
+  const stat = (value, label, last, zero) => `<div class="wk-stat">
+    <div class="wk-num${zero?" zero":""}">${value}</div>
     <div class="wk-lbl">${label}</div>
     <div class="wk-last">sem. dernière : ${last}</div>
   </div>`;
@@ -4945,9 +5009,9 @@ function weekRecapCardHTML(){
   return `<div class="card">
     <div class="stitle" style="margin-bottom:0">Ta semaine</div>
     <div class="wk-stats">
-      ${stat(countUpHTML(thisWeek.km,"km","recap_km"), "distance", lastWeek.km.toLocaleString("fr-FR")+" km")}
-      ${stat(countUpHTML(thisWeek.sessions,"int","recap_n"), thisWeek.sessions>1?"courses":"course", lastWeek.sessions)}
-      ${stat(countUpHTML(thisWeek.minutes,"min","recap_min"), "durée", formatMinutesShort(lastWeek.minutes))}
+      ${stat(countUpHTML(thisWeek.km,"km","recap_km"), "distance", lastWeek.km.toLocaleString("fr-FR")+" km", !thisWeek.km)}
+      ${stat(countUpHTML(thisWeek.sessions,"int","recap_n"), thisWeek.sessions>1?"courses":"course", lastWeek.sessions, !thisWeek.sessions)}
+      ${stat(countUpHTML(thisWeek.minutes,"min","recap_min"), "durée", formatMinutesShort(lastWeek.minutes), !thisWeek.minutes)}
     </div>
     <div class="wk-days">${days.map(weekTileHTML).join("")}</div>
     <div class="wk-legend">
@@ -5171,8 +5235,8 @@ function todayScreenHTML(){
   const hasProgram = plannedSessions.some(p=>p.status==="planned"||p.status==="done");
   let body, framed = true;
   if(todaySessions.length){ body = todaySessions.map(s=>programSessionCardHTML(s,date)).join(""); framed = false; }
-  else if(!hasProgram) body = `<div class="chart-hint" style="margin-top:0">Tu n'as pas encore de programme.</div>
-    <button class="btn-secondary" style="margin-top:10px" onclick="goToProgramme()">Créer mon programme</button>`;
+  else if(!hasProgram) body = `<div class="ec-row"><div class="ec-ic">${icon("calendarPlus",18)}</div><div class="ec-t">Tu n'as pas encore de programme.</div></div>
+    <button class="btn-primary" style="margin-top:14px" onclick="goToProgramme()">Créer mon programme</button>`;
   else if(runningRuns.some(r=>localDateStr(dateFromRun(r))===todayStr)) body = `<div class="chart-hint" style="margin-top:0">Aucune séance n'était planifiée aujourd'hui, mais tu as couru : bravo !</div>`;
   else body = restDayMessageHTML();
   // Une seule carte d'action sous la séance du jour (D11) ; le bandeau coach laisse la place aux
@@ -5580,13 +5644,23 @@ function renderContent(){
   const bubble = tutorialBubbleHTML(activeTab);
   if(bubble && el) el.innerHTML = bubble + el.innerHTML;
 }
+// Progression sans aucune course (journal 13) : un rappel de RunSync avec « Voir comment » (ouvre le guide) et « Ajouter une
+// séance réalisée », puis les blocs à venir en pointillés.
+function progressionEmptyHTML(){
+  const ghost = (t) => `<div class="ghost-tile"><div class="gt">${t}</div><div class="gs">Ils apparaîtront dès ta première course.</div></div>`;
+  return `<div class="empty-hero">${icon("heartPulse",44)}<div class="title">Aucune séance pour l'instant</div>
+      <div class="sub">L'app iOS RunSync envoie tes courses depuis Apple Santé. Elles apparaîtront ici dès ta première course.</div>
+      <button type="button" class="btn-primary" onclick="openSyncGuide()">Voir comment</button>
+      <button type="button" class="btn-secondary" onclick="openManualRun()">Ajouter une séance réalisée</button></div>
+    <div class="ghost-grid">${["Efficience cardiaque","Régularité","Chiffres clés","Tes records"].map(ghost).join("")}</div>`;
+}
 function renderContentInner(){
   const el=document.getElementById("content");
 
   // Objectifs, Mon compte, Programme et Aujourd'hui n'ont pas besoin de séances
   // (un nouvel utilisateur doit pouvoir régler ses objectifs avant sa première).
   if (RUNS.length===0 && !["programme","aujourdhui","profil"].includes(activeTab)){
-    el.innerHTML=`<div class="card">${emptyState("Aucune séance pour l'instant","Première fois ? Ouvre l'app pour choisir depuis quelle date importer, puis synchronise.",true)}<button class="btn-secondary" style="margin-top:10px" onclick="openManualRun()">Ajouter une séance faite sans montre</button></div>`;
+    el.innerHTML = progressionEmptyHTML();
     return;
   }
 
@@ -5661,10 +5735,17 @@ function runProgramMaintenance(){
   return programMaintenancePromise;
 }
 
+// Chargement par squelettes (13a) : des blocs gris qui reprennent la forme de l'écran et pulsent doucement ; la pilule
+// « Chargement… » en haut. « Synchronisation de tes courses… » est réservé au guide de connexion (D68).
+function skeletonHTML(tab){
+  const shapes = { aujourdhui:[52,150,120,210], programme:[44,330,96,96], progression:[170,110,110,230], profil:[44,150,250,120] }[tab] || [150,120,200];
+  return `<div class="load-pill" role="status"><i aria-hidden="true"></i>Chargement…</div>
+    <div class="sk-stack" aria-hidden="true"><div class="sk sk-title"></div>${shapes.map(h=>`<div class="sk" style="height:${h}px"></div>`).join("")}</div>`;
+}
 async function boot(){
   document.getElementById("authView").style.display="none";
   document.getElementById("appView").style.display="block";
-  document.getElementById("content").innerHTML=`<div class="loading"><div class="spinner"></div></div>`;
+  document.getElementById("content").innerHTML = skeletonHTML(activeTab);
   await loadData();
   renderApp();
   maybeCelebrate();
@@ -5686,6 +5767,12 @@ function accountHasData(){
 }
 function renderApp(){
   const tabsEl = document.getElementById("tabs");
+  renderOfflineBar();
+  if(loadError && !loadedOnce){
+    tabsEl.style.display = "none"; document.querySelector(".topbar").style.display = "none";
+    document.getElementById("content").innerHTML = loadErrorHTML();
+    return;
+  }
   if(!onboardingCompletedAt && !onbRestarting && accountHasData()){
     onboardingCompletedAt = new Date().toISOString();
     upsertProfile({ onboarding_completed_at: onboardingCompletedAt });
@@ -5718,7 +5805,7 @@ window.scheduleGuidedTest = async (silent) => {
     type:"EF", pace_zone:"easy", title:t.title, description:t.description, target_duration_min:t.durationMin,
     rationale:t.rationale, status:"planned", source:"generated", generation_reason:"guided_test",
   });
-  if(error){ if(!silent) alert("Erreur : "+error.message); return; }
+  if(error){ if(!silent) toastRetry("Pas enregistré, vérifie ta connexion.", ()=>scheduleGuidedTest()); return; }
   if(programSettings?.guidedTest?.lastFailure){
     const ps = { ...programSettings, guidedTest:{ status:"pending" } };
     if(await upsertProfile({ program_settings: ps })) programSettings = ps;
@@ -5995,8 +6082,18 @@ function onbStepConnect(){
   return onbScreenHTML({ step:5, back:false, title:"Connecte tes courses", sub:"L'app iOS RunSync envoie tes courses depuis Apple Santé. Elles arrivent ici toutes seules, avec ta fréquence cardiaque.", body,
     next:{ label:"Voir comment", call:"openSyncGuide()" }, secondary:{ label:"Plus tard", call:"onbLeave()" } });
 }
+// « On prépare ton programme… » (13c) : 4 étapes qui se cochent au fil du vrai travail, avec une courte pause entre deux pour que
+// le texte reste lisible (pas d'attente artificielle au-delà).
+const ONB_PREP_STEPS = ["Objectif et niveau", "Allures", "Placement dans ta semaine", "4 premières semaines"];
+function onbPrepHTML(){
+  const done = onb.prepDone||0;
+  const items = ONB_PREP_STEPS.map((t,i)=>`<div class="pp-item ${i<done?"done":i===done?"now":""}"><span class="pp-ic">${i<done?icon("check",16):i===done?`<i aria-hidden="true"></i>`:""}</span><span>${t}</span></div>`).join("");
+  return `<div class="on-screen"><div class="on-head" style="margin-top:auto"><div class="on-title">On prépare ton programme…</div><div class="on-sub">Ça ne prend que quelques secondes.</div></div>
+    <div class="pp-list" role="status">${items}</div><div style="margin-bottom:auto"></div></div>`;
+}
 function onboardingHTML(){
   if(!onb) onbInit();
+  if(onb.saving && onb.prepDone!=null) return onbPrepHTML();
   if(onb.step===0){
     return onbScreenHTML({ step:0, hero:`<div class="on-logo"><img src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="168" height="168"></div>`, title:"Bienvenue sur MyRunningApp",
       sub:"En quelques questions, on prépare un programme adapté à toi : ton objectif, ton niveau et tes disponibilités. Ça prend 2 minutes, et tu pourras tout modifier ensuite dans Profil.", next:{ label:"C'est parti", call:"onbGo(1)" } });
@@ -6011,19 +6108,25 @@ function onboardingHTML(){
 // de connecter les courses (étape 5), sauf si des courses sont déjà arrivées d'Apple Santé.
 window.onbFinish = async function(){
   if(!onbCanContinue()) return;
-  onb.saving = true; renderApp();
+  onb.saving = true; onb.prepDone = 0; renderApp();
+  const pause = () => new Promise(r=>setTimeout(r, 420));
+  const tick = async (n) => { onb.prepDone = n; renderApp(); await pause(); };
   const patch = onbPatch();
   const completedAt = new Date().toISOString();
   const ok = await upsertProfile({ goals: patch.goals, program_settings: patch.programSettings, onboarding_completed_at: completedAt });
-  if(!ok){ onb.saving = false; renderApp(); return; }
+  if(!ok){ onb.saving = false; onb.prepDone = null; renderApp(); return; }
   goals = patch.goals; programSettings = patch.programSettings; onboardingCompletedAt = completedAt;
   onbRestarting = false; onbConnect = true;      // l'écran du parcours reste affiché pendant la génération
+  await tick(1);                                  // objectif et niveau enregistrés
   try{
-    if(patch.needsGuidedTest) await window.scheduleGuidedTest(true);
-    else await window.generateProgram(mondayOf(new Date()), {silent:true});
+    await tick(2);                                // allures : celles de « Ton niveau » (ou le test de 20 minutes à venir)
+    if(patch.needsGuidedTest){ await window.scheduleGuidedTest(true); await tick(3); }
+    else { await window.generateProgram(mondayOf(new Date()), {silent:true}); await tick(3); }
+    if(!patch.needsGuidedTest){ programAdjustmentChecked = false; await applyProgramAdjustments(); }   // les 4 premières semaines
+    await tick(4);
   }catch(e){ console.error("Génération initiale :", e); }
   if(receivedRuns().length>0){ onbLeave(); return; }
-  onb.saving = false; onb.step = 5; onb._anim = "fwd";
+  onb.saving = false; onb.prepDone = null; onb.step = 5; onb._anim = "fwd";
   renderApp();
 };
 window.onbLeave = () => {

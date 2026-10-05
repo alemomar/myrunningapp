@@ -357,6 +357,16 @@
     RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; show("progression");
   } else if(scen==="vide_programme"){
     RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; programViewMode="week"; programWeekOffset=0; show("programme");
+  } else if(/^(chargement_|erreur_chargement|hors_ligne|message_erreur|profil_synchro_muette|onboarding_preparation)/.test(scen)){
+    // S12 : chargement par squelettes, erreur de chargement, hors ligne, message avec « Réessayer », synchro muette, préparation du programme
+    celebrationOff(); plannedSessions=[...wkSessions, ...future];
+    const host = document.getElementById("content");
+    if(/^chargement_/.test(scen)){ document.getElementById("tabs").style.display=""; host.innerHTML = skeletonHTML(scen.replace("chargement_","")); }
+    else if(scen==="erreur_chargement"){ loadError="réseau"; loadedOnce=false; renderApp(); }
+    else if(scen==="hors_ligne"){ Object.defineProperty(navigator, "onLine", { get:()=>false, configurable:true }); show("aujourdhui"); renderOfflineBar(); }
+    else if(scen==="message_erreur"){ show("profil"); toast("Pas enregistré, vérifie ta connexion.", { actionLabel:"Réessayer", ms:600000 }); }
+    else if(scen==="profil_synchro_muette"){ RUNS=RUNS.filter(r=>dateFromRun(r).getTime() < Date.now()-9*86400000); runningRuns=RUNS.filter(r=>r.includeInStats); setProfilSectionState("compte"); show("profil"); }
+    else if(scen==="onboarding_preparation"){ RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbInit(); onb.step=4; onb.saving=true; onb.prepDone=2; renderApp(); }
   } else if(/^guide_(etape[123]|attente|ok|vide)$/.test(scen)){
     // S10 : guide « Voir comment » (connecter RunSync), depuis Mon compte › Synchronisation
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; setProfilSectionState("compte"); show("profil");
