@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=76"></script>
+<script src="logic.js?v=77"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -337,22 +337,27 @@ try {
     true);
 }
 
-// --- resolveRunnerProfile : priorité PB objectif > VMA objectif > repli ---
+// --- resolveRunnerProfile : « Ton niveau » seulement (S8, D76) ---
 {
-  const RACE_DISTANCES_KM = {"10km":10, "Semi":21.0975};
+  const T = "2026-10-05";
   const goalsWithPb = { principal: { objectifPrincipal:"Préparer une course", distanceCourse:"10km", pbExistant:"Oui", pbSec:2700 } };
-  const pbProfile = resolveRunnerProfile(goalsWithPb, null, RACE_DISTANCES_KM);
-  assertEqual("resolveRunnerProfile : PB réel priorisé (source)", pbProfile.source, "goal_pb");
-  assertEqual("resolveRunnerProfile : PB réel priorisé (distance/temps)", [pbProfile.distanceKm, pbProfile.timeSec], [10, 2700]);
-
-  const goalsWithVma = { principal: { objectifPrincipal:"Améliorer mon allure", vmaConnue:"Oui", vma:15 } };
-  const vmaProfile = resolveRunnerProfile(goalsWithVma, null, RACE_DISTANCES_KM);
-  assertEqual("resolveRunnerProfile : repli sur VMA si pas de PB (source)", vmaProfile.source, "goal_vma");
-
-  const fallbackProfile = resolveRunnerProfile({}, {refDistanceKm:5, refTimeSec:1500}, RACE_DISTANCES_KM);
-  assertEqual("resolveRunnerProfile : repli programSettings si rien côté Objectifs", fallbackProfile.source, "program_fallback");
-
-  assertEqual("resolveRunnerProfile : null si aucune source disponible", resolveRunnerProfile({}, null, RACE_DISTANCES_KM), null);
+  assertEqual("resolveRunnerProfile : un record d'Objectifs ne calcule plus les allures", resolveRunnerProfile(goalsWithPb, null, T), null);
+  const chrono = resolveRunnerProfile(goalsWithPb, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-09-15"}, T);
+  assertEqual("resolveRunnerProfile : chrono de « Ton niveau » prioritaire sur le record (source, distance, temps)", [chrono.source, chrono.distanceKm, chrono.timeSec], ["level_chrono", 10, 2820]);
+  assertEqual("resolveRunnerProfile : chrono récent, pas à rafraîchir", [chrono.stale, chrono.undated, chrono.approx], [false, false, false]);
+  const test = resolveRunnerProfile({}, {refDistanceKm:4.2, refTimeSec:1200, refDate:"2026-09-20", refSource:"test"}, T);
+  assertEqual("resolveRunnerProfile : test guidé", test.source, "level_test");
+  assertEqual("resolveRunnerProfile : de plus de 6 mois, on s'en sert encore mais il est à rafraîchir", [resolveRunnerProfile({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-03-01"}, T).stale, resolveRunnerProfile({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-03-01"}, T)!==null], [true, true]);
+  assertEqual("resolveRunnerProfile : pile 6 mois, encore récent", resolveRunnerProfile({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-04-05"}, T).stale, false);
+  assertEqual("resolveRunnerProfile : un jour de plus, périmé", resolveRunnerProfile({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-04-04"}, T).stale, true);
+  const undated = resolveRunnerProfile({}, {refDistanceKm:5, refTimeSec:1500}, T);
+  assertEqual("resolveRunnerProfile : compte existant sans date : utilisé, signalé « sans date » (question de reprise)", [undated.source, undated.undated, undated.stale], ["level_chrono", true, false]);
+  const vmaGoals = { principal: { objectifPrincipal:"Améliorer mon allure", vmaConnue:"Oui", vma:15, vmaDate:"2026-08-15" } };
+  assertEqual("resolveRunnerProfile : VMA datée de moins de 6 mois, seulement sans « Ton niveau »", [resolveRunnerProfile(vmaGoals, null, T).source, resolveRunnerProfile(vmaGoals, {refDistanceKm:5, refTimeSec:1500, refDate:"2026-09-01"}, T).source], ["goal_vma", "level_chrono"]);
+  assertEqual("resolveRunnerProfile : VMA sans date ou de plus de 6 mois : pas utilisée", [
+    resolveRunnerProfile({ principal: { objectifPrincipal:"Améliorer mon allure", vmaConnue:"Oui", vma:15 } }, null, T),
+    resolveRunnerProfile({ principal: { objectifPrincipal:"Améliorer mon allure", vmaConnue:"Oui", vma:15, vmaDate:"2026-02-15" } }, null, T)], [null, null]);
+  assertEqual("resolveRunnerProfile : null si aucune source disponible", resolveRunnerProfile({}, null, T), null);
 }
 
 // --- shouldShowDetailedRatingForm (4.5.b) ---
@@ -715,13 +720,13 @@ try {
   assertEqual("patch : objectif, distance et date de course", [r.goals.principal.objectifPrincipal, r.goals.principal.distanceCourse, r.goals.principal.dateCible], ["Préparer une course","10km","2026-12-20"]);
   assertEqual("patch : conserve les autres champs du profil (pb existant, autre)", [r.goals.principal.pbSec, r.goals.autre], [3000,"x"]);
   assertEqual("patch : niveau, fréquence en texte, jours triés", [r.goals.niveau, r.goals.frequence, r.goals.joursIndisponibles], ["Intermédiaire","3","2,6"]);
-  assertEqual("patch : le chrono devient le temps de référence de repli", [r.programSettings.refDistanceKm, r.programSettings.refTimeSec, r.programSettings.foo], [5,1680,1]);
+  assertEqual("patch : le chrono devient le temps de référence (« Ton niveau »)", [r.programSettings.refDistanceKm, r.programSettings.refTimeSec, r.programSettings.foo], [5,1680,1]);
   assertEqual("patch : pas de plan débutant pour un coureur régulier", [r.beginner, "beginnerPlan" in r.programSettings], [false,false]);
   assertEqual("patch : chrono saisi -> pas de test guidé", [r.needsGuidedTest, "guidedTest" in r.programSettings], [false,false]);
   const noRef = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {}, {}, race, "2026-10-05");
   assertEqual("patch : ni chrono ni record -> test guidé en attente", [noRef.needsGuidedTest, noRef.programSettings.guidedTest], [true, {status:"pending"}]);
   const withPb = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {principal:{pbSec:3000}}, {}, race, "2026-10-05");
-  assertEqual("patch : un record existant évite le test guidé", withPb.needsGuidedTest, false);
+  assertEqual("patch : un record existant n'évite plus le test guidé (D76)", withPb.needsGuidedTest, true);
   const shortRunner = onboardingProfilePatch({ ...base, niveau:"Débutant", frequenceHistorique:"1 fois par semaine ou moins", dureeMax:15, chronoDistance:"", chronoSec:0 }, {}, {}, race, "2026-10-05");
   assertEqual("patch : Débutant qui court moins de 20 min -> plan marche/course, pas de test guidé", [shortRunner.beginner, shortRunner.needsGuidedTest], [true,false]);
   const testDone = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {}, {guidedTest:{status:"done"}}, race, "2026-10-05");
@@ -771,7 +776,7 @@ try {
   assertEqual("evaluateGuidedTestRun : 10 min -> refusé (durée)", evaluateGuidedTestRun(2, 600), {ok:false, reason:"duree"});
   assertEqual("evaluateGuidedTestRun : 50 min -> refusé (durée)", evaluateGuidedTestRun(8, 3000), {ok:false, reason:"duree"});
   assertEqual("evaluateGuidedTestRun : 1 km -> refusé (distance)", evaluateGuidedTestRun(1, 1200), {ok:false, reason:"distance"});
-  assertEqual("evaluateGuidedTestRun : le temps de référence donne bien un profil exploitable par le moteur", resolveRunnerProfile({}, {refDistanceKm:4.2, refTimeSec:1200}, {})!==null, true);
+  assertEqual("evaluateGuidedTestRun : le temps de référence donne bien un profil exploitable par le moteur", resolveRunnerProfile({}, {refDistanceKm:4.2, refTimeSec:1200, refDate:"2026-10-02", refSource:"test"}, "2026-10-05")!==null, true);
 }
 
 // --- Textes "En savoir plus" (4.10.b, 4.10.c) ---
@@ -1593,6 +1598,137 @@ try {
   assertEqual("volume : sans objectif, ni limite ni couleur d'état", [vol3.limitKm, vol3.bars[0].state], [null, "none"]);
   assertEqual("volume : aucune course", monthlyVolumeBars([], 90, todayTs, 12).bars, []);
   assertEqual("facile / soutenu : zones 1 à 3 contre 4 et 5", easyHardMonthly([{label:"sept.", secs:[600,1200,600,300,100]}, {label:"août", secs:[0,0,0,0,0]}]), [{label:"sept.", easySec:2400, hardSec:400, easyPct:86, hardPct:14}]);
+}
+
+// --- S8.1 : « Ton niveau », garde-fou, nouvelles allures, programme à mettre à jour (D62, D72, D73, D76) ---
+{
+  const T = "2026-10-05", DAY = 86400000, now = new Date(2026,9,5).getTime();
+  const RACE = {"5km":5,"10km":10,"15km":15,"Semi":21.0975,"Marathon":42.195};
+  // Dates et mois
+  assertEqual("mois : 6 mois avant le 5 oct. = 5 avril", addMonthsStr("2026-10-05", -6), "2026-04-05");
+  assertEqual("mois : le jour est ramené à la fin du mois (31 août - 6 mois)", addMonthsStr("2026-08-31", -6), "2026-02-28");
+  assertEqual("mois : passage d'année", addMonthsStr("2026-01-15", -3), "2025-10-15");
+  assertEqual("mois : récent ? (pile 6 mois, un jour de plus, sans date)", [isLevelDateFresh("2026-04-05", T), isLevelDateFresh("2026-04-04", T), isLevelDateFresh(null, T)], [true, false, false]);
+  assertEqual("mois proposés : le mois en cours et les 6 précédents", levelMonthOptions(T).map(o=>o.value+"|"+o.label), ["2026-10|Octobre 2026","2026-09|Septembre 2026","2026-08|Août 2026","2026-07|Juillet 2026","2026-06|Juin 2026","2026-05|Mai 2026","2026-04|Avril 2026"]);
+  assertEqual("mois proposés : tous sont récents (le plus ancien aussi)", levelMonthOptions(T).every(o=>isLevelDateFresh(levelDateFromMonth(o.value, T), T)), true);
+  assertEqual("mois proposés : début d'année", levelMonthOptions("2027-01-10").map(o=>o.value), ["2027-01","2026-12","2026-11","2026-10","2026-09","2026-08","2026-07"]);
+  assertEqual("date d'un mois : le 15, jamais après aujourd'hui", [levelDateFromMonth("2026-09", T), levelDateFromMonth("2026-10", T), levelDateFromMonth("", T)], ["2026-09-15", "2026-10-05", null]);
+  assertEqual("date en toutes lettres", [levelDateLabel("2026-09-15"), isoToFr("2027-03-14")], ["septembre 2026", "14/03/2027"]);
+  assertEqual("distances en mots", [5,10,21.0975,42.195,12.5].map(k=>levelDistanceName(k).on), ["5 km","10 km","le semi-marathon","le marathon","12,5 km"]);
+
+  // Phrase « d'après quoi » et ligne d'état de « Ton niveau »
+  const prChrono = resolveRunnerProfile({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-09-15"}, T);
+  assertEqual("source en mots : chrono, test, VMA", [
+    levelSourceText(prChrono),
+    levelSourceText(resolveRunnerProfile({}, {refDistanceKm:4.2, refTimeSec:1200, refDate:"2026-09-20", refSource:"test"}, T)),
+    levelSourceText(resolveRunnerProfile({ principal:{ objectifPrincipal:"Améliorer mon allure", vmaConnue:"Oui", vma:15, vmaDate:"2026-08-15" } }, null, T))],
+    ["ton chrono sur 10 km (47:00)", "ton test de 20 minutes (4,2 km)", "ta VMA (15 km/h)"]);
+  assertEqual("ligne d'état : chrono daté", levelStatus(prChrono), { text:"Allures conseillées calculées d'après ton chrono sur 10 km (47:00), septembre 2026.", stale:false });
+  assertEqual("ligne d'état : plus de 6 mois", levelStatus(resolveRunnerProfile({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-03-01"}, T)).stale, true);
+  assertEqual("ligne d'état : date estimée, pas de mois affiché", levelStatus(resolveRunnerProfile({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-07-05", refDateApprox:true}, T)).text, "Allures conseillées calculées d'après ton chrono sur 10 km (47:00).");
+  assertEqual("ligne d'état : rien sans temps de référence", levelStatus(null), null);
+
+  // Garde-fou « temps trop rapide »
+  const mk = (d, pace, type, q, dist) => ({ ts: now - d*DAY, type: type||"EF", distKm: dist||6, paceSecKm: pace, qualitatif: q===undefined ? true : q });
+  const slow = [mk(3,440), mk(10,450), mk(17,445), mk(24,430), mk(80,300), mk(5,300,"Seuil"), mk(6,300,"EF",false), mk(7,300,"EF",true,1.2)];
+  const reality = easyPaceReality(slow, now);
+  assertEqual("vraies sorties faciles : 4 sorties EF récentes (ni Seuil, ni cœur monté, ni trop vieilles, ni trop courtes)", reality, { medianSecKm:442.5, count:4 });
+  assertEqual("vraies sorties faciles : moins de 3 sorties, pas de jugement", easyPaceReality([mk(3,440), mk(10,450)], now), null);
+  assertEqual("temps trop rapide : 10 km en 47:00 alors qu'on court en facile à 7'22 (allure conseillée 5'46)", refTimeTooFast(10, 2820, reality), true);
+  assertEqual("temps trop rapide : 10 km en 55:00 (facile conseillé 6'40) contre 7'00 réels : cohérent", refTimeTooFast(10, 3300, {medianSecKm:420, count:4}), false);
+  assertEqual("temps trop rapide : sans sorties faciles récentes, jamais d'avertissement", refTimeTooFast(10, 2820, null), false);
+  assertEqual("temps trop rapide : la limite est à 12 % (facile conseillé 400 s/km)", [refTimeTooFast(10, 3300, {medianSecKm:447, count:4}), refTimeTooFast(10, 3300, {medianSecKm:449, count:4})], [false, true]);
+
+  // Formulaire « chrono récent »
+  const ok = levelChronoCheck({ distanceKm:10, h:"0", m:"47", s:"0", month:"2026-09" }, T, null);
+  assertEqual("formulaire chrono : valide", [ok.ok, ok.timeSec, ok.distanceKm, ok.date, ok.stale, ok.tooFast], [true, 2820, 10, "2026-09-15", false, false]);
+  assertEqual("formulaire chrono : tout vide, trois consignes", Object.keys(levelChronoCheck({ distanceKm:0, h:"", m:"", s:"", month:"" }, T, null).errors), ["distance","time","month"]);
+  assertEqual("formulaire chrono : plus de 6 mois -> test guidé", levelChronoCheck({ distanceKm:10, h:"0", m:"47", s:"0", month:"old" }, T, null), { errors:{}, stale:true, date:null, timeSec:2820, distanceKm:10, ok:false, tooFast:false });
+  assertEqual("formulaire chrono : 10 km en 20 min, impossible", levelChronoCheck({ distanceKm:10, h:"0", m:"20", s:"0", month:"2026-09" }, T, null).errors.time, "Ce temps ne semble pas possible sur cette distance : vérifie les heures, minutes et secondes.");
+  assertEqual("formulaire chrono : 5 km en 2 h, impossible aussi", Object.keys(levelChronoCheck({ distanceKm:5, h:"2", m:"0", s:"0", month:"2026-09" }, T, null).errors), ["time"]);
+  assertEqual("formulaire chrono : 75 minutes", levelChronoCheck({ distanceKm:10, h:"0", m:"75", s:"0", month:"2026-09" }, T, null).errors.time, "Les minutes et les secondes vont de 0 à 59.");
+  assertEqual("formulaire chrono : l'avertissement « trop rapide » apparaît avant même le choix du mois", levelChronoCheck({ distanceKm:10, h:"0", m:"47", s:"0", month:"" }, T, reality).tooFast, true);
+  assertEqual("formulaire chrono : le mois du jour est accepté, le chrono est daté d'aujourd'hui", levelChronoCheck({ distanceKm:5, h:"0", m:"25", s:"30", month:"2026-10" }, T, null).date, "2026-10-05");
+
+  // Nouvelles allures
+  const prop = newPaceProposal({ distanceKm:5, timeSec:1710 }, { distanceKm:5, timeSec:1661 });
+  assertEqual("nouvelles allures : 5 km de 28:30 à 27:41 -> EF 7'09 -> 6'57, Seuil, Fractionné", prop, { faster:true, rows:[{key:"easy",label:"EF",oldSec:429,newSec:417},{key:"threshold",label:"Seuil",oldSec:358,newSec:348},{key:"interval",label:"Fractionné",oldSec:329,newSec:320}] });
+  assertEqual("nouvelles allures : moins de 5 s/km d'écart sur l'EF, rien à proposer", newPaceProposal({ distanceKm:5, timeSec:1710 }, { distanceKm:5, timeSec:1700 }), null);
+  assertEqual("nouvelles allures : plus lent, proposé aussi (faster false)", newPaceProposal({ distanceKm:5, timeSec:1661 }, { distanceKm:5, timeSec:1710 }).faster, false);
+  assertEqual("nouvelles allures : sans ancien temps (premier calcul), pas de feuille", newPaceProposal(null, { distanceKm:5, timeSec:1710 }), null);
+  assertEqual("nouvelles allures : sur-titres chrono / test (jamais « record »)", [newPacesOverline("chrono"), newPacesOverline("test")], ["APRÈS TON CHRONO", "APRÈS TON TEST"]);
+  assertEqual("nouvelles allures : phrases d'introduction", [newPacesIntro("chrono",5,1661,true), newPacesIntro("chrono",21.0975,6300,false), newPacesIntro("test",4.2,1200,true)],
+    ["Ton nouveau chrono sur 5 km (27:41) montre que tu as progressé.", "Ton nouveau chrono sur le semi-marathon (1:45:00) donne des allures un peu plus tranquilles : elles suivent ton niveau du moment.", "Ton test de 20 minutes (4,2 km) montre que tu as progressé."]);
+  const sess = [
+    {id:"a",status:"planned",source:"generated",planned_date:"2026-10-06",pace_zone:"easy",target_pace_sec_per_km:420},
+    {id:"b",status:"planned",source:"generated",planned_date:"2026-10-05",pace_zone:null,type:"Renfo"},
+    {id:"c",status:"planned",source:"generated",planned_date:"2026-10-04",pace_zone:"easy",target_pace_sec_per_km:420},
+    {id:"d",status:"planned",source:"manual_add",planned_date:"2026-10-07",pace_zone:"easy",target_pace_sec_per_km:420},
+    {id:"e",status:"done",source:"generated",planned_date:"2026-10-08",pace_zone:"easy",target_pace_sec_per_km:420},
+    {id:"f",status:"planned",source:"generated",planned_date:"2026-10-09",pace_zone:"easy",generation_reason:"beginner_plan"},
+    {id:"g",status:"planned",source:"generated",planned_date:"2026-10-09",pace_zone:"easy",generation_reason:"guided_test"},
+    {id:"h",status:"planned",source:"generated",planned_date:"2026-10-10",pace_zone:null,type:"Mobilité",generation_reason:"pain_repeat_or_wellbeing"},
+    {id:"i",status:"planned",source:"generated",planned_date:"2026-10-11",pace_zone:"threshold",target_pace_sec_per_km:350,generation_reason:"pain_repeat_or_wellbeing"},
+    {id:"j",status:"planned",source:"manual_edit",planned_date:"2026-10-12",pace_zone:"easy",target_pace_sec_per_km:420},
+    {id:"k",status:"planned",source:"generated",planned_date:"2026-10-13",pace_zone:"interval"},
+  ];
+  assertEqual("allures appliquées : seulement les séances de course générées, à venir, avec une allure (ni passé, ni faites, ni main)", sessionsToRepace(sess, T).map(s=>s.id), ["a","i"]);
+  assertEqual("séances à recalculer : générées à venir, sans plan débutant, test guidé ni mobilité ciblée", recalculableSessions(sess, T).map(s=>s.id), ["a","b","i","k"]);
+
+  // Question de reprise
+  const goalsPb = { principal:{ objectifPrincipal:"Préparer une course", pbExistant:"Oui", pbSec:2820, distanceCourse:"10km" } };
+  const goalsVma = { principal:{ objectifPrincipal:"Améliorer mon allure", vmaConnue:"Oui", vma:15 } };
+  const rec = levelResumeInfo(goalsPb, null, RACE), vma = levelResumeInfo(goalsVma, {}, RACE);
+  const und = levelResumeInfo({}, {refDistanceKm:10, refTimeSec:2820}, RACE), undTest = levelResumeInfo({}, {refDistanceKm:4.2, refTimeSec:1200, guidedTest:{status:"done"}}, RACE);
+  assertEqual("reprise : record d'Objectifs, VMA sans date, chrono sans date, test sans date", [rec.kind, vma.kind, und.kind, undTest.kind, undTest.fromTest], ["record","vma","undated","undated",true]);
+  assertEqual("reprise : rien à demander quand tout est daté ou absent", [levelResumeInfo({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-09-15"}, RACE), levelResumeInfo({ principal:{ ...goalsVma.principal, vmaDate:"2026-08-15" } }, {}, RACE), levelResumeInfo({}, null, RACE)], [null,null,null]);
+  assertEqual("reprise : un temps sans date prime sur le record", levelResumeInfo(goalsPb, {refDistanceKm:5, refTimeSec:1500}, RACE).kind, "undated");
+  assertEqual("reprise : textes (record 10 km, VMA, chrono, test, semi)", [levelResumeTexts(rec), levelResumeTexts(vma), levelResumeTexts(und), levelResumeTexts(undTest), levelResumeTexts(levelResumeInfo({ principal:{ ...goalsPb.principal, distanceCourse:"Semi", pbSec:6300 } }, null, RACE))],
+    [{question:"On utilisait ton record de 10 km. Date de ce temps ?", rowLabel:"Record 10 km", rowValue:"47:00"}, {question:"On utilisait ta VMA de 15 km/h. Date de ce test ?", rowLabel:"VMA", rowValue:"15 km/h"},
+     {question:"On utilisait ton chrono de 10 km. Date de ce temps ?", rowLabel:"Chrono 10 km", rowValue:"47:00"}, {question:"On utilisait ton test de 20 minutes. Date de ce test ?", rowLabel:"Test 20 min", rowValue:"4,2 km"},
+     {question:"On utilisait ton record de semi-marathon. Date de ce temps ?", rowLabel:"Record semi-marathon", rowValue:"1:45:00"}]);
+  assertEqual("reprise « moins de 6 mois » : le record devient le temps de « Ton niveau », daté d'il y a 3 mois (estimé)", levelResumePatch(rec, "recent", T), { programSettings:{ refDistanceKm:10, refTimeSec:2820, refDate:"2026-07-05", refDateApprox:true, refSource:"chrono" } });
+  assertEqual("reprise « moins de 6 mois » : un temps sans date reçoit une date estimée (test ou chrono)", [levelResumePatch(und, "recent", T).programSettings.refSource, levelResumePatch(undTest, "recent", T).programSettings.refSource], ["chrono","test"]);
+  assertEqual("reprise « moins de 6 mois » : la VMA reçoit une date", levelResumePatch(vma, "recent", T), { slotKey:"principal", vmaDate:"2026-07-05" });
+  assertEqual("reprise : « plus de 6 mois » ou « je ne sais plus » ne gardent rien", [levelResumePatch(rec, "old", T), levelResumePatch(rec, "unknown", T)], [null, null]);
+  assertEqual("reprise : après « moins de 6 mois », le profil est exploitable (et la question ne revient pas)", (() => {
+    const ps = levelResumePatch(rec, "recent", T).programSettings;
+    return [resolveRunnerProfile(goalsPb, ps, T).source, resolveRunnerProfile(goalsPb, ps, T).stale, levelResumeInfo(goalsPb, ps, RACE)];
+  })(), ["level_chrono", false, null]);
+
+  // Parcours de démarrage : le chrono reçoit une date et une source, le programme mémorise ses réglages
+  const baseOnb = { objectif:"Préparer une course", distanceCourse:"10km", dateCible:"2026-12-20", niveau:"Intermédiaire", frequenceHistorique:"2 à 3 fois par semaine", frequence:3, joursIndisponibles:[6,2], chronoDistance:"5km", chronoSec:1680 };
+  const p1 = onboardingProfilePatch(baseOnb, {}, {}, RACE, "2026-10-05", T);
+  assertEqual("parcours : chrono « récent » sans mois précis -> date estimée d'il y a 3 mois", [p1.programSettings.refSource, p1.programSettings.refDate, p1.programSettings.refDateApprox], ["chrono","2026-07-05",true]);
+  const p2 = onboardingProfilePatch({ ...baseOnb, chronoDate:"2026-09-15" }, {}, {}, RACE, "2026-10-05", T);
+  assertEqual("parcours : chrono avec sa date -> date exacte, pas d'estimation", [p2.programSettings.refDate, "refDateApprox" in p2.programSettings], ["2026-09-15", false]);
+  assertEqual("parcours : le programme mémorise les réglages de départ", p1.programSettings.programSignature, { objectif:"Préparer une course", distance:"10km", date:"2026-12-20", secondaire:"", niveau:"Intermédiaire", frequence:3, frequenceAutre:0, jours:[2,6] });
+  assertEqual("parcours : le profil obtenu donne bien des allures", resolveRunnerProfile(p1.goals, p1.programSettings, T)!==null, true);
+
+  // Programme à mettre à jour
+  const g1 = { principal:{ objectifPrincipal:"Préparer une course", distanceCourse:"10km", dateCible:"2027-01-10", pbSec:2820, tempsViseSec:2700 }, niveau:"Débutant", frequence:"3", frequenceAutre:"1", joursIndisponibles:"0,6" };
+  const g2 = { ...g1, principal:{ ...g1.principal, distanceCourse:"Semi", dateCible:"2027-03-14" }, niveau:"Intermédiaire" };
+  const s1 = programSignature(g1), s2 = programSignature(g2);
+  assertEqual("signature : réglages qui construisent le programme", s1, { objectif:"Préparer une course", distance:"10km", date:"2027-01-10", secondaire:"", niveau:"Débutant", frequence:3, frequenceAutre:1, jours:[0,6] });
+  assertEqual("signature : sans réglage, valeurs par défaut du moteur (3 séances, pas de renfo)", programSignature({}), { objectif:"", distance:"", date:"", secondaire:"", niveau:"", frequence:3, frequenceAutre:0, jours:[] });
+  assertEqual("signature : hors course, distance et date ne comptent pas", programSignature({ principal:{ objectifPrincipal:"Rester en forme", distanceCourse:"10km", dateCible:"2027-01-10" } }).date, "");
+  assertEqual("changements : un record ou un temps visé qui change ne touche pas le programme", programChanges(s1, programSignature({ ...g1, principal:{ ...g1.principal, pbSec:2700, tempsViseSec:2600 }, kmMensuel:90 })), []);
+  assertEqual("changements : objectif et niveau", programChanges(s1, s2), ["objectif","niveau"]);
+  assertEqual("changements : séances, renfo, jours (l'ordre et les doublons ne comptent pas)", [
+    programChanges(s1, programSignature({ ...g1, frequence:"4" })), programChanges(s1, programSignature({ ...g1, frequenceAutre:"2" })),
+    programChanges(s1, programSignature({ ...g1, joursIndisponibles:"6,0,6" })), programChanges(s1, programSignature({ ...g1, joursIndisponibles:"6" }))], [["frequence"],["frequenceAutre"],[],["jours"]]);
+  assertEqual("changements : objectif secondaire ajouté", programChanges(s1, programSignature({ ...g1, secondaire:{ objectifPrincipal:"Rester en forme" }, secondaireEnabled:true })), ["secondaire"]);
+  assertEqual("changements : sans signature enregistrée, rien à comparer", programChanges(null, s1), []);
+  const info = programChangeInfo(s1, s2, 14);
+  assertEqual("carte et feuille : objectif + niveau (comme la maquette : 10 km -> Semi-marathon, 14 à venir)", [info.kind, info.overline, info.headline, info.text, info.intro], ["objective","TON OBJECTIF A CHANGÉ","Semi-marathon le 14/03/2027","Ton programme suit encore l'ancien objectif. 14 séances à recalculer.","Ton niveau et ton objectif ont changé."]);
+  assertEqual("feuille : lignes Objectif / Niveau / Séances recalculées", info.rows.map(r=>[r.label,r.from,r.to]), [["Objectif","10 km","Semi-marathon"],["Niveau","Débutant","Intermédiaire"],["Séances recalculées",null,"14 à venir"]]);
+  const infoDate = programChangeInfo(s1, programSignature({ ...g1, principal:{ ...g1.principal, dateCible:"2027-01-17" } }), 1);
+  assertEqual("feuille : même distance, seule la date change -> dates dans les lignes ; « 1 séance » au singulier", [infoDate.rows[0].from, infoDate.rows[0].to, infoDate.text], ["10 km (10/01/2027)", "10 km (17/01/2027)", "Ton programme suit encore l'ancien objectif. 1 séance à recalculer."]);
+  const infoSet = programChangeInfo(s1, programSignature({ ...g1, frequence:"4" }), 8);
+  assertEqual("carte : séances par semaine (pas l'objectif)", [infoSet.kind, infoSet.overline, infoSet.headline, infoSet.intro, infoSet.text], ["settings","TES RÉGLAGES ONT CHANGÉ","4 séances de course par semaine","Tes réglages ont changé.","Ton programme suit encore tes anciens réglages. 8 séances à recalculer."]);
+  assertEqual("carte : plus de renfo + niveau, deux mentions au plus", programChangeInfo(s1, programSignature({ ...g1, frequenceAutre:"0", niveau:"Confirmé" }), 3).headline, "Plus de renfo ni de mobilité · Niveau : Confirmé");
+  assertEqual("carte : jours indisponibles en toutes lettres", programChangeInfo(s1, programSignature({ ...g1, joursIndisponibles:"0,2,6" }), 5).rows.slice(0,1).map(r=>[r.from,r.to]), [["lundi, dimanche","lundi, mercredi, dimanche"]]);
+  assertEqual("carte : rien à signaler quand rien n'a changé", programChangeInfo(s1, s1, 5), null);
 }
 
 document.getElementById("summary").innerHTML =

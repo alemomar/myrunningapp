@@ -911,7 +911,7 @@ button.pg-rec-row{cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=76"></script>
+<script src="logic.js?v=77"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1119,6 +1119,8 @@ let onboardingCompletedAt = null;
 let suspendedZones = [];
 let pseudo="", age=null, gender="", cities=[];
 let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
+// Temps de référence des allures (S8, D76) : « Ton niveau » seulement, jamais un record (voir resolveRunnerProfile, logic.js).
+function runnerProfile(){ return resolveRunnerProfile(goals, programSettings, localDateStr(new Date())); }
 let programSelectedDate = null; // jour affiché dans le panneau de détail sous le calendrier
 // Refonte complète du check-in douleur (retour d'audit : trop lourd à
 // remplir, confus, pas terrible visuellement). Zones simplifiées — plus de
@@ -2219,7 +2221,7 @@ function recordsCardHTML(){
     return r.runId ? `<button type="button" class="pg-rec-row" onclick="openHistoryRun('${r.runId}')">${inner}</button>` : `<div class="pg-rec-row">${inner}</div>`;
   }).join("");
   // Chrono déclaré : repris de ce que l'app utilise aujourd'hui comme temps de référence (S8 le limitera à « Ton niveau »).
-  const prof = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+  const prof = runnerProfile();
   let declared = "";
   if(prof && prof.source!=="goal_vma" && prof.timeSec>0){
     const known = RECORD_DISTANCES.find(d=>Math.abs(d.km-prof.distanceKm)<0.05);
@@ -3426,7 +3428,7 @@ function programPaceExplanationHTML(session){
   }
   const zf = ZONE_FRIENDLY[session.pace_zone];
   if(!zf) return "";
-  const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+  const profile = runnerProfile();
   const srcLabel = programProfileSourceLabel(profile);
   const pareseLabel = srcLabel ? `, calculée à partir de ${srcLabel}` : "";
   const effMaxHr = maxHr || estimatedMaxHr();
@@ -3557,7 +3559,7 @@ window.generateProgram = async (mondayDate, opts) => {
   if(programGenerationInFlight.has(mondayStr)) return;
   programGenerationInFlight.add(mondayStr);
   try{
-  const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+  const profile = runnerProfile();
   // Plan marche/course (4.1.d) : pendant ses 9 semaines, il remplace le
   // moteur de course et ne demande aucun temps de référence.
   const couchWeek = programSettings?.beginnerPlan ? couchWeekNumber(programSettings.beginnerPlan.startMonday, mondayStr) : null;
@@ -4165,7 +4167,7 @@ function progDragCancel(e){
 window.regenerateSession = async (id, reason, auto) => {
   const old = plannedSessions.find(p=>p.id===id);
   if(!old) return;
-  const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+  const profile = runnerProfile();
   if(!profile) return;
   const zones = paceZonesFromVdot(computeVdot(profile.distanceKm, profile.timeSec));
   const softer = reason!=="Manque de temps"; // "Manque de temps" raccourcit sans changer d'intensité, les autres motifs basculent en easy
@@ -4235,7 +4237,7 @@ window.addTargetedMobilitySession = async (weekStartDate, zoneKey) => {
 let programAdjustmentChecked = false;
 async function applyProgramAdjustments(){
   if(programAdjustmentChecked) return;
-  const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+  const profile = runnerProfile();
   if(!profile && !beginnerPlanInProgress()) return; // pas encore prêt : on retentera au prochain rendu
   programAdjustmentChecked = true;
 
@@ -4552,10 +4554,10 @@ function guidedTestSeen(){ try{ return localStorage.getItem(GUIDED_TEST_SEEN_KEY
 function levelNeed(){
   const gt = programSettings?.guidedTest;
   if(gt && gt.status==="done" && !guidedTestSeen()) return "test_done";
-  if(gt && gt.status==="pending" && !resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM) && !beginnerPlanInProgress()
+  if(gt && gt.status==="pending" && !runnerProfile() && !beginnerPlanInProgress()
      && !plannedSessions.some(p=>p.status==="planned" && p.generation_reason==="guided_test")) return "guided_test";
   const plan = programSettings?.beginnerPlan;
-  if(plan && !beginnerPlanInProgress() && !resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM)) return "graduation";
+  if(plan && !beginnerPlanInProgress() && !runnerProfile()) return "graduation";
   return null;
 }
 function levelCardHTML(){
@@ -5122,7 +5124,7 @@ function renderContentInner(){
   else if(activeTab==="programme"){
     // Programme : formulaire de réglages tant que le profil coureur (VDOT)
     // ou la fréquence dispo n'est pas connu, calendrier généré ensuite.
-    const profile = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+    const profile = runnerProfile();
     const ready = !!profile;
     el.innerHTML = `
       ${ready?`<div class="seg" role="tablist" aria-label="Affichage du calendrier">

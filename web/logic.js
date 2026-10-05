@@ -484,36 +484,288 @@ function paceZonesFromVdot(vdot){
   return zones;
 }
 
-// Résout la source de référence pour le moteur VDOT, par ordre de priorité,
-// SANS dupliquer la donnée (rien n'est recopié tant qu'une valeur existe
-// côté Objectifs — si l'utilisateur met à jour son PB, il prend le dessus
-// automatiquement au prochain calcul) :
-// 1. PB réel de l'objectif "Préparer une course" (perf réelle, la plus
-//    fiable — jamais tempsViseSec, qui est un OBJECTIF, pas une perf).
-// 2. VMA de l'objectif "Améliorer mon allure" (traitée comme un effort de
-//    référence ~6min, protocole standard de test VMA).
-// 3. Repli sur programSettings (saisi dans le formulaire initial Programme
-//    si rien n'existe côté Objectifs).
-// `raceDistancesKm` = table des distances (ex: RACE_DISTANCES_KM d'index.html),
-// passée en paramètre pour garder cette fonction indépendante d'index.html.
-function resolveRunnerProfile(goals, programSettings, raceDistancesKm){
+/* ---------- S8 : « Ton niveau », nouvelles allures, programme à mettre à jour (D62, D72, D73, D76) ----------
+   Depuis S8, les allures conseillées ne viennent QUE de « Ton niveau » : un chrono (effort à fond) de moins de
+   6 mois, ou le test guidé de 20 minutes. Jamais le record d'Objectifs (souvent ancien, ou réussi un jour
+   exceptionnel), jamais un record trouvé dans les courses. Le temps de référence vit dans programSettings :
+   refDistanceKm, refTimeSec, refDate (AAAA-MM-JJ), refSource ("chrono" | "test"), refDateApprox (date estimée à la
+   reprise d'un compte existant). Seul autre cas : une VMA datée de moins de 6 mois (« Améliorer mon allure »),
+   quand aucun « Ton niveau » n'existe. */
+const LEVEL_FRESH_MONTHS = 6;
+const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+// Ajoute `n` mois (négatif pour reculer) à une date AAAA-MM-JJ ; le jour est ramené à la fin du mois si besoin.
+function addMonthsStr(dateStr, n){
+  const [y,m,d] = dateStr.split("-").map(Number);
+  const total = y*12 + (m-1) + n, ny = Math.floor(total/12), nm = total - ny*12;
+  const last = new Date(ny, nm+1, 0).getDate();
+  return `${ny}-${String(nm+1).padStart(2,"0")}-${String(Math.min(d,last)).padStart(2,"0")}`;
+}
+// Un temps est « récent » s'il date de moins de 6 mois.
+function isLevelDateFresh(dateStr, todayStr){
+  if(!ISO_DAY_RE.test(dateStr||"") || !ISO_DAY_RE.test(todayStr||"")) return false;
+  return dateStr >= addMonthsStr(todayStr, -LEVEL_FRESH_MONTHS);
+}
+// Mois proposés pour dater un chrono : le mois en cours et les 6 précédents (tous « récents »).
+function levelMonthOptions(todayStr){
+  const [y,m] = todayStr.split("-").map(Number), out = [];
+  for(let i=0;i<=LEVEL_FRESH_MONTHS;i++){
+    const total = y*12 + (m-1) - i, ny = Math.floor(total/12), nm = total - ny*12;
+    out.push({ value:`${ny}-${String(nm+1).padStart(2,"0")}`, label:MONTH_NAMES[nm].charAt(0).toUpperCase()+MONTH_NAMES[nm].slice(1)+" "+ny });
+  }
+  return out;
+}
+// Mois choisi (« 2026-09 ») → date enregistrée : le 15, sans jamais dépasser aujourd'hui.
+function levelDateFromMonth(monthStr, todayStr){
+  if(!/^\d{4}-\d{2}$/.test(monthStr||"")) return null;
+  const d = monthStr+"-15";
+  return d > todayStr ? todayStr : d;
+}
+// « septembre 2026 » à partir de « 2026-09-15 ».
+function levelDateLabel(dateStr){
+  if(!ISO_DAY_RE.test(dateStr||"")) return "";
+  const [y,m] = dateStr.split("-").map(Number);
+  return `${MONTH_NAMES[m-1]} ${y}`;
+}
+const RACE_LABELS = { "5km":"5 km", "10km":"10 km", "15km":"15 km", "Semi":"Semi-marathon", "Marathon":"Marathon" };
+// « 14/03/2027 » à partir de « 2027-03-14 ».
+function isoToFr(dateStr){
+  return ISO_DAY_RE.test(dateStr||"") ? dateStr.split("-").reverse().join("/") : "";
+}
+// Une distance en mots : { chip:"Semi-marathon", of:"semi-marathon" (« ton record de … »), on:"le semi-marathon" (« sur … ») }.
+function levelDistanceName(km){
+  const known = [[5,"5 km","5 km","5 km"],[10,"10 km","10 km","10 km"],[15,"15 km","15 km","15 km"],
+    [21.0975,"Semi-marathon","semi-marathon","le semi-marathon"],[42.195,"Marathon","marathon","le marathon"]].find(k=>Math.abs(k[0]-km)<0.05);
+  if(known) return { chip:known[1], of:known[2], on:known[3] };
+  const t = String(Math.round(km*10)/10).replace(".",",")+" km";
+  return { chip:t, of:t, on:t };
+}
+
+// Résout le temps de référence du moteur VDOT (voir l'en-tête de ce bloc). `todayStr` AAAA-MM-JJ.
+// Résultat : { distanceKm, timeSec, source:"level_chrono"|"level_test"|"goal_vma", date, approx, undated, stale }.
+// `stale` : plus de 6 mois ; on continue de s'en servir (le programme ne s'arrête pas), mais « Ton niveau » propose
+// de le mettre à jour. `undated` : compte existant dont le temps n'a pas de date (question de reprise).
+function resolveRunnerProfile(goals, programSettings, todayStr){
+  const ps = programSettings || {};
+  if(ps.refDistanceKm && ps.refTimeSec){
+    const date = ps.refDate || null;
+    return {
+      distanceKm:Number(ps.refDistanceKm), timeSec:Number(ps.refTimeSec),
+      source: ps.refSource==="test" ? "level_test" : "level_chrono",
+      date, approx:!!ps.refDateApprox, undated:!date,
+      stale:!!(date && todayStr && !isLevelDateFresh(date, todayStr)),
+    };
+  }
   const slots = [goals?.principal, goals?.secondaire].filter(Boolean);
   for(const slot of slots){
-    if(slot.objectifPrincipal==="Préparer une course" && slot.pbExistant==="Oui" && slot.pbSec && slot.distanceCourse){
-      const km = raceDistancesKm[slot.distanceCourse];
-      if(km) return { distanceKm: km, timeSec: Number(slot.pbSec), source:"goal_pb" };
+    if(slot.objectifPrincipal==="Améliorer mon allure" && slot.vmaConnue==="Oui" && slot.vma && slot.vmaDate && todayStr && isLevelDateFresh(slot.vmaDate, todayStr)){
+      // VMA en km/h ≈ vitesse tenable ~6 min (protocole de test VMA standard).
+      return { distanceKm:Number(slot.vma)*(6/60), timeSec:360, source:"goal_vma", date:slot.vmaDate, approx:false, undated:false, stale:false };
     }
-  }
-  for(const slot of slots){
-    if(slot.objectifPrincipal==="Améliorer mon allure" && slot.vmaConnue==="Oui" && slot.vma){
-      // VMA en km/h ≈ vitesse tenable ~6min (protocole de test VMA standard).
-      return { distanceKm: Number(slot.vma)*(6/60), timeSec: 360, source:"goal_vma" };
-    }
-  }
-  if(programSettings?.refDistanceKm && programSettings?.refTimeSec){
-    return { distanceKm: Number(programSettings.refDistanceKm), timeSec: Number(programSettings.refTimeSec), source:"program_fallback" };
   }
   return null;
+}
+// Ce sur quoi les allures s'appuient, en une expression (« à partir de … »).
+function levelSourceText(profile){
+  if(!profile) return "";
+  if(profile.source==="goal_vma") return `ta VMA (${String(Math.round(profile.distanceKm*100)/10).replace(".",",")} km/h)`;
+  if(profile.source==="level_test") return `ton test de 20 minutes (${String(Math.round(profile.distanceKm*10)/10).replace(".",",")} km)`;
+  return `ton chrono sur ${levelDistanceName(profile.distanceKm).on} (${fmtDur(profile.timeSec)})`;
+}
+// Ligne d'état de « Ton niveau » : d'après quoi, de quand, et si c'est à rafraîchir.
+function levelStatus(profile){
+  if(!profile) return null;
+  const when = profile.date && !profile.approx ? levelDateLabel(profile.date) : "";
+  return { text:`Allures conseillées calculées d'après ${levelSourceText(profile)}${when?`, ${when}`:""}.`, stale:!!profile.stale };
+}
+
+// --- Garde-fou « temps trop rapide » (D76, point 4) ---
+// Allures conseillées (s/km) d'un temps de référence.
+function levelPaceZones(distanceKm, timeSec){
+  const v = computeVdot(distanceKm, timeSec);
+  return v ? paceZonesFromVdot(v) : null;
+}
+// Les vraies sorties faciles de la personne (8 dernières semaines) : { medianSecKm, count } ou null s'il y en a moins de 3.
+// `runs` : [{ ts, type, distKm, paceSecKm, qualitatif }] ; une sortie facile dont le cœur est monté (qualitatif false) ne compte pas.
+function easyPaceReality(runs, todayTs, weeks){
+  const from = todayTs - (weeks||8)*7*DAY_MS;
+  const paces = (runs||[]).filter(r=>r.type==="EF" && r.qualitatif!==false && r.ts>=from && r.ts<=todayTs+DAY_MS && r.distKm>=2 && r.paceSecKm>0).map(r=>r.paceSecKm);
+  return paces.length>=3 ? { medianSecKm:median(paces), count:paces.length } : null;
+}
+// Le temps donné suggère une allure facile 12 % plus rapide (ou plus) que ce que la personne court vraiment en facile.
+const LEVEL_TOO_FAST_RATIO = 1.12;
+function refTimeTooFast(distanceKm, timeSec, reality){
+  if(!reality) return false;
+  const zones = levelPaceZones(distanceKm, timeSec);
+  return !!zones && reality.medianSecKm >= zones.easy*LEVEL_TOO_FAST_RATIO;
+}
+// Formulaire « chrono récent » (A10). `input` : { distanceKm, h, m, s, month } (month : « 2026-09 », « old » = plus de
+// 6 mois, vide = pas choisi). Résultat : errors par champ, ok (peut calculer), stale (plus de 6 mois : faire le test
+// guidé), tooFast (avertissement violet, qui ne bloque pas), et les valeurs lues.
+function levelChronoCheck(input, todayStr, reality){
+  const errors = {}, km = Number(input.distanceKm)||0;
+  const h = parseInt(input.h,10)||0, m = parseInt(input.m,10)||0, s = parseInt(input.s,10)||0;
+  const sec = h*3600 + m*60 + s;
+  let plausible = false;
+  if(!(km>0)) errors.distance = "Choisis la distance.";
+  if(m>59 || s>59) errors.time = "Les minutes et les secondes vont de 0 à 59.";
+  else if(!(sec>0)) errors.time = "Indique ton temps.";
+  else if(km>0 && (sec/km<165 || sec/km>840)) errors.time = "Ce temps ne semble pas possible sur cette distance : vérifie les heures, minutes et secondes.";
+  else plausible = km>0;
+  let date = null, stale = false;
+  if(!input.month) errors.month = "Indique de quand date ce temps.";
+  else if(input.month==="old") stale = true;
+  else date = levelDateFromMonth(input.month, todayStr);
+  return {
+    errors, stale, date, timeSec:sec, distanceKm:km,
+    ok: !errors.distance && !errors.time && !errors.month && !stale,
+    tooFast: plausible && refTimeTooFast(km, sec, reality),
+  };
+}
+
+// --- « Tes nouvelles allures » (N3, D72, D76) ---
+// Proposée seulement si l'allure facile change d'au moins 5 s/km, après un nouveau chrono ou un nouveau test.
+const NEW_PACE_MIN_DELTA_SEC = 5;
+const NEW_PACE_ROWS = [["easy","EF"],["threshold","Seuil"],["interval","Fractionné"]];
+function newPaceProposal(oldRef, newRef){
+  if(!oldRef || !newRef) return null;
+  const o = levelPaceZones(oldRef.distanceKm, oldRef.timeSec), n = levelPaceZones(newRef.distanceKm, newRef.timeSec);
+  if(!o || !n || Math.abs(o.easy-n.easy) < NEW_PACE_MIN_DELTA_SEC) return null;
+  return { faster:n.easy<o.easy, rows:NEW_PACE_ROWS.map(([key,label])=>({ key, label, oldSec:o[key], newSec:n[key] })) };
+}
+function newPacesOverline(source){ return source==="test" ? "APRÈS TON TEST" : "APRÈS TON CHRONO"; }
+function newPacesIntro(source, distanceKm, timeSec, faster){
+  const km = String(Math.round(distanceKm*10)/10).replace(".",",");
+  if(source==="test") return faster ? `Ton test de 20 minutes (${km} km) montre que tu as progressé.` : `Ton test de 20 minutes (${km} km) donne des allures un peu plus tranquilles : elles suivent ton niveau du moment.`;
+  const on = levelDistanceName(distanceKm).on;
+  return faster ? `Ton nouveau chrono sur ${on} (${fmtDur(timeSec)}) montre que tu as progressé.` : `Ton nouveau chrono sur ${on} (${fmtDur(timeSec)}) donne des allures un peu plus tranquilles : elles suivent ton niveau du moment.`;
+}
+// Séances de course à venir dont l'allure peut changer : générées par l'app, pas encore faites, avec une allure visée.
+// Une allure choisie à la main n'est jamais touchée, ni le passé.
+function sessionsToRepace(plannedSessions, todayStr){
+  return (plannedSessions||[]).filter(p=>p.status==="planned" && p.source==="generated" && p.pace_zone && p.target_pace_sec_per_km>0 && p.planned_date>=todayStr);
+}
+
+// --- Question de reprise (A10) : comptes dont les allures reposaient sur un record, une VMA ou un temps sans date ---
+// Renvoie ce qu'il faut leur demander ({ kind, slotKey?, distanceKm?, timeSec?, vma?, fromTest? }) ou null.
+function levelResumeInfo(goals, programSettings, raceDistancesKm){
+  const ps = programSettings || {};
+  if(ps.refDistanceKm && ps.refTimeSec){
+    if(ps.refDate) return null;
+    return { kind:"undated", distanceKm:Number(ps.refDistanceKm), timeSec:Number(ps.refTimeSec), fromTest:ps.refSource==="test" || ps.guidedTest?.status==="done" };
+  }
+  for(const slotKey of ["principal","secondaire"]){
+    const slot = goals?.[slotKey];
+    if(slot && slot.objectifPrincipal==="Préparer une course" && slot.pbExistant==="Oui" && slot.pbSec && slot.distanceCourse){
+      const km = raceDistancesKm?.[slot.distanceCourse];
+      if(km) return { kind:"record", slotKey, distanceKm:km, timeSec:Number(slot.pbSec) };
+    }
+  }
+  for(const slotKey of ["principal","secondaire"]){
+    const slot = goals?.[slotKey];
+    if(slot && slot.objectifPrincipal==="Améliorer mon allure" && slot.vmaConnue==="Oui" && slot.vma && !slot.vmaDate) return { kind:"vma", slotKey, vma:Number(slot.vma) };
+  }
+  return null;
+}
+function levelResumeTexts(info){
+  if(info.kind==="vma") return { question:`On utilisait ta VMA de ${String(info.vma).replace(".",",")} km/h. Date de ce test ?`, rowLabel:"VMA", rowValue:`${String(info.vma).replace(".",",")} km/h` };
+  if(info.kind==="undated" && info.fromTest) return { question:"On utilisait ton test de 20 minutes. Date de ce test ?", rowLabel:"Test 20 min", rowValue:`${String(Math.round(info.distanceKm*10)/10).replace(".",",")} km` };
+  const of = levelDistanceName(info.distanceKm).of;
+  return { question:`On utilisait ton ${info.kind==="record"?"record":"chrono"} de ${of}. Date de ce temps ?`, rowLabel:`${info.kind==="record"?"Record":"Chrono"} ${of}`, rowValue:fmtDur(info.timeSec) };
+}
+// Réponse « Il y a moins de 6 mois » : on garde le temps, daté d'il y a environ 3 mois (date estimée, donc `approx`).
+// Les autres réponses ne gardent rien : on propose un nouveau chrono ou le test guidé. Renvoie le complément de
+// programSettings (record, undated) ou la date de VMA (vma), ou null.
+function levelResumePatch(info, answer, todayStr){
+  if(!info || answer!=="recent") return null;
+  const date = addMonthsStr(todayStr, -3);
+  if(info.kind==="record") return { programSettings:{ refDistanceKm:info.distanceKm, refTimeSec:info.timeSec, refDate:date, refDateApprox:true, refSource:"chrono" } };
+  if(info.kind==="undated") return { programSettings:{ refDate:date, refDateApprox:true, refSource:info.fromTest?"test":"chrono" } };
+  if(info.kind==="vma") return { slotKey:info.slotKey, vmaDate:date };
+  return null;
+}
+
+// --- Programme à mettre à jour (N4, D62) ---
+// Réglages avec lesquels les séances générées ont été construites (programSettings.programSignature).
+function programSignature(goals){
+  const g = goals || {}, p = g.principal || {}, race = p.objectifPrincipal==="Préparer une course";
+  const secOn = g.secondaireEnabled!==undefined ? !!g.secondaireEnabled : !!(g.secondaire && g.secondaire.objectifPrincipal);
+  const days = String(g.joursIndisponibles||"").split(",").filter(x=>x!=="").map(Number).filter(n=>!isNaN(n));
+  return {
+    objectif:p.objectifPrincipal||"", distance:race ? (p.distanceCourse||"") : "", date:race ? (p.dateCible||"") : "",
+    secondaire:secOn ? ((g.secondaire && g.secondaire.objectifPrincipal)||"") : "",
+    niveau:g.niveau||"", frequence:Number(g.frequence)||3, frequenceAutre:Number(g.frequenceAutre)||0,
+    jours:[...new Set(days)].sort((a,b)=>a-b),
+  };
+}
+// Ce qui a changé depuis la dernière construction du programme : clés parmi objectif, secondaire, niveau, frequence,
+// frequenceAutre, jours. Sans signature enregistrée, rien à comparer.
+function programChanges(prev, cur){
+  if(!prev || !cur) return [];
+  const out = [];
+  if(prev.objectif!==cur.objectif || prev.distance!==cur.distance || prev.date!==cur.date) out.push("objectif");
+  if(prev.secondaire!==cur.secondaire) out.push("secondaire");
+  if(prev.niveau!==cur.niveau) out.push("niveau");
+  if(prev.frequence!==cur.frequence) out.push("frequence");
+  if(prev.frequenceAutre!==cur.frequenceAutre) out.push("frequenceAutre");
+  if(JSON.stringify(prev.jours)!==JSON.stringify(cur.jours)) out.push("jours");
+  return out;
+}
+const DAYS_LONG_FR = ["lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"];
+const daysListText = (days) => (days&&days.length) ? days.map(d=>DAYS_LONG_FR[d]).join(", ") : "aucun";
+function objectiveShortLabel(sig, withDate){
+  if(!sig.objectif) return "Aucun";
+  if(sig.objectif!=="Préparer une course") return sig.objectif;
+  const name = RACE_LABELS[sig.distance] || "Course";
+  return withDate && sig.date ? `${name} (${isoToFr(sig.date)})` : name;
+}
+function objectiveHeadline(sig){
+  if(sig.objectif!=="Préparer une course") return sig.objectif || "Aucun objectif";
+  return (RACE_LABELS[sig.distance] || "Course") + (sig.date ? ` le ${isoToFr(sig.date)}` : "");
+}
+// Séances générées à venir qu'une mise à jour remplacerait : ni le passé, ni les séances ajoutées ou modifiées à la
+// main, ni le plan marche/course, le test guidé ou la mobilité ajoutée après une douleur.
+function recalculableSessions(plannedSessions, todayStr){
+  return (plannedSessions||[]).filter(p=>p.status==="planned" && p.source==="generated" && p.planned_date>=todayStr
+    && p.generation_reason!=="beginner_plan" && p.generation_reason!=="guided_test"
+    && !(!p.pace_zone && p.generation_reason==="pain_repeat_or_wellbeing"));
+}
+// Texte de la carte « Ton objectif a changé » et lignes de la feuille « Mettre à jour ton programme ».
+// `count` : séances à recalculer. Renvoie null s'il n'y a rien à signaler.
+function programChangeInfo(prev, cur, count){
+  const fields = programChanges(prev, cur);
+  if(!fields.length) return null;
+  const kind = fields.includes("objectif") ? "objective" : "settings";
+  const n = count||0, plural = n>1 ? "s" : "";
+  const rows = [];
+  if(fields.includes("objectif")){
+    let a = objectiveShortLabel(prev,false), b = objectiveShortLabel(cur,false);
+    if(a===b){ a = objectiveShortLabel(prev,true); b = objectiveShortLabel(cur,true); }
+    rows.push({ key:"objectif", label:"Objectif", from:a, to:b });
+  }
+  if(fields.includes("secondaire")) rows.push({ key:"secondaire", label:"Objectif secondaire", from:prev.secondaire||"Aucun", to:cur.secondaire||"Aucun" });
+  if(fields.includes("niveau")) rows.push({ key:"niveau", label:"Niveau", from:prev.niveau||"—", to:cur.niveau||"—" });
+  if(fields.includes("frequence")) rows.push({ key:"frequence", label:"Séances de course / semaine", from:String(prev.frequence), to:String(cur.frequence) });
+  if(fields.includes("frequenceAutre")) rows.push({ key:"frequenceAutre", label:"Renfo / mobilité / semaine", from:String(prev.frequenceAutre), to:String(cur.frequenceAutre) });
+  if(fields.includes("jours")) rows.push({ key:"jours", label:"Jours indisponibles", from:daysListText(prev.jours), to:daysListText(cur.jours) });
+  rows.push({ key:"seances", label:"Séances recalculées", from:null, to:`${n} à venir` });
+  const heads = [];
+  if(kind==="objective") heads.push(objectiveHeadline(cur));
+  else {
+    if(fields.includes("frequence")) heads.push(`${cur.frequence} séance${cur.frequence>1?"s":""} de course par semaine`);
+    if(fields.includes("frequenceAutre")) heads.push(cur.frequenceAutre ? `${cur.frequenceAutre} renfo / mobilité par semaine` : "Plus de renfo ni de mobilité");
+    if(fields.includes("jours")) heads.push(cur.jours.length ? `Indisponible : ${daysListText(cur.jours)}` : "Aucun jour indisponible");
+    if(fields.includes("niveau")) heads.push(`Niveau : ${cur.niveau||"—"}`);
+    if(fields.includes("secondaire")) heads.push(cur.secondaire ? `Objectif secondaire : ${cur.secondaire}` : "Plus d'objectif secondaire");
+  }
+  const intro = fields.includes("objectif") && fields.includes("niveau") ? "Ton niveau et ton objectif ont changé."
+    : kind==="objective" ? "Ton objectif a changé."
+    : fields.length===1 && fields[0]==="niveau" ? "Ton niveau a changé." : "Tes réglages ont changé.";
+  return {
+    fields, kind, rows, intro,
+    overline: kind==="objective" ? "TON OBJECTIF A CHANGÉ" : "TES RÉGLAGES ONT CHANGÉ",
+    headline: heads.slice(0,2).join(" · "),
+    text: `${kind==="objective" ? "Ton programme suit encore l'ancien objectif." : "Ton programme suit encore tes anciens réglages."} ${n} séance${plural} à recalculer.`,
+  };
 }
 
 /* ---------- Classification automatique du type de course ----------
@@ -712,11 +964,16 @@ function beginnerPlanStartMonday(todayStr){
 }
 /* Réponses du parcours -> données du profil. `state` : {objectif,
    distanceCourse, dateCible, niveau, frequenceHistorique, frequence,
-   joursIndisponibles:[0-6], chronoDistance (clé de course), chronoSec}.
-   Un chrono saisi devient le temps de référence "de repli" du moteur
-   (programSettings.refDistanceKm/refTimeSec), jamais un record (pbSec).
+   joursIndisponibles:[0-6], chronoDistance (clé de course), chronoSec,
+   chronoDate (AAAA-MM-JJ, facultatif)}.
+   Un chrono saisi devient le temps de référence du moteur (« Ton niveau » :
+   programSettings.refDistanceKm/refTimeSec/refDate/refSource), jamais un record
+   (pbSec). Sans date précise (« chrono récent »), il est daté d'il y a 3 mois
+   environ (refDateApprox) quand `todayStr` est fourni. Le programme mémorise
+   les réglages avec lesquels il sera construit (programSignature), pour
+   signaler plus tard un changement (D62).
    Le plan débutant garde sa date de départ s'il est déjà en cours. */
-function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, startMondayStr){
+function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, startMondayStr, todayStr){
   const prev = goals || {};
   const principal = { ...(prev.principal||{}), objectifPrincipal: state.objectif };
   if(state.objectif==="Préparer une course"){
@@ -731,15 +988,21 @@ function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, 
   };
   const ps = { ...(programSettings||{}) };
   const km = raceDistancesKm ? raceDistancesKm[state.chronoDistance] : null;
-  if(km && state.chronoSec>0){ ps.refDistanceKm = km; ps.refTimeSec = state.chronoSec; }
+  if(km && state.chronoSec>0){
+    ps.refDistanceKm = km; ps.refTimeSec = state.chronoSec; ps.refSource = "chrono";
+    if(state.chronoDate){ ps.refDate = state.chronoDate; delete ps.refDateApprox; }
+    else if(todayStr){ ps.refDate = addMonthsStr(todayStr, -3); ps.refDateApprox = true; }
+  }
   const beginner = isBeginnerPlanEligible(state.niveau, state.frequenceHistorique, state.dureeMax);
   if(beginner) ps.beginnerPlan = ps.beginnerPlan || { startMonday: startMondayStr };
   else delete ps.beginnerPlan;
-  // Ni plan débutant, ni chrono, ni record : première séance = test guidé de
-  // 20 minutes (4.1.e), dont le résultat devient le temps de référence.
-  const hasReference = !!(ps.refTimeSec) || !!(newGoals.principal && newGoals.principal.pbSec);
+  // Ni plan débutant, ni chrono : première séance = test guidé de 20 minutes
+  // (4.1.e), dont le résultat devient le temps de référence. Un record ne
+  // compte pas (D76) : seules les allures de « Ton niveau » servent.
+  const hasReference = !!(ps.refTimeSec);
   const needsGuidedTest = !beginner && !hasReference;
   if(needsGuidedTest) ps.guidedTest = ps.guidedTest || { status:"pending" };
+  ps.programSignature = programSignature(newGoals);
   return { goals:newGoals, programSettings:ps, beginner, needsGuidedTest };
 }
 
