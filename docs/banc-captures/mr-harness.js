@@ -24,7 +24,8 @@
             secondaire:{}, niveau:"Intermédiaire", frequence:"3", frequenceAutre:"1", kmMensuel:"90", terrain:"Route", equipement:"Apple Watch", joursIndisponibles:"6" };
   // « Ton niveau » (S8) : un chrono de 10 km (47:00) daté du mois dernier ; le programme est construit avec ces réglages.
   const lastMonth = (()=>{ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-15"; })();
-  programSettings = { refDistanceKm:10, refTimeSec:2820, refDate:lastMonth, refSource:"chrono", programSignature:programSignature(goals) };
+  // (la version « avant » de avant/mr.html n'a pas programSignature : le jeu de données reste compatible avec elle)
+  programSettings = { refDistanceKm:10, refTimeSec:2820, refDate:lastMonth, refSource:"chrono", ...(typeof programSignature==="function" ? { programSignature:programSignature(goals) } : {}) };
 
   // --- séances réelles fictives (14 semaines)
   const startOf = (n)=>{ const d=new Date(); d.setDate(d.getDate()-n); d.setHours(7,20+Math.floor(R()*20),0,0); return d; };

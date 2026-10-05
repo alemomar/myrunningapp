@@ -903,6 +903,8 @@ button.pg-rec-row{cursor:pointer}
 .pp-item.done .pp-ic{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .pp-item.now .pp-ic i{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spin .9s linear infinite}
 @media (prefers-reduced-motion: reduce){ .pp-item.now .pp-ic i{animation:none} }
+/* « Réduire les animations » (S13) : plus de glissement du menu, du message en bas, d'effet d'appui ni de rotation (la roue reste un anneau fixe) */
+@media (prefers-reduced-motion: reduce){ .tab-pill{transition:none} .toast{transform:none} .btn-primary:active{transform:none} .spinner{animation:none} }
 /* Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13) */
 .sg-list{display:flex;flex-direction:column;gap:10px;margin:12px 0 8px}
 .sg-item{border-radius:var(--r-lg);padding:14px;display:flex;flex-direction:column;gap:12px;background:#131518;border:1px solid var(--surface-control)}
