@@ -224,45 +224,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 }
 .topbar-title{font-family:var(--font-display);font-size:28px;font-weight:700;line-height:1.1;text-transform:uppercase}
 
-/* ---------- KPI ring + grid ---------- */
-.hero{padding:4px 20px 18px;display:flex;align-items:center;gap:20px}
-.ring-wrap{position:relative;width:108px;height:108px;flex-shrink:0}
-.ring-wrap svg{transform:rotate(-90deg)}
-.ring-label{
-  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-}
-.ring-label .val{font-size:19px;font-weight:700}
-.ring-label .unit{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin-top:1px}
-.hero-rings-row{display:flex;justify-content:space-between;gap:8px}
-.ring-wrap-sm{position:relative;width:90px;height:90px;flex-shrink:0}
-.ring-wrap-sm svg{transform:rotate(-90deg)}
-.ring-label-sm{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.ring-label-sm .val{font-size:17px;font-weight:700}
-.ring-label-sm .unit{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-top:1px}
-.ring-caption{font-size:11px;color:var(--text-dim);text-align:center}
-.hero-stats{flex:1;display:flex;flex-direction:column;gap:10px}
-.hero-stat{display:flex;justify-content:space-between;align-items:baseline}
-.hero-stat .lbl{font-size:13px;color:var(--text-dim)}
-.hero-stat .v{font-size:15px;font-weight:600}
-
-.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 20px 20px}
-.kpi{
-  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);
-  padding:14px;display:flex;flex-direction:column;gap:8px;
-  /* Sans ça, une grille à 3 colonnes (voir kpisHTML) déborde à droite :
-     par défaut une cellule de grille ne rétrécit jamais sous la largeur de
-     son contenu le plus long (ex: "Allure dernier mois" sur une ligne),
-     même si ça dépasse largement sa part de 1fr — d'où la dernière carte
-     coupée à droite alors que la marge de gauche reste correcte. */
-  min-width:0;
-}
-.kpi-top{display:flex;align-items:center;justify-content:space-between}
-.kpi-icon{
-  width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;
-}
-.kpi-val{font-size:19px;font-weight:700;letter-spacing:-.3px}
-.kpi-lbl{font-size:11px;color:var(--text-dim)}
-
 /* ---------- Menu du bas : pilule flottante, onglet actif en pilule citron avec son nom (design 1b) ---------- */
 .tabs{position:fixed;left:0;right:0;bottom:30px;z-index:10;padding:0 20px;pointer-events:none}
 .tabs-bar{
@@ -422,58 +383,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 }
 .btn-danger{color:var(--text-3);background:none;border:none;font-size:14px;font-weight:500;cursor:pointer;padding:12px 0}
 
-/* ---------- Dernière séance (hero, repliable) ---------- */
-.last-run-card{
-  background:linear-gradient(160deg,var(--card) 0%,var(--card-2) 100%);
-  border:1px solid var(--border);border-radius:var(--radius-lg);
-  padding:16px 20px;margin-bottom:14px;position:relative;overflow:hidden;
-}
-.last-run-card.expanded{padding-bottom:20px}
-.last-run-eyebrow{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px}
-.last-run-head{display:flex;align-items:center;gap:12px;margin-top:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.last-run-icon{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
-.last-run-title{font-size:17px;font-weight:700}
-.last-run-sub{font-size:12px;color:var(--text-dim);margin-top:2px}
-.last-run-collapsed-km{font-size:15px;font-weight:700;flex-shrink:0}
-.last-run-chevron{color:var(--text-faint);flex-shrink:0;transition:transform .2s}
-.last-run-card.expanded .last-run-chevron{transform:rotate(180deg)}
-
-.last-run-body{display:flex;flex-direction:column;gap:16px;margin-top:16px}
-@media (min-width:700px){
-  .last-run-body{flex-direction:row}
-  .last-run-left{flex:1.2;min-width:0}
-  .last-run-right{flex:1;min-width:0}
-}
-.last-run-right{display:flex;flex-direction:column;gap:8px;justify-content:center}
-.last-run-stat-row{background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);padding:9px 14px}
-.last-run-stat-row .l{font-size:11px;color:var(--text-dim)}
-.last-run-stat-row .v{font-size:17px;font-weight:700;letter-spacing:-.2px;margin-top:1px}
-.last-run-stat-row .cmp{font-size:10px;color:var(--text-faint);margin-top:3px}
-
-/* Célébration : entrée en pop + éclats qui partent de l'icône. Ne joue
-   qu'une fois par ouverture du dashboard (voir renderContent), jamais si
-   l'utilisateur préfère moins d'animation. */
-@media (prefers-reduced-motion: no-preference){
-  .last-run-card.celebrate{animation:lastRunPop .5s cubic-bezier(.34,1.56,.64,1) both}
-  .last-run-card.celebrate .last-run-icon::before,
-  .last-run-card.celebrate .last-run-icon::after{
-    content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:var(--accent);
-    top:50%;left:50%;opacity:0;animation:lastRunSpark .9s ease-out .25s both;
-  }
-  .last-run-card.celebrate .last-run-icon::after{background:#ffd60a;animation:lastRunSpark2 .9s ease-out .35s both}
-}
-@keyframes lastRunPop{
-  0%{opacity:0;transform:scale(.94) translateY(6px)}
-  100%{opacity:1;transform:scale(1) translateY(0)}
-}
-@keyframes lastRunSpark{
-  0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
-  100%{opacity:0;transform:translate(calc(-50% + 34px),calc(-50% - 28px)) scale(0)}
-}
-@keyframes lastRunSpark2{
-  0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
-  100%{opacity:0;transform:translate(calc(-50% - 30px),calc(-50% - 20px)) scale(0)}
-}
 /* ---------- Aujourd'hui : bandeau coach, alerte douleur forte, carte « Hier » ---------- */
 .coach{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:10px 14px 10px 10px;margin-bottom:14px;border:none;border-radius:var(--r-lg);background:var(--surface);color:var(--text-2);font-family:inherit;font-size:14px;line-height:1.4;text-align:left;cursor:pointer}
 .coach-dot{flex:none;width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center}
@@ -695,6 +604,10 @@ button.pg-rec-row{cursor:pointer}
 .pg-rec-row .t.none{color:var(--text-faint)}
 .pg-rec-sub{display:flex;flex-direction:column;gap:2px}
 .pg-rec-note{font-size:12px;color:var(--text-muted)}
+@media (max-width:370px){
+  .pg-ring .v,.pg-chg-row .z{font-size:17px}
+  .pg-chg-row .n{font-size:19px}
+}
 /* Feuille de la jauge de charge (4c) */
 .cg-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px}
 .cg-top .btns{display:flex;gap:8px;align-items:center}
@@ -733,6 +646,56 @@ button.pg-rec-row{cursor:pointer}
 @keyframes ringFill{from{stroke-dasharray:0 100}}
 @keyframes cgMark{from{left:0}}
 @keyframes cgReveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+/* Graphiques de Progression (S6.3, design 6) */
+.pc{gap:22px;padding:20px 16px 18px}
+.pc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.pc-title{display:flex;align-items:center;gap:8px;padding-top:4px}
+.pc-title .heart{color:var(--data-coral);display:flex}
+.pc-prog{text-align:right;flex:none}
+.pc-prog .v{font:700 26px/1 var(--font-display);text-transform:uppercase;color:var(--accent)}
+.pc-prog .v.muted{color:var(--text-muted)}
+.pc-prog .s{font-size:11.5px;color:var(--text-muted);margin-top:2px}
+.pc-seg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--surface-sunken);border-radius:var(--r-sm);padding:3px}
+.pc-seg button{height:34px;border:none;border-radius:9px;background:none;color:var(--text-muted);font:inherit;font-size:13px;cursor:pointer}
+.pc-seg button[aria-pressed="true"]{background:var(--select);color:var(--on-accent);font-weight:600}
+.pc-coach{display:flex;gap:8px;font-size:14px;line-height:1.4;color:var(--text-2)}
+.pc-coach svg{color:var(--accent);margin-top:3px;flex:none}
+.pc-plot svg{display:block;overflow:visible}
+.pc-plot svg .gl{stroke:var(--line);stroke-width:1}
+.pc-plot svg text{fill:var(--text-muted);font-size:10.5px;font-family:var(--font-text);font-variant-numeric:tabular-nums}
+.pc-plot svg .bub rect,.pc-plot svg .bub path{fill:var(--select)}
+.pc-plot svg .bub text{fill:var(--on-accent);font-size:12px}
+.pc-plot svg .bub{cursor:pointer}
+.pc-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11.5px;color:var(--text-muted);margin-top:-8px}
+.pc-legend span{display:inline-flex;align-items:center;gap:6px}
+.pc-legend i{display:inline-block;flex:none}
+.pc-legend .dot{width:8px;height:8px;border-radius:50%}
+.pc-legend .dia{width:8px;height:8px;transform:rotate(45deg)}
+.pc-legend .sq{width:9px;height:9px;border-radius:2px}
+.pc-legend .ln{width:16px;height:0;border-top:1.5px dashed var(--text-3)}
+.pc-slider{position:relative;height:28px;touch-action:none;cursor:pointer;outline:none}
+.pc-slider:focus-visible .handle{box-shadow:0 0 0 3px var(--accent)}
+.pc-slider .track{position:absolute;left:0;right:0;top:12px;height:4px;border-radius:2px;background:var(--line)}
+.pc-slider .tk{position:absolute;top:9px;width:3px;height:10px;margin-left:-1.5px;border-radius:1px;background:var(--text-faint)}
+.pc-slider.dense .tk{width:2px;margin-left:-1px}
+.pc-slider .tk.race{top:8px;height:12px;background:var(--type-course)}
+.pc-slider .handle{position:absolute;top:0;width:28px;height:28px;margin-left:-14px;border-radius:50%;background:var(--select);box-shadow:0 0 0 4px rgba(198,244,50,.25)}
+.pc-slider .handle::after{content:"";position:absolute;inset:-8px}
+.pc-nav{display:flex;align-items:center;gap:8px;margin-top:6px}
+.pc-nav button{width:44px;height:44px;flex:none;border:none;border-radius:50%;background:var(--surface-control);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.pc-nav .txt{font-size:12.5px;line-height:1.35;color:var(--text-muted)}
+.pc-wait{background:none;border:1px dashed var(--line-empty);gap:10px}
+.pc-wait .big{font:700 22px/1.1 var(--font-display);text-transform:uppercase;color:var(--text-faint)}
+.pc-wait p{font-size:13.5px;line-height:1.45;color:var(--text-3)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion: no-preference){
+  .pc-plot.anim.time svg{animation:cgReveal .6s ease-out both}
+  .pc-plot.anim .bar{transform-box:fill-box;transform-origin:50% 100%;animation:barRise .4s ease-out both;animation-delay:calc(var(--i) * 40ms)}
+  .pc-slider .handle{transition:left .15s ease-out}
+  .pc-title .heart svg{animation:heartBeat 1.6s ease-in-out infinite}
+}
+@keyframes barRise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes heartBeat{0%,40%,100%{transform:scale(1)}10%{transform:scale(1.18)}20%{transform:scale(1)}30%{transform:scale(1.18)}}
 .sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface-raised);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:var(--shadow-sheet)}
 .sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--grabber);margin:0 auto 14px}
@@ -804,7 +767,7 @@ button.pg-rec-row{cursor:pointer}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=69"></script>
+<script src="logic.js?v=72"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -1010,7 +973,7 @@ let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = 
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let onboardingCompletedAt = null;
 let suspendedZones = [];
-let pseudo="", age=null, gender="", cities=[], dashboardPeriod="monthly";
+let pseudo="", age=null, gender="", cities=[];
 let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
 let programSelectedDate = null; // jour affiché dans le panneau de détail sous le calendrier
 // Refonte complète du check-in douleur (retour d'audit : trop lourd à
@@ -1094,7 +1057,6 @@ async function loadData() {
   age = profile?.age || null;
   gender = profile?.gender || "";
   cities = profile?.cities || [];
-  dashboardPeriod = profile?.dashboard_period || "monthly";
   programSettings = profile?.program_settings || {};
   onboardingCompletedAt = profile?.onboarding_completed_at || null;
   suspendedZones = Array.isArray(profile?.suspended_zones) ? profile.suspended_zones : [];
@@ -1683,11 +1645,6 @@ window.saveAccountInfo = async () => {
   vo2Max = vo2.num; vo2MaxUpdatedAt = vo2.updatedAt; vo2MaxIsManual = vo2.isManual;
   flashSaved("accountSaved");
 };
-window.saveDashboardPeriod = async (value) => {
-  dashboardPeriod = value;
-  renderContent();
-  await upsertProfile({ dashboard_period: value });
-};
 window.changePassword = async () => {
   const pw = document.getElementById("newPassword").value;
   const msg = document.getElementById("pwMsg");
@@ -2102,115 +2059,6 @@ function situationStats(objectifType){
   }
 }
 
-// 3 anneaux d'objectifs, toujours MENSUELS par choix explicite — indépendants
-// du bascule semaine/mois qui pilote le reste du dashboard (ce sont des
-// objectifs du mois, pas une vue par période). L'objectif "Séances" vient du
-// champ "Séances visées / semaine" (onglet Objectifs), mensualisé ×4.33
-// (nombre moyen de semaines par mois) plutôt que juste ×4, pour ne pas sous-
-// estimer légèrement l'objectif réel.
-function ringSmHTML(val, goal, color, valLabel, unitLabel, caption){
-  const pct = goal ? Math.min(1, val/goal) : 0;
-  const R=38, C=2*Math.PI*R;
-  return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-    <div class="ring-wrap-sm">
-      <svg width="90" height="90" viewBox="0 0 90 90">
-        <circle cx="45" cy="45" r="${R}" fill="none" stroke="var(--card-2)" stroke-width="8"/>
-        <circle cx="45" cy="45" r="${R}" fill="none" stroke="${color}" stroke-width="8"
-          stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}" stroke-linecap="round"/>
-      </svg>
-      <div class="ring-label-sm">
-        <div class="val">${valLabel}</div>
-        <div class="unit">${unitLabel}</div>
-      </div>
-    </div>
-    <div class="ring-caption">${caption}</div>
-  </div>`;
-}
-// Carte "Dernière séance" tout en haut du dashboard : premier truc vu à
-// l'ouverture. Repliée par défaut (juste date + km, voir lastRunExpanded) —
-// dépliée au clic, en deux colonnes (graph+zones FC à gauche, stats à
-// droite) plutôt qu'empilée, pour prendre moins de place. L'allure
-// n'apparaît qu'une fois : allure moyenne pour une séance classique, ou
-// Allure Work/Récup pour un fractionné avec assez de données — jamais les
-// deux (c'était le doublon signalé). `celebrate` n'est vrai qu'au tout
-// premier rendu du dashboard depuis l'ouverture de l'app (voir
-// renderContent) — l'animation ne doit pas rejouer à chaque re-render.
-function lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate){
-  const c = TC[lastRun.type]||TC.Other;
-  const expanded = lastRunExpanded;
-  const km = lastRun.dist>0 ? lastRun.dist.toFixed(2)+" km" : "—";
-
-  const intervalPaces = lastRun.type==="Fractionné" ? getIntervalPaces(lastRun) : null;
-  const showWorkRecovery = intervalPaces && (intervalPaces.manual || intervalPaces.workCount>=2);
-
-  // Comparatif "par rapport à d'habitude" : moyenne des séances du même
-  // type sur les 30 derniers jours (séance actuelle exclue) — un chiffre
-  // isolé ne dit rien sans repère récent. Pas de comparatif si c'est la
-  // seule séance de ce type ce dernier mois.
-  const avgOf = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
-  const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate()-30);
-  const sameTypeLastMonth = runningRuns.filter(r => r.type===lastRun.type && r.id!==lastRun.id && dateFromRun(r)>=monthAgo);
-  const avgKm = avgOf(sameTypeLastMonth.filter(r=>r.dist>0).map(r=>r.dist));
-  const avgDurSec = avgOf(sameTypeLastMonth.map(r=>r.durationSec));
-  const avgAllure = avgOf(sameTypeLastMonth.filter(r=>r.allure).map(r=>r.allure));
-  const fracPacesLastMonth = sameTypeLastMonth.map(r=>getIntervalPaces(r)).filter(ip=>ip && (ip.manual || ip.workCount>=2));
-  const avgWork = avgOf(fracPacesLastMonth.map(ip=>ip.work));
-  const avgRecovery = avgOf(fracPacesLastMonth.filter(ip=>ip.recovery).map(ip=>ip.recovery));
-  const cmp = v => v==null?null:`Moyenne dernier mois : ${v}`;
-
-  const statRows = [
-    ["km", km, cmp(avgKm?avgKm.toFixed(2)+" km":null)],
-    ["Durée", lastRun.dur, cmp(avgDurSec?fmtDur(Math.round(avgDurSec)):null)],
-    ...(showWorkRecovery
-      ? [
-          [`Allure Work${intervalPaces.manual?"":` (${intervalPaces.workCount})`}`, fmtA(intervalPaces.work)+"/km", cmp(avgWork?fmtA(Math.round(avgWork))+"/km":null)],
-          ...(intervalPaces.recovery ? [[`Allure Récup${intervalPaces.manual?"":` (${intervalPaces.recoveryCount})`}`, fmtA(intervalPaces.recovery)+"/km", cmp(avgRecovery?fmtA(Math.round(avgRecovery))+"/km":null)]] : []),
-        ]
-      : [["Allure", lastRun.dist>0?fmtA(lastRun.allure)+"/km":"—", cmp(avgAllure?fmtA(Math.round(avgAllure))+"/km":null)]]
-    ),
-  ];
-
-  const hasHr = lastRun.hrSeries && lastRun.hrSeries.length>1;
-  let leftHTML;
-  if(!hasHr){
-    leftHTML = `<div style="font-size:12px;color:var(--text-dim);padding:8px 0">Pas de détail FC pour cette séance.</div>`;
-  } else if(!effMaxHr){
-    leftHTML = `<div style="font-size:12px;color:var(--text-dim);padding:8px 0">Renseigne ta FC max (Mon compte) pour voir les zones.</div>`;
-  } else {
-    const {secs, defs} = computeHrZoneSeconds(lastRun.hrSeries, effMaxHr, effRestingHr);
-    const total = secs.reduce((a,b)=>a+b,0)||1;
-    leftHTML = `<div style="position:relative;width:100%;height:120px"><canvas id="cHr_${lastRun.id}"></canvas></div>
-      <div style="margin-top:10px">
-        ${defs.map((d,i)=>`
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px">
-            <span style="width:52px;color:${d.color}">${d.label}</span>
-            <div style="flex:1;height:6px;border-radius:3px;background:var(--card-2);overflow:hidden">
-              <div style="width:${Math.round(secs[i]/total*100)}%;height:100%;background:${d.color}"></div>
-            </div>
-            <span style="width:48px;text-align:right;color:var(--text-dim)">${fmtDur(secs[i])}</span>
-          </div>`).join("")}
-      </div>`;
-  }
-
-  return `<div class="last-run-card${celebrate?" celebrate":""}${expanded?" expanded":""}">
-    <div class="last-run-eyebrow">${icon("sparkle",12)} Dernière séance</div>
-    <div class="last-run-head" onclick="toggleLastRunExpanded()">
-      <div class="last-run-icon" style="background:${c}22;color:${c}">${icon(TICON[lastRun.type]||"activity",22)}</div>
-      <div style="flex:1;min-width:0">
-        <div class="last-run-title">${lastRun.label} · ${lastRun.time}</div>
-        <div class="last-run-sub"><span style="color:${c};font-weight:600">${lastRun.type}</span></div>
-      </div>
-      ${!expanded?`<div class="last-run-collapsed-km">${km}</div>`:""}
-      <div class="last-run-chevron">${icon("chevronDown",16)}</div>
-    </div>
-    ${expanded?`<div class="last-run-body">
-      <div class="last-run-left">${leftHTML}</div>
-      <div class="last-run-right">
-        ${statRows.map(([l,v,cmp])=>`<div class="last-run-stat-row"><div class="l">${l}</div><div class="v">${v}</div>${cmp?`<div class="cmp">${cmp}</div>`:""}</div>`).join("")}
-      </div>
-    </div>`:""}
-  </div>`;
-}
 
 // ---------- Progression : carte objectif, tuiles, chiffres clés, records, jauge de charge (S6, design 5 et 4c) ----------
 const fmtKm1 = (v) => Number(v).toLocaleString("fr-FR", { maximumFractionDigits:1 });
@@ -2351,6 +2199,294 @@ window.openHistoryRun = (id) => {
   setTimeout(()=>scrollToCard("hist_"+id), 120);
 };
 
+// ---------- Graphiques de Progression (S6.3, design 6) : SVG maison ----------
+// Courbes dans le temps (allure EF, fractionné, efficience) : période, progression, ligne du coach, curseur qui
+// avance de séance en séance, bulle sur le point. Barres par mois (volume, facile / soutenu). Les modèles sont
+// recalculés à chaque changement ; seule la zone du dessin et le texte sont redessinés pendant qu'on glisse le curseur.
+const progChartState = {};   // clé → { period, index }
+const CH_H = 170, CH_L = 34, CH_R = 8, CH_T = 10, CH_B = 148;
+const chartW = () => { const c = document.getElementById("content"); return Math.max(240, Math.min(520, (c ? c.clientWidth : 375) - 72)); };
+const chartSt = (key) => progChartState[key] || (progChartState[key] = { period:"all", index:null });
+const fmtDayFr = (ts) => new Date(ts).toLocaleDateString("fr-FR", { weekday:"short", day:"numeric", month:"short" });
+const svgEsc = (t) => String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const FRAC_COLOR = "#C56A3E";   // terre battue : équivalent hexadécimal de --type-fractionne
+
+// Bulle au-dessus (ou sous) le point choisi ; reste dans la zone du dessin. `parts` : [{t, b}] (b = en gras).
+function chartBubbleSVG(x, y, parts, W, onclick){
+  const text = parts.map(p=>p.t).join(""), w = Math.ceil(text.length*6.3)+18, h = 24;
+  let bx = Math.min(Math.max(x - w/2, CH_L), W - CH_R - w);
+  const above = y - 14 - h >= -2;
+  const by = above ? y - 12 - h : y + 12;
+  const ax = Math.min(Math.max(x, bx+10), bx+w-10);
+  const arrow = above ? `<path d="M${ax-5} ${by+h} l5 5 l5 -5 Z"/>` : `<path d="M${ax-5} ${by} l5 -5 l5 5 Z"/>`;
+  return `<g class="bub" aria-hidden="true"${onclick?` onclick="${onclick}"`:""}><rect x="${bx}" y="${by}" width="${w}" height="${h}" rx="8"/>${arrow}<text x="${bx+9}" y="${by+16}">${parts.map(p=>`<tspan${p.b?' font-weight="700"':""}>${svgEsc(p.t)}</tspan>`).join("")}</text></g>`;
+}
+function chartLegendHTML(items){
+  return `<div class="pc-legend">${items.map(i=>`<span>${i}</span>`).join("")}</div>`;
+}
+
+// --- Courbes dans le temps ---
+// cfg : { title, heart, points:[{ts,value,id,kind}], trendKinds:[...], progress:'pace'|'ratio', yFmt(v,dec), steps, decimals, goalTs, projDays,
+//         legend:[html], coachFn(progress,pts), bubbleFn(point)->parts, waitMinPoints, waitText }
+function timeChartModel(key, cfg){
+  const st = chartSt(key), now = Date.now();
+  const all = pointsInPeriod(cfg.points, st.period, now);
+  const W = chartW();
+  if(all.length < (cfg.waitMinPoints||2)){
+    if((cfg.points||[]).length >= (cfg.waitMinPoints||2)) return { key, empty:true, title:cfg.title, heart:cfg.heart, text:"Pas assez de séances sur cette période : choisis une période plus longue." };
+    return { key, wait:true, title:cfg.title, text:cfg.waitText, count:all.length };
+  }
+  const trendPts = all.filter(p=>cfg.trendKinds.includes(p.kind));
+  const prog = periodProgress(trendPts, st.period, now);
+  const progress = cfg.progress==="ratio" ? ratioProgressText(prog) : paceProgressText(prog);
+  const first = all[0].ts, lastPt = all[all.length-1].ts;
+  let end = cfg.projDays ? lastPt + cfg.projDays*DAY_MS : lastPt;
+  if(cfg.goalTs && cfg.goalTs>lastPt && cfg.goalTs < lastPt + 400*DAY_MS) end = Math.max(end, cfg.goalTs);
+  const start = first, endTs = Math.max(end, start + 30*DAY_MS);
+  const yd = chartYDomain(all.map(p=>p.value), 0.1);
+  const ticks = niceTicks(yd.min, yd.max, 5, cfg.steps).ticks;
+  const l = CH_L, r = W - CH_R, pw = r - l;
+  const X = (ts) => l + (ts-start)/(endTs-start)*pw;
+  const Y = (v) => CH_T + (v-yd.min)/(yd.max-yd.min)*(CH_B-CH_T);   // petit = en haut (plus rapide, plus efficace)
+  const nav = all.map(p=>({ id:p.id, kind:p.kind, frac:(X(p.ts)-l)/pw, race:p.kind==="race", p }));
+  const dec = cfg.decimals ? axisDecimals(yd.min, yd.max, 5) : 0;
+  const trend = trendSegments(trendPts, cfg.projDays||0);
+  const svg = (sel) => {
+    const g = [];
+    ticks.forEach(v=>{ const y = Y(v); g.push(`<line class="gl" x1="${l}" x2="${r}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text x="${l-6}" y="${(y+4).toFixed(1)}" text-anchor="end">${cfg.yFmt(v,dec)}</text>`); });
+    monthTicks(start, endTs, Math.max(3, Math.floor(pw/50))).forEach(m=>{ g.push(`<text x="${Math.max(X(m.ts), l+12).toFixed(1)}" y="164" text-anchor="middle">${m.label}</text>`); });
+    const plot = [];
+    if(trend && !cfg.line){
+      const x1 = X(trend.fromTs), x2 = X(trend.toTs);
+      plot.push(`<line x1="${x1.toFixed(1)}" y1="${Y(trend.fromValue).toFixed(1)}" x2="${x2.toFixed(1)}" y2="${Y(trend.toValue).toFixed(1)}" stroke="#F2F3F0" stroke-width="1.5" stroke-dasharray="5 4" opacity=".7"/>`);
+      if(cfg.projDays && trend.projTs>trend.toTs){
+        const pe = Math.min(trend.projTs, endTs), pv = trend.toValue + (trend.projValue-trend.toValue)/(trend.projTs-trend.toTs)*(pe-trend.toTs);
+        plot.push(`<line x1="${x2.toFixed(1)}" y1="${Y(trend.toValue).toFixed(1)}" x2="${X(pe).toFixed(1)}" y2="${Y(pv).toFixed(1)}" stroke="#F2F3F0" stroke-width="1.5" stroke-dasharray="2 4" opacity=".45"/>`);
+      }
+    }
+    if(cfg.goalTs && cfg.goalTs>=start && cfg.goalTs<=endTs){
+      const gx = X(cfg.goalTs).toFixed(1);
+      plot.push(`<line x1="${gx}" x2="${gx}" y1="10" y2="148" stroke="#EE343B" stroke-width="1.2" stroke-dasharray="3 3"/><path d="M${gx} 10 l10 4 l-10 4 Z" fill="#EE343B"/>`);
+    }
+    if(cfg.line){ // efficience : courbe corail, remplie à 7 %
+      const pts = all.map(p=>`${X(p.ts).toFixed(1)},${Y(p.value).toFixed(1)}`);
+      plot.push(`<polygon points="${X(all[0].ts).toFixed(1)},${CH_B} ${pts.join(" ")} ${X(all[all.length-1].ts).toFixed(1)},${CH_B}" fill="#FF645F" opacity=".07"/><polyline points="${pts.join(" ")}" fill="none" stroke="#FF645F" stroke-width="2" stroke-linejoin="round"/>`);
+    }
+    all.forEach(p=>{
+      const x = X(p.ts).toFixed(1), y = Y(p.value).toFixed(1);
+      if(p.kind==="long") plot.push(`<path d="M${x} ${(y-5)} l5 5 l-5 5 l-5 -5 Z" fill="#71D6A3"/>`);
+      else if(p.kind==="race") plot.push(`<line x1="${x}" x2="${x}" y1="${(y-4)}" y2="${(y-20)}" stroke="#EE343B" stroke-width="1.6"/><path d="M${x} ${(y-20)} l10 4 l-10 4 Z" fill="#EE343B"/><circle cx="${x}" cy="${y}" r="4.2" fill="#EE343B" style="stroke:var(--surface);stroke-width:1.5"/>`);
+      else plot.push(`<circle cx="${x}" cy="${y}" r="${cfg.line?3:3.6}" fill="${p.kind==="frac"?FRAC_COLOR:p.kind==="eff"?"#FF645F":"#C6F432"}"/>`);
+    });
+    const cur = nav[sel].p, cx = X(cur.ts), cy = Y(cur.value);
+    plot.push(`<line x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="10" y2="148" stroke="#F2F3F0" stroke-width="1" opacity=".4"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="none" stroke="#F2F3F0" stroke-width="2"/>`);
+    return `<svg width="${W}" height="${CH_H}" viewBox="0 0 ${W} ${CH_H}" role="img" aria-label="${svgEsc(cfg.title)}, ${all.length} séances">${g.join("")}<g>${plot.join("")}</g>${chartBubbleSVG(cx, cy, cfg.bubbleFn(cur), W, cur.id?`openHistoryRun('${cur.id}')`:"")}</svg>`;
+  };
+  return { key, kind:"time", W, title:cfg.title, heart:cfg.heart, progress, since:prog.since, period:true, coach:cfg.coachFn(prog, all), nav, svg, legend:cfg.legend, noun:"Séance",
+    srText:(i)=>cfg.bubbleFn(nav[i].p).map(p=>p.t).join("") };
+}
+
+// --- Barres par mois ---
+// cfg : { title, bars:[{label, ...}], yMax, ticks, yFmt, drawBar(bar,i,geom)->svg, extra(geom)->svg, bubbleFn(bar)->parts, legend, coach }
+function barChartModel(key, cfg){
+  const W = chartW(), l = CH_L, r = W - CH_R, pw = r - l, n = cfg.bars.length;
+  const slot = pw/n, bw = Math.min(30, slot*0.62);
+  const Y = (v) => CH_B - v/cfg.yMax*(CH_B-CH_T);
+  const cx = (i) => l + slot*(i+0.5);
+  const nav = cfg.bars.map((b,i)=>({ id:null, frac:(cx(i)-l)/pw, race:false, bar:b }));
+  const svg = (sel) => {
+    const g = [];
+    cfg.ticks.forEach(v=>{ const y = Y(v); g.push(`<line class="gl" x1="${l}" x2="${r}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text x="${l-6}" y="${(y+4).toFixed(1)}" text-anchor="end">${cfg.yFmt(v)}</text>`); });
+    const geom = { l, r, W, Y, cx, bw, slot };
+    const every = slot < 30 ? 2 : 1;
+    const bars = cfg.bars.map((b,i)=>`<g class="bar" style="--i:${i}">${cfg.drawBar(b, i, geom)}</g>${i%every===(n-1)%every ? svgText(cx(i), 164, b.label) : ""}`).join("");
+    const b = cfg.bars[sel], bx = cx(sel), by = Y(b.top!=null?b.top:b.value||0);   // b.flag : pastille « ! » au-dessus de la barre
+    const sel1 = `<rect x="${(bx-bw/2-2).toFixed(1)}" y="${(by-2).toFixed(1)}" width="${(bw+4).toFixed(1)}" height="${(CH_B-by+2).toFixed(1)}" rx="5" fill="none" stroke="#F2F3F0" stroke-width="1.5"/>`;
+    return `<svg width="${W}" height="${CH_H}" viewBox="0 0 ${W} ${CH_H}" role="img" aria-label="${svgEsc(cfg.title)}, ${n} mois">${g.join("")}<g>${bars}${cfg.extra?cfg.extra(geom):""}</g>${sel1}${chartBubbleSVG(bx, by-(b.flag?22:0), cfg.bubbleFn(b), W, "")}</svg>`;
+  };
+  return { key, kind:"bars", W, title:cfg.title, progress:null, period:false, coach:cfg.coach, nav, svg, legend:cfg.legend, noun:"Mois", srText:(i)=>cfg.bubbleFn(nav[i].bar).map(p=>p.t).join("") };
+}
+const svgText = (x, y, t) => `<text x="${x.toFixed(1)}" y="${y}" text-anchor="middle">${svgEsc(t)}</text>`;
+
+// --- Les cinq graphiques ---
+const paceLegendDot = (color, label) => `<i class="dot" style="background:${color}"></i>${label}`;
+function efChartModel(){
+  const mk = (r, kind) => ({ ts:dateFromRun(r).getTime(), value:r.allure, id:r.id, kind });
+  const points = [
+    ...efRuns.filter(r=>r.allure>0).map(r=>mk(r,"ef")),
+    ...runningRuns.filter(r=>r.type==="Long" && r.allure>0).map(r=>mk(r,"long")),
+    ...runningRuns.filter(r=>r.type==="Course" && r.allure>0).map(r=>mk(r,"race")),
+  ];
+  if(!points.some(p=>p.kind==="ef")) return null;
+  const slot = goals.principal || {};
+  const goalTs = slot.objectifPrincipal==="Préparer une course" && slot.dateCible ? parseDay(slot.dateCible).getTime() : null;
+  const hasLong = points.some(p=>p.kind==="long"), hasRace = points.some(p=>p.kind==="race");
+  return timeChartModel("ef", {
+    title:"Progression allure · EF", points, trendKinds:["ef"], progress:"pace", projDays:60, goalTs, steps:[5,10,15,20,30,60,120],
+    yFmt:(v)=>fmtA(Math.round(v)),
+    coachFn:(prog)=> prog.status==="ok" ? `${fmtA(Math.round(prog.firstAvg))} en ${MONTH_NAMES[new Date(prog.startTs).getMonth()]}, ${fmtA(Math.round(prog.lastAvg))} ${prog.fullWindows ? "sur les 4 dernières semaines" : "sur tes dernières séances"}.` : "Pas encore assez de séances pour comparer ton allure sur cette période.",
+    bubbleFn:(p)=>[{t:`${fmtA(Math.round(p.value))}/km`, b:true}, {t:` · ${fmtDayFr(p.ts)}`}],
+    legend: chartLegendHTML([paceLegendDot("#C6F432","EF"), hasLong?`<i class="dia" style="background:#71D6A3"></i>Sortie longue`:"", `<i class="ln"></i>Tendance`, hasRace?paceLegendDot("#EE343B","Course officielle"):"", goalTs?`<i class="ln" style="border-color:#EE343B"></i>Course objectif`:""].filter(Boolean)),
+    waitMinPoints:2, waitText:"Fais au moins deux sorties EF pour voir ta courbe.",
+  });
+}
+function fracChartModel(){
+  const points = fracRuns.map(r=>{ const ip = getIntervalPaces(r); return ip && (ip.manual || ip.workCount>=2) ? { ts:dateFromRun(r).getTime(), value:ip.work, id:r.id, kind:"frac" } : null; }).filter(Boolean);
+  if(!points.length) return null;
+  const state = fractionneChartState(points.length);
+  if(!state.ready) return { key:"frac", wait:true, title:"Progression allure · Fractionné", text:`Ce graphique apparaît à partir de ${FRACTIONNE_MIN_SESSIONS} séances de fractionné. Il t'en manque ${state.missing}.` };
+  return timeChartModel("frac", {
+    title:"Progression allure · Fractionné", points, trendKinds:["frac"], progress:"pace", projDays:0, goalTs:null, steps:[5,10,15,20,30,60,120],
+    yFmt:(v)=>fmtA(Math.round(v)),
+    coachFn:(prog)=> prog.status==="ok" ? `Allure des efforts : ${fmtA(Math.round(prog.firstAvg))} au début, ${fmtA(Math.round(prog.lastAvg))} ${prog.fullWindows ? "sur les 4 dernières semaines" : "récemment"}.` : "Pas encore assez de séances pour comparer tes efforts sur cette période.",
+    bubbleFn:(p)=>[{t:`${fmtA(Math.round(p.value))}/km`, b:true}, {t:` · ${fmtDayFr(p.ts)}`}],
+    legend: chartLegendHTML([paceLegendDot(FRAC_COLOR,"Efforts"), `<i class="ln"></i>Tendance`]),
+    waitMinPoints:2, waitText:"",
+  });
+}
+function effChartModel(){
+  const points = efRuns.filter(r=>r.fc>0 && r.allure>0).map(r=>({ ts:dateFromRun(r).getTime(), value:r.allure/r.fc, id:r.id, kind:"eff", extra:`${fmtA(Math.round(r.allure))}/km · ${Math.round(r.fc)} bpm` }));
+  if(!points.length) return null;
+  return timeChartModel("eff", {
+    title:"Efficience cardiaque", heart:true, line:true, decimals:true, points, trendKinds:["eff"], progress:"ratio", projDays:0, goalTs:null, steps:[0.005,0.01,0.02,0.025,0.05,0.1,0.2,0.25,0.5],
+    yFmt:(v,dec)=>fmtDec(v,dec),
+    coachFn:(prog)=> prog.status==="ok" ? (prog.lastAvg<prog.firstAvg ? "À allure égale, ton cœur travaille moins qu'au début de la période." : "À allure égale, ton cœur travaille un peu plus qu'au début de la période : fatigue, chaleur ou reprise peuvent l'expliquer.") : "Pas encore assez de sorties avec fréquence cardiaque pour comparer.",
+    bubbleFn:(p)=>[{t:fmtDec(p.value,2), b:true}, {t:` · ${fmtDayFr(p.ts)}`}],
+    legend: chartLegendHTML([`${paceLegendDot("#FF645F","Allure ÷ fréquence cardiaque")}`, `↑ plus la courbe monte, plus tu es efficace`]),
+    waitMinPoints:2, waitText:"Il faut au moins deux sorties EF avec cardio pour voir ta courbe.",
+  });
+}
+function volChartModel(){
+  const goalKm = goals.kmMensuel ? Number(goals.kmMensuel) : 0;
+  const v = monthlyVolumeBars(runningRuns.map(runAsRecord), goalKm, Date.now(), 12);
+  if(!v.bars.length) return null;
+  const maxV = Math.max(...v.bars.map(b=>b.km), v.limitKm||0, v.goalKm||0, 1);
+  const tk = niceTicks(0, maxV*1.1, 5, [5,10,20,25,50,100,200,500]);
+  const yMax = Math.max(maxV*1.1, tk.ticks[tk.ticks.length-1]);
+  const cur = v.bars[v.bars.length-1];
+  const color = (b) => b.state==="high" ? "#B688FE" : b.state==="met" ? "#C6F432" : b.state==="none" ? "#C6F432" : "#5A6068";
+  const coach = !v.goalKm ? "Renseigne un objectif de km par mois (Profil › Objectifs) pour voir si tu es dans la cible."
+    : cur.state==="high" ? `Repère : au-delà de ${fmtKm1(v.limitKm)} km par mois (objectif + 30 %), la hausse est rapide. Écoute ton corps.`
+    : cur.state==="met" ? `Objectif atteint ce mois-ci : ${fmtKm1(cur.km)} km sur ${fmtKm1(v.goalKm)}.`
+    : `Ce mois-ci : ${fmtKm1(cur.km)} km sur ${fmtKm1(v.goalKm)} visés.`;
+  return barChartModel("vol", {
+    title:"Volume mensuel (km)", bars:v.bars.map(b=>({...b, value:b.km, flag:b.state==="high"})), yMax, ticks:tk.ticks, yFmt:(x)=>String(x), coach,
+    drawBar:(b,i,g)=>{
+      const x = g.cx(i)-g.bw/2, y = g.Y(b.km), h = Math.max(0, 148-y), c = color(b);
+      const shape = b.current ? `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${g.bw.toFixed(1)}" height="${h.toFixed(1)}" rx="5" fill="${c}" fill-opacity=".22" stroke="${c}" stroke-width="1.5" stroke-dasharray="4 3"/>`
+        : `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${g.bw.toFixed(1)}" height="${h.toFixed(1)}" rx="5" fill="${c}"/>`;
+      const flag = b.state==="high" ? `<circle cx="${g.cx(i).toFixed(1)}" cy="${(y-12).toFixed(1)}" r="8" fill="#B688FE"/><text x="${g.cx(i).toFixed(1)}" y="${(y-8).toFixed(1)}" text-anchor="middle" style="fill:#0C0D0F;font-weight:700;font-size:11px">!</text>` : "";
+      return shape + flag;
+    },
+    extra:(g)=>{
+      let out = "";
+      if(v.goalKm) out += `<line x1="${g.l}" x2="${g.r}" y1="${g.Y(v.goalKm).toFixed(1)}" y2="${g.Y(v.goalKm).toFixed(1)}" stroke="#F2F3F0" stroke-width="1.2" stroke-dasharray="4 4" opacity=".6"/>`;
+      if(v.limitKm) out += `<line x1="${g.l}" x2="${g.r}" y1="${g.Y(v.limitKm).toFixed(1)}" y2="${g.Y(v.limitKm).toFixed(1)}" stroke="#B688FE" stroke-width="1.2" stroke-dasharray="4 4" opacity=".7"/>`;
+      return out;
+    },
+    bubbleFn:(b)=>[{t:`${fmtKm1(b.km)} km`, b:true}, {t:` · ${b.label}${b.current?" (en cours)":""}`}],
+    legend: chartLegendHTML([ v.goalKm?`<i class="sq" style="background:#C6F432"></i>objectif atteint`:"", `<i class="sq" style="background:#5A6068"></i>en dessous`, v.limitKm?`<i class="sq" style="background:#B688FE"></i>trop élevé`:"", v.goalKm?`<i class="ln"></i>objectif ${fmtKm1(v.goalKm)} km`:"", v.limitKm?`<i class="ln" style="border-color:#B688FE"></i>limite ${fmtKm1(v.limitKm)} km`:"" ].filter(Boolean)),
+  });
+}
+function mixChartModel(){
+  const effMaxHr = maxHr || estimatedMaxHr(), effRestingHr = restingHr || null;
+  if(!effMaxHr) return null;
+  const cardioRuns = [...efRuns, ...fracRuns].sort((a,b)=>dateFromRun(b)-dateFromRun(a));
+  const months = easyHardMonthly(monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr)).slice(-12).map(m=>({ ...m, label: m.sortKey!=null ? MONTH_SHORT[m.sortKey%12] : m.label }));
+  if(months.length<2) return null;
+  const last = months[months.length-1];
+  const coach = last.easyPct>=EASY_TARGET_PCT ? `Ce mois-ci : ${last.easyPct} % de facile, tu es au repère de ${EASY_TARGET_PCT} %.` : `Ce mois-ci : ${last.easyPct} % de facile. Le repère conseillé est de ${EASY_TARGET_PCT} % : la plupart de tes sorties en douceur.`;
+  return barChartModel("mix", {
+    title:"Facile / soutenu", bars:months.map(m=>({ label:m.label, easyPct:m.easyPct, hardPct:m.hardPct, top:100 })), yMax:100, ticks:[0,50,100], yFmt:(x)=>x+" %", coach,
+    drawBar:(b,i,g)=>{
+      const x = g.cx(i)-g.bw/2, ye = g.Y(b.easyPct), yh = g.Y(100);
+      return `<rect x="${x.toFixed(1)}" y="${ye.toFixed(1)}" width="${g.bw.toFixed(1)}" height="${(148-ye).toFixed(1)}" rx="4" fill="#C6F432"/>${b.hardPct>0?`<rect x="${x.toFixed(1)}" y="${yh.toFixed(1)}" width="${g.bw.toFixed(1)}" height="${Math.max(0,ye-yh-1).toFixed(1)}" rx="4" fill="${FRAC_COLOR}"/>`:""}`;
+    },
+    extra:(g)=>`<line x1="${g.l}" x2="${g.r}" y1="${g.Y(EASY_TARGET_PCT).toFixed(1)}" y2="${g.Y(EASY_TARGET_PCT).toFixed(1)}" stroke="#F2F3F0" stroke-width="1.2" stroke-dasharray="4 4" opacity=".7"/>`,
+    bubbleFn:(b)=>[{t:`${b.easyPct} % facile`, b:true}, {t:` · ${b.label}`}],
+    legend: chartLegendHTML([`<i class="sq" style="background:#C6F432"></i>Facile (zones 1 à 3)`, `<i class="sq" style="background:${FRAC_COLOR}"></i>Soutenu (zones 4 et 5)`, `<i class="ln"></i>Objectif conseillé : ${EASY_TARGET_PCT} % facile`]),
+  });
+}
+const CHART_BUILDERS = { ef:efChartModel, frac:fracChartModel, eff:effChartModel, vol:volChartModel, mix:mixChartModel };
+const chartSel = (m) => { const st = chartSt(m.key); return st.index==null ? m.nav.length-1 : Math.min(Math.max(st.index,0), m.nav.length-1); };
+const CHART_CARD_ID = { ef:"cardEf", frac:"cardFrac", eff:"cardEff", vol:"cardVol", mix:"cardMix" };
+function chartCardHTML(key){
+  const m = CHART_BUILDERS[key]();
+  if(!m) return "";
+  const id = CHART_CARD_ID[key];
+  if(m.wait) return `<div class="pg-card pc pc-wait" id="${id}"><div class="big">${svgEsc(m.title)}</div><p>${svgEsc(m.text)}</p></div>`;
+  if(m.empty){
+    const st0 = chartSt(key);
+    return `<div class="pg-card pc" id="${id}" data-key="${key}"><div class="pc-head"><div class="pc-title">${m.heart?`<span class="heart">${icon("heart",14)}</span>`:""}<span class="pg-over">${svgEsc(m.title)}</span></div></div>
+      <div class="pc-seg" role="group" aria-label="Période">${PROGRESS_PERIODS.map(p=>`<button type="button" aria-pressed="${st0.period===p.key}" onclick="setChartPeriod('${key}','${p.key}')">${p.label}</button>`).join("")}</div>
+      <div class="pc-coach">${icon("sparkle",13)}<span>${svgEsc(m.text)}</span></div></div>`;
+  }
+  const st = chartSt(key), sel = chartSel(m), animate = playOnce("chart_"+key+"_"+st.period);
+  const prog = m.progress ? `<div class="pc-prog"><div class="v${m.progress.tone==="muted"?" muted":""}">${svgEsc(m.progress.text)}</div>${m.since?`<div class="s">${svgEsc(m.since)}</div>`:""}</div>` : "";
+  const seg = m.period ? `<div class="pc-seg" role="group" aria-label="Période">${PROGRESS_PERIODS.map(p=>`<button type="button" aria-pressed="${st.period===p.key}" onclick="setChartPeriod('${key}','${p.key}')">${p.label}</button>`).join("")}</div>` : "";
+  const ticks = m.nav.map(n=>`<i class="tk${n.race?" race":""}" style="left:${(n.frac*100).toFixed(2)}%"></i>`).join("");
+  return `<div class="pg-card pc" id="${id}" data-key="${key}">
+    <div class="pc-head"><div class="pc-title">${m.heart?`<span class="heart">${icon("heart",14)}</span>`:""}<span class="pg-over">${svgEsc(m.title)}</span></div>${prog}</div>
+    ${seg}
+    <div class="pc-coach">${icon("sparkle",13)}<span>${svgEsc(m.coach)}</span></div>
+    <div class="pc-plot${animate?" anim":""}${m.kind==="time"?" time":""}" id="pcPlot_${key}">${m.svg(sel)}</div>
+    ${m.legend}
+    <div>
+      <div class="pc-slider${m.nav.length>30?" dense":""}" data-key="${key}" role="slider" tabindex="0" aria-label="${m.noun==="Mois"?"Choisir un mois":"Choisir une séance"}" aria-valuemin="1" aria-valuemax="${m.nav.length}" aria-valuenow="${sel+1}" style="margin:0 ${CH_R}px 0 ${CH_L}px">
+        <div class="track"></div>${ticks}<b class="handle" style="left:${(m.nav[sel].frac*100).toFixed(2)}%"></b>
+      </div>
+      <div class="pc-nav"><button type="button" aria-label="Précédent" onclick="stepChart('${key}',-1)">${icon("chevronLeft",20)}</button><button type="button" aria-label="Suivant" onclick="stepChart('${key}',1)">${icon("chevronRight",20)}</button>
+        <span class="txt" aria-live="polite"><span class="sr-only" id="pcSr_${key}">${svgEsc(m.srText(sel))}. </span><span id="pcN_${key}">${m.noun} ${sel+1} sur ${m.nav.length}</span> · glisse le curseur ou utilise ‹ ›</span></div>
+    </div>
+  </div>`;
+}
+function chartsHTML(){ return ["ef","frac","vol","eff","mix"].map(chartCardHTML).join(""); }
+function redrawChartCard(key){
+  const el = document.getElementById(CHART_CARD_ID[key]);
+  if(!el) return;
+  el.outerHTML = chartCardHTML(key);
+}
+window.setChartPeriod = (key, period) => { chartSt(key).period = period; chartSt(key).index = null; redrawChartCard(key); };
+// Seule la zone du dessin, la poignée et le texte changent quand on choisit une autre séance (le curseur garde le doigt).
+function selectChart(key, index){
+  const m = CHART_BUILDERS[key]();
+  if(!m || !m.nav) return;
+  const i = Math.min(Math.max(index,0), m.nav.length-1);
+  chartSt(key).index = i;
+  const plot = document.getElementById("pcPlot_"+key);
+  if(plot){ plot.classList.remove("anim"); plot.innerHTML = m.svg(i); }
+  const card = document.getElementById(CHART_CARD_ID[key]);
+  const handle = card && card.querySelector(".pc-slider .handle"), sl = card && card.querySelector(".pc-slider");
+  if(handle) handle.style.left = (m.nav[i].frac*100).toFixed(2)+"%";
+  if(sl) sl.setAttribute("aria-valuenow", i+1);
+  const n = document.getElementById("pcN_"+key), sr = document.getElementById("pcSr_"+key);
+  if(n) n.textContent = `${m.noun} ${i+1} sur ${m.nav.length}`;
+  if(sr) sr.textContent = m.srText(i)+". ";
+}
+window.stepChart = (key, d) => { const m = CHART_BUILDERS[key](); if(m && m.nav) selectChart(key, chartSel(m)+d); };
+let chartDrag = null;
+function chartPointer(e){
+  const el = chartDrag.el, rect = el.getBoundingClientRect();
+  const frac = Math.min(1, Math.max(0, (e.clientX-rect.left)/rect.width));
+  const m = CHART_BUILDERS[chartDrag.key]();
+  if(!m || !m.nav) return;
+  let best = 0;
+  m.nav.forEach((n,i)=>{ if(Math.abs(n.frac-frac) < Math.abs(m.nav[best].frac-frac)) best = i; });
+  if(chartSel(m)!==best) selectChart(chartDrag.key, best);
+}
+document.addEventListener("pointerdown", (e)=>{ const s = e.target.closest && e.target.closest(".pc-slider"); if(!s) return; chartDrag = { key:s.dataset.key, el:s }; try{ s.setPointerCapture(e.pointerId); }catch(_){} chartPointer(e); });
+document.addEventListener("pointermove", (e)=>{ if(chartDrag) chartPointer(e); });
+document.addEventListener("pointerup", ()=>{ chartDrag = null; });
+document.addEventListener("pointercancel", ()=>{ chartDrag = null; });
+document.addEventListener("keydown", (e)=>{
+  const s = e.target.closest && e.target.closest(".pc-slider"); if(!s) return;
+  const k = s.dataset.key, m = CHART_BUILDERS[k](); if(!m || !m.nav) return;
+  if(e.key==="ArrowLeft"||e.key==="ArrowDown"){ e.preventDefault(); stepChart(k,-1); }
+  else if(e.key==="ArrowRight"||e.key==="ArrowUp"){ e.preventDefault(); stepChart(k,1); }
+  else if(e.key==="Home"){ e.preventDefault(); selectChart(k,0); }
+  else if(e.key==="End"){ e.preventDefault(); selectChart(k,m.nav.length-1); }
+});
+
 // Feuille de la jauge de charge (4c) : barre à 3 zones, courbe des 8 dernières semaines, ligne du coach ; le « i » ouvre l'explication (D22, A7).
 let chargeSheet = null; // "gauge" | "info"
 window.openChargeSheet = () => { chargeSheet = "gauge"; playedChargeSheet = false; refreshSheet(); };
@@ -2402,181 +2538,7 @@ function renderChargeSheet(){
   return true;
 }
 
-// Indicateurs en tête de Progression (4.9.a) : efficience cardiaque,
-// régularité, volume et charge, chacun en une phrase claire (voir
-// efficiencyTrend / regularitySummary / volumeComparison, logic.js).
-function progressIndicatorsHTML(){
-  const todayStr = localDateStr(new Date());
-  const ds = (r) => localDateStr(dateFromRun(r));
-  const eff = efficiencyTrend(efRuns.map(r=>({date:ds(r), allure:r.allure, fc:r.fc})), todayStr);
-  const reg = regularitySummary(runningRuns.map(ds), todayStr);
-  const vol = volumeComparison(runningRuns.map(r=>({date:ds(r), distKm:r.dist||0})), todayStr);
-  const { acwr } = computeProgramInputs();
-  const gauge = chargeEntrainementGauge(acwr);
-  const effValue = eff.status==="mieux" ? countUpHTML(eff.pct,"pct","ind_eff",{sign:"+"}) : eff.status==="moins" ? countUpHTML(eff.pct,"pct","ind_eff",{sign:"−"}) : { stable:"Stable", insuffisant:"—" }[eff.status];
-  const effColor = { mieux:"var(--accent)", moins:"var(--attention)", stable:"var(--text)", insuffisant:"var(--text-faint)" }[eff.status];
-  const row = (label, value, color, phrase, first) => `<div style="padding:12px 0;${first?"":"border-top:1px solid var(--border)"}">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-      <span style="font-size:12px;color:var(--text-dim)">${label}</span>
-      <span style="font-size:20px;font-weight:700;color:${color}">${value}</span>
-    </div>
-    <div style="font-size:12px;line-height:1.45;margin-top:4px;color:var(--text-dim)">${phrase}</div>
-  </div>`;
-  const fmtKm = (n) => n.toLocaleString("fr-FR")+" km";
-  return `<div class="card" id="progIndicators">
-    <div class="stitle">Tes indicateurs</div>
-    ${row("Efficience cardiaque", effValue, effColor, efficiencyPhrase(eff), true)}
-    ${row("Régularité", reg.status==="ok" ? countUpHTML(reg.weeksWithRun,"frac","ind_reg",{total:reg.totalWeeks}) : "—", reg.status==="ok" ? "var(--text)" : "var(--text-faint)", regularityPhrase(reg))}
-    ${row("Volume", countUpHTML(vol.last28,"km","ind_vol"), "var(--text)", `Sur les 28 derniers jours. Les 28 jours d'avant : ${fmtKm(vol.prev28)}.`)}
-    <div style="border-top:1px solid var(--border)">${chargeGaugeHTML(gauge, acwr)}</div>
-  </div>`;
-}
-function heroHTML(){
-  const monthS = periodStats("monthly");
-  // Séances/semaine et km/mois sont partagés (tronc commun), peu importe
-  // l'objectif principal/secondaire actif — voir "Ton profil coureur" dans
-  // l'onglet Objectifs.
-  const kmGoal = goals.kmMensuel ? Number(goals.kmMensuel) : null;
-  const weeklySessionGoal = goals.frequence ? Number(goals.frequence) : null;
-  const sessionGoal = weeklySessionGoal ? Math.round(weeklySessionGoal*4.33) : null;
 
-  return `<div class="hero" style="flex-direction:column;align-items:stretch">
-    <div class="hero-rings-row">
-      ${ringSmHTML(monthS.dist, kmGoal, "#C6F432", monthS.dist.toFixed(0), kmGoal?`/${kmGoal}km`:"km", "Km ce mois")}
-      ${ringSmHTML(monthS.runs.length, sessionGoal, "#0a84ff", String(monthS.runs.length), sessionGoal?`/${sessionGoal}`:"séances", "Séances ce mois")}
-      ${ringSmHTML(monthS.time||0, null, "#ffd60a", Math.floor((monthS.time||0)/3600)+"h"+String(Math.round(((monthS.time||0)%3600)/60)).padStart(2,"0"), "", "Temps de course")}
-    </div>
-    ${(!kmGoal||!sessionGoal)?`<div class="chart-hint" style="margin-top:10px;margin-bottom:0">Objectifs incomplets — <a href="#" onclick="setTab('objectifs');return false" style="color:var(--accent)">renseigne-les dans Profil › Objectifs</a> pour voir ta progression.</div>`:""}
-  </div>`;
-}
-
-function kpisHTML(){
-  const period = dashboardPeriod;
-  const s = periodStats(period);
-  const periodLbl = period==="weekly" ? "(semaine)" : "(mois)";
-  const now=new Date();
-  const yearStart=new Date(now.getFullYear(),0,1);
-  // Toutes séances incluses dans les stats (include_in_stats), tous types
-  // confondus — pas seulement les courses. Voir migration_002 pour la règle
-  // d'inclusion par défaut (EF/Long/Fractionné/Récup/Course), modifiable par
-  // séance via le toggle "Inclure dans les stats".
-  const yearDist = runningRuns.filter(r=>dateFromRun(r)>=yearStart && r.dist>0).reduce((a,r)=>a+r.dist,0);
-  const avgOf = arr => arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : null;
-
-  const today=new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const inWindow = (runs, daysStart, daysEnd) => {
-    const from=new Date(today); from.setDate(today.getDate()-daysEnd);
-    const to=new Date(today); to.setDate(today.getDate()-daysStart);
-    return runs.filter(r=>dateFromRun(r)>=from && dateFromRun(r)<=to);
-  };
-
-  // Ancienneté (date de la 1ère séance valide + nb de jours écoulés depuis)
-  // utilisée pour choisir le découpage temporel dans adaptivePaceCompare.
-  function spanFromRuns(runs, valueFn){
-    const pts = runs.map(r=>({d:dateFromRun(r), v:valueFn(r)})).filter(p=>p.v!=null);
-    if(pts.length===0) return null;
-    const earliest = new Date(Math.min(...pts.map(p=>p.d.getTime())));
-    return { earliest, spanDays: Math.floor((today-earliest)/86400000) };
-  }
-  // Nombre et taille des fenêtres adaptés à l'ancienneté réelle des données
-  // plutôt que des fenêtres fixes (qui restent vides pour un nouvel
-  // utilisateur et ne veulent plus rien dire après plusieurs années).
-  // `valueFn` extrait la valeur à comparer (allure EF, allure de travail en
-  // fractionné...) — la fonction reste agnostique du type de séance.
-  // `refSpan` (optionnel) : force le découpage à suivre l'ancienneté d'un
-  // AUTRE historique (ex: le Fractionné suit l'ancienneté du EF) — la date
-  // de la 1ère séance *catégorisée* Fractionné n'a pas de sens en soi,
-  // c'est juste la date à laquelle l'utilisateur a commencé à étiqueter ses
-  // séances, pas depuis quand il court vraiment.
-  // Renvoie un nombre variable de points (1 à 3) : plus il y a d'historique,
-  // plus la tendance se découpe finement.
-  function adaptivePaceCompare(runs, valueFn, refSpan){
-    const pts = runs.map(r=>({d:dateFromRun(r), v:valueFn(r)})).filter(p=>p.v!=null);
-    if(pts.length===0) return null;
-    const span = refSpan || spanFromRuns(runs, valueFn);
-    const { earliest, spanDays } = span;
-    const inRange = (from,to) => pts.filter(p=>p.d>=from && p.d<=to).map(p=>p.v);
-    const plusDays = (base,n) => { const d=new Date(base); d.setDate(d.getDate()+n); return d; };
-    const daysAgo = n => plusDays(today,-n);
-
-    if(spanDays < 21){
-      return { tooNew:true, current: avgOf(pts.map(p=>p.v)) };
-    }
-    if(spanDays < 60){
-      return { tooNew:false, points:[
-        {label:"2 premières semaines", value:avgOf(inRange(earliest, plusDays(earliest,14)))},
-        {label:"7 derniers jours", value:avgOf(inRange(daysAgo(7), today))},
-      ]};
-    }
-    if(spanDays < 180){
-      return { tooNew:false, points:[
-        {label:"1er mois", value:avgOf(inRange(earliest, plusDays(earliest,30)))},
-        {label:"4 dernières semaines", value:avgOf(inRange(daysAgo(28), today))},
-      ]};
-    }
-    // 6 mois+ : 3 fenêtres glissantes accolées, ancrées à aujourd'hui plutôt
-    // qu'au début des données — donne une vraie tendance en 3 points.
-    return { tooNew:false, points:[
-      {label:"il y a 3 à 6 mois", value:avgOf(inRange(daysAgo(180), daysAgo(90)))},
-      {label:"il y a 1 à 3 mois", value:avgOf(inRange(daysAgo(90), daysAgo(30)))},
-      {label:"dernier mois", value:avgOf(inRange(daysAgo(30), today))},
-    ]};
-  }
-  // Cartes KPI générées à partir d'une comparaison adaptative : 1 carte "en
-  // cours de collecte" tant qu'il y a moins de 3 semaines de recul, sinon
-  // 2 ou 3 cartes selon l'ancienneté. `colors` va du plus ancien au plus
-  // récent ; la dernière carte (la plus récente) utilise l'icône "bolt".
-  function adaptivePaceCards(compare, tooNewLabel, colors){
-    if(!compare) return [["—", tooNewLabel, "trend", "#8e8e93"]];
-    if(compare.tooNew) return [[compare.current?fmtA(compare.current)+"/km":"—", tooNewLabel, "trend", colors[colors.length-1]]];
-    return compare.points.map((p,i)=>[
-      p.value?fmtA(p.value)+"/km":"—", "Allure "+p.label,
-      i===compare.points.length-1?"bolt":"trend",
-      colors[i],
-    ]);
-  }
-  const efSpan = spanFromRuns(efRuns, r=>r.allure);
-  const efCompare = adaptivePaceCompare(efRuns, r=>r.allure, efSpan);
-  const fracCompare = adaptivePaceCompare(fracRuns, r=>{ const ip=getIntervalPaces(r); return ip&&ip.work?ip.work:null; }, efSpan);
-
-  const longRunsAll = runningRuns.filter(r=>r.type==="Long");
-  const avgFcLong = avgOf(longRunsAll.filter(r=>r.fc).map(r=>r.fc));
-  const avgFcEf = avgOf(efRuns.filter(r=>r.fc).map(r=>r.fc));
-  const avgFcFracWork = avgOf(fracRuns.filter(r=>r.paceSeries && r.hrSeries).map(r=>computeWorkAvgHr(r.paceSeries, r.hrSeries)).filter(v=>v!=null));
-
-  // Regroupées par type de donnée plutôt qu'en une seule grille mélangée.
-  const groups=[
-    ["Volume",[
-      [yearDist.toFixed(2)+" km","Distance annuelle","route","#C6F432"],
-      [s.longMax?s.longMax.toFixed(2)+" km":"—","Plus longue sortie "+periodLbl,"flame","#ff453a"],
-    ]],
-    ["Allure EF",
-      adaptivePaceCards(efCompare, "Allure moyenne (encore peu de recul)", ["#ff9f0a","#bf5af2","#0a84ff"]),
-    ],
-    ["Allure Fractionné",
-      adaptivePaceCards(fracCompare, "Allure moyenne (encore peu de recul)", ["#ff375f","#ffd60a","#C6F432"]),
-    ],
-    ["Cardio",[
-      [maxHr?maxHr+" bpm":"—","FC max","heart","#ff375f"],
-      [avgFcEf?avgFcEf+" bpm":"—","FC moy. EF","heart","#C6F432"],
-      [avgFcLong?avgFcLong+" bpm":"—","FC moy. Long","heart","#0a84ff"],
-      [avgFcFracWork?avgFcFracWork+" bpm":"—","FC moy. Work Fractionné","heart","#ff9f0a"],
-    ]],
-  ];
-  // Les blocs Allure (EF/Fractionné) affichent une valeur "X'XX/km" plus
-  // longue que les autres KPI (distance, bpm...) — taille réduite pour
-  // qu'elle tienne sans être compressée dans la carte.
-  return groups.map(([label,items])=>`
-    <div class="stitle" style="padding:0 20px;margin-bottom:8px">${label}</div>
-    <div class="kpi-grid" style="margin-top:-6px${items.length===3?';grid-template-columns:repeat(3,1fr)':''}">${items.map(([v,l,ic,c])=>`
-      <div class="kpi"${items.length===1?' style="grid-column:1/-1"':''}>
-        <div class="kpi-top">
-          <div class="kpi-icon" style="background:${c}22;color:${c}">${icon(ic,15)}</div>
-        </div>
-        <div class="kpi-val"${label.startsWith("Allure")?' style="font-size:16px"':''}>${v}</div>
-        <div class="kpi-lbl">${l}</div>
-      </div>`).join("")}</div>`).join("");
-}
 
 function destroyCharts(){charts.forEach(c=>c.destroy());charts=[];}
 // Menu du bas. La barre est construite une fois ; les rendus suivants ne changent que les
@@ -2681,150 +2643,10 @@ function profilSwitchHTML(){
 }
 window.setFilter=f=>{activeFilter=f;destroyCharts();renderContent();};
 
-// `intenseDist` = distance des séances Fractionné/Seuil de la période —
-// sert à colorer les barres du graph Volume selon le niveau d'intensité
-// (voir intensityColor), plutôt qu'une seule couleur unie qui ne dit rien
-// de la nature de l'effort ce mois-là.
-function weeklyVol(){
-  const w={};
-  runningRuns.forEach(r=>{
-    const[d,m]=r.date.split("/").map(Number);
-    const dt=new Date(2000,m-1,d),mon=new Date(dt);
-    mon.setDate(dt.getDate()-dt.getDay()+(dt.getDay()===0?-6:1));
-    const k=mon.getDate()+"/"+(mon.getMonth()+1);
-    if(!w[k])w[k]={label:k,dist:0,intenseDist:0};
-    w[k].dist=+(w[k].dist+r.dist).toFixed(2);
-    if(r.type==="Fractionné"||r.type==="Seuil") w[k].intenseDist=+(w[k].intenseDist+r.dist).toFixed(2);
-  });
-  return Object.values(w);
-}
 
-function monthlyVol(){
-  const w={};
-  runningRuns.forEach(r=>{
-    const d=dateFromRun(r);
-    const k=d.getFullYear()*12+d.getMonth();
-    if(!w[k])w[k]={label:MONTHS[d.getMonth()],dist:0,intenseDist:0,order:k};
-    w[k].dist=+(w[k].dist+r.dist).toFixed(2);
-    if(r.type==="Fractionné"||r.type==="Seuil") w[k].intenseDist=+(w[k].intenseDist+r.dist).toFixed(2);
-  });
-  return Object.values(w).sort((a,b)=>a.order-b.order);
-}
-// Vert = quasi pas d'intensif, orange = une dose modérée, rouge = grosse
-// part de fractionné/seuil sur la période — un simple ratio distance
-// intense/distance totale, pas besoin de FC pour que ça marche pour tous.
-function intensityColor(r){
-  const pct = r.dist ? r.intenseDist/r.dist : 0;
-  return pct>=0.3 ? "#ff375f" : pct>=0.12 ? "#ff9f0a" : "#C6F432";
-}
-// Couleur du volume MENSUEL comparé à l'objectif km/mois (goals.kmMensuel) :
-// jaune tant qu'on est loin en dessous, vert dans la cible, orange/rouge en
-// cas de dépassement. Gris si aucun objectif n'est renseigné (rien à comparer).
-function monthlyGoalColor(dist, kmGoal){
-  if(!kmGoal) return "#A3A7AD";
-  const pct = dist/kmGoal*100;
-  if(pct>150) return "#ff375f";
-  if(pct>120) return "#ff9f0a";
-  if(pct>=70) return "#C6F432";
-  return "#ffd60a";
-}
 
-// Points sans ligne reliée + droite de tendance projetée sur 3 mois.
-// Rend un emoji sur un mini-canvas pour l'utiliser comme pointStyle Chart.js
-// (rendu synchrone, pas de chargement d'image asynchrone nécessaire).
-function emojiPointStyle(emoji, size=22){
-  const canvas = document.createElement('canvas');
-  canvas.width = size; canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.font = `${Math.round(size*0.85)}px serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(emoji, size/2, size/2+1);
-  return canvas;
-}
 
-function mkPaceTrendChart(canvasId, runs, showRaces, projectionDays=90){
-  if(!runs.length) return;
-  const withPace = runs.filter(r=>r.allure);
-  if(!withPace.length) return;
-  const first = dateFromRun(withPace[0]);
-  const points = withPace.map(r=>({x:Math.round((dateFromRun(r)-first)/86400000), y:r.allure}));
-  const {slope,intercept} = linearRegression(points);
-  const lastX = points[points.length-1].x;
-  const projX = lastX + projectionDays;
-  const trend = [{x:0,y:intercept},{x:projX,y:slope*projX+intercept}];
-  const dayToLabel = x => { const d=new Date(first); d.setDate(first.getDate()+Math.round(x)); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}); };
-  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
-  const datasets = [
-    {type:'scatter', label:'Allure', data:points, backgroundColor:'#C6F432', pointRadius:4},
-    {type:'line', label:'Tendance', data:trend, borderColor:'#ff9f0a', borderWidth:2, borderDash:[6,4], pointRadius:0, fill:false},
-  ];
-  // Une course officielle est un point de repère (vraie perf), pas une donnée
-  // d'entraînement : affichée en plus, mais jamais incluse dans la régression.
-  const courseRuns = showRaces ? runningRuns.filter(r=>r.type==="Course" && r.allure) : [];
-  if(courseRuns.length){
-    const coursePoints = courseRuns.map(r=>({x:Math.round((dateFromRun(r)-first)/86400000), y:r.allure, label:r.label}));
-    datasets.push({type:'scatter', label:'Course', data:coursePoints, backgroundColor:'#ff453a', pointStyle:coursePoints.map(()=>emojiPointStyle('🚩')), pointRadius:11});
-  }
-  // Sorties longues : repère visuel (bleu), jamais dans la régression — même
-  // logique que les courses, une sortie longue a une dynamique différente
-  // d'une séance EF classique et fausserait la tendance.
-  const longRuns = showRaces ? runningRuns.filter(r=>r.type==="Long" && r.allure) : [];
-  if(longRuns.length){
-    const longPoints = longRuns.map(r=>({x:Math.round((dateFromRun(r)-first)/86400000), y:r.allure, label:r.label}));
-    datasets.push({type:'scatter', label:'Long', data:longPoints, backgroundColor:'#0a84ff', pointRadius:5});
-  }
-  const c = new Chart(document.getElementById(canvasId), {
-    data: { datasets },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{title:items=>dayToLabel(items[0].parsed.x), label:ctx=>(ctx.dataset.label==='Allure'||ctx.dataset.label==='Long')?ctx.dataset.label+": "+fmtA(ctx.parsed.y):ctx.dataset.label}}},
-      scales:{
-        x:{type:'linear', ticks:{color:tick,font:{size:10},callback:v=>dayToLabel(v)}, grid:{display:false}},
-        y:{reverse:true, ticks:{color:tick,font:{size:10},callback:v=>fmtA(v)}, grid:{color:grid}},
-      }
-    }
-  });
-  charts.push(c);
-  return c;
-}
 
-// Progression allure des séances fractionné : deux séries de points (Work et
-// Récup), la tendance/projection étant calculée sur le Work uniquement (c'est
-// la métrique de progression qui a du sens, la Récup n'est qu'un repère).
-function mkFractionneChart(canvasId, fracRuns, projectionDays=90){
-  const withIntervals = fracRuns
-    .map(r=>({r, ip: getIntervalPaces(r)}))
-    .filter(x=>x.ip);
-  if(!withIntervals.length) return;
-  const first = dateFromRun(withIntervals[0].r);
-  const workPoints = withIntervals.map(({r,ip})=>({x:Math.round((dateFromRun(r)-first)/86400000), y:ip.work}));
-  const recoveryPoints = withIntervals.filter(({ip})=>ip.recovery).map(({r,ip})=>({x:Math.round((dateFromRun(r)-first)/86400000), y:ip.recovery}));
-  const {slope,intercept} = linearRegression(workPoints);
-  const lastX = workPoints[workPoints.length-1].x;
-  const projX = lastX + projectionDays;
-  const trend = [{x:0,y:intercept},{x:projX,y:slope*projX+intercept}];
-  const dayToLabel = x => { const d=new Date(first); d.setDate(first.getDate()+Math.round(x)); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}); };
-  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
-  const datasets = [
-    {type:'scatter', label:'Work', data:workPoints, backgroundColor:'#C6F432', pointRadius:5},
-    {type:'scatter', label:'Récup', data:recoveryPoints, backgroundColor:'#A3A7AD', pointRadius:5},
-    {type:'line', label:'Tendance', data:trend, borderColor:'#ff9f0a', borderWidth:2, borderDash:[6,4], pointRadius:0, fill:false},
-  ];
-  const c = new Chart(document.getElementById(canvasId), {
-    data: { datasets },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:true, position:'bottom', labels:{color:tick,boxWidth:10,font:{size:10},filter:item=>item.text!=='Tendance'}}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{title:items=>dayToLabel(items[0].parsed.x), label:ctx=>ctx.dataset.label==='Tendance'?null:ctx.dataset.label+": "+fmtA(ctx.parsed.y)}}},
-      scales:{
-        x:{type:'linear', ticks:{color:tick,font:{size:10},callback:v=>dayToLabel(v)}, grid:{display:false}},
-        y:{reverse:true, ticks:{color:tick,font:{size:10},callback:v=>fmtA(v)}, grid:{color:grid}},
-      }
-    }
-  });
-  charts.push(c);
-  return c;
-}
 
 /* ---------- Zones cardio & détection fractionné : voir logic.js ---------- */
 
@@ -2839,88 +2661,6 @@ function monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr){
     secs.forEach((s,i)=>byMonth[key].secs[i]+=s);
   });
   return Object.values(byMonth).sort((a,b)=>a.sortKey-b.sortKey);
-}
-// Barres horizontales empilées (une par mois) plutôt que verticales : plus
-// lisible pour comparer plusieurs mois d'affilée (préférence Omar,
-// 2026-09-19), même donnée qu'avant (% du temps par zone).
-function mkZoneMonthlyChart(canvasId, monthly){
-  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
-  const zoneColors=["#5ac8fa","#C6F432","#a8e063","#ff9f0a","#ff375f"];
-  const zoneLabels=["Zone 1","Zone 2","Zone 3","Zone 4","Zone 5"];
-  const datasets = zoneLabels.map((lbl,i)=>({
-    label: lbl, backgroundColor: zoneColors[i],
-    data: monthly.map(m=>{ const total=m.secs.reduce((a,b)=>a+b,0)||1; return Math.round(m.secs[i]/total*1000)/10; }),
-  }));
-  const c = new Chart(document.getElementById(canvasId), {
-    type:'bar',
-    data:{labels: monthly.map(m=>m.label), datasets},
-    options:{
-      indexAxis:'y',
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:true, position:'bottom', labels:{color:tick,boxWidth:10,font:{size:10}}}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{label:ctx=>ctx.dataset.label+" : "+ctx.parsed.x+"%"}}},
-      scales:{
-        x:{stacked:true, max:100, ticks:{color:tick,font:{size:10},callback:v=>v+"%"}, grid:{color:grid}},
-        y:{stacked:true, ticks:{color:tick,font:{size:10}}, grid:{display:false}},
-      }
-    }
-  });
-  charts.push(c);
-  return c;
-}
-// Volume d'effort intense (zones 4+5) par mois — utile pour suivre la charge
-// haute intensité dans le temps (logique 80/20 : peu mais bien dosée).
-function mkHighIntensityMonthlyChart(canvasId, monthly){
-  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
-  const data = monthly.map(m=>Math.round((m.secs[3]+m.secs[4])/60));
-  const c = new Chart(document.getElementById(canvasId), {
-    type:'line',
-    data:{labels: monthly.map(m=>m.label), datasets:[{label:"Zones 4-5", data, borderColor:"#ff375f", backgroundColor:"rgba(255,55,95,0.08)", fill:true, borderWidth:2, pointBackgroundColor:"#ff375f", pointRadius:3, tension:0.3}]},
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{label:ctx=>ctx.parsed.y+" min"}}},
-      scales:{
-        x:{ticks:{color:tick,font:{size:10}}, grid:{display:false}},
-        y:{ticks:{color:tick,font:{size:10},callback:v=>v+" min"}, grid:{color:grid}},
-      }
-    }
-  });
-  charts.push(c);
-  return c;
-}
-// Rapport allure/FC : allure EF et FC moyenne sur deux axes du même
-// graphique — plus parlant qu'une simple courbe de FC isolée pour repérer
-// une efficience cardiaque qui progresse (allure qui s'améliore à FC égale
-// ou inférieure).
-// Rapport allure/FC : une seule courbe, le vrai quotient allure(s/km) ÷
-// FC(bpm) pour chaque séance — pas deux courbes séparées sur le même
-// graphique. Plus ce chiffre baisse, plus l'efficience cardiaque progresse
-// (allure qui s'améliore à FC égale, ou FC qui baisse à allure égale).
-function mkPaceFcChart(canvasId, runs){
-  const withHr = runs.filter(r=>r.fc && r.allure);
-  if(!withHr.length) return;
-  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
-  const ratios = withHr.map(r=>r.allure/r.fc);
-  const c = new Chart(document.getElementById(canvasId), {
-    type:'line',
-    data:{
-      labels: withHr.map(r=>r.label),
-      datasets:[
-        {label:"Allure/FC", data:ratios, borderColor:"#C6F432", backgroundColor:"rgba(198,244,50,0.08)", fill:true, borderWidth:2, pointBackgroundColor:"#C6F432", pointRadius:3, tension:0.3},
-      ]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{
-        label:ctx=>{ const r=withHr[ctx.dataIndex]; return [`Allure/FC : ${ctx.parsed.y.toFixed(2)} s/km/bpm`, `(${fmtA(r.allure)}/km · ${Math.round(r.fc)} bpm)`]; }
-      }}},
-      scales:{
-        x:{ticks:{color:tick,font:{size:10},autoSkip:true,maxRotation:45}, grid:{display:false}},
-        y:{reverse:true, ticks:{color:tick,font:{size:10},callback:v=>v.toFixed(1)}, grid:{color:grid}},
-      }
-    }
-  });
-  charts.push(c);
-  return c;
 }
 function mkHrCurveChart(canvasId, hrSeries){
   const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
@@ -2945,37 +2685,6 @@ function mkHrCurveChart(canvasId, hrSeries){
   return c;
 }
 
-// Plugin Chart.js maison pour afficher la valeur au-dessus de chaque barre —
-// pas besoin de charger chartjs-plugin-datalabels pour un seul usage.
-const barValueLabelsPlugin = {
-  id: 'barValueLabels',
-  afterDatasetsDraw(chart){
-    const {ctx} = chart;
-    chart.data.datasets.forEach((ds, i)=>{
-      const meta = chart.getDatasetMeta(i);
-      if(meta.hidden) return;
-      meta.data.forEach((bar, idx)=>{
-        const val = ds.data[idx];
-        if(val==null) return;
-        ctx.save();
-        ctx.fillStyle = '#F2F3F0';
-        ctx.font = '600 10px -apple-system, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(val, bar.x, bar.y - 6);
-        ctx.restore();
-      });
-    });
-  }
-};
-function mkChart(id,cfg){
-  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
-  cfg.options=Object.assign({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,padding:10,cornerRadius:8}}},cfg.options||{});
-  const sc={x:{ticks:{color:tick,font:{size:10}},grid:{display:false}},y:{ticks:{color:tick,font:{size:10}},grid:{color:grid}}};
-  if(!cfg.options.scales)cfg.options.scales=sc;
-  else{cfg.options.scales.x=Object.assign({},sc.x,cfg.options.scales.x);cfg.options.scales.y=Object.assign({},sc.y,cfg.options.scales.y);}
-  const c=new Chart(document.getElementById(id),cfg);
-  charts.push(c);return c;
-}
 
 function emptyState(title,sub,withSyncCta){
   const cta = withSyncCta ? `<button class="btn-primary" style="margin-top:16px" onclick="location.href='myrunningapp://sync'">Ouvrir l'app et synchroniser</button>` : "";
@@ -3254,14 +2963,6 @@ window.toggleMonthGroup = (key) => {
 // Vrai seulement au tout premier rendu du dashboard depuis l'ouverture de
 // l'app : l'animation de célébration de la carte "Dernière séance" ne doit
 // jouer qu'une fois, pas à chaque re-render (changement de filtre, etc.).
-let lastRunCelebrated = false;
-// Repliée par défaut (juste date + km) : dépliée au clic pour voir le
-// détail complet. Un seul état pour toute la session (une seule carte).
-let lastRunExpanded = false;
-window.toggleLastRunExpanded = () => {
-  lastRunExpanded = !lastRunExpanded;
-  renderContent();
-};
 window.toggleHrDetail = (id) => {
   if(openHrDetail.has(id)) openHrDetail.delete(id);
   else openHrDetail.add(id);
@@ -4456,7 +4157,6 @@ function weekTileHTML(day, i){
 }
 // Toucher un jour ouvre ce jour dans Programme ; la ligne de charge ouvre la jauge de charge (R8, D19, journal 4).
 window.openProgramDay = (dateStr) => { programViewMode = "week"; programWeekOffset = 0; programSelectedDate = dateStr; setTab("programme"); };
-window.goToIndicators = () => { setTab("progression"); setTimeout(()=>document.getElementById("progIndicators")?.scrollIntoView({behavior:"smooth", block:"start"}), 150); };
 function weekRecapCardHTML(){
   const runsForRecap = runningRuns.map(r=>({ date: localDateStr(dateFromRun(r)), distKm: r.dist||0, durationSec: r.durationSec||0, type: r.type }));
   const recap = weekRecap(runsForRecap, plannedSessions, localDateStr(new Date()));
@@ -4490,29 +4190,6 @@ function weekRecapCardHTML(){
       <span style="color:var(--text-muted)">Charge d'entraînement</span>
       <span class="r"><b style="color:${ci.color}">${escHtml(ci.label)}</b>${ci.value?`<span>· ${ci.value}</span>`:""}${icon("chevronRight",16)}</span>
     </button>
-  </div>`;
-}
-// Jauge de charge d'entraînement (4.8.c) : barre à 3 zones, repère à la
-// position de la charge (échelle 0-2, voir chargeGaugePosition). Jamais de
-// rouge, même au-delà de 1,5 : la phrase passe seulement en gras ambre.
-function chargeGaugeHTML(gauge, acwr){
-  const zoneName = { "sous-charge":"En dessous de la zone idéale", "idéale":"Zone idéale", "attention":"Zone d'attention", "inconnue":"" }[gauge.zone] || "";
-  const pos = chargeGaugePosition(acwr);
-  const known = pos!=null;
-  const animate = known && playOnce("gauge_"+Number(acwr).toFixed(2));
-  const seg = (width, color) => `<div style="width:${width}%;background:${known?color:"var(--card-2)"};opacity:${known?0.45:1}"></div>`;
-  const marker = known ? `<div class="${animate?"marker-slide":""}" style="--pos:${pos*100}%;position:absolute;top:50%;left:${pos*100}%;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%);background:${gauge.color};border:2px solid var(--text);box-sizing:border-box"></div>` : "";
-  const phrase = known ? gauge.phrase : gauge.phrase+" Note tes séances pour la voir apparaître.";
-  return `<div style="margin-top:18px">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px">
-      <span style="font-size:12px;color:var(--text-dim)">Charge d'entraînement</span>
-      <span style="font-size:12px;font-weight:600;color:${gauge.color}">${zoneName}</span>
-    </div>
-    <div class="${animate?"fill-in":""}" style="position:relative;display:flex;height:10px;border-radius:5px;overflow:hidden;margin:0 8px" aria-hidden="true">
-      ${seg(40,"#5ac8fa")}${seg(25,"#C6F432")}${seg(35,"var(--attention)")}
-    </div>
-    <div style="position:relative;height:0;margin:0 8px">${marker}</div>
-    <div style="font-size:12px;margin-top:10px;color:${gauge.severe?"var(--attention)":"var(--text-dim)"};font-weight:${gauge.severe?700:400}">${phrase}</div>
   </div>`;
 }
 // Message de jour de repos (4.8.e). La citation de Hal Higdon est tirée de
@@ -5171,64 +4848,8 @@ function renderContentInner(){
       setTimeout(sessionHistoryAfterRender,50);
       return;
     }
-    const isMonthly = dashboardPeriod==="monthly";
-    const vol = isMonthly ? monthlyVol() : weeklyVol();
-    const hasFrac = fracRuns.filter(r=>r.allure).length>0;
-    const fracExcludedCount = fracRuns.filter(r => !getIntervalPaces(r)).length;
-    const lastRun = runningRuns[runningRuns.length-1];
-    const effMaxHr = maxHr || estimatedMaxHr();
-    const effRestingHr = restingHr || null;
-    const celebrate = lastRun && !lastRunCelebrated;
-    if(celebrate) lastRunCelebrated = true;
-    // Rapport allure/FC + zones cardio : rapatriés depuis l'ancien onglet Séances
-    // (2026-09-14) — leur place est ici, avec les autres graphs de fond,
-    // pas au milieu de la liste de séances.
-    const withHr = efRuns.filter(r=>r.fc);
-    const cardioRuns = [...efRuns, ...fracRuns].sort((a,b)=>dateFromRun(b)-dateFromRun(a));
-    const monthly = effMaxHr ? monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr).filter(m=>m.secs.reduce((a,b)=>a+b,0)>0) : [];
-    el.innerHTML=objectiveCardHTML()+indicatorTilesHTML()+keyFiguresHTML()+recordsCardHTML()+`
-      <div class="card-row">
-        <div class="card" id="cardEf"><div class="stitle">Progression allure — EF</div>
-          <div class="chart-hint">Points = séances · pointillés = tendance et projection à 2 mois · 🚩 = course</div>
-          <div style="position:relative;width:100%;height:180px"><canvas id="cEFmini"></canvas></div>
-        </div>
-        ${hasFrac?`<div class="card"><div class="stitle">Progression allure — Fractionné</div>
-          <div class="chart-hint">Allure des intervalles Work et Récup · pointillés = tendance (Work) et projection à 2 mois</div>
-          ${fracExcludedCount>0?`<div class="chart-hint" style="color:#A3A7AD">${fracExcludedCount} séance${fracExcludedCount>1?"s":""} exclue${fracExcludedCount>1?"s":""} du graph (pas assez de données pour calculer Work/Récup)</div>`:""}
-          <div style="position:relative;width:100%;height:180px"><canvas id="cFracMini"></canvas></div>
-        </div>`:""}
-      </div>
-      <div class="card" id="cardVol"><div class="stitle">Volume ${isMonthly?"mensuel":"hebdomadaire"} (km)</div>
-        <div class="chart-hint">${isMonthly&&goals.kmMensuel
-          ?`Couleur = vs objectif de ${goals.kmMensuel} km/mois : <span style="color:#ffd60a">trop bas</span> · <span style="color:#C6F432">dans la cible</span> · <span style="color:#ff9f0a">au-dessus</span> · <span style="color:#ff375f">largement dépassé</span>`
-          :isMonthly?`Renseigne un objectif km/mois dans Objectifs pour colorer ce graph par rapport à ta cible.`
-          :`Couleur = part de fractionné/seuil sur la période : <span style="color:#C6F432">peu</span> · <span style="color:#ff9f0a">modéré</span> · <span style="color:#ff375f">beaucoup</span>`}</div>
-        <div style="position:relative;width:100%;height:180px"><canvas id="cVolMini"></canvas></div>
-      </div>
-      ${withHr.length?`<div class="card" id="cardEff"><div class="stitle">Efficience cardiaque</div>
-        <div class="chart-hint">Allure EF ÷ FC moyenne, par séance — plus la courbe monte, plus ton efficience cardiaque progresse.</div>
-        <div style="position:relative;width:100%;height:200px"><canvas id="cPaceFc"></canvas></div>
-      </div>`:""}
-      ${monthly.length>=2?`<div class="card"><div class="stitle">Répartition des zones par mois</div>
-        <div class="chart-hint">% du temps passé dans chaque zone, toutes séances confondues</div>
-        <div style="position:relative;width:100%;height:${Math.max(160, monthly.length*44)}px"><canvas id="cZoneMonthly"></canvas></div>
-      </div>
-      <div class="card"><div class="stitle">Volume haute intensité par mois</div>
-        <div class="chart-hint">Minutes passées en zones 4-5 (effort soutenu/intense)</div>
-        <div style="position:relative;width:100%;height:180px"><canvas id="cHiMonthly"></canvas></div>
-      </div>`:""}`+sessionHistoryCardHTML();
-    setTimeout(()=>{
-      mkPaceTrendChart("cEFmini", efRuns, true, 21);
-      if(hasFrac) mkFractionneChart("cFracMini", fracRuns, 21);
-      mkChart("cVolMini",{type:"bar",data:{labels:vol.map(r=>r.label),datasets:[{label:"km",data:vol.map(r=>r.dist),backgroundColor:isMonthly?vol.map(r=>monthlyGoalColor(r.dist, goals.kmMensuel?Number(goals.kmMensuel):null)):vol.map(intensityColor),borderRadius:6}]},plugins:[barValueLabelsPlugin],options:{scales:{x:{ticks:{autoSkip:false,maxRotation:45}}},plugins:{tooltip:{callbacks:{label:ctx=>ctx.raw+" km"}}}}});
-      if(lastRunExpanded && lastRun && lastRun.hrSeries && lastRun.hrSeries.length>1 && effMaxHr) mkHrCurveChart("cHr_"+lastRun.id, lastRun.hrSeries);
-      if(withHr.length) mkPaceFcChart("cPaceFc", efRuns);
-      if(monthly.length>=2){
-        mkZoneMonthlyChart("cZoneMonthly", monthly);
-        mkHighIntensityMonthlyChart("cHiMonthly", monthly);
-      }
-      sessionHistoryAfterRender();
-    },50);
+    el.innerHTML=objectiveCardHTML()+indicatorTilesHTML()+keyFiguresHTML()+recordsCardHTML()+chartsHTML()+sessionHistoryCardHTML();
+    setTimeout(sessionHistoryAfterRender,50);
   }
 
   else if(activeTab==="profil" && profilSection==="objectifs"){
@@ -5594,16 +5215,6 @@ function renderContentInner(){
         </div>
         <button class="btn-secondary" onclick="changePassword()">Changer le mot de passe</button>
         <div id="pwMsg" style="font-size:12px;margin-top:8px;text-align:center;min-height:16px"></div>
-      </div>
-
-      <div class="card">
-        <div class="stitle">Affichage</div>
-        <div class="chart-hint">Période affichée par défaut sur le Dashboard.</div>
-        <div class="filters" style="margin-bottom:0">
-          <button class="flt${dashboardPeriod==='weekly'?" active":""}" onclick="saveDashboardPeriod('weekly')">Hebdomadaire</button>
-          <button class="flt${dashboardPeriod==='monthly'?" active":""}" onclick="saveDashboardPeriod('monthly')">Mensuel</button>
-        </div>
-        <div class="chart-hint" style="margin-top:12px;margin-bottom:0">Thème sombre pour l'instant — mode clair à venir.</div>
       </div>
 
       <div class="card">

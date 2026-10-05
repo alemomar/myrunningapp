@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=69"></script>
+<script src="logic.js?v=72"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1406,6 +1406,28 @@ try {
   assertEqual("ajustement léger : la plus récente d'abord", lightAdjustments([{...base, id:"g", created_at:"2026-10-04T07:00:00Z", rationale:"… automatiquement …"},{...base, id:"h", created_at:"2026-10-05T08:00:00Z", rationale:"… automatiquement …"}], [], now).map(x=>x.id), ["h","g"]);
 }
 
+
+
+// ---------- S6.3a : géométrie des courbes ----------
+{
+  assertEqual("graduations d'allure : de 5'40 à 6'30, pas de 20 s", niceTicks(340, 390, 4, [5,10,15,20,30,60]).ticks, [340, 360, 380]);
+  assertEqual("graduations : plage large, pas de 60 s", niceTicks(300, 600, 4, [5,10,15,20,30,60,120]).step, 120);
+  assertEqual("graduations : valeurs rondes seulement", niceTicks(1.02, 1.31, 4, [0.01,0.02,0.05,0.1,0.2,0.5]).ticks.map(v=>Math.round(v*100)/100), [1.1, 1.2, 1.3]);
+  const dom = chartYDomain([340, 380], 0.1);
+  assertEqual("bornes verticales : marge de 10 %", [dom.min, dom.max], [336, 384]);
+  const one = chartYDomain([360]);
+  assertEqual("bornes verticales : une seule valeur, plage de 2 autour d'elle", [Math.round(one.min*100)/100, Math.round(one.max*100)/100], [358.84, 361.16]);
+  assertEqual("bornes verticales : rien", chartYDomain([]), null);
+  const mt = monthTicks(new Date(2026,5,10).getTime(), new Date(2026,11,5).getTime(), 8);
+  assertEqual("mois de l'axe : le mois de départ garde son étiquette (début le 10 juin), puis juillet à décembre", mt.map(m=>m.label), ["juin","juil.","août","sept.","oct.","nov.","déc."]);
+  assertEqual("mois de l'axe : pas d'étiquette de départ en double quand le mois suivant est tout proche", monthTicks(new Date(2026,5,25).getTime(), new Date(2026,8,5).getTime(), 8).map(m=>m.label), ["juil.","août","sept."]);
+  assertEqual("mois de l'axe : un mois sur deux quand il y en a trop", monthTicks(new Date(2026,0,15).getTime(), new Date(2026,11,5).getTime(), 6).length, 6);
+  assertEqual("mois de l'axe : janvier porte l'année", monthTicks(new Date(2025,10,20).getTime(), new Date(2026,1,5).getTime(), 8).map(m=>m.label), ["déc.","janv. 26","févr."]);
+  const line = [0,10,20,30].map(i=>({ ts:new Date(2026,6,1+i).getTime(), value:360-2*i }));
+  const tr = trendSegments(line, 60);
+  assertEqual("tendance : droite exacte, de 360 à 300 puis projection à 60 jours", [Math.round(tr.fromValue), Math.round(tr.toValue), Math.round(tr.projValue)], [360, 300, 180]);
+  assertEqual("tendance : moins de 3 points", trendSegments(line.slice(0,2)), null);
+}
 
 // ---------- S6.1 : Progression (jauge 4c, courbes, chiffres clés, carte objectif, volume, facile / soutenu) ----------
 {

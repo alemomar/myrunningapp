@@ -16,7 +16,7 @@
 
   // --- profil fictif
   maxHr = 191; restingHr = 58; vo2Max = 48; pseudo = "Camille"; age = 34; gender = "Femme"; cities = ["Rennes"]; userEmail = "camille@exemple.fr";
-  restingHrIsManual = false; vo2MaxIsManual = false; dashboardPeriod = "monthly"; suspendedZones = [];
+  restingHrIsManual = false; vo2MaxIsManual = false; suspendedZones = [];
   onboardingCompletedAt = "2026-06-01T08:00:00Z";
   goals = { principal:{objectifPrincipal:"Préparer une course", distanceCourse:"10km", dateCible:"2026-12-13", pbExistant:"Oui", pbSec:2820, terrainCourse:"Plat", objectifChrono:"Oui", tempsViseSec:2700},
             secondaire:{}, niveau:"Intermédiaire", frequence:"3", frequenceAutre:"1", kmMensuel:"90", terrain:"Route", equipement:"Apple Watch", joursIndisponibles:"6" };

@@ -1824,7 +1824,7 @@ function windowProgress(points, startTs, endTs){
   const first = pts.filter(p=>p.ts < startTs+w), last = pts.filter(p=>p.ts > endTs-w);
   if(!first.length || !last.length) return { status:"insuffisant" };
   const avg = (a) => a.reduce((x,p)=>x+p.value,0)/a.length;
-  return { status:"ok", firstAvg:avg(first), lastAvg:avg(last), startTs };
+  return { status:"ok", firstAvg:avg(first), lastAvg:avg(last), startTs, fullWindows: w>=28*DAY_MS };
 }
 // Progression d'une courbe sur une période : de la première à la dernière séance de la période.
 function periodProgress(points, key, todayTs){
@@ -1861,6 +1861,50 @@ function axisDecimals(min, max, ticks){
 const FRACTIONNE_MIN_SESSIONS = 4;
 function fractionneChartState(count){
   return count>=FRACTIONNE_MIN_SESSIONS ? { ready:true } : { ready:false, count, missing: FRACTIONNE_MIN_SESSIONS-count };
+}
+
+// --- Géométrie des courbes (graduations, mois de l'axe, tendance) ---
+// Graduations rondes : environ `count` repères entre min et max, avec le plus petit pas de `steps` qui convient.
+function niceTicks(min, max, count, steps){
+  const list = steps || [5,10,15,20,30,60,120,300,600];
+  const target = Math.max(1e-9, max-min) / Math.max(1,(count||3)-1);
+  const step = list.find(x=>x>=target) || list[list.length-1];
+  const ticks = [];
+  for(let v=Math.ceil(min/step - 1e-9)*step; v<=max+1e-9; v+=step) ticks.push(Math.round(v/step)*step);
+  return { ticks, step };
+}
+// Bornes verticales d'une courbe : de la plus petite à la plus grande valeur, avec une marge de `pad` (8 % par défaut).
+function chartYDomain(values, pad){
+  const v = (values||[]).filter(x=>isFinite(x));
+  if(!v.length) return null;
+  let lo = Math.min(...v), hi = Math.max(...v);
+  if(hi===lo){ lo -= 1; hi += 1; }
+  const m = (hi-lo)*(pad==null?0.08:pad);
+  return { min:lo-m, max:hi+m };
+}
+// Premiers de chaque mois entre deux dates, pour l'axe horizontal ; si trop nombreux, un mois sur k. Janvier porte l'année.
+function monthTicks(startTs, endTs, maxLabels){
+  const all = [];
+  const d = new Date(startTs); d.setDate(1); d.setHours(0,0,0,0);
+  if(d.getTime()<startTs) d.setMonth(d.getMonth()+1);
+  for(; d.getTime()<=endTs; d.setMonth(d.getMonth()+1)){
+    all.push({ ts:d.getTime(), label: d.getMonth()===0 ? `${MONTH_SHORT[0]} ${String(d.getFullYear()).slice(2)}` : MONTH_SHORT[d.getMonth()] });
+  }
+  // Le mois de départ garde son étiquette même quand la courbe commence en cours de mois (si l'écart est d'au moins 20 jours).
+  const s0 = new Date(startTs);
+  if(!all.length || all[0].ts - startTs >= 20*DAY_MS) all.unshift({ ts:startTs, label: s0.getMonth()===0 ? `${MONTH_SHORT[0]} ${String(s0.getFullYear()).slice(2)}` : MONTH_SHORT[s0.getMonth()] });
+  const k = Math.max(1, Math.ceil(all.length/Math.max(1,maxLabels||6)));
+  return all.filter((_,i)=>i%k===0);
+}
+// Droite de tendance (régression sur le temps, en jours) : valeurs aux dates `fromTs`, `toTs` (fin des points) et `projTs` (projection).
+function trendSegments(points, projDays){
+  const pts = (points||[]).filter(p=>p.value>0).slice().sort((a,b)=>a.ts-b.ts);
+  if(pts.length<3) return null;
+  const t0 = pts[0].ts, day = (ts)=>(ts-t0)/DAY_MS;
+  const { slope, intercept } = linearRegression(pts.map(p=>({x:day(p.ts), y:p.value})));
+  const at = (ts) => slope*day(ts)+intercept;
+  const lastTs = pts[pts.length-1].ts, projTs = lastTs + (projDays==null?60:projDays)*DAY_MS;
+  return { fromTs:t0, fromValue:at(t0), toTs:lastTs, toValue:at(lastTs), projTs, projValue:at(projTs) };
 }
 
 // --- Chiffres clés (D27) ---
@@ -1971,10 +2015,10 @@ function monthlyVolumeBars(runs, goalKm, todayTs, months){
 
 // --- Facile / soutenu (6h, D35) : facile = zones 1 à 3, soutenu = zones 4 et 5, repère à 80 % ---
 const EASY_TARGET_PCT = 80;
-function easyHardMonthly(monthly){
+function easyHardMonthly(monthly){   // chaque mois garde sortKey (année × 12 + mois) quand il est fourni
   return (monthly||[]).map(m=>{
     const secs = m.secs || [], easy = (secs[0]||0)+(secs[1]||0)+(secs[2]||0), hard = (secs[3]||0)+(secs[4]||0), total = easy+hard;
-    return total>0 ? { label:m.label, easySec:easy, hardSec:hard, easyPct:Math.round(easy/total*100), hardPct:100-Math.round(easy/total*100) } : null;
+    return total>0 ? { label:m.label, easySec:easy, hardSec:hard, easyPct:Math.round(easy/total*100), hardPct:100-Math.round(easy/total*100), ...(m.sortKey!=null?{sortKey:m.sortKey}:{}) } : null;
   }).filter(Boolean);
 }
 
