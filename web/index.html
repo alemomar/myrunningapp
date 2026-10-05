@@ -342,6 +342,17 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .hier-card .hier-title{font-family:var(--font-display);font-weight:700;font-size:26px;line-height:1.1;text-transform:uppercase;margin-bottom:4px}
 .hier-card .hier-value{font-family:var(--font-display);font-weight:700;font-size:34px;line-height:1.1;color:var(--accent);margin-bottom:4px}
 .hier-card .hier-before{font-size:13px;color:var(--text-muted);margin-bottom:12px}
+/* Petits confettis de la carte « Hier » pour un record d'allure (A2) : une dizaine de pièces, 1,5 s, aucune avec « réduire les animations » */
+.hier-card{position:relative;overflow:hidden}
+.hier-conf{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hier-conf i{position:absolute;top:-12px;width:5px;height:9px;border-radius:1px;opacity:0}
+@media (prefers-reduced-motion: no-preference){ .hier-conf i{animation:confFall 1.5s ease-out forwards} }
+@keyframes confFall{0%{opacity:.9;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(150px) rotate(280deg)}}
+/* Célébration plein écran (S9, journal 10b-4) */
+.cel{position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+.cel-in{width:100%;max-width:420px;display:flex;flex-direction:column;gap:16px}
+.cel-btns{display:flex;flex-direction:column;gap:8px}
+@media (prefers-reduced-motion: no-preference){ .cel{animation:sheetFade var(--t-step,280ms) ease-out} }
 /* ---------- Carte de séance (design 2d, V1 à V7) ---------- */
 .session-card{position:relative;margin-bottom:14px;padding:18px 16px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl)}
 .sc-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
@@ -956,6 +967,7 @@ button.pg-rec-row{cursor:pointer}
 
   <div id="content"></div>
   <div id="sheetRoot"></div>
+  <div id="celebrationRoot"></div>
   <div id="toastRoot" aria-live="polite"></div>
 
   <div class="tabs" id="tabs"></div>
@@ -963,7 +975,8 @@ button.pg-rec-row{cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=78"></script>
+<script src="logic.js?v=79"></script>
+<script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -4865,20 +4878,6 @@ function restDayMessageHTML(){
     <div style="font-size:13px;line-height:1.55">C'est pendant le repos que ton corps répare et renforce ce que tes séances ont sollicité. Hal Higdon, coach de référence, le résume ainsi : « Le repos est une partie aussi importante de ton entraînement que les sorties. » Profite-en pour bien dormir et manger, et marche tranquillement si tu en as envie.</div>
     <div style="font-size:11px;color:var(--text-faint);margin-top:8px">Source : halhigdon.com</div>`;
 }
-// Célébration sobre (4.11.f) : "Bravo" avec coche et étincelles, affichée une
-// fois quand une séance récente est faite et/ou qu'un record est battu
-// (voir recordsForRun / efficiencyCelebration, logic.js). La mémoire des
-// séances déjà fêtées est locale à l'appareil.
-function celebratedRunIds(){
-  try{ return JSON.parse(localStorage.getItem("mra_celebratedRuns")||"[]"); }catch(e){ return []; }
-}
-function runAsRecord(r){
-  const ip = r.type==="Fractionné" ? getIntervalPaces(r) : null;
-  // cleanEf (D77) : sortie EF dont le cœur est resté en zones 1 et 2 ; sans données de FC, on ne peut pas l'affirmer.
-  const cleanEf = r.type==="EF" && efQualitatif(r.hrSeries, maxHr || estimatedMaxHr(), restingHr || null)===true;
-  return { id:r.id, ts:dateFromRun(r).getTime(), type:r.type, distKm:r.dist||0, durationSec:r.durationSec||0, paceSecKm:r.allure||0,
-    workPaceSecKm: ip && (ip.manual || ip.workCount>=2) ? ip.work : 0, cleanEf };
-}
 // ---------- Aujourd'hui : bandeau coach, alerte douleur forte, carte « Hier », carte d'action unique ----------
 // (D52, D53, D11, D12 ; journal 9 et 10). Les anciennes cartes séparées (célébration, notation,
 // rappels) sont remplacées : une seule carte d'action sous la séance du jour, par priorité.
@@ -4964,8 +4963,8 @@ function urgentTodayHTML(){
     <span class="coach-dot">${icon("alert",16)}</span><span><b>Cette douleur au niveau de ${escHtml(zoneLabel)} mérite un avis médical.</b></span><span class="coach-chev">${icon("chevronRight",18)}</span>
   </button>`;
 }
-// Carte « Hier » : record et/ou ressenti à noter, fusionnés (D12). Le plein écran des records de distance
-// vient en S9 ; ici la carte simple (A2) sert pour tous les records.
+// Carte « Hier » : record et/ou ressenti à noter, fusionnés (D12). Un record de distance ouvre d'abord le plein écran
+// (voir maybeCelebrate) ; la carte simple (A2) sert pour tous les records et reste ensuite jusqu'à demain.
 function celebratedRunIds(){
   try{ return JSON.parse(localStorage.getItem("mra_celebratedRuns")||"[]"); }catch(e){ return []; }
 }
@@ -4988,6 +4987,12 @@ function hierData(){
   if(!records.length && !eff && !unrated) return null;
   return { run:last, records, eff, unrated:!!unrated };
 }
+// Une dizaine de petits confettis (5 × 9 px ; citron, blanc, cyan) qui tombent 1,5 s ; joués une fois par sortie et par ouverture de l'app.
+const confettiPlayed = new Set();
+function hierConfettiHTML(){
+  const colors = ["#C6F432", "#F2F3F0", "oklch(0.85 0.13 200)"];
+  return `<div class="hier-conf" aria-hidden="true">${Array.from({length:10}, (_,i)=>`<i style="left:${6+i*9.5}%;background:${colors[i%3]};animation-delay:${(i%5)*0.08}s;transform:rotate(${i*37}deg)"></i>`).join("")}</div>`;
+}
 function hierCardHTML(){
   const h = hierData();
   if(!h || !h.run) return "";
@@ -5003,7 +5008,9 @@ function hierCardHTML(){
     ? `<button class="btn-primary" onclick="goRateSession('${run.id}')">Noter mon ressenti</button>
        <button class="btn-secondary" style="margin-top:8px" onclick="dismissHier('${run.id}', ${effFlag})">Plus tard</button>`
     : `<button class="btn-secondary" onclick="dismissHier('${run.id}', ${effFlag})">Fermer</button>`;
-  return `<div class="card hier-card" id="painPrompt" role="status">
+  const pace = h.records.length && ["allure_ef","allure_frac"].includes(h.records[0].key);
+  const conf = pace && !confettiPlayed.has(run.id) ? (confettiPlayed.add(run.id), hierConfettiHTML()) : "";
+  return `<div class="card hier-card" id="painPrompt" role="status">${conf}
     <div class="hier-head">
       <div class="hier-icon" style="color:${c}">${icon(TICON[run.type]||"activity",18)}</div>
       <div class="stitle" style="margin:0">${escHtml(dayLbl)}${main?" · "+escHtml(main.overline):""}</div>
@@ -5018,6 +5025,40 @@ function hierCardHTML(){
     ${buttons}
   </div>`;
 }
+// ---------- Célébration plein écran (S9, journal 10b-4 ; D55, D56, D57) ----------
+// Seulement pour un record de distance (5 km, 10 km, semi, marathon) : s'ouvre une seule fois à l'ouverture de l'app, avec
+// le petit bonhomme (record-man.js), puis la carte « Hier » prend le relais. « Plus tard » ferme sans rien noter ;
+// avec « réduire les animations », l'écran final s'affiche directement.
+const CEL_SHOWN_KEY = "mra_celebShown";
+function celebShownIds(){ try{ return JSON.parse(localStorage.getItem(CEL_SHOWN_KEY)||"[]"); }catch(e){ return []; } }
+let celebration = null; // { runId, info, unrated }
+function maybeCelebrate(){
+  if(celebration || !onboardingCompletedAt || !document.getElementById("celebrationRoot")) return;
+  const h = hierData();
+  if(!h || !h.run || !h.records.length) return;
+  const info = celebrationToShow(h.records, h.run.id, celebShownIds());
+  if(!info) return;
+  try{ localStorage.setItem(CEL_SHOWN_KEY, JSON.stringify([...celebShownIds(), h.run.id].slice(-60))); }catch(e){}
+  celebration = { runId:h.run.id, info, unrated:h.unrated };
+  renderCelebration();
+}
+function renderCelebration(){
+  const root = document.getElementById("celebrationRoot");
+  if(!root) return;
+  if(!celebration){ root.innerHTML = ""; return; }
+  const { info, unrated } = celebration;
+  root.innerHTML = `<div class="cel" role="dialog" aria-modal="true" aria-label="Nouveau record">
+    <div class="cel-in">
+      <record-man once old="${escHtml(info.oldText)}" new="${escHtml(info.newText)}" distance="${escHtml(info.distanceText)}" gain="${escHtml(info.gainText)}" aria-label="${escHtml(info.ariaLabel)}"></record-man>
+      <div class="cel-btns">${unrated
+        ? `<button type="button" class="btn-primary" onclick="celebrationRate()">Noter mon ressenti</button><button type="button" class="btn-secondary" onclick="closeCelebration()">Plus tard</button>`
+        : `<button type="button" class="btn-primary" onclick="closeCelebration()">Fermer</button>`}</div>
+    </div></div>`;
+  const first = root.querySelector(".btn-primary"); if(first) first.focus();
+}
+window.closeCelebration = () => { celebration = null; renderCelebration(); };
+document.addEventListener("keydown", (e) => { if(e.key==="Escape" && celebration) closeCelebration(); });
+window.celebrationRate = () => { const id = celebration && celebration.runId; closeCelebration(); if(id) goRateSession(id); };
 window.dismissHier = (runId, effFlag) => {
   try{
     if(runId){
@@ -5529,6 +5570,7 @@ async function boot(){
   document.getElementById("content").innerHTML=`<div class="loading"><div class="spinner"></div></div>`;
   await loadData();
   renderApp();
+  maybeCelebrate();
   runProgramMaintenance();
 }
 

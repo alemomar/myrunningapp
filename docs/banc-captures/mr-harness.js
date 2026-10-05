@@ -77,6 +77,11 @@
   const yest = rows.find(r=>new Date(r.start_date).toDateString()===startOf(1).toDateString());
   if(yest){ yest.distance_km=8.1; yest.duration_sec=Math.round(8.1*343); yest.avg_hr=147; yest.hr_series=genHr(yest.duration_sec,147,"ef"); yest.peak_hr=Math.max(...yest.hr_series.map(x=>x.hr)); }
   if((scen==="celebration_record"||scen==="hier") && yest){ yest.distance_km=15.4; yest.duration_sec=Math.round(15.4*331); yest.avg_hr=150; yest.hr_series=genHr(yest.duration_sec,150,"ef"); yest.peak_hr=Math.max(...yest.hr_series.map(x=>x.hr)); }
+  // S9 : hier, un 5 km en 27:41 qui bat l'ancien record (28:15, il y a 3 semaines) : plein écran de record de distance
+  if((scen==="celebration_plein_ecran"||scen==="celebration_animation") && yest){
+    push({start_date:startOf(21).toISOString(), type:"EF", distance_km:5, duration_sec:1695, avg_hr:150});
+    yest.distance_km=5; yest.duration_sec=1661; yest.type="EF"; yest.avg_hr=156; yest.hr_series=genHr(1661,156,"ef"); yest.peak_hr=Math.max(...yest.hr_series.map(x=>x.hr));
+  }
   const renfoRun = push({start_date:startOf(2).toISOString(), type:"Renfo", apple_type:"Strength", distance_km:0, duration_sec:1500, avg_hr:112, include_in_stats:false});
   // ressentis : tous notés sauf hier
   rows.forEach(r=>{ if(r.include_in_stats===false) return; r.pain_ratings = { rpe: r.type==="Fractionné"?8:r.type==="Seuil"?7:r.type==="Long"?6:5, note: 4, gene:false, fatigue:3, mental:2, respiration:2 }; });
@@ -319,6 +324,11 @@
   } else if(scen==="programme_ajout"){
     celebrationOff(); rateYesterday(); wkSessions[0].status="done"; plannedSessions=[...wkSessions, ...future];
     const sunday=localDateStr(at(mondayOff+6)); programViewMode="week"; programWeekOffset=0; programSelectedDate=sunday; openAddForm=sunday; show("programme");
+  } else if(scen==="celebration_plein_ecran" || scen==="celebration_animation"){
+    // S9 : plein écran d'un record de distance ; « celebration_plein_ecran » fige l'animation sur l'image finale (pour la planche)
+    try{ localStorage.removeItem("mra_celebratedRuns"); localStorage.removeItem("mra_celebShown"); localStorage.removeItem("mra_effCelebratedAt"); }catch(e){}
+    plannedSessions=[...wkSessions, ...future]; show("aujourdhui"); maybeCelebrate();
+    if(scen==="celebration_plein_ecran"){ const el=document.querySelector("record-man"); if(el){ el.start=()=>{}; cancelAnimationFrame(el.raf); el.draw(9.7); } }
   } else if(scen==="celebration_record"){
     rateYesterday(); localStorage.removeItem("mra_celebratedRuns"); plannedSessions=[...wkSessions, ...future]; show("aujourdhui");
   } else if(scen==="douleur_forte" || scen==="zone_pause"){
