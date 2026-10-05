@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=81"></script>
+<script src="logic.js?v=82"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1795,9 +1795,9 @@ try {
   assertEqual("message : ancien compte marqué « parcours fait » à cette ouverture -> affiché malgré une date récente", shouldShowNews("2026-10-20T08:00:00Z", true, [], N, B), true);
   assertEqual("message : marqué mais déjà vu -> pas deux fois", shouldShowNews("2026-10-20T08:00:00Z", true, [N], N, B), false);
   assertEqual("message : liste des messages vus absente ou abîmée -> comme vide", [shouldShowNews("2026-09-28T10:12:33Z", false, null, N, B), shouldShowNews("2026-09-28T10:12:33Z", false, undefined, N, B), shouldShowNews("2026-09-28T10:12:33Z", false, "x", N, B)], [true, true, true]);
-  assertEqual("texte : question de reprise sur un chrono (texte validé par Omar)", newsMessage({ kind:"undated", fromTest:false }), { title:"L'app a changé de look", text:"Tes séances, ton programme et tes allures sont toujours là. On te pose une question sur la date de ton chrono : elle sert à garder tes allures conseillées justes." });
-  assertEqual("texte : un record sans date dit aussi « chrono »", newsMessage({ kind:"record" }).text.includes("sur la date de ton chrono :"), true);
-  assertEqual("texte : VMA ou test de 20 minutes -> « test »", [newsMessage({ kind:"vma" }).text.includes("sur la date de ton test :"), newsMessage({ kind:"undated", fromTest:true }).text.includes("sur la date de ton test :")], [true, true]);
+  assertEqual("texte : question de reprise sur un chrono (texte validé par Omar, précisé à sa demande)", newsMessage({ kind:"undated", fromTest:false }), { title:"L'app a changé de look", text:"Tes séances, ton programme et tes allures sont toujours là. Pour calculer tes allures conseillées, il nous faut un chrono de référence avec sa date. On te pose une question sur la date du tien." });
+  assertEqual("texte : un record sans date dit aussi « chrono »", newsMessage({ kind:"record" }).text.includes("il nous faut un chrono de référence avec sa date"), true);
+  assertEqual("texte : VMA ou test de 20 minutes -> « test »", [newsMessage({ kind:"vma" }).text.includes("il nous faut un test de référence avec sa date"), newsMessage({ kind:"undated", fromTest:true }).text.includes("il nous faut un test de référence avec sa date")], [true, true]);
   assertEqual("texte : aucune question de reprise -> on n'en annonce pas", newsMessage(null), { title:"L'app a changé de look", text:"Tes séances et ton programme sont toujours là." });
   // Les deux comptes réels d'avant la refonte : un temps de 10 km sans date, objectif « Améliorer mon allure » -> la question de reprise est bien annoncée
   const ancien = levelResumeInfo({ principal:{ objectifPrincipal:"Améliorer mon allure" }, secondaire:{ objectifPrincipal:"Courir plus régulièrement" }, niveau:"Intermédiaire" }, { refDistanceKm:10, refTimeSec:3600 }, {});

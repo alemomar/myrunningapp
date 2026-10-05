@@ -3075,5 +3075,5 @@ function newsMessage(resumeInfo){
   const title = "L'app a changé de look";
   if(!resumeInfo) return { title, text:"Tes séances et ton programme sont toujours là." };
   const what = (resumeInfo.kind==="vma" || (resumeInfo.kind==="undated" && resumeInfo.fromTest)) ? "test" : "chrono";
-  return { title, text:`Tes séances, ton programme et tes allures sont toujours là. On te pose une question sur la date de ton ${what} : elle sert à garder tes allures conseillées justes.` };
+  return { title, text:`Tes séances, ton programme et tes allures sont toujours là. Pour calculer tes allures conseillées, il nous faut un ${what} de référence avec sa date. On te pose une question sur la date du tien.` };
 }
