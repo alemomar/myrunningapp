@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=66"></script>
+<script src="logic.js?v=67"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1381,6 +1381,26 @@ try {
   assertEqual("calcul : séance générée, on change la durée -> la distance suit", r({distKm:8,paceSecKm:360,durationMin:60},["durationMin"]), [10,360,60,"distKm"]);
   assertEqual("calcul : arrondis (distance au centième, allure à la seconde, durée à la minute)", r({paceSecKm:347,durationMin:47},[]), [8.13,347,47,"distKm"]);
   assertEqual("calcul : valeurs texte acceptées", r({distKm:"10",paceSecKm:"360"},[]), [10,360,60,"durationMin"]);
+}
+
+// ---------- S5.4 : « 1 autre point » et ligne d'ajustement léger (D51, D54) ----------
+{
+  assertEqual("titre court : douleur très forte", alertShortTitle({kind:"urgent"}), "douleur à surveiller");
+  assertEqual("titre court : douleur 6", alertShortTitle({kind:"gros", issue:{type:"pain"}}), "douleur à vérifier");
+  assertEqual("titre court : charge très haute", alertShortTitle({kind:"gros", issue:{type:"charge"}}), "charge très haute");
+  assertEqual("titre court : séance non faite", alertShortTitle({kind:"missed"}), "séance non faite");
+  assertEqual("ligne « autre point » : un seul", moreAlertsLabel([{kind:"missed"}]), "1 autre point : séance non faite");
+  assertEqual("ligne « autres points » : plusieurs", moreAlertsLabel([{kind:"gros", issue:{type:"charge"}},{kind:"missed"}]), "2 autres points");
+  assertEqual("ligne « autre point » : aucun", moreAlertsLabel([]), "");
+  const now = new Date("2026-10-05T10:00:00Z").getTime();
+  const base = {status:"planned", replaces_session_id:"old", planned_date:"2026-10-08", created_at:"2026-10-05T07:00:00Z"};
+  assertEqual("ajustement léger : séance allégée automatiquement", lightAdjustments([{...base, id:"a", rationale:"Cette séance a été remplacée par une version plus facile automatiquement, car fatigue."}], [], now), [{id:"a", text:"On a allégé ta séance de jeudi."}]);
+  assertEqual("ajustement léger : séance raccourcie", lightAdjustments([{...base, id:"b", rationale:"Cette séance a été raccourcie automatiquement, car manque de temps."}], [], now)[0].text, "On a raccourci ta séance de jeudi.");
+  assertEqual("ajustement léger : modification à la demande de l'utilisateur ignorée", lightAdjustments([{...base, id:"c", rationale:"Cette séance a été remplacée par une version plus facile à ta demande, car tu avais indiqué : « fatigue »."}], [], now), []);
+  assertEqual("ajustement léger : ligne fermée ignorée", lightAdjustments([{...base, id:"d", rationale:"… automatiquement …"}], ["d"], now), []);
+  assertEqual("ajustement léger : trop ancien (plus de 3 jours)", lightAdjustments([{...base, id:"e", created_at:"2026-10-01T07:00:00Z", rationale:"… automatiquement …"}], [], now), []);
+  assertEqual("ajustement léger : séance sans remplacement ignorée", lightAdjustments([{...base, replaces_session_id:null, id:"f", rationale:"… automatiquement …"}], [], now), []);
+  assertEqual("ajustement léger : la plus récente d'abord", lightAdjustments([{...base, id:"g", created_at:"2026-10-04T07:00:00Z", rationale:"… automatiquement …"},{...base, id:"h", created_at:"2026-10-05T08:00:00Z", rationale:"… automatiquement …"}], [], now).map(x=>x.id), ["h","g"]);
 }
 
 document.getElementById("summary").innerHTML =

@@ -1108,6 +1108,31 @@ function orderProgramAlerts(alerts){
     .sort((x,y)=>PROGRAM_ALERT_RANK[x.a.kind]-PROGRAM_ALERT_RANK[y.a.kind] || x.i-y.i)
     .map(x=>x.a);
 }
+// Titre court d'une alerte pour la ligne « 1 autre point : … » (design 9) et libellé de cette ligne.
+function alertShortTitle(alert){
+  if(!alert) return "";
+  if(alert.kind==="urgent") return "douleur à surveiller";
+  if(alert.kind==="gros") return alert.issue && alert.issue.type==="charge" ? "charge très haute" : "douleur à vérifier";
+  if(alert.kind==="missed") return "séance non faite";
+  return "";
+}
+function moreAlertsLabel(rest){
+  const n = (rest||[]).length;
+  if(!n) return "";
+  return n===1 ? `1 autre point : ${alertShortTitle(rest[0])}` : `${n} autres points`;
+}
+/* Ajustement léger (D54) : quand l'app a allégé ou raccourci toute seule une séance (ouverture de l'app,
+   douleur répétée ou charge), une ligne grise fermable en haut de Programme le dit, sans violet puisqu'il n'y a
+   rien à décider. Séances remplacées automatiquement ces 3 derniers jours, dont la ligne n'a pas été fermée
+   (`dismissedIds` : mémorisé sur l'appareil). La plus récente d'abord. */
+function lightAdjustments(plannedSessions, dismissedIds, nowTs){
+  const dayName = (d) => new Date(d+"T00:00:00").toLocaleDateString("fr-FR", { weekday:"long" });
+  return (plannedSessions||[])
+    .filter(p=>p.replaces_session_id && p.status==="planned" && /automatiquement/.test(p.rationale||"")
+      && !(dismissedIds||[]).includes(p.id) && p.created_at && (nowTs - new Date(p.created_at).getTime())<=3*86400000)
+    .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
+    .map(p=>({ id:p.id, text:`On a ${/raccourcie/.test(p.rationale||"")?"raccourci":"allégé"} ta séance de ${dayName(p.planned_date)}.` }));
+}
 // Nom accessible de l'onglet Programme : « Programme, 1 point à voir ».
 function programTabLabel(count){
   return count>0 ? `Programme, ${count} point${count>1?"s":""} à voir` : "Programme";

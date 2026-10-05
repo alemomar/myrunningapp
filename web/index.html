@@ -615,6 +615,31 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .ps-pace .sheet-input{text-align:center;min-width:0}
 .ps-err{margin-top:12px;font-size:13.5px;font-weight:600;color:var(--text)}
 .link-gray{display:block;width:100%;margin-top:6px;padding:14px 12px;border:none;background:none;color:var(--text-3);font-family:inherit;font-size:14.5px;cursor:pointer}
+/* ---------- Bannières et alertes de Programme (design 9a) ---------- */
+.alert-card{margin-bottom:14px;padding:16px;border:1px solid var(--attention-line);border-radius:var(--r-xl);background:var(--attention-bg)}
+.alert-card.strong{border-color:var(--attention);background:var(--attention-bg-strong)}
+.al-head{display:flex;gap:12px;margin-bottom:12px}
+.al-ic{flex:none;width:32px;height:32px;border-radius:10px;background:var(--attention);color:var(--on-accent);display:flex;align-items:center;justify-content:center}
+.al-title{font-size:15px;font-weight:600;line-height:1.3}
+.al-text{margin-top:4px;font-size:13px;line-height:1.45;color:var(--text-2)}
+.al-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;margin-bottom:8px;padding:0 14px;border:none;border-radius:var(--r-sm);background:var(--surface-sunken);color:var(--text);font-family:inherit;font-size:14.5px;text-align:left;cursor:pointer}
+.al-row .chev{flex:none;display:flex;color:var(--text-muted)}
+.al-shift{margin-bottom:8px;padding:12px 14px;border-radius:var(--r-sm);background:var(--surface-sunken)}
+.al-shift .t{margin-bottom:10px;font-size:14.5px}
+.al-step{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.al-step button{flex:none;width:36px;height:36px;border:none;border-radius:var(--r-xs);background:var(--surface-control);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.al-step .v{font-family:var(--font-display);font-weight:700;font-size:22px}
+.al-step .v small{font-family:var(--font-text);font-weight:400;font-size:14px;color:var(--text-2)}
+.al-note{margin-top:4px;font-size:12px;line-height:1.45;color:var(--text-muted)}
+.al-more{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;margin:-4px 0 14px;padding:0 14px;border:none;border-radius:var(--r-md);background:var(--surface);color:var(--text-2);font-family:inherit;font-size:13.5px;text-align:left;cursor:pointer}
+.al-more i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--attention)}
+.al-more .chev{margin-left:auto;display:flex;color:var(--text-muted)}
+.al-info{display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:14px;padding:6px 6px 6px 14px;border-radius:var(--r-md);background:var(--surface);color:var(--text-2);font-size:13.5px}
+.al-info>svg{flex:none;color:var(--text-muted)}
+.al-need{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:14px;padding:14px;border-radius:var(--r-md);background:var(--surface);color:var(--text-2);font-size:14px;line-height:1.5}
+.al-need .ttl{display:flex;gap:10px;align-items:flex-start}
+.al-need .ttl>svg{flex:none;margin-top:2px;color:var(--text-muted)}
+.al-info .x{margin-left:auto;flex:none;width:36px;height:36px;border:none;background:none;color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer}
 .sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface-raised);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:var(--shadow-sheet)}
 .sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--grabber);margin:0 auto 14px}
@@ -686,7 +711,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=66"></script>
+<script src="logic.js?v=67"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -747,6 +772,10 @@ const ICONS = {
   plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`,
   chevronLeft: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`,
   undo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>`,
+  gauge: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>`,
+  calendarX: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m14 14-4 4"/><path d="m10 14 4 4"/></svg>`,
+  minus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>`,
+  refresh: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>`,
   chevronRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
   chevronUp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`,
   chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
@@ -3200,6 +3229,10 @@ function dayPlacementNote(dayIndex, isQuality, isCrossTraining){
 // verrou, les deux liraient "rien à compléter" avant que l'un des deux
 // n'ait fini d'écrire, et dupliqueraient les séances complémentaires.
 let programGenerationInFlight = new Set();
+// D75 : sans objectif ni disponibilités, pas d'alerte du navigateur, un message discret qui mène au Profil.
+function profileMissingToast(){
+  toast("Il nous manque ton objectif et tes disponibilités pour construire ta semaine.", { actionLabel:"Compléter mon profil", onAction:()=>setTab("objectifs"), ms:8000 });
+}
 window.generateProgram = async (mondayDate, opts) => {
   opts = opts || {};
   const mondayStr = localDateStr(mondayDate);
@@ -3211,7 +3244,7 @@ window.generateProgram = async (mondayDate, opts) => {
   // moteur de course et ne demande aucun temps de référence.
   const couchWeek = programSettings?.beginnerPlan ? couchWeekNumber(programSettings.beginnerPlan.startMonday, mondayStr) : null;
   const isCouch = couchWeek!=null && couchWeek>=1 && couchWeek<=COUCH_WEEKS;
-  if(!profile && !isCouch){ if(!opts.silent) alert("Renseigne d'abord un temps de référence (ci-dessus) pour générer ton programme."); return; }
+  if(!profile && !isCouch){ if(!opts.silent) profileMissingToast(); return; }
   const existing = plannedSessions.filter(p=>p.week_start_date===mondayStr && (p.status==="planned"||p.status==="done"));
   const dayIndexOf = (dateStr) => Math.round((new Date(dateStr+"T00:00:00") - mondayDate) / 86400000);
   // Jours où une NOUVELLE course ne peut pas aller : course ou renfo déjà
@@ -3227,7 +3260,7 @@ window.generateProgram = async (mondayDate, opts) => {
   const actualCross = existing.filter(p=>!p.pace_zone).length;
   const missingRunning = Math.max(0, desiredRunning - actualRunning);
   const missingCross = Math.max(0, desiredCross - actualCross);
-  if(missingRunning<=0 && missingCross<=0){ if(!opts.silent) alert("Cette semaine a déjà un programme complet — supprime une séance si tu veux en régénérer une nouvelle."); return; }
+  if(missingRunning<=0 && missingCross<=0){ if(!opts.silent) toast("Cette semaine a déjà un programme complet. Supprime une séance si tu veux en générer une nouvelle."); return; }
 
   const { structure, avoidQualityReason } = computeProgramInputs();
   const weeklyKm = goals.kmMensuel ? Number(goals.kmMensuel)/4.33 : 20;
@@ -3313,9 +3346,9 @@ window.generateProgram = async (mondayDate, opts) => {
   }
 
   const rows = [...runningRows, ...crossRows];
-  if(!rows.length){ if(!opts.silent) alert("On n'a pas encore assez d'informations pour générer ton programme : vérifie tes objectifs et tes disponibilités ci-dessus."); return; }
+  if(!rows.length){ if(!opts.silent) profileMissingToast(); return; }
   const { error } = await supa.from("planned_sessions").insert(rows);
-  if(error){ if(!opts.silent) alert("Erreur de génération : "+error.message); return; }
+  if(error){ if(!opts.silent) toast("Ta semaine n'a pas pu être générée, vérifie ta connexion et réessaie."); return; }
   await loadData();
   if(!opts.silent){ renderContent(); flashSaved("programSaved"); } else { renderContent(); }
   } finally { programGenerationInFlight.delete(mondayStr); }
@@ -3399,21 +3432,6 @@ async function reconcilePlannedSessions(){
 // garde-fous de 4.3.d (findRescheduleDay, logic.js) pour recaser la
 // séance sur un autre jour sûr de la même semaine, ou l'abandonne si
 // aucun jour ne respecte les règles.
-function missedSessionsBanner(){
-  const alert = missedAlert();
-  if(!alert) return "";
-  const missed = alert.sessions;
-  const p = missed[0];
-  return `<div class="card" style="border-color:var(--attention-line);background:var(--attention-bg)">
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Une séance n'a pas pu se faire — ${p.title} du ${new Date(p.planned_date).toLocaleDateString('fr-FR')}</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ça arrive à tout le monde. On peut réorganiser ta semaine pour la replacer, ou tu préfères garder ton plan tel quel ?</div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button class="btn-secondary" onclick="openManualRun('${p.id}')">Je l'ai faite</button>
-      <button class="btn-secondary" onclick="rescheduleMissedSession('${p.id}')">Réorganiser automatiquement</button>
-      <button class="btn-secondary" onclick="dismissMissedSession('${p.id}')">Garder mon plan tel quel</button>
-    </div>
-  </div>`;
-}
 // Recase une séance manquée sur un autre jour sûr de la même semaine
 // (4.3.d) — jamais le même jour qu'une autre séance, jamais collée à une
 // autre séance intense (sauf en dernier recours si elle-même est une
@@ -3431,12 +3449,12 @@ window.rescheduleMissedSession = async (id) => {
   const isPriority = isIntensePaceZone(old.pace_zone);
   const day = findRescheduleDay({pace_zone:old.pace_zone, type:old.type}, weekSessions, availableDayIndexes, isPriority);
   if(day==null){
-    alert("On n'a pas trouvé de jour pour replacer cette séance sans surcharger ta semaine (pas deux séances intenses de suite, pas deux courses le même jour). Pas de souci : on la laisse de côté cette semaine, ce qui compte c'est de retrouver ton rythme.");
+    toast("On n'a pas trouvé de jour pour la replacer sans surcharger ta semaine. Pas de souci : on la laisse de côté, ce qui compte c'est de retrouver ton rythme.", { ms:6000 });
     return;
   }
   const newDateStr = localDateStr(addDays(monday, day));
   const { error } = await supa.from("planned_sessions").update({planned_date:newDateStr, status:"planned", updated_at:new Date().toISOString()}).eq("id", id);
-  if(error){ alert("Erreur : "+error.message); return; }
+  if(error){ toast("Pas enregistré, vérifie ta connexion."); return; }
   await loadData(); renderContent();
 };
 function dismissedMissedIds(){
@@ -3504,26 +3522,6 @@ function programAlerts(){
   const inputs = computeProgramInputs();
   return orderProgramAlerts([urgentAlert(inputs), grosAlert(inputs), missedAlert()]);
 }
-function urgentPainBanner(){
-  const alert = urgentAlert();
-  if(!alert) return "";
-  const { issue: urgentIssue, sig } = alert;
-  const zoneLabel = (ZONE_SHORT_LABEL[urgentIssue.zone]||urgentIssue.zone).toLowerCase();
-  const todayStr = localDateStr(new Date());
-  const next = plannedSessions.filter(p=>p.status==="planned" && p.pace_zone && p.planned_date>=todayStr).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0];
-  const why = urgentIssue.reason==="severe" ? "Elle est très forte" : "Elle revient séance après séance";
-  return `<div class="card" style="border-color:var(--attention);background:var(--attention-bg-strong)">
-    <div style="font-size:14px;font-weight:600;margin-bottom:6px">Cette douleur au niveau de ${zoneLabel} mérite un avis médical.</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">${why}. Continuer comme si de rien n'était risque de l'aggraver : on te conseille de consulter un médecin ou un kiné avant de reprendre des efforts qui sollicitent cette zone. Cette application ne pose pas de diagnostic.</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">En attendant, on peut mettre cette zone en pause : plus d'exercices de mobilité ou de renfo ciblés dessus. Tu peux aussi continuer si tu le souhaites, c'est ton choix.</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn-secondary" onclick="suspendZone('${urgentIssue.zone}')">J'ai compris, mettre cette zone en pause</button>
-      ${next?`<button class="btn-secondary" onclick="deleteSession('${next.id}')">Supprimer ma prochaine course</button>
-      <button class="btn-secondary" onclick="replaceSessionWithRenfo('${next.id}','')">Remplacer ma prochaine course par du renfo</button>`:""}
-      <button class="btn-secondary" onclick="dismissUrgentPain('${sig}')">Je continue quand même</button>
-    </div>
-  </div>`;
-}
 function suspendedZonesCard(){
   if(!suspendedZones.length) return "";
   return `<div class="card" style="border-color:var(--attention-line)">
@@ -3554,32 +3552,78 @@ window.dismissGrosAdaptation = (sig) => {
   } catch {}
   renderContent();
 };
-function grosAdaptationBanner(){
-  const alert = grosAlert();
-  if(!alert) return "";
-  const { issue: grosIssue, sig } = alert;
-  const todayStr = localDateStr(new Date());
-  const next = plannedSessions.filter(p=>p.status==="planned" && p.pace_zone && p.planned_date>=todayStr).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0];
-  const zoneLabel = grosIssue.type==="pain" ? (ZONE_SHORT_LABEL[grosIssue.zone]||grosIssue.zone).toLowerCase() : null;
-  const situation = grosIssue.type==="pain"
-    ? `Une douleur assez marquée revient au niveau de ${zoneLabel}.`
-    : `Ta charge d'entraînement a augmenté très vite ces derniers jours.`;
-  return `<div class="card" style="border-color:var(--attention-line);background:var(--attention-bg)">
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px">${situation}</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ce n'est pas anodin — choisis ce qui te convient le mieux :</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${next?`<button class="btn-secondary" onclick="deleteSessionFromGrosBanner('${next.id}','${sig}')">Supprimer cette séance</button>
-      <button class="btn-secondary" onclick="replaceSessionWithRenfo('${next.id}','${sig}')">Remplacer par du renfo</button>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="number" id="grosShiftDays_${sig}" min="1" max="14" value="3" style="width:50px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:6px;text-align:center">
-        <button class="btn-secondary" style="flex:1" onclick="shiftWeekFromBanner('${next.week_start_date}','${sig}')">jours de décalage pour toute la semaine</button>
-      </div>`:""}
-      <button class="btn-secondary" onclick="goToObjectifs()">Revoir mon objectif</button>
-      <button class="btn-secondary" onclick="dismissGrosAdaptation('${sig}')">Ignorer pour l'instant</button>
+// ---------- Bannières et alertes de Programme (design 9a) ----------
+// Une seule bannière visible (ordre : douleur ≥ 7, puis douleur 6 ou charge très haute, puis séance non faite,
+// voir orderProgramAlerts) ; les autres se déplient via la ligne « 1 autre point : … ». Le calendrier reste visible.
+// Carte violette à 10 %, icône sur violet plein, choix en lignes de 44 px de même poids, note médicale en bas.
+let alertsExpanded = false;
+let shiftDays = 3;
+window.toggleAlertMore = () => { alertsExpanded = !alertsExpanded; renderContent(); };
+window.bumpShift = (delta) => { shiftDays = Math.max(1, Math.min(14, shiftDays + delta)); renderContent(); };
+function alRow(label, call){
+  return `<button type="button" class="al-row" onclick="${call}"><span>${escHtml(label)}</span><span class="chev">${icon("chevronRight",16)}</span></button>`;
+}
+function alShiftBlock(weekStart, sig){
+  return `<div class="al-shift"><div class="t">Décaler toute la semaine</div>
+    <div class="al-step">
+      <button type="button" aria-label="Un jour de moins" onclick="bumpShift(-1)">${icon("minus",18)}</button>
+      <span class="v" aria-live="polite">${shiftDays} <small>jour${shiftDays>1?"s":""} plus tard</small></span>
+      <button type="button" aria-label="Un jour de plus" onclick="bumpShift(1)">${icon("plus",18)}</button>
     </div>
-    <div style="margin-top:10px;font-size:11px;color:var(--text-dim)">Si cette gêne persiste, pense à consulter un médecin ou un kiné pour préciser tes gênes et ajuster les exercices.</div>
+    <button type="button" class="btn-secondary" onclick="shiftWeekFromBanner('${weekStart}','${sig}')">Décaler de ${shiftDays} jour${shiftDays>1?"s":""}</button>
   </div>`;
 }
+function alertCardHTML(a){
+  const todayStr = localDateStr(new Date());
+  const next = plannedSessions.filter(p=>p.status==="planned" && p.pace_zone && p.planned_date>=todayStr).sort((x,y)=>x.planned_date.localeCompare(y.planned_date))[0];
+  const card = (ic, title, text, rows, note, strong) => `<div class="alert-card${strong?" strong":""}" role="alert">
+    <div class="al-head"><span class="al-ic">${icon(ic,18)}</span><div><div class="al-title">${escHtml(title)}</div>${text?`<div class="al-text">${text}</div>`:""}</div></div>
+    ${rows}${note?`<div class="al-note">${escHtml(note)}</div>`:""}
+  </div>`;
+  if(a.kind==="urgent"){
+    const zone = (ZONE_SHORT_LABEL[a.issue.zone]||a.issue.zone).toLowerCase();
+    const why = a.issue.reason==="severe" ? "Elle est très forte" : "Elle revient séance après séance";
+    const rows = alRow("J'ai compris, mettre cette zone en pause", `suspendZone('${a.issue.zone}')`)
+      + (next ? alRow("Supprimer ma prochaine course", `deleteSession('${next.id}')`) + alRow("Remplacer ma prochaine course par du renfo", `replaceSessionWithRenfo('${next.id}','')`) : "")
+      + alRow("Je continue quand même", `dismissUrgentPain('${a.sig}')`);
+    return card("alert", `Cette douleur au niveau de ${zone} mérite un avis médical.`,
+      `${escHtml(why)}. Continuer comme si de rien n'était risque de l'aggraver : on te conseille de consulter un médecin ou un kiné avant de reprendre des efforts qui sollicitent cette zone. Cette application ne pose pas de diagnostic.<br><br>En attendant, on peut mettre cette zone en pause : plus d'exercices de mobilité ou de renfo ciblés dessus. Tu peux aussi continuer si tu le souhaites, c'est ton choix.`, rows, "", true);
+  }
+  if(a.kind==="gros"){
+    const isPain = a.issue.type==="pain";
+    const zone = isPain ? (ZONE_SHORT_LABEL[a.issue.zone]||a.issue.zone).toLowerCase() : null;
+    const { acwr } = computeProgramInputs();
+    const title = isPain ? `Une douleur assez marquée revient au niveau de ${zone}.`
+      : `Ta charge d'entraînement a augmenté très vite${acwr!=null ? " : "+Number(acwr).toFixed(2).replace(".",",") : ""}.`;
+    const rows = (next ? alRow("Supprimer cette séance", `deleteSessionFromGrosBanner('${next.id}','${a.sig}')`) + alRow("Remplacer par du renfo", `replaceSessionWithRenfo('${next.id}','${a.sig}')`) + alShiftBlock(next.week_start_date, a.sig) : "")
+      + alRow("Revoir mon objectif", "goToObjectifs()") + alRow("Ignorer pour l'instant", `dismissGrosAdaptation('${a.sig}')`);
+    return card(isPain ? "alert" : "gauge", title, "Ce n'est pas anodin : choisis ce qui te convient le mieux.", rows,
+      isPain ? "Si cette gêne persiste, pense à consulter un médecin ou un kiné pour préciser tes gênes et ajuster les exercices." : "", false);
+  }
+  const p = a.sessions[0];
+  const dayName = new Date(p.planned_date+"T00:00:00").toLocaleDateString("fr-FR",{weekday:"long"});
+  const rows = alRow("La replacer cette semaine", `rescheduleMissedSession('${p.id}')`) + alRow("La remplacer par une EF", `replaceWithEasy('${p.id}')`) + alRow("La laisser passer", `dismissMissedSession('${p.id}')`);
+  return card("calendarX", `Ta séance de ${dayName} n'a pas pu se faire.`, "Ça arrive à tout le monde : choisis ce qui te convient le mieux.", rows, "", false);
+}
+function programBannersHTML(){
+  const alerts = programAlerts();
+  if(!alerts.length) return "";
+  const rest = alerts.slice(1);
+  return alertCardHTML(alerts[0])
+    + (rest.length ? `<button type="button" class="al-more" aria-expanded="${alertsExpanded}" onclick="toggleAlertMore()"><i></i><span>${escHtml(moreAlertsLabel(rest))}</span><span class="chev">${icon(alertsExpanded?"chevronUp":"chevronRight",16)}</span></button>` : "")
+    + (rest.length && alertsExpanded ? rest.map(alertCardHTML).join("") : "");
+}
+// Ligne grise « On a allégé ta séance de jeudi » (D54) : fermable, mémorisée sur l'appareil.
+function adjustmentInfoHTML(){
+  let dismissed = []; try{ dismissed = JSON.parse(localStorage.getItem("mra_adjDismissed")||"[]"); }catch(e){}
+  const a = lightAdjustments(plannedSessions, dismissed, Date.now())[0];
+  if(!a) return "";
+  return `<div class="al-info" role="status">${icon("refresh",16)}<span>${escHtml(a.text)}</span><button type="button" class="x" aria-label="Fermer" onclick="dismissAdjustment('${a.id}')">${icon("x",16)}</button></div>`;
+}
+window.dismissAdjustment = (id) => {
+  try{ const list = JSON.parse(localStorage.getItem("mra_adjDismissed")||"[]"); list.push(id); localStorage.setItem("mra_adjDismissed", JSON.stringify(list.slice(-40))); }catch(e){}
+  renderContent();
+};
 window.deleteSessionFromGrosBanner = async (id, sig) => {
   await window.deleteSession(id);
   window.dismissGrosAdaptation(sig);
@@ -3600,7 +3644,7 @@ window.replaceSessionWithRenfo = async (id, sig) => {
     status:"planned", source:"manual_edit", generation_reason:"pain_repeat_or_wellbeing",
     replaces_session_id: old.id,
   }).select().single();
-  if(insErr){ alert("Erreur : "+insErr.message); return; }
+  if(insErr){ toast("Pas enregistré, vérifie ta connexion."); return; }
   await supa.from("planned_sessions").update({status:"replaced", superseded_by_id:inserted.id, updated_at:new Date().toISOString()}).eq("id", old.id);
   if(sig) window.dismissGrosAdaptation(sig);
   else { await loadData(); renderContent(); }
@@ -3622,11 +3666,10 @@ window.shiftWeekByDays = async (weekStartDate, days) => {
     await supa.from("planned_sessions").update({planned_date:newDate, week_start_date:newMonday, updated_at:new Date().toISOString()}).eq("id", p.id);
   }
   await loadData(); renderContent();
-  if(skipped) alert(`${skipped} séance(s) n'ont pas pu être décalées (jour déjà occupé) — à ajuster toi-même.`);
+  if(skipped) toast(`${skipped} séance${skipped>1?"s":""} n'${skipped>1?"ont":"a"} pas pu être décalée${skipped>1?"s":""} (jour déjà occupé) : à ajuster toi-même.`, { ms:6000 });
 };
 window.shiftWeekFromBanner = async (weekStartDate, sig) => {
-  const days = parseInt(document.getElementById(`grosShiftDays_${sig}`)?.value, 10) || 3;
-  await window.shiftWeekByDays(weekStartDate, days);
+  await window.shiftWeekByDays(weekStartDate, shiftDays);
   window.dismissGrosAdaptation(sig);
 };
 window.goToProgramme = () => {
@@ -3826,7 +3869,7 @@ window.regenerateSession = async (id, reason, auto) => {
     status:"planned", source:"manual_edit", generation_reason:"user_constraint",
     replaces_session_id: old.id,
   }).select().single();
-  if(insErr){ alert("Erreur : "+insErr.message); return; }
+  if(insErr){ toast("Pas enregistré, vérifie ta connexion."); return; }
   await supa.from("planned_sessions").update({status:"replaced", superseded_by_id:inserted.id, updated_at:new Date().toISOString()}).eq("id", old.id);
   await loadData(); renderContent();
 };
@@ -3936,7 +3979,11 @@ function beginnerPlanInProgress(){
 }
 function programSettingsFormHTML(profile){
   if(profile || beginnerPlanInProgress()) return "";
-  return `<div class="card">
+  return `<div class="al-need" role="status">
+    <div class="ttl">${icon("alert",18)}<span>Il nous manque ton objectif et tes disponibilités pour construire ton programme. Complète-les, ou indique un temps de référence plus bas.</span></div>
+    <button type="button" class="btn-secondary" onclick="setTab('objectifs')">Compléter mon profil</button>
+  </div>
+  <div class="card">
     <div class="stitle">Temps de référence</div>
     <div class="chart-hint" style="margin-top:0">Pour calculer tes allures personnalisées, indique une performance récente : le temps que tu mets à parcourir une distance donnée, à l'entraînement ou en course (par exemple ton chrono sur un 10 km, même approximatif). Plus ce chrono reflète ton niveau actuel, plus les allures calculées seront justes. Tu n'as pas besoin de refaire cette saisie si tu renseignes un record ou une VMA dans Objectifs, ça prendra le relais automatiquement.</div>
     <div class="chart-hint" style="margin-top:8px;margin-bottom:0">Distance</div>
@@ -5336,10 +5383,9 @@ function renderContentInner(){
         <button type="button" role="tab" aria-selected="${programViewMode==="week"}" class="${programViewMode==="week"?"active":""}" onclick="setProgramView('week')">Semaine</button>
         <button type="button" role="tab" aria-selected="${programViewMode==="month"}" class="${programViewMode==="month"?"active":""}" onclick="setProgramView('month')">Mois</button>
       </div>`:""}
-      ${missedSessionsBanner()}
-      ${urgentPainBanner()}
+      ${ready ? adjustmentInfoHTML() : ""}
+      ${programBannersHTML()}
       ${suspendedZonesCard()}
-      ${grosAdaptationBanner()}
       ${programSettingsFormHTML(profile)}
       ${ready ? programCalendarHTML() + programSelectedDayPanelHTML() : ""}
     `;
