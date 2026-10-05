@@ -239,12 +239,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);
   padding:18px;margin-bottom:14px;
 }
-.tutorial-modal-backdrop{
-  position:fixed;inset:0;z-index:200;
-  background:rgba(0,0,0,0.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  display:flex;align-items:center;justify-content:center;padding:24px;
-}
-.tutorial-modal-card{max-width:340px;width:100%;margin-bottom:0;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
 .stitle{font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--text-muted);margin-bottom:14px;text-transform:uppercase}
 .chart-hint{font-size:12px;color:var(--text-faint);margin-top:-8px;margin-bottom:12px}
 
@@ -1094,7 +1088,7 @@ button.pg-rec-row{cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=80"></script>
+<script src="logic.js?v=81"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1308,6 +1302,7 @@ let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=initialActiveTa
 let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = null, restingHrUpdatedAt = null, restingHrIsManual = false, avatarUrl = null;
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let onboardingCompletedAt = null;
+let onboardingAutoMarked = false;   // ancien compte marqué « parcours fait » pendant cette ouverture (message de nouveauté, D91)
 let suspendedZones = [];
 let pseudo="", age=null, gender="", cities=[];
 let programSettings = {}, plannedSessions = [], programViewMode = "week", programWeekOffset = 0;
@@ -1484,44 +1479,6 @@ window.dismissPainPrompt = (id) => {
 // synchronisation : RunSync importe déjà tout seul chaque soir à 20h, et
 // "pas de course" ne veut pas dire "pas synchronisé" (une marche ou un
 // renfo importé ne compte pas ici, seules les courses comptent).
-// Tuto de première utilisation : une bulle par onglet, affichée une seule
-// fois (mémorisée par appareil, comme mra_activeTab). Pas de bulle pour
-// "compte", ce sont des réglages, pas un endroit à découvrir.
-const TUTORIAL_BUBBLES = {
-  aujourdhui: "C'est ton accueil : ta séance du jour avec la raison pour laquelle elle est là, le bilan de ta semaine, et la note de ta dernière séance quand elle attend.",
-  progression: "C'est ton suivi : tes indicateurs clés, tes graphiques et l'historique de toutes tes séances. Elles arrivent automatiquement depuis Apple Santé. C'est aussi ici que tu notes ton ressenti après une séance.",
-  profil: "Commence par ici ! Dans « Objectifs », dis-nous ce que tu vises (une course, ta régularité, ton allure...) : c'est la base de ton programme personnalisé. Tes réglages (compte, fréquence cardiaque, synchronisation) sont dans « Mon compte ».",
-  programme: "Ton calendrier de séances, généré automatiquement à partir de tes objectifs. Chaque séance t'explique pourquoi elle est là. Tu peux la déplacer, la modifier ou la supprimer à tout moment.",
-};
-function seenTutorialBubbles(){
-  try { return JSON.parse(localStorage.getItem("mra_tutorialSeen")||"[]"); } catch(e){ return []; }
-}
-function markTutorialBubbleSeen(tabKey){
-  const list = seenTutorialBubbles();
-  if(!list.includes(tabKey)){
-    list.push(tabKey);
-    try{ localStorage.setItem("mra_tutorialSeen", JSON.stringify(list)); }catch(e){}
-  }
-}
-function tutorialBubbleHTML(tabKey){
-  const text = TUTORIAL_BUBBLES[tabKey];
-  if(!text || seenTutorialBubbles().includes(tabKey)) return "";
-  return `<div class="tutorial-modal-backdrop" id="tutorialBubble" onclick="dismissTutorialBubble('${tabKey}')">
-    <div class="card tutorial-modal-card" style="border-color:rgba(94,92,230,0.4)" onclick="event.stopPropagation()">
-      <div style="font-size:14px;line-height:1.5;margin-bottom:16px">${text}</div>
-      <button class="btn-primary" style="margin-top:0" onclick="dismissTutorialBubble('${tabKey}')">Compris</button>
-    </div>
-  </div>`;
-}
-window.dismissTutorialBubble = (tabKey) => {
-  const el = document.getElementById("tutorialBubble");
-  if(el){
-    el.style.transition = "opacity .2s ease";
-    el.style.opacity = "0";
-    setTimeout(()=>el.remove(), 200);
-  }
-  markTutorialBubbleSeen(tabKey);
-};
 
 // Wrappers centralisant la gestion d'erreur réseau : sans ça, un upsert qui
 // échoue silencieusement donne l'impression que rien n'est enregistré (cause
@@ -5186,6 +5143,32 @@ function hierCardHTML(){
     ${buttons}
   </div>`;
 }
+// ---------- Message « L'app a changé de look » (D91) ----------
+// Une seule fois, à l'ouverture, pour les comptes qui existaient avant la refonte (règle : shouldShowNews, logic.js). Un compte
+// neuf ne le voit jamais : la fin de son parcours le marque comme vu. « Déjà vu » = sur l'appareil, rien n'est écrit dans le
+// profil. Il passe avant la célébration d'un record, qui s'ouvre juste après sa fermeture. Le texte est celui validé par Omar.
+const NEWS_ID = "refonte-2026-10", NEWS_BEFORE = "2026-10-05", NEWS_SEEN_KEY = "mra_newsSeen";
+function newsSeenIds(){ try{ const v = JSON.parse(localStorage.getItem(NEWS_SEEN_KEY)||"[]"); return Array.isArray(v) ? v : []; }catch(e){ return []; } }
+function markNewsSeen(){ try{ localStorage.setItem(NEWS_SEEN_KEY, JSON.stringify([...new Set([...newsSeenIds(), NEWS_ID])])); }catch(e){} }
+let newsSheet = false;
+function maybeShowNews(){
+  if(newsSheet || onbConnect || !document.getElementById("sheetRoot")) return;
+  if(!shouldShowNews(onboardingCompletedAt, onboardingAutoMarked, newsSeenIds(), NEWS_ID, NEWS_BEFORE)) return;
+  newsSheet = true; refreshSheet();
+}
+window.closeNews = () => { newsSheet = false; markNewsSeen(); refreshSheet(); maybeCelebrate(); };
+document.addEventListener("keydown", (e) => { if(e.key==="Escape" && newsSheet) closeNews(); });
+function renderNewsSheet(){
+  if(!newsSheet) return false;
+  const m = newsMessage(levelResumeInfo(goals, programSettings, RACE_DISTANCES_KM));
+  document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeNews()"><div class="sheet" role="dialog" aria-modal="true" aria-label="${escHtml(m.title)}">
+    ${sheetHeadHTML(m.title, "closeNews()")}
+    <div class="np-intro">${escHtml(m.text)}</div>
+    <button type="button" class="btn-primary" style="margin-top:14px" onclick="closeNews()">Compris</button>
+  </div></div>`;
+  const first = document.querySelector("#sheetRoot .btn-primary"); if(first) first.focus();
+  return true;
+}
 // ---------- Célébration plein écran (S9, journal 10b-4 ; D55, D56, D57) ----------
 // Seulement pour un record de distance (5 km, 10 km, semi, marathon) : s'ouvre une seule fois à l'ouverture de l'app, avec
 // le petit bonhomme (record-man.js), puis la carte « Hier » prend le relais. « Plus tard » ferme sans rien noter ;
@@ -5194,7 +5177,7 @@ const CEL_SHOWN_KEY = "mra_celebShown";
 function celebShownIds(){ try{ return JSON.parse(localStorage.getItem(CEL_SHOWN_KEY)||"[]"); }catch(e){ return []; } }
 let celebration = null; // { runId, info, unrated }
 function maybeCelebrate(){
-  if(celebration || !onboardingCompletedAt || !document.getElementById("celebrationRoot")) return;
+  if(celebration || newsSheet || !onboardingCompletedAt || !document.getElementById("celebrationRoot")) return;
   const h = hierData();
   if(!h || !h.run || !h.records.length) return;
   const info = celebrationToShow(h.records, h.run.id, celebShownIds());
@@ -5480,7 +5463,8 @@ function renderSessionSheet(){
 function refreshSheet(){
   const root = document.getElementById("sheetRoot");
   if(!root) return;
-  if(manualRunForm) renderManualRunSheet();
+  if(typeof renderNewsSheet==="function" && renderNewsSheet()) { /* « L'app a changé de look » : passe avant le reste */ }
+  else if(manualRunForm) renderManualRunSheet();
   else if(typeof renderRatingSheet==="function" && renderRatingSheet()) { /* feuille de ressenti */ }
   else if(exerciseSheet) renderExerciseSheet();
   else if(typeof renderProgramSheet==="function" && renderProgramSheet()) { /* feuille Ajouter / Modifier */ }
@@ -5643,8 +5627,6 @@ function renderContent(){
   runCountUps();
   const el = document.getElementById("content");
   if(activeTab==="profil" && el) el.insertAdjacentHTML("afterbegin", profilSwitchHTML());
-  const bubble = tutorialBubbleHTML(activeTab);
-  if(bubble && el) el.innerHTML = bubble + el.innerHTML;
 }
 // Progression sans aucune course (journal 13) : un rappel de RunSync avec « Voir comment » (ouvre le guide) et « Ajouter une
 // séance réalisée », puis les blocs à venir en pointillés.
@@ -5750,6 +5732,7 @@ async function boot(){
   document.getElementById("content").innerHTML = skeletonHTML(activeTab);
   await loadData();
   renderApp();
+  maybeShowNews();
   maybeCelebrate();
   resumeSyncGuide();
   runProgramMaintenance();
@@ -5776,7 +5759,7 @@ function renderApp(){
     return;
   }
   if(!onboardingCompletedAt && !onbRestarting && accountHasData()){
-    onboardingCompletedAt = new Date().toISOString();
+    onboardingCompletedAt = new Date().toISOString(); onboardingAutoMarked = true;
     upsertProfile({ onboarding_completed_at: onboardingCompletedAt });
   }
   if(!onboardingCompletedAt || onbConnect){
@@ -6118,6 +6101,7 @@ window.onbFinish = async function(){
   const ok = await upsertProfile({ goals: patch.goals, program_settings: patch.programSettings, onboarding_completed_at: completedAt });
   if(!ok){ onb.saving = false; onb.prepDone = null; renderApp(); return; }
   goals = patch.goals; programSettings = patch.programSettings; onboardingCompletedAt = completedAt;
+  markNewsSeen();                                // un compte neuf n'a pas à apprendre que l'app a changé (D91)
   onbRestarting = false; onbConnect = true;      // l'écran du parcours reste affiché pendant la génération
   await tick(1);                                  // objectif et niveau enregistrés
   try{

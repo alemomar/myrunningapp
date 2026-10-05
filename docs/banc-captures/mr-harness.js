@@ -2,7 +2,7 @@
 (async function(){
   const scen = (location.hash||"#aujourdhui_course").slice(1);
   const R = (()=>{ let s=42; return ()=>{ s|=0; s=s+0x6D2B79F5|0; let t=Math.imul(s^s>>>15,1|s); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; })();
-  try{ localStorage.clear(); localStorage.setItem("mra_tutorialSeen", JSON.stringify(["aujourdhui","progression","programme","profil"])); }catch(e){}
+  try{ localStorage.clear(); if(!/^nouveaute/.test(scen)) localStorage.setItem("mra_newsSeen", JSON.stringify(["refonte-2026-10"])); }catch(e){}   // le message de nouveauté (D91) n'apparaît que dans ses scénarios
 
   // --- réseau neutralisé
   supa.auth.getUser = async()=>({data:{user:{id:"demo", email:"camille@exemple.fr"}}});
@@ -313,6 +313,11 @@
       }
       if(scen==="niveau_reprise_choix") levelResumePick("recent");
     }
+  } else if(/^nouveaute_(reprise|simple)$/.test(scen)){
+    // Message « L'app a changé de look » (D91) : compte existant, avec ou sans question de reprise en attente
+    celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayEasy, ...future];
+    if(scen==="nouveaute_reprise") programSettings = { refDistanceKm:10, refTimeSec:3600 };      // un temps sans date, comme les comptes d'avant la refonte
+    show("aujourdhui"); if(typeof maybeShowNews==="function") maybeShowNews();
   } else if(scen==="jauge_charge" || scen==="jauge_info"){
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; openMonths=null; openManageRow=new Set(); show("progression");
     openChargeSheet(); if(scen==="jauge_info") toggleChargeInfo();

@@ -3056,3 +3056,24 @@ function missedDayNote(missedDates, unlinkedRunDates){
   const dayName = (d) => new Date(d+"T00:00:00").toLocaleDateString("fr-FR", { weekday:"long" });
   return `Ta sortie de ${dayName(unlinkedRunDates[unlinkedRunDates.length-1])} est bien comptée. La séance de ${dayName(missedDates[0])} reste à replacer.`;
 }
+
+/* ---------- Message « L'app a changé de look » (D91) ----------
+   Une seule fois, à l'ouverture, pour les comptes qui existaient avant la refonte. Les comptes neufs (parcours de démarrage
+   terminé à partir du jour de la mise en ligne) ne le voient jamais. « Déjà vu » reste sur l'appareil : rien n'est écrit
+   dans le profil. */
+// `completedAt` : fin du parcours de démarrage (date ISO) ou vide ; `autoMarked` : ancien compte marqué « parcours fait » à
+// cette ouverture (il avait déjà des données) ; `seenIds` : messages déjà vus sur cet appareil ; `before` : jour de la mise
+// en ligne (AAAA-MM-JJ). On compare les jours, écrits en texte : le même résultat quel que soit le format de l'heure.
+function shouldShowNews(completedAt, autoMarked, seenIds, newsId, before){
+  if(!completedAt) return false;                                   // parcours en cours : rien par-dessus
+  if(Array.isArray(seenIds) && seenIds.includes(newsId)) return false;
+  return !!autoMarked || String(completedAt).slice(0,10) < String(before).slice(0,10);
+}
+// Texte du message. S'il reste une question de reprise à poser (levelResumeInfo non nul), on la mentionne : « chrono » pour un
+// record ou un temps sans date, « test » pour une VMA ou un test de 20 minutes.
+function newsMessage(resumeInfo){
+  const title = "L'app a changé de look";
+  if(!resumeInfo) return { title, text:"Tes séances et ton programme sont toujours là." };
+  const what = (resumeInfo.kind==="vma" || (resumeInfo.kind==="undated" && resumeInfo.fromTest)) ? "test" : "chrono";
+  return { title, text:`Tes séances, ton programme et tes allures sont toujours là. On te pose une question sur la date de ton ${what} : elle sert à garder tes allures conseillées justes.` };
+}

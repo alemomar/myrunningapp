@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=80"></script>
+<script src="logic.js?v=81"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1782,6 +1782,27 @@ try {
   assertEqual("guide : rien reçu au bout de 90 s", syncGuideModel([true,true,true], 0, 90).phase, "empty");
   assertEqual("guide : connecté, les trois premières étapes sont cochées même si on n'a rien cliqué (RunSync déjà en place), la 4e reste ouverte", [syncGuideModel([false,false,false], 12, 0).steps.map(x=>x.state), syncGuideModel([false,false,false], 12, 0).summary], [["done","done","done","active"], "C'est connecté · 12 courses reçues"]);
   assertEqual("guide : une seule course reçue, au singulier", syncGuideModel([true,true,true], 1, 0).summary, "C'est connecté · 1 course reçue");
+}
+
+// --- S13.1 : message « L'app a changé de look » aux comptes existants (D91) ---
+{
+  const B = "2026-10-05", N = "refonte-2026-10";
+  assertEqual("message : compte d'avant la mise en ligne, jamais vu -> affiché", [shouldShowNews("2026-09-28T10:12:33.123456+00:00", false, [], N, B), shouldShowNews("2026-10-04T23:59:59Z", false, [], N, B)], [true, true]);
+  assertEqual("message : parcours en cours (pas de date de fin) -> rien, même pour un ancien compte marqué", [shouldShowNews(null, false, [], N, B), shouldShowNews("", true, [], N, B)], [false, false]);
+  assertEqual("message : compte neuf (parcours terminé le jour de la mise en ligne ou après) -> jamais", [shouldShowNews("2026-10-05T18:00:00.000Z", false, [], N, B), shouldShowNews("2026-11-02T08:00:00+00:00", false, [], N, B)], [false, false]);
+  assertEqual("message : déjà vu sur cet appareil -> une seule fois", shouldShowNews("2026-09-28T10:12:33Z", false, [N], N, B), false);
+  assertEqual("message : un autre message déjà vu ne compte pas", shouldShowNews("2026-09-28T10:12:33Z", false, ["autre"], N, B), true);
+  assertEqual("message : ancien compte marqué « parcours fait » à cette ouverture -> affiché malgré une date récente", shouldShowNews("2026-10-20T08:00:00Z", true, [], N, B), true);
+  assertEqual("message : marqué mais déjà vu -> pas deux fois", shouldShowNews("2026-10-20T08:00:00Z", true, [N], N, B), false);
+  assertEqual("message : liste des messages vus absente ou abîmée -> comme vide", [shouldShowNews("2026-09-28T10:12:33Z", false, null, N, B), shouldShowNews("2026-09-28T10:12:33Z", false, undefined, N, B), shouldShowNews("2026-09-28T10:12:33Z", false, "x", N, B)], [true, true, true]);
+  assertEqual("texte : question de reprise sur un chrono (texte validé par Omar)", newsMessage({ kind:"undated", fromTest:false }), { title:"L'app a changé de look", text:"Tes séances, ton programme et tes allures sont toujours là. On te pose une question sur la date de ton chrono : elle sert à garder tes allures conseillées justes." });
+  assertEqual("texte : un record sans date dit aussi « chrono »", newsMessage({ kind:"record" }).text.includes("sur la date de ton chrono :"), true);
+  assertEqual("texte : VMA ou test de 20 minutes -> « test »", [newsMessage({ kind:"vma" }).text.includes("sur la date de ton test :"), newsMessage({ kind:"undated", fromTest:true }).text.includes("sur la date de ton test :")], [true, true]);
+  assertEqual("texte : aucune question de reprise -> on n'en annonce pas", newsMessage(null), { title:"L'app a changé de look", text:"Tes séances et ton programme sont toujours là." });
+  // Les deux comptes réels d'avant la refonte : un temps de 10 km sans date, objectif « Améliorer mon allure » -> la question de reprise est bien annoncée
+  const ancien = levelResumeInfo({ principal:{ objectifPrincipal:"Améliorer mon allure" }, secondaire:{ objectifPrincipal:"Courir plus régulièrement" }, niveau:"Intermédiaire" }, { refDistanceKm:10, refTimeSec:3600 }, {});
+  assertEqual("compte d'avant : la question de reprise existe, et le message l'annonce", [ancien.kind, newsMessage(ancien).text.includes("On te pose une question")], ["undated", true]);
+  assertEqual("compte d'avant avec un chrono déjà daté : pas de question, message court", newsMessage(levelResumeInfo({ principal:{ objectifPrincipal:"Améliorer mon allure" } }, { refDistanceKm:10, refTimeSec:3600, refDate:"2026-08-01" }, {})).text, "Tes séances et ton programme sont toujours là.");
 }
 
 document.getElementById("summary").innerHTML =
