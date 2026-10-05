@@ -131,13 +131,6 @@ button,input,select,textarea{font-family:inherit}
 .goal-level-card.active{border-color:var(--select);background:var(--select-soft)}
 .goal-level-card .lbl{font-size:12px;font-weight:600}
 .goal-level-card .sub{font-size:9px;color:var(--text-dim);margin-top:1px;line-height:1.2}
-.goal-slot-switch{display:flex;gap:6px;margin-bottom:0}
-.goal-sticky-header{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:10px;padding-bottom:10px;margin-top:-10px}
-.goal-sticky-header .card{padding:10px 12px;margin-bottom:8px}
-.goal-sticky-header .stitle{margin-bottom:8px}
-.goal-slot-btn{flex:1;padding:7px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:border-color .15s,background .15s,color .15s}
-.goal-slot-btn.active-principal{border-color:var(--select);background:var(--select-soft);color:var(--select)}
-.goal-slot-btn.active-secondaire{border-color:var(--select);background:var(--select-soft);color:var(--select)}
 .goal-principal-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .goal-principal-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);cursor:pointer;transition:border-color .15s,background .15s}
 .goal-principal-card.active{border-color:var(--select);background:var(--select-soft)}
@@ -713,6 +706,58 @@ button.pg-rec-row{cursor:pointer}
 .ac-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ac-btns button{height:44px;border:none;border-radius:22px;background:var(--surface-control);color:var(--text);font:inherit;font-size:14.5px;font-weight:600;cursor:pointer}
 .ac-btns button.main{background:var(--select);color:var(--on-accent)}
+/* Profil (S11, design 12b) */
+.pf-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:24px;background:var(--surface);margin-bottom:16px}
+.pf-seg button{height:40px;border:none;border-radius:20px;background:none;color:var(--text-3);font:inherit;font-size:14.5px;font-weight:600;cursor:pointer}
+.pf-seg button[aria-pressed="true"]{background:var(--select);color:var(--on-accent)}
+.pf-over{padding:0 4px;margin-bottom:8px}
+.pf-obj{width:100%;border:none;text-align:left;color:inherit;font:inherit;background:var(--surface);border-radius:var(--r-lg);padding:14px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;cursor:pointer}
+.pf-obj .top{display:flex;align-items:center;gap:10px}
+.pf-obj .ic{width:36px;height:36px;border-radius:50%;background:var(--select);color:var(--on-accent);display:flex;align-items:center;justify-content:center;flex:none}
+.pf-obj .t{font:700 20px/1.1 var(--font-display);text-transform:uppercase}
+.pf-obj .s{font-size:13px;color:var(--text-3)}
+.pf-obj .chev{margin-left:auto;color:var(--text-faint);display:flex}
+.pf-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pf-tiles>div{background:var(--surface-sunken);border-radius:12px;padding:8px 10px;min-width:0}
+.pf-tiles .k{font-size:11px;color:var(--text-muted)}
+.pf-tiles .v{font:700 18px var(--font-display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-add{width:100%;height:52px;border-radius:var(--r-lg);border:1px dashed var(--line-empty);background:none;color:var(--text-2);font:inherit;font-size:15px;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px}
+.pf-card{background:var(--surface);border-radius:var(--r-lg);padding:14px;display:flex;flex-direction:column;gap:14px;margin-bottom:12px}
+.pf-title{font:700 20px var(--font-display);text-transform:uppercase}
+.pf-card.sm .pf-title{font-size:18px}
+.pf-group{display:flex;flex-direction:column;gap:10px}
+.pf-lbl{font-size:13.5px;color:var(--text-2)}
+.pf-nums{display:grid;gap:6px}
+.pf-nums.n7{grid-template-columns:repeat(7,1fr)}
+.pf-nums.n8{grid-template-columns:repeat(8,1fr)}
+.pf-nums button{height:40px;min-width:0;padding:0;border-radius:20px;border:1px solid var(--line-field);background:var(--surface-sunken);color:var(--text);font:700 17px var(--font-display);cursor:pointer}
+.pf-nums button.active{background:var(--select);border-color:var(--select);color:var(--on-accent)}
+.pf-chips{display:flex;flex-wrap:wrap;gap:8px}
+.pf-chip{height:44px;padding:0 16px;border-radius:22px;border:1px solid var(--line-field);background:var(--surface);color:var(--text);font:inherit;font-size:15px;cursor:pointer}
+.pf-chip.active{background:var(--select);border-color:var(--select);color:var(--on-accent);font-weight:600}
+.pf-hint{font-size:12.5px;color:var(--text-muted)}
+.pf-saved{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;background:var(--accent-soft);color:var(--accent);font-size:12.5px;font-weight:600}
+.pf-slot:empty{display:none}
+.pf-row{display:flex;align-items:center;gap:10px;height:48px;padding:0 14px;border-radius:var(--r-md);background:var(--surface-sunken);border:1px solid var(--line-field);font-size:15px}
+.pf-row.ro{background:none;border-style:dashed}
+.pf-row label{color:var(--text-muted);font-size:13.5px;flex:none}
+.pf-row input,.pf-row select{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--text);font:inherit;font-size:15px;text-align:right}
+.pf-row.stack input{text-align:left}
+.pf-row .u{font-size:13px;color:var(--text-muted);flex:none}
+.pf-row:focus-within{border-color:var(--select)}
+.pf-btn{width:100%;height:48px;border:none;border-radius:var(--r-md);background:var(--surface-control);color:var(--text);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.pf-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pf-logout{width:100%;height:52px;border:none;border-radius:var(--r-lg);background:var(--surface);color:var(--text-3);font:inherit;font-size:15px;cursor:pointer;margin-bottom:12px}
+.pf-sync{display:flex;align-items:center;gap:10px;font-size:15px}
+.pf-sync i{width:10px;height:10px;border-radius:50%;background:var(--accent);flex:none}
+.pf-sync.off i{background:var(--text-faint)}
+.pf-lvl{display:flex;justify-content:space-between;align-items:center;width:100%;border:none;text-align:left;color:inherit;font:inherit;background:var(--surface);border-radius:var(--r-lg);padding:14px;margin-bottom:12px;cursor:pointer}
+.pf-lvl .k{font-size:13.5px;color:var(--text-2)}
+.pf-lvl .v{font:700 18px var(--font-display);text-transform:uppercase}
+.pf-lvl .r{display:flex;align-items:center;gap:8px;color:var(--text-faint)}
+.pf-ta{width:100%;min-height:80px;background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-md);color:var(--text);font:inherit;font-size:14px;padding:12px;resize:vertical}
+.obj-sheet .card{background:var(--surface-sunken);border:none;border-radius:var(--r-lg);padding:14px;margin-bottom:12px}
+.obj-sheet .stitle{margin-bottom:10px}
 /* Historique (S7, design 7g) */
 .page-back{width:36px;height:36px;margin:-4px 4px -4px -8px;border:none;border-radius:50%;background:none;color:var(--text);display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;cursor:pointer}
 .page-action.outline{background:none;box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent);font-size:13px}
@@ -866,7 +911,7 @@ button.pg-rec-row{cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=75"></script>
+<script src="logic.js?v=76"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -1376,13 +1421,6 @@ function captureSharedFields(){
   if(niveauEl) goals.niveau = niveauEl.value;
   if(autreEl) goals.autre = autreEl.value;
 }
-// Bascule l'objectif affiché/édité (principal ↔ secondaire) — un
-// re-rendu complet suffit, comme pour les onglets.
-window.selectGoalSlot = (slot) => {
-  captureSharedFields();
-  activeGoalSlot = slot;
-  renderContent();
-};
 // Bascule l'existence même d'un objectif secondaire (pas juste son
 // affichage) : un utilisateur n'ayant qu'un seul objectif ne doit pas voir
 // un 2e onglet. Les données déjà saisies dans "secondaire" ne sont pas
@@ -1415,6 +1453,7 @@ window.selectChip = (field, value) => {
     captureSharedFields();
     goals[activeGoalSlot] = Object.assign({}, goals[activeGoalSlot], {objectifPrincipal: value});
     renderContent();
+    if(objSheet) refreshSheet();
     saveGoals();
     return;
   }
@@ -1423,6 +1462,7 @@ window.selectChip = (field, value) => {
   const group = document.querySelector(`[data-chipgroup="${field}"]`);
   if(group) group.querySelectorAll("[data-value]").forEach(el=>{
     el.classList.toggle("active", el.dataset.value===value);
+    el.setAttribute("aria-pressed", el.dataset.value===value);
   });
   if(field==="distanceCourse"){ updateRacePaceGoal(); updatePbPaceGoal(); }
   if(field==="pbExistant"){
@@ -1573,6 +1613,8 @@ window.adjustPaceGoal = (field, delta, fallback) => {
 };
 
 window.saveGoals = async () => {
+  // Les champs de l'objectif n'existent que dans la feuille d'objectif : sans eux, on n'écrit rien (l'objectif serait vidé).
+  if(!document.getElementById("goal_objectifPrincipal")) return;
   const slotValue = {};
   GOAL_SLOT_FIELDS.forEach(k=>{ const el=document.getElementById("goal_"+k); if(el) slotValue[k]=el.value; });
   const h = parseInt(document.getElementById("goal_tempsH")?.value,10)||0;
@@ -1604,7 +1646,7 @@ window.saveTerrain = async (value) => {
   });
   goals = { ...goals, terrain: value };
   if(!(await upsertProfile({ goals }))) return;
-  flashSaved("profilSaved");
+  flashFieldSaved(group);
 };
 window.saveEquipement = async (value) => {
   const current = goals.equipement ? goals.equipement.split(",") : [];
@@ -1615,7 +1657,7 @@ window.saveEquipement = async (value) => {
   });
   goals = { ...goals, equipement: arr.join(",") };
   if(!(await upsertProfile({ goals }))) return;
-  flashSaved("profilSaved");
+  flashFieldSaved(group);
 };
 // Jours indisponibles : tronc commun (utilisé par l'onglet Programme pour
 // éviter de reposer la même question) — même pattern que terrain/équipement.
@@ -1628,7 +1670,7 @@ window.saveJoursIndisponibles = async (value) => {
   });
   goals = { ...goals, joursIndisponibles: arr.join(",") };
   if(!(await upsertProfile({ goals }))) return;
-  flashSaved("profilSaved");
+  flashFieldSaved(group);
 };
 // Séances/semaine et km/mois sont partagés (peu importe l'objectif
 // principal/secondaire) — même logique d'auto-enregistrement au clic que
@@ -1643,7 +1685,7 @@ window.saveFrequence = async (value) => {
   if(hint) hint.textContent = FREQUENCE_HINTS[value]||"";
   goals = { ...goals, frequence: value };
   if(!(await upsertProfile({ goals }))) return;
-  flashSaved("profilSaved");
+  flashFieldSaved(group);
 };
 window.saveFrequenceAutre = async (value) => {
   const group = document.querySelector('[data-chipgroup="frequenceAutre"]');
@@ -1652,75 +1694,13 @@ window.saveFrequenceAutre = async (value) => {
   });
   goals = { ...goals, frequenceAutre: value };
   if(!(await upsertProfile({ goals }))) return;
-  flashSaved("profilSaved");
+  flashFieldSaved(group);
 };
 window.saveVolumeGoal = async () => {
   const v = document.getElementById("goal_kmMensuel")?.value || "";
   goals = { ...goals, kmMensuel: v };
   if(!(await upsertProfile({ goals }))) return;
-  flashSaved("profilSaved");
-};
-window.uploadAvatar = async (input) => {
-  const file = input.files[0];
-  if(!file) return;
-  const msg = document.getElementById("avatarMsg");
-  if(msg) msg.textContent = "Envoi en cours...";
-  const { data: { user }, error: authError } = await supa.auth.getUser();
-  if(authError || !user){ if(msg) msg.textContent=""; alert("Session expirée — recharge la page et reconnecte-toi."); return; }
-  const ext = (file.name.split('.').pop()||"jpg").toLowerCase();
-  const path = `${user.id}/avatar.${ext}`;
-  const { error: upErr } = await supa.storage.from('avatars').upload(path, file, { upsert: true });
-  if(upErr){ if(msg) msg.textContent = "Erreur : "+upErr.message; return; }
-  const { data: { publicUrl } } = supa.storage.from('avatars').getPublicUrl(path);
-  const bustedUrl = publicUrl + "?t=" + Date.now();
-  if(!(await upsertProfile({ avatar_url: bustedUrl }))){ if(msg) msg.textContent=""; return; }
-  avatarUrl = bustedUrl;
-  if(msg) msg.textContent = "";
-  renderContent();
-};
-// Un seul bouton "Enregistrer" pour toute la page Mon compte (Profil, FC max,
-// FC repos, VO2 max) — plusieurs boutons séparés prêtaient à confusion
-// (facile de n'en cliquer qu'un et de croire que tout était enregistré).
-// Une seule requête, un seul point de confirmation/erreur.
-// FC repos/VO2 max : pré-remplis avec la valeur actuelle (utile pour la voir),
-// mais resaisir la page pour une tout autre raison (ex: changer son pseudo)
-// ne doit jamais figer une valeur auto-synchronisée comme "manuelle" — d'où
-// la comparaison à data-original (valeur affichée à l'ouverture) plutôt que
-// "le champ contient un chiffre". Seul un vrai changement de valeur marque
-// le champ manuel (ou le repasse en auto si l'utilisateur le vide).
-function manualFieldUpdate(inputId, currentIsManual, currentValue, currentUpdatedAt, parse){
-  const input = document.getElementById(inputId);
-  const val = input.value;
-  const changed = val !== input.dataset.original;
-  if(!changed) return { num: currentValue, isManual: currentIsManual, updatedAt: currentUpdatedAt };
-  const num = val ? parse(val) : null;
-  return { num, isManual: !!num, updatedAt: num ? new Date().toISOString() : null };
-}
-window.saveAccountInfo = async () => {
-  const pseudoVal = document.getElementById("profPseudo").value;
-  const ageVal = parseInt(document.getElementById("profAge").value, 10) || null;
-  const genderVal = document.getElementById("profGender").value;
-  const citiesVal = document.getElementById("profCities").value.split(",").map(s=>s.trim()).filter(Boolean);
-  // FC max : champ jamais pré-rempli avec l'estimation (220-âge), donc vide
-  // ici veut toujours dire "laisse le calcul automatique s'appliquer" — pas
-  // besoin de comparer à une valeur d'origine comme pour FC repos/VO2 max.
-  const maxHrVal = document.getElementById("maxHrInput").value;
-  const maxHrNum = maxHrVal ? parseInt(maxHrVal, 10) : null;
-  const rhr = manualFieldUpdate("restingHrInput", restingHrIsManual, restingHr, restingHrUpdatedAt, v=>parseInt(v,10));
-  const vo2 = manualFieldUpdate("vo2MaxInput", vo2MaxIsManual, vo2Max, vo2MaxUpdatedAt, v=>parseFloat(v));
-
-  const ok = await upsertProfile({
-    pseudo: pseudoVal, age: ageVal, gender: genderVal, cities: citiesVal,
-    max_hr: maxHrNum,
-    resting_hr: rhr.num, resting_hr_updated_at: rhr.updatedAt, resting_hr_is_manual: rhr.isManual,
-    vo2_max: vo2.num, vo2_max_updated_at: vo2.updatedAt, vo2_max_is_manual: vo2.isManual,
-  });
-  if(!ok) return;
-  pseudo = pseudoVal; age = ageVal; gender = genderVal; cities = citiesVal;
-  maxHr = maxHrNum;
-  restingHr = rhr.num; restingHrUpdatedAt = rhr.updatedAt; restingHrIsManual = rhr.isManual;
-  vo2Max = vo2.num; vo2MaxUpdatedAt = vo2.updatedAt; vo2MaxIsManual = vo2.isManual;
-  flashSaved("accountSaved");
+  flashFieldSaved(document.getElementById("goal_kmMensuel"));
 };
 window.changePassword = async () => {
   const pw = document.getElementById("newPassword").value;
@@ -2783,6 +2763,387 @@ window.saveRating = async () => {
   painFollowUpToast(ratings);
 };
 
+// ---------- Profil : Objectifs et Mon compte (S11, design 12b) ----------
+// Chaque champ s'enregistre seul : un badge « Enregistré » apparaît 2 s sous le champ modifié (D64), plus de bouton « Enregistrer ».
+let lastEdited = null;
+["click","input","change"].forEach(ev=>document.addEventListener(ev, (e)=>{ if(e.target && e.target.closest && e.target.closest("#content, #sheetRoot")) lastEdited = e.target; }, true));
+let savedTimers = new WeakMap();
+function flashFieldSaved(from){
+  const el = from || lastEdited;
+  const group = el && el.closest ? el.closest(".pf-group") : null;
+  const slot = group ? group.querySelector(".pf-slot") : null;
+  if(!slot){ flashSaved("goalsSaved"); return; }
+  slot.innerHTML = `<span class="pf-saved" role="status">${icon("check",13)}Enregistré</span>`;
+  clearTimeout(savedTimers.get(slot));
+  savedTimers.set(slot, setTimeout(()=>{ slot.innerHTML = ""; }, 2000));
+}
+function objectiveSummaryHTML(slotKey){
+  const slot = goals[slotKey] || {}, type = slot.objectifPrincipal;
+  const over = slotKey==="principal" ? "Objectif principal" : "Objectif secondaire";
+  if(!type) return `<div class="pg-over pf-over">${over}</div><button type="button" class="pf-obj" onclick="openObjectiveSheet('${slotKey}')"><div class="top"><div class="ic">${icon("flag",18)}</div><div><div class="t" style="color:var(--text-3)">Choisir mon objectif</div><div class="s">Ton programme s'adapte à ce que tu veux atteindre.</div></div><span class="chev">${icon("chevronRight",16)}</span></div></button>`;
+  const ic = (OBJECTIF_ICONS.find(x=>x[0]===type)||[])[1] || "flag";
+  const isRace = type==="Préparer une course";
+  const dist = (slot.distanceCourse||"").replace(/(\d)km$/, "$1 km");
+  const title = isRace ? [type, dist].filter(Boolean).join(" · ") : type;
+  const sub = isRace ? (slot.dateCible ? `${parseDay(slot.dateCible).toLocaleDateString("fr-FR")} · ${weeksUntilText(slot.dateCible)}` : "Date de la course à renseigner") : "";
+  const tiles = isRace ? `<div class="pf-tiles"><div><div class="k">Terrain</div><div class="v">${escHtml(slot.terrainCourse||"—")}</div></div><div><div class="k">Record</div><div class="v">${slot.pbSec>0?fmtDur(slot.pbSec):"—"}</div></div><div><div class="k">Visé</div><div class="v">${slot.tempsViseSec>0?fmtDur(slot.tempsViseSec):"—"}</div></div></div>` : "";
+  return `<div class="pg-over pf-over">${over}</div><button type="button" class="pf-obj" onclick="openObjectiveSheet('${slotKey}')" aria-label="${escHtml(title)}, modifier l'objectif">
+    <div class="top"><div class="ic">${icon(ic,18)}</div><div style="min-width:0"><div class="t">${escHtml(title)}</div>${sub?`<div class="s">${escHtml(sub)}</div>`:""}</div><span class="chev">${icon("chevronRight",16)}</span></div>${tiles}</button>`;
+}
+function profilObjectifsHTML(){
+  const secEnabled = goals.secondaireEnabled!==undefined ? !!goals.secondaireEnabled : !!(goals.secondaire?.objectifPrincipal);
+  const nums = (field, values, current, handler) => `<div class="pf-nums n${values.length}" data-chipgroup="${field}">${values.map(v=>`<button type="button" class="${v===current?"active":""}" data-value="${v}" aria-pressed="${v===current}" onclick="${handler}('${v}')">${v}</button>`).join("")}</div>`;
+  const chips = (field, options, isOn, handler, valueOf) => `<div class="pf-chips" data-chipgroup="${field}">${options.map((o,i)=>`<button type="button" class="pf-chip${isOn(o,i)?" active":""}" data-value="${valueOf?valueOf(o,i):o}" aria-pressed="${isOn(o,i)}" onclick="${handler}('${valueOf?valueOf(o,i):o}')">${o}</button>`).join("")}</div>`;
+  const kmAn = goals.kmMensuel ? Math.round(goals.kmMensuel*12) : "";
+  const sel = (v, list) => (v||"").split(",").includes(list);
+  return `${objectiveSummaryHTML("principal")}
+    ${secEnabled ? objectiveSummaryHTML("secondaire") : `<button type="button" class="pf-add" onclick="addSecondaryGoal()">${icon("plus",16)} Ajouter un objectif secondaire</button>`}
+    <div class="pf-card">
+      <div class="pf-title">Ton profil coureur</div>
+      <div class="pf-group"><div class="pf-lbl">Séances de course / semaine</div>${nums("frequence", ["1","2","3","4","5","6","7"], goals.frequence, "saveFrequence")}<div class="pf-hint" id="frequenceHint">${FREQUENCE_HINTS[goals.frequence]||""}</div><div class="pf-slot"></div></div>
+      <div class="pf-group"><div class="pf-lbl">Renfo / mobilité / semaine</div>${nums("frequenceAutre", ["0","1","2","3","4","5","6","7"], goals.frequenceAutre, "saveFrequenceAutre")}<div class="pf-slot"></div></div>
+      <div class="pf-two">
+        <div class="pf-group"><label class="pf-lbl" for="goal_kmMensuel">Objectif km par mois</label><div class="pf-row stack"><input type="number" inputmode="numeric" min="1" max="1000" id="goal_kmMensuel" value="${goals.kmMensuel||""}" oninput="syncKmGoal('mensuel')" onchange="saveVolumeGoal()"><span class="u">km</span></div><div class="pf-slot"></div></div>
+        <div class="pf-group"><label class="pf-lbl" for="goal_kmAnnuel">Objectif km par an</label><div class="pf-row stack"><input type="number" inputmode="numeric" min="1" max="12000" id="goal_kmAnnuel" value="${kmAn}" oninput="syncKmGoal('annuel')" onchange="saveVolumeGoal()"><span class="u">km</span></div></div>
+      </div>
+      <div class="pf-hint" style="margin-top:-6px">Facultatif, alimente tes anneaux dans Progression.</div>
+      <div class="pf-group"><div class="pf-lbl">Terrain habituel</div>${chips("terrain", TERRAIN_OPTIONS, (o)=>o===goals.terrain, "saveTerrain")}<div class="pf-slot"></div></div>
+      <div class="pf-group"><div class="pf-lbl">Équipement connecté</div>${chips("equipement", EQUIPEMENT_OPTIONS, (o)=>sel(goals.equipement,o), "saveEquipement")}<div class="pf-slot"></div></div>
+      <div class="pf-group"><div class="pf-lbl">Jours indisponibles pour courir</div>${chips("joursIndisponibles", JOURS_OPTIONS, (o,i)=>sel(goals.joursIndisponibles,String(i)), "saveJoursIndisponibles", (o,i)=>String(i))}<div class="pf-slot"></div></div>
+      <div class="pf-group"><label class="pf-lbl" for="goal_autre">Autre chose à préciser</label><textarea class="pf-ta" id="goal_autre" placeholder="Préférences d'entraînement, contexte particulier…" onchange="saveAutre(this)">${escHtml(goals.autre||"")}</textarea><div class="pf-slot"></div></div>
+    </div>
+    <button type="button" class="pf-lvl" onclick="openLevelSheet()"><span class="k">Ton niveau</span><span class="r"><span class="v">${escHtml(goals.niveau||"à choisir")}</span>${icon("chevronRight",16)}</span></button>`;
+}
+// Ton niveau : feuille provisoire avec les trois niveaux déclarés (l'écran « Ton niveau » complet arrive avec S8).
+let levelSheetOpen = false;
+window.openLevelSheet = () => { levelSheetOpen = true; refreshSheet(); };
+window.closeLevelSheet = () => { levelSheetOpen = false; refreshSheet(); };
+function renderLevelSheet(){
+  if(!levelSheetOpen) return false;
+  document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeLevelSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Ton niveau">
+    ${sheetHeadHTML("Ton niveau", "closeLevelSheet()")}
+    <div class="goal-level-cards" style="flex-direction:column;gap:8px">${NIVEAUX.map(([lbl,sub])=>`<div class="goal-level-card${goals.niveau===lbl?" active":""}" style="text-align:left;padding:12px 14px" role="button" tabindex="0" onclick="saveNiveau('${lbl}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();saveNiveau('${lbl}')}"><div class="lbl" style="font-size:15px">${lbl}</div><div class="sub" style="font-size:12.5px">${sub}</div></div>`).join("")}</div>
+  </div></div>`;
+  return true;
+}
+window.saveNiveau = async (value) => {
+  const prev = goals.niveau;
+  goals = { ...goals, niveau: value };
+  if(!(await upsertProfile({ goals }))){ goals = { ...goals, niveau: prev }; return; }
+  levelSheetOpen = false; refreshSheet(); renderContent();
+  toast("Niveau enregistré.");
+};
+window.saveAutre = async (el) => {
+  goals = { ...goals, autre: el.value };
+  if(!(await upsertProfile({ goals }))) return;
+  flashFieldSaved(el);
+};
+// Feuille d'un objectif (principal ou secondaire) : l'ancien formulaire détaillé, ouvert par la carte de l'objectif.
+let objSheet = null; // { slot }
+window.openObjectiveSheet = (slot) => { activeGoalSlot = slot; objSheet = { slot }; refreshSheet(); };
+window.closeObjectiveSheet = () => { objSheet = null; refreshSheet(); renderContent(); };
+window.addSecondaryGoal = async () => { await toggleSecondaryGoal(true); openObjectiveSheet("secondaire"); };
+window.removeSecondaryGoal = async () => { objSheet = null; await toggleSecondaryGoal(false); refreshSheet(); };
+function objectiveFormHTML(){
+    const chipRow = (field, options, current) => `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
+      ${options.map(o=>`<button type="button" class="flt${o===current?" active":""}" data-value="${o}" onclick="selectChip('${field}','${o}')">${o}</button>`).join("")}
+    </div>`;
+    // Même rendu que chipRow, mais plusieurs boutons peuvent être actifs à
+    // la fois (jours disponibles, freins identifiés).
+    const multiChipRow = (field, options, currentStr) => {
+      const arr = currentStr ? currentStr.split(",") : [];
+      return `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
+        ${options.map(o=>`<button type="button" class="flt${arr.includes(o)?" active":""}" data-value="${o}" onclick="toggleMultiChip('${field}','${o}')">${o}</button>`).join("")}
+      </div>`;
+    };
+    // Deux objectifs indépendants (principal/secondaire), chacun avec son
+    // propre type, sa course éventuelle, son rythme et son allure cible —
+    // "niveau" et "autre" restent partagés (voir GOAL_SLOT_FIELDS). La
+    // couleur de tout le bloc slot-specific (vert principal / bleu
+    // secondaire) vient d'une surcharge locale de --accent/--accent-dim :
+    // le reste du CSS (puces, cartes, bouton) s'appuie déjà sur ces
+    // variables, pas besoin de dupliquer les règles.
+    const slot = goals[activeGoalSlot] || {};
+    const isRace = slot.objectifPrincipal==="Préparer une course";
+    const blocks = OBJECTIF_BLOCKS[slot.objectifPrincipal] || OBJECTIF_BLOCKS["Autre"];
+    const stats = situationStats(slot.objectifPrincipal);
+    const isReguliere = slot.objectifPrincipal==="Courir plus régulièrement";
+    const isAmelioAllure = slot.objectifPrincipal==="Améliorer mon allure";
+    const efPaceRef = isAmelioAllure ? recentEfPace() : null;
+    const intensiveFreqRef = isAmelioAllure ? recentIntensiveFrequency() : null;
+    const tH=Math.floor((slot.tempsViseSec||0)/3600), tM=Math.floor(((slot.tempsViseSec||0)%3600)/60);
+    const pbH=Math.floor((slot.pbSec||0)/3600), pbM=Math.floor(((slot.pbSec||0)%3600)/60);
+    const raceKm = RACE_DISTANCES_KM[slot.distanceCourse];
+    const racePaceInit = (raceKm && slot.tempsViseSec) ? Math.round(slot.tempsViseSec/raceKm) : null;
+    const pbPaceInit = (raceKm && slot.pbSec) ? Math.round(slot.pbSec/raceKm) : null;
+    // Icône par objectif — cartes plus grandes que les puces des autres
+    // champs, avec un peu de vie sur l'icône choisie (pop au clic, léger
+    // flottement en continu) pour que l'écran ne soit pas que du texte.
+    // "Reprendre après une pause/blessure" retiré temporairement des choix
+    // proposés (2026-09-12, demande explicite) : trop technique en l'état,
+    // à retravailler avant de le reproposer. Le reste (OBJECTIF_BLOCKS,
+    // carte "Contexte de la reprise", DUREE_OPTIONS/ZONE_OPTIONS) reste en
+    // place pour pouvoir le réactiver facilement — il suffit de rajouter la
+    // ligne ci-dessous.
+    // "Autre" retiré des choix proposés (CDC v2, 4.2 : les 4 objectifs
+    // suffisent, "Autre" n'apportait pas de vraie logique dédiée derrière —
+    // voir OBJECTIF_BLOCKS["Autre"], resté en place comme repli défensif si
+    // jamais une vieille donnée portait encore cette valeur).
+
+    const objectifCards = (current) => `<div class="goal-principal-cards" data-chipgroup="objectifPrincipal">
+      ${OBJECTIF_ICONS.map(([label,ic])=>`<div class="goal-principal-card${label===current?" active":""}" data-value="${label}" onclick="selectChip('objectifPrincipal','${label}')">
+        <span class="icon-wrap">${icon(ic,17)}</span>
+        <span class="lbl">${label}</span>
+      </div>`).join("")}
+    </div>`;
+    return `    <div>
+    <div class="card">
+      ${objectifCards(slot.objectifPrincipal)}
+      <input type="hidden" id="goal_objectifPrincipal" value="${slot.objectifPrincipal||""}">
+
+      <div id="raceGoalBlock" style="margin-top:14px;display:${isRace?"":"none"}">
+        <div class="chart-hint" style="margin-top:0">Distance visée</div>
+        ${chipRow("distanceCourse", ["5km","10km","15km","Semi","Marathon","Autre"], slot.distanceCourse)}
+        <input type="hidden" id="goal_distanceCourse" value="${slot.distanceCourse||""}">
+
+        <div class="chart-hint" style="margin-top:14px">Terrain de la course</div>
+        ${chipRow("terrainCourse", TERRAIN_COURSE_OPTIONS, slot.terrainCourse)}
+        <input type="hidden" id="goal_terrainCourse" value="${slot.terrainCourse||""}">
+
+        <div class="field" style="margin-top:14px;margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Date de la course</span>
+          <input type="date" id="goal_dateCible" value="${slot.dateCible||""}" oninput="updateWeeksUntil()" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        </div>
+        <div class="chart-hint" id="weeksUntilOut" style="margin-top:4px">${weeksUntilText(slot.dateCible)}</div>
+
+        <div class="chart-hint" style="margin-top:10px">As-tu déjà couru cette distance ?</div>
+        ${chipRow("pbExistant", ["Oui","Non"], slot.pbExistant)}
+        <input type="hidden" id="goal_pbExistant" value="${slot.pbExistant||""}">
+        <div id="pbTimeBlock" style="margin-top:10px;display:${slot.pbExistant==="Oui"?"":"none"}">
+          <div class="chart-hint" style="margin-top:0">Ton record actuel sur cette distance</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <div class="chart-hint" style="margin:0 0 6px">Temps</div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="number" min="0" max="99" class="time-input" id="goal_pbH" value="${pbH||""}" placeholder="0" oninput="updatePbPaceGoal()" onchange="saveGoals()">
+                <span style="font-size:12px;color:var(--text-dim)">h</span>
+                <input type="number" min="0" max="59" class="time-input" id="goal_pbM" value="${pbM||""}" placeholder="0" oninput="updatePbPaceGoal()" onchange="saveGoals()">
+                <span style="font-size:12px;color:var(--text-dim)">min</span>
+              </div>
+            </div>
+            <div>
+              <div class="chart-hint" style="margin:0 0 6px">Allure</div>
+              <div class="pace-stepper">
+                <button type="button" onclick="adjustPbAllureGoal(-5)">−</button>
+                <span class="val" id="pbAllure_display">${pbPaceInit?fmtA(pbPaceInit):"—"}</span>
+                <button type="button" onclick="adjustPbAllureGoal(5)">+</button>
+              </div>
+              <input type="hidden" id="goal_pbAllure" value="${pbPaceInit||""}">
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-hint" style="margin-top:14px">Type d'objectif</div>
+        ${chipRow("objectifChrono", ["Viser un chrono","Juste finir"], slot.objectifChrono)}
+        <input type="hidden" id="goal_objectifChrono" value="${slot.objectifChrono||""}">
+
+        <div id="chronoBlock" style="display:${slot.objectifChrono==="Juste finir"?"none":""}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+          <div>
+            <div class="chart-hint" style="margin:0 0 6px">Temps visé</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="number" min="0" max="99" class="time-input" id="goal_tempsH" value="${tH||""}" placeholder="0" oninput="updateRacePaceGoal()" onchange="saveGoals()">
+              <span style="font-size:12px;color:var(--text-dim)">h</span>
+              <input type="number" min="0" max="59" class="time-input" id="goal_tempsM" value="${tM||""}" placeholder="0" oninput="updateRacePaceGoal()" onchange="saveGoals()">
+              <span style="font-size:12px;color:var(--text-dim)">min</span>
+            </div>
+          </div>
+          <div>
+            <div class="chart-hint" style="margin:0 0 6px">Allure visée</div>
+            <div class="pace-stepper">
+              <button type="button" onclick="adjustRaceAllureGoal(-5)">−</button>
+              <span class="val" id="raceAllureVisee_display">${racePaceInit?fmtA(racePaceInit):"—"}</span>
+              <button type="button" onclick="adjustRaceAllureGoal(5)">+</button>
+            </div>
+            <input type="hidden" id="goal_raceAllureVisee" value="${racePaceInit||""}">
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    ${stats.length?`<div class="card">
+      <div class="stitle">Ta situation actuelle</div>
+      ${stats.map(([label,val])=>`<div class="account-row"><span class="lbl">${label}</span><span class="v">${val}</span></div>`).join("")}
+      ${isReguliere?`<div class="field" style="margin-top:10px;margin-bottom:0">
+        <span style="font-size:12px;color:var(--text-dim)">Courses ces 3 derniers mois (estimation)</span>
+        <input type="number" min="0" max="200" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}" placeholder="ex: 20" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;text-align:right">
+      </div>`:`<input type="hidden" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}">`}
+    </div>`:`<input type="hidden" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}">`}
+
+    ${blocks.blessure?`<div class="card">
+      <div class="stitle">Contexte de la reprise</div>
+      <div class="chart-hint" style="margin-top:0">Depuis combien de temps es-tu à l'arrêt ?</div>
+      ${chipRow("dureeArret", DUREE_OPTIONS, slot.dureeArret)}
+      <input type="hidden" id="goal_dureeArret" value="${slot.dureeArret||""}">
+      <div class="chart-hint" style="margin-top:14px">Zone concernée</div>
+      ${chipRow("zoneConcernee", ZONE_OPTIONS, slot.zoneConcernee)}
+      <input type="hidden" id="goal_zoneConcernee" value="${slot.zoneConcernee||""}">
+    </div>`:""}
+
+    ${blocks.regularite?`<div class="card">
+      <div class="stitle">Ton objectif idéal de séances</div>
+      <div class="chart-hint" style="margin-top:0">Jours disponibles</div>
+      ${multiChipRow("joursDisponibles", JOURS_OPTIONS, slot.joursDisponibles)}
+      <input type="hidden" id="goal_joursDisponibles" value="${slot.joursDisponibles||""}">
+      <div class="chart-hint" style="margin-top:14px">Ce qui te motive le plus</div>
+      ${multiChipRow("motivation", MOTIVATION_OPTIONS, slot.motivation)}
+      <input type="hidden" id="goal_motivation" value="${slot.motivation||""}">
+      <div class="chart-hint" style="margin-top:14px">Ce qui te freine le plus</div>
+      ${multiChipRow("freins", FREINS_OPTIONS, slot.freins)}
+      <input type="hidden" id="goal_freins" value="${slot.freins||""}">
+      <div class="chart-hint" style="margin-top:14px">Préférence de rappel</div>
+      <div class="chart-hint" style="margin-top:0;margin-bottom:8px">Pas encore de notifications envoyées — juste ta préférence, pour plus tard.</div>
+      ${chipRow("rappelPref", RAPPEL_OPTIONS, slot.rappelPref)}
+      <input type="hidden" id="goal_rappelPref" value="${slot.rappelPref||""}">
+    </div>`:`<input type="hidden" id="goal_joursDisponibles" value="${slot.joursDisponibles||""}"><input type="hidden" id="goal_motivation" value="${slot.motivation||""}"><input type="hidden" id="goal_freins" value="${slot.freins||""}"><input type="hidden" id="goal_rappelPref" value="${slot.rappelPref||""}">`}
+
+    ${blocks.bienEtre?`<div class="card">
+      <div class="stitle">Ton profil bien-être</div>
+      <div class="chart-hint" style="margin-top:0">Autres activités pratiquées</div>
+      ${multiChipRow("autresActivites", AUTRES_ACTIVITES_OPTIONS, slot.autresActivites)}
+      <input type="hidden" id="goal_autresActivites" value="${slot.autresActivites||""}">
+      <div class="chart-hint" style="margin-top:14px">Ce qui te motive le plus</div>
+      ${multiChipRow("motivationForme", MOTIVATION_OPTIONS, slot.motivationForme)}
+      <input type="hidden" id="goal_motivationForme" value="${slot.motivationForme||""}">
+      <div class="chart-hint" style="margin-top:14px">Objectifs chiffrés ou suivi passif ?</div>
+      <div class="chart-hint" style="margin-top:0;margin-bottom:8px">Certains préfèrent juste courir, sans se fixer de chiffres précis — les deux approches se valent.</div>
+      ${chipRow("objectifsChiffres", OBJECTIFS_CHIFFRES_OPTIONS, slot.objectifsChiffres)}
+      <input type="hidden" id="goal_objectifsChiffres" value="${slot.objectifsChiffres||""}">
+    </div>`:`<input type="hidden" id="goal_autresActivites" value="${slot.autresActivites||""}"><input type="hidden" id="goal_motivationForme" value="${slot.motivationForme||""}"><input type="hidden" id="goal_objectifsChiffres" value="${slot.objectifsChiffres||""}">`}
+
+    ${blocks.allure?`<div class="card">
+      <div class="stitle">Allure cible</div>
+      <div class="chart-hint">Optionnel — sert de repère sur les graphs de l'onglet Progression.</div>
+      ${isAmelioAllure?`<div class="account-row">
+        <span class="lbl">Allure EF actuelle (5 dernières séances)</span>
+        <span class="v">${efPaceRef!=null?fmtA(efPaceRef)+"/km":"pas encore assez de données"}</span>
+      </div>`:""}
+      <div class="field" style="${isAmelioAllure?"margin-top:10px":""}">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure EF</span>
+        <div class="pace-stepper">
+          <button type="button" onclick="adjustPaceGoal('allureEfVisee',-5,360)">−</button>
+          <span class="val" id="allureEfVisee_display">${slot.allureEfVisee?fmtA(Number(slot.allureEfVisee)):"—"}</span>
+          <button type="button" onclick="adjustPaceGoal('allureEfVisee',5,360)">+</button>
+        </div>
+      </div>
+      <input type="hidden" id="goal_allureEfVisee" value="${slot.allureEfVisee||""}">
+      ${isAmelioAllure?`<div class="account-row">
+        <span class="lbl">Séances fractionné/tempo actuelles (4 dernières sem.)</span>
+        <span class="v">${intensiveFreqRef!=null?intensiveFreqRef+"/semaine":"pas encore assez de données"}</span>
+      </div>`:""}
+      <div class="field" style="margin-bottom:0;${isAmelioAllure?"margin-top:10px":""}">
+        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure Work (fractionné)</span>
+        <div class="pace-stepper">
+          <button type="button" onclick="adjustPaceGoal('allureWorkVisee',-5,300)">−</button>
+          <span class="val" id="allureWorkVisee_display">${slot.allureWorkVisee?fmtA(Number(slot.allureWorkVisee)):"—"}</span>
+          <button type="button" onclick="adjustPaceGoal('allureWorkVisee',5,300)">+</button>
+        </div>
+      </div>
+      <input type="hidden" id="goal_allureWorkVisee" value="${slot.allureWorkVisee||""}">
+      ${isAmelioAllure?`
+      <div class="chart-hint" style="margin-top:12px">Connais-tu ta VMA ?</div>
+      ${chipRow("vmaConnue", ["Oui","Non"], slot.vmaConnue)}
+      <input type="hidden" id="goal_vmaConnue" value="${slot.vmaConnue||""}">
+      <div id="vmaBlock" style="margin-top:10px;display:${slot.vmaConnue==="Oui"?"":"none"}">
+        <div class="field" style="margin-bottom:0">
+          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">VMA (km/h)</span>
+          <input type="number" min="8" max="25" step="0.1" id="goal_vma" value="${slot.vma||""}" placeholder="ex: 15" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
+        </div>
+      </div>
+      <div id="vmaNonHint" class="chart-hint" style="margin-top:8px;display:${slot.vmaConnue==="Non"?"":"none"}">Pas de souci — un test pour l'estimer arrivera dans une prochaine étape.</div>`:`<input type="hidden" id="goal_vmaConnue" value="${slot.vmaConnue||""}"><input type="hidden" id="goal_vma" value="${slot.vma||""}">`}
+    </div>`:`<input type="hidden" id="goal_allureEfVisee" value="${slot.allureEfVisee||""}"><input type="hidden" id="goal_allureWorkVisee" value="${slot.allureWorkVisee||""}">`}
+    ${!blocks.blessure?`<input type="hidden" id="goal_dureeArret" value="${slot.dureeArret||""}"><input type="hidden" id="goal_zoneConcernee" value="${slot.zoneConcernee||""}">`:""}
+    </div>`;
+}
+function renderObjectiveSheet(){
+  if(!objSheet) return false;
+  activeGoalSlot = objSheet.slot;
+  const title = activeGoalSlot==="principal" ? "Objectif principal" : "Objectif secondaire";
+  document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeObjectiveSheet()"><div class="sheet obj-sheet" role="dialog" aria-modal="true" aria-label="${title}">
+    ${sheetHeadHTML(title, "closeObjectiveSheet()")}
+    <div class="pf-hint" style="margin:-4px 0 12px">Sert de base à ton programme personnalisé. Chaque réglage s'enregistre tout seul.</div>
+    ${objectiveFormHTML()}
+    <div id="goalsSaved" class="save-confirm"></div>
+    ${activeGoalSlot==="secondaire" ? `<button type="button" class="btn-ghost" onclick="removeSecondaryGoal()">Retirer l'objectif secondaire</button>` : ""}
+  </div></div>`;
+  return true;
+}
+
+// Mon compte : Profil, Sécurité, Cardio, Synchronisation, Parcours de démarrage, Export, Déconnexion.
+function pfRow(id, label, inner, cls){ return `<div class="pf-row${cls?" "+cls:""}"><label for="${id}">${label}</label>${inner}</div>`; }
+function profilCompteHTML(){
+  const estMaxHr = estimatedMaxHr();
+  const synced = RUNS.filter(r=>r.appleType && r.appleType!==MANUAL_RUN_MARKER);
+  const lastSynced = synced.length ? synced.reduce((a,b)=>dateFromRun(a)>dateFromRun(b)?a:b) : null;
+  return `<div class="pf-card sm">
+      <div class="pf-title">Profil</div>
+      <div style="display:flex;align-items:center;gap:12px"><div style="width:52px;height:52px;border-radius:50%;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text-muted);flex:none">${avatarUrl?`<img src="${escHtml(avatarUrl)}" alt="" style="width:100%;height:100%;object-fit:cover">`:icon("user",24)}</div><div style="font-size:14px;color:var(--text-3);min-width:0;overflow:hidden;text-overflow:ellipsis">${escHtml(userEmail||"—")}</div></div>
+      <div class="pf-group">${pfRow("profPseudo","Pseudo",`<input type="text" id="profPseudo" value="${escHtml(pseudo)}" placeholder="Pour que tes amis te retrouvent" onchange="savePseudo(this)">`)}<div class="pf-slot"></div></div>
+      <div class="pf-group">${pfRow("profAge","Âge",`<input type="number" inputmode="numeric" id="profAge" min="10" max="100" value="${age||""}" onchange="saveAge(this)">`)}<div class="pf-slot"></div></div>
+    </div>
+    <div class="pf-card sm">
+      <div class="pf-title">Sécurité</div>
+      <div class="pf-group">${pfRow("newPassword","Nouveau mot de passe",`<input type="password" id="newPassword" placeholder="6 caractères min." autocomplete="new-password">`)}</div>
+      <button type="button" class="pf-btn" onclick="changePassword()">Changer le mot de passe</button>
+      <div id="pwMsg" role="status" style="font-size:12.5px;text-align:center;min-height:0"></div>
+    </div>
+    <div class="pf-card sm">
+      <div class="pf-title">Cardio</div>
+      <div class="pf-group">${pfRow("maxHrInput","FC max",`<input type="number" inputmode="numeric" id="maxHrInput" min="120" max="230" value="${maxHr||""}" placeholder="${estMaxHr?"Auto : "+estMaxHr:"ex : 190"}" onchange="saveMaxHr(this)"><span class="u">bpm</span>`)}<div class="pf-hint">Vide = calcul automatique${estMaxHr&&!maxHr?" (220 − ton âge)":""}</div><div class="pf-slot"></div></div>
+      <div class="pf-group">${pfRow("restingHrInput","FC de repos",`<input type="number" inputmode="numeric" id="restingHrInput" min="30" max="100" value="${restingHr||""}" placeholder="ex : 60" onchange="saveRestingHrField(this)"><span class="u">bpm</span>`)}<div class="pf-hint">Vide = valeur Apple Santé${restingHr && !restingHrIsManual && restingHrUpdatedAt ? ` (mise à jour le ${new Date(restingHrUpdatedAt).toLocaleDateString("fr-FR")})` : ""}</div><div class="pf-slot"></div></div>
+      <div class="pf-group"><div class="pf-row ro"><label>VO2 max</label><span style="flex:1;text-align:right">${vo2Max||"—"}</span></div><div class="pf-hint">Apple Santé, chaque mois</div></div>
+    </div>
+    <div class="pf-card sm">
+      <div class="pf-title">Synchronisation</div>
+      <div class="pf-sync${lastSynced?"":" off"}"><i></i><span>Apple Santé · ${lastSynced?"Connecté":"Pas encore connecté"}</span></div>
+      ${lastSynced ? `<div class="pf-hint" style="margin-top:-6px">Dernière course reçue : ${escHtml(relativeDayTime(dateFromRun(lastSynced).getTime(), Date.now()))}</div>` : `<div class="pf-hint" style="margin-top:-6px">Aucune course reçue pour l'instant.</div>`}
+      <button type="button" class="pf-btn" onclick="location.href='myrunningapp://sync'">Synchroniser mes courses</button>
+      ${lastSynced ? "" : `<button type="button" class="pf-btn" onclick="openSyncGuide()">Voir comment</button>`}
+      <div class="pf-hint">Ouvre l'app iOS et lance la synchronisation : fonctionne uniquement depuis Safari sur ton iPhone.</div>
+      <div class="pf-group"><label class="pf-lbl" for="syncSince">Importer depuis</label><div class="pf-row stack"><input type="date" id="syncSince" value="${syncSinceDate||""}" onchange="saveSyncSinceDate(this.value); flashFieldSaved(this)"></div><div class="pf-slot"></div></div>
+    </div>
+    <div class="pf-card sm"><div class="pf-title">Parcours de démarrage</div><div class="pf-hint" style="margin-top:-4px">Refais les questions de départ (objectif, niveau, disponibilités). Tes réponses actuelles sont préremplies.</div><button type="button" class="pf-btn" onclick="restartOnboarding()">Refaire le parcours</button></div>
+    <div class="pf-card sm"><div class="pf-title">Export</div><div class="pf-hint" style="margin-top:-4px">Un backup perso de toutes tes séances, en dehors de Supabase.</div><div class="pf-two"><button type="button" class="pf-btn" onclick="exportData('json')">Exporter en JSON</button><button type="button" class="pf-btn" onclick="exportData('csv')">Exporter en CSV</button></div></div>
+    <button type="button" class="pf-logout" onclick="logout()">Déconnexion</button>`;
+}
+window.savePseudo = async (el) => {
+  if(!(await upsertProfile({ pseudo: el.value }))) return;
+  pseudo = el.value; flashFieldSaved(el);
+};
+window.saveAge = async (el) => {
+  const v = parseInt(el.value,10) || null;
+  if(v!=null && (v<10 || v>100)){ toast("Vérifie ton âge."); return; }
+  if(!(await upsertProfile({ age: v }))) return;
+  age = v; flashFieldSaved(el);
+};
+window.saveMaxHr = async (el) => {
+  const v = el.value ? parseInt(el.value,10) : null;
+  if(v!=null && (v<120 || v>230)){ toast("La FC max doit être entre 120 et 230."); return; }
+  if(!(await upsertProfile({ max_hr: v }))) return;
+  maxHr = v; flashFieldSaved(el);
+};
+// FC de repos : modifiable ; vide = on repasse sur la valeur d'Apple Santé (D63). La VO2 max reste en lecture seule.
+window.saveRestingHrField = async (el) => {
+  const v = el.value ? parseInt(el.value,10) : null;
+  if(v!=null && (v<30 || v>100)){ toast("La FC de repos doit être entre 30 et 100."); return; }
+  const stamp = v ? new Date().toISOString() : null;
+  if(!(await upsertProfile({ resting_hr: v, resting_hr_updated_at: stamp, resting_hr_is_manual: !!v }))) return;
+  restingHr = v; restingHrUpdatedAt = stamp; restingHrIsManual = !!v; flashFieldSaved(el);
+};
+// Guide « Voir comment » : arrive avec S10.
+window.openSyncGuide = () => { if(typeof showSyncGuide==="function") showSyncGuide(); else toast("Le guide arrive bientôt."); };
+
 // Feuille de la jauge de charge (4c) : barre à 3 zones, courbe des 8 dernières semaines, ligne du coach ; le « i » ouvre l'explication (D22, A7).
 let chargeSheet = null; // "gauge" | "info"
 window.openChargeSheet = () => { chargeSheet = "gauge"; playedChargeSheet = false; refreshSheet(); };
@@ -2934,8 +3295,8 @@ window.setTab=i=>{
 };
 window.setProfilSection = (section) => { setProfilSectionState(section); renderContent(); playViewTransition(); window.scrollTo({top:0,behavior:"smooth"}); };
 function profilSwitchHTML(){
-  const chip = (key, label) => `<button class="flt${profilSection===key?" active":""}" onclick="setProfilSection('${key}')">${label}</button>`;
-  return `<div class="card"><div class="filters" style="margin-bottom:0">${chip("objectifs","Objectifs")}${chip("compte","Mon compte")}</div></div>`;
+  const b = (key, label) => `<button type="button" aria-pressed="${profilSection===key}" onclick="setProfilSection('${key}')">${label}</button>`;
+  return `<div class="pf-seg" role="group" aria-label="Section du profil">${b("objectifs","Objectifs")}${b("compte","Mon compte")}</div>`;
 }
 
 
@@ -4568,6 +4929,8 @@ function refreshSheet(){
   else if(typeof renderProgramSheet==="function" && renderProgramSheet()) { /* feuille Ajouter / Modifier */ }
   else if(typeof renderChargeSheet==="function" && renderChargeSheet()) { /* jauge de charge */ }
   else if(typeof renderRunSheet==="function" && renderRunSheet()) { /* détail d'une séance faite */ }
+  else if(typeof renderObjectiveSheet==="function" && renderObjectiveSheet()) { /* objectif */ }
+  else if(typeof renderLevelSheet==="function" && renderLevelSheet()) { /* niveau */ }
   else if(sessionSheetId) renderSessionSheet();
   else root.innerHTML = "";
 }
@@ -4749,427 +5112,11 @@ function renderContentInner(){
   }
 
   else if(activeTab==="profil" && profilSection==="objectifs"){
-    const ta = (id,val)=>`<textarea id="${id}" onchange="saveGoals()" style="width:100%;min-height:80px;background:var(--card-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;padding:12px;resize:vertical">${val||""}</textarea>`;
-    const chipRow = (field, options, current) => `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
-      ${options.map(o=>`<button type="button" class="flt${o===current?" active":""}" data-value="${o}" onclick="selectChip('${field}','${o}')">${o}</button>`).join("")}
-    </div>`;
-    // Même rendu que chipRow, mais plusieurs boutons peuvent être actifs à
-    // la fois (jours disponibles, freins identifiés).
-    const multiChipRow = (field, options, currentStr) => {
-      const arr = currentStr ? currentStr.split(",") : [];
-      return `<div class="filters" data-chipgroup="${field}" style="margin-bottom:0">
-        ${options.map(o=>`<button type="button" class="flt${arr.includes(o)?" active":""}" data-value="${o}" onclick="toggleMultiChip('${field}','${o}')">${o}</button>`).join("")}
-      </div>`;
-    };
-    // Volume déjà calculable depuis l'historique réel de séances — pas la
-    // peine de le redemander à l'utilisateur comme le reste du socle commun.
-    const volActuel = recentMonthlyVolume(), freqActuelle = recentWeeklyFrequency();
-    // Deux objectifs indépendants (principal/secondaire), chacun avec son
-    // propre type, sa course éventuelle, son rythme et son allure cible —
-    // "niveau" et "autre" restent partagés (voir GOAL_SLOT_FIELDS). La
-    // couleur de tout le bloc slot-specific (vert principal / bleu
-    // secondaire) vient d'une surcharge locale de --accent/--accent-dim :
-    // le reste du CSS (puces, cartes, bouton) s'appuie déjà sur ces
-    // variables, pas besoin de dupliquer les règles.
-    // Activable/désactivable : les utilisateurs n'ayant qu'un seul objectif
-    // n'ont pas besoin de voir un 2e onglet vide. Par défaut activé pour les
-    // utilisateurs existants qui avaient déjà rempli un objectif secondaire
-    // (pas de régression), désactivé sinon.
-    const secondaireEnabled = goals.secondaireEnabled!==undefined ? !!goals.secondaireEnabled : !!(goals.secondaire?.objectifPrincipal);
-    if(!secondaireEnabled && activeGoalSlot==="secondaire") activeGoalSlot="principal";
-    const slot = goals[activeGoalSlot] || {};
-    const slotColorVars = activeGoalSlot==="secondaire"
-      ? "--accent:var(--select);--accent-dim:var(--select-soft);"
-      : "--accent:var(--select);--accent-dim:var(--select-soft);";
-    const isRace = slot.objectifPrincipal==="Préparer une course";
-    const blocks = OBJECTIF_BLOCKS[slot.objectifPrincipal] || OBJECTIF_BLOCKS["Autre"];
-    // Le volume d'entraînement (séances/semaine, km/mois) est partagé, peu
-    // importe l'objectif principal/secondaire actif — un seul volume réel
-    // par semaine, pas la peine de le dupliquer par objectif. Le petit mot
-    // "reprise en douceur" reste lié à l'OBJECTIF PRINCIPAL (celui qui pilote
-    // vraiment l'entraînement), pas au slot affiché à l'écran.
-    const volumeHint = (OBJECTIF_BLOCKS[goals.principal?.objectifPrincipal]||{}).volumeHint;
-    const stats = situationStats(slot.objectifPrincipal);
-    const isReguliere = slot.objectifPrincipal==="Courir plus régulièrement";
-    const isAmelioAllure = slot.objectifPrincipal==="Améliorer mon allure";
-    const efPaceRef = isAmelioAllure ? recentEfPace() : null;
-    const intensiveFreqRef = isAmelioAllure ? recentIntensiveFrequency() : null;
-    const tH=Math.floor((slot.tempsViseSec||0)/3600), tM=Math.floor(((slot.tempsViseSec||0)%3600)/60);
-    const pbH=Math.floor((slot.pbSec||0)/3600), pbM=Math.floor(((slot.pbSec||0)%3600)/60);
-    const raceKm = RACE_DISTANCES_KM[slot.distanceCourse];
-    const racePaceInit = (raceKm && slot.tempsViseSec) ? Math.round(slot.tempsViseSec/raceKm) : null;
-    const pbPaceInit = (raceKm && slot.pbSec) ? Math.round(slot.pbSec/raceKm) : null;
-    const kmAnnuelInit = goals.kmMensuel ? Math.round(goals.kmMensuel*12) : "";
-    // Icône par objectif — cartes plus grandes que les puces des autres
-    // champs, avec un peu de vie sur l'icône choisie (pop au clic, léger
-    // flottement en continu) pour que l'écran ne soit pas que du texte.
-    // "Reprendre après une pause/blessure" retiré temporairement des choix
-    // proposés (2026-09-12, demande explicite) : trop technique en l'état,
-    // à retravailler avant de le reproposer. Le reste (OBJECTIF_BLOCKS,
-    // carte "Contexte de la reprise", DUREE_OPTIONS/ZONE_OPTIONS) reste en
-    // place pour pouvoir le réactiver facilement — il suffit de rajouter la
-    // ligne ci-dessous.
-    // "Autre" retiré des choix proposés (CDC v2, 4.2 : les 4 objectifs
-    // suffisent, "Autre" n'apportait pas de vraie logique dédiée derrière —
-    // voir OBJECTIF_BLOCKS["Autre"], resté en place comme repli défensif si
-    // jamais une vieille donnée portait encore cette valeur).
-
-    const objectifCards = (current) => `<div class="goal-principal-cards" data-chipgroup="objectifPrincipal">
-      ${OBJECTIF_ICONS.map(([label,ic])=>`<div class="goal-principal-card${label===current?" active":""}" data-value="${label}" onclick="selectChip('objectifPrincipal','${label}')">
-        <span class="icon-wrap">${icon(ic,17)}</span>
-        <span class="lbl">${label}</span>
-      </div>`).join("")}
-    </div>`;
-
-    el.innerHTML=`<div class="card">
-      <div class="stitle" style="font-size:18px;text-transform:none;letter-spacing:0;color:var(--accent);margin-bottom:4px">Ton profil coureur</div>
-      <div class="chart-hint" style="margin-top:0">Quelques infos utiles quel que soit l'objectif choisi, à ne renseigner qu'une fois.</div>
-      ${(volActuel!=null || freqActuelle!=null)?`<div class="account-row">
-        <span class="lbl">Volume actuel</span>
-        <span class="v">${volActuel!=null?volActuel+" km/mois":"—"}${freqActuelle!=null?" · "+freqActuelle+" séance(s)/sem.":""}</span>
-      </div>`:""}
-      <div class="chart-hint" style="margin-top:${(volActuel!=null || freqActuelle!=null)?"12px":"0"}">Séances de course / semaine</div>
-      ${volumeHint?`<div class="chart-hint" style="margin-top:0;margin-bottom:8px">${volumeHint}</div>`:""}
-      <div class="filters" data-chipgroup="frequence" style="margin-bottom:0">
-        ${["1","2","3","4","5","6","7"].map(o=>`<button type="button" class="flt${o===goals.frequence?" active":""}" data-value="${o}" onclick="saveFrequence('${o}')">${o}</button>`).join("")}
-      </div>
-      <div class="chart-hint" id="frequenceHint" style="margin-top:6px">${FREQUENCE_HINTS[goals.frequence]||""}</div>
-      <div class="chart-hint" style="margin-top:14px">Renfo / mobilité / semaine</div>
-      <div class="filters" data-chipgroup="frequenceAutre" style="margin-bottom:12px">
-        ${["0","1","2","3","4","5","6","7"].map(o=>`<button type="button" class="flt${o===goals.frequenceAutre?" active":""}" data-value="${o}" onclick="saveFrequenceAutre('${o}')">${o}</button>`).join("")}
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Km / mois</span>
-          <input type="number" min="1" max="1000" id="goal_kmMensuel" value="${goals.kmMensuel||""}" placeholder="ex: 120" oninput="syncKmGoal('mensuel')" onchange="saveVolumeGoal()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;min-width:0">
-        </div>
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Km / an</span>
-          <input type="number" min="1" max="12000" id="goal_kmAnnuel" value="${kmAnnuelInit}" placeholder="ex: 1440" oninput="syncKmGoal('annuel')" onchange="saveVolumeGoal()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;min-width:0">
-        </div>
-      </div>
-      <div class="chart-hint" style="margin-top:14px">Terrain habituel</div>
-      <div class="filters" data-chipgroup="terrain" style="margin-bottom:0">
-        ${TERRAIN_OPTIONS.map(o=>`<button type="button" class="flt${o===goals.terrain?" active":""}" data-value="${o}" onclick="saveTerrain('${o}')">${o}</button>`).join("")}
-      </div>
-      <div class="chart-hint" style="margin-top:14px">Équipement connecté</div>
-      <div class="filters" data-chipgroup="equipement" style="margin-bottom:0">
-        ${EQUIPEMENT_OPTIONS.map(o=>`<button type="button" class="flt${(goals.equipement||"").split(",").includes(o)?" active":""}" data-value="${o}" onclick="saveEquipement('${o}')">${o}</button>`).join("")}
-      </div>
-      <div class="chart-hint" style="margin-top:14px">Jours indisponibles pour courir</div>
-      <div class="filters" data-chipgroup="joursIndisponibles" style="margin-bottom:0">
-        ${JOURS_OPTIONS.map((d,i)=>`<button type="button" class="flt${(goals.joursIndisponibles||"").split(",").includes(String(i))?" active":""}" data-value="${i}" onclick="saveJoursIndisponibles('${i}')">${d}</button>`).join("")}
-      </div>
-      <div id="profilSaved" class="save-confirm"></div>
-    </div>
-
-    <div class="goal-sticky-header">
-    <div class="card">
-      <div class="stitle">Ton niveau actuel</div>
-      <div class="goal-level-cards" data-chipgroup="niveau">
-        ${NIVEAUX.map(([lbl,sub])=>`<div class="goal-level-card${goals.niveau===lbl?" active":""}" data-value="${lbl}" onclick="selectChip('niveau','${lbl}')">
-          <div class="lbl">${lbl}</div>
-          <div class="sub">${sub}</div>
-        </div>`).join("")}
-      </div>
-      <input type="hidden" id="goal_niveau" value="${goals.niveau||""}">
-    </div>
-
-    ${secondaireEnabled?`
-    <div class="goal-slot-switch">
-      <div class="goal-slot-btn${activeGoalSlot==="principal"?" active-principal":""}" onclick="selectGoalSlot('principal')">Objectif principal</div>
-      <div class="goal-slot-btn${activeGoalSlot==="secondaire"?" active-secondaire":""}" onclick="selectGoalSlot('secondaire')">Objectif secondaire</div>
-    </div>
-    <div style="text-align:center;margin-top:8px">
-      <button type="button" class="btn-secondary" style="font-size:12px;padding:6px 12px;margin-top:0" onclick="toggleSecondaryGoal(false)">Retirer l'objectif secondaire</button>
-    </div>`:`
-    <button type="button" class="btn-secondary" style="width:100%" onclick="toggleSecondaryGoal(true)">+ Ajouter un objectif secondaire</button>`}
-    </div>
-
-    <div style="${slotColorVars}">
-    <div class="card">
-      <div class="stitle" style="color:var(--accent)">${activeGoalSlot==="principal"?"Objectif principal":"Objectif secondaire"}</div>
-      <div class="chart-hint">Sert de base à ton programme personnalisé et conditionne les questions suivantes.</div>
-      ${objectifCards(slot.objectifPrincipal)}
-      <input type="hidden" id="goal_objectifPrincipal" value="${slot.objectifPrincipal||""}">
-
-      <div id="raceGoalBlock" style="margin-top:14px;display:${isRace?"":"none"}">
-        <div class="chart-hint" style="margin-top:0">Distance visée</div>
-        ${chipRow("distanceCourse", ["5km","10km","15km","Semi","Marathon","Autre"], slot.distanceCourse)}
-        <input type="hidden" id="goal_distanceCourse" value="${slot.distanceCourse||""}">
-
-        <div class="chart-hint" style="margin-top:14px">Terrain de la course</div>
-        ${chipRow("terrainCourse", TERRAIN_COURSE_OPTIONS, slot.terrainCourse)}
-        <input type="hidden" id="goal_terrainCourse" value="${slot.terrainCourse||""}">
-
-        <div class="field" style="margin-top:14px;margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Date de la course</span>
-          <input type="date" id="goal_dateCible" value="${slot.dateCible||""}" oninput="updateWeeksUntil()" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-        </div>
-        <div class="chart-hint" id="weeksUntilOut" style="margin-top:4px">${weeksUntilText(slot.dateCible)}</div>
-
-        <div class="chart-hint" style="margin-top:10px">As-tu déjà couru cette distance ?</div>
-        ${chipRow("pbExistant", ["Oui","Non"], slot.pbExistant)}
-        <input type="hidden" id="goal_pbExistant" value="${slot.pbExistant||""}">
-        <div id="pbTimeBlock" style="margin-top:10px;display:${slot.pbExistant==="Oui"?"":"none"}">
-          <div class="chart-hint" style="margin-top:0">Ton record actuel sur cette distance</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <div>
-              <div class="chart-hint" style="margin:0 0 6px">Temps</div>
-              <div style="display:flex;align-items:center;gap:6px">
-                <input type="number" min="0" max="99" class="time-input" id="goal_pbH" value="${pbH||""}" placeholder="0" oninput="updatePbPaceGoal()" onchange="saveGoals()">
-                <span style="font-size:12px;color:var(--text-dim)">h</span>
-                <input type="number" min="0" max="59" class="time-input" id="goal_pbM" value="${pbM||""}" placeholder="0" oninput="updatePbPaceGoal()" onchange="saveGoals()">
-                <span style="font-size:12px;color:var(--text-dim)">min</span>
-              </div>
-            </div>
-            <div>
-              <div class="chart-hint" style="margin:0 0 6px">Allure</div>
-              <div class="pace-stepper">
-                <button type="button" onclick="adjustPbAllureGoal(-5)">−</button>
-                <span class="val" id="pbAllure_display">${pbPaceInit?fmtA(pbPaceInit):"—"}</span>
-                <button type="button" onclick="adjustPbAllureGoal(5)">+</button>
-              </div>
-              <input type="hidden" id="goal_pbAllure" value="${pbPaceInit||""}">
-            </div>
-          </div>
-        </div>
-
-        <div class="chart-hint" style="margin-top:14px">Type d'objectif</div>
-        ${chipRow("objectifChrono", ["Viser un chrono","Juste finir"], slot.objectifChrono)}
-        <input type="hidden" id="goal_objectifChrono" value="${slot.objectifChrono||""}">
-
-        <div id="chronoBlock" style="display:${slot.objectifChrono==="Juste finir"?"none":""}">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
-          <div>
-            <div class="chart-hint" style="margin:0 0 6px">Temps visé</div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <input type="number" min="0" max="99" class="time-input" id="goal_tempsH" value="${tH||""}" placeholder="0" oninput="updateRacePaceGoal()" onchange="saveGoals()">
-              <span style="font-size:12px;color:var(--text-dim)">h</span>
-              <input type="number" min="0" max="59" class="time-input" id="goal_tempsM" value="${tM||""}" placeholder="0" oninput="updateRacePaceGoal()" onchange="saveGoals()">
-              <span style="font-size:12px;color:var(--text-dim)">min</span>
-            </div>
-          </div>
-          <div>
-            <div class="chart-hint" style="margin:0 0 6px">Allure visée</div>
-            <div class="pace-stepper">
-              <button type="button" onclick="adjustRaceAllureGoal(-5)">−</button>
-              <span class="val" id="raceAllureVisee_display">${racePaceInit?fmtA(racePaceInit):"—"}</span>
-              <button type="button" onclick="adjustRaceAllureGoal(5)">+</button>
-            </div>
-            <input type="hidden" id="goal_raceAllureVisee" value="${racePaceInit||""}">
-          </div>
-        </div>
-        </div>
-      </div>
-    </div>
-
-    ${stats.length?`<div class="card">
-      <div class="stitle">Ta situation actuelle</div>
-      ${stats.map(([label,val])=>`<div class="account-row"><span class="lbl">${label}</span><span class="v">${val}</span></div>`).join("")}
-      ${isReguliere?`<div class="field" style="margin-top:10px;margin-bottom:0">
-        <span style="font-size:12px;color:var(--text-dim)">Courses ces 3 derniers mois (estimation)</span>
-        <input type="number" min="0" max="200" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}" placeholder="ex: 20" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1;text-align:right">
-      </div>`:`<input type="hidden" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}">`}
-    </div>`:`<input type="hidden" id="goal_runsLast3Months" value="${slot.runsLast3Months||""}">`}
-
-    ${blocks.blessure?`<div class="card">
-      <div class="stitle">Contexte de la reprise</div>
-      <div class="chart-hint" style="margin-top:0">Depuis combien de temps es-tu à l'arrêt ?</div>
-      ${chipRow("dureeArret", DUREE_OPTIONS, slot.dureeArret)}
-      <input type="hidden" id="goal_dureeArret" value="${slot.dureeArret||""}">
-      <div class="chart-hint" style="margin-top:14px">Zone concernée</div>
-      ${chipRow("zoneConcernee", ZONE_OPTIONS, slot.zoneConcernee)}
-      <input type="hidden" id="goal_zoneConcernee" value="${slot.zoneConcernee||""}">
-    </div>`:""}
-
-    ${blocks.regularite?`<div class="card">
-      <div class="stitle">Ton objectif idéal de séances</div>
-      <div class="chart-hint" style="margin-top:0">Jours disponibles</div>
-      ${multiChipRow("joursDisponibles", JOURS_OPTIONS, slot.joursDisponibles)}
-      <input type="hidden" id="goal_joursDisponibles" value="${slot.joursDisponibles||""}">
-      <div class="chart-hint" style="margin-top:14px">Ce qui te motive le plus</div>
-      ${multiChipRow("motivation", MOTIVATION_OPTIONS, slot.motivation)}
-      <input type="hidden" id="goal_motivation" value="${slot.motivation||""}">
-      <div class="chart-hint" style="margin-top:14px">Ce qui te freine le plus</div>
-      ${multiChipRow("freins", FREINS_OPTIONS, slot.freins)}
-      <input type="hidden" id="goal_freins" value="${slot.freins||""}">
-      <div class="chart-hint" style="margin-top:14px">Préférence de rappel</div>
-      <div class="chart-hint" style="margin-top:0;margin-bottom:8px">Pas encore de notifications envoyées — juste ta préférence, pour plus tard.</div>
-      ${chipRow("rappelPref", RAPPEL_OPTIONS, slot.rappelPref)}
-      <input type="hidden" id="goal_rappelPref" value="${slot.rappelPref||""}">
-    </div>`:`<input type="hidden" id="goal_joursDisponibles" value="${slot.joursDisponibles||""}"><input type="hidden" id="goal_motivation" value="${slot.motivation||""}"><input type="hidden" id="goal_freins" value="${slot.freins||""}"><input type="hidden" id="goal_rappelPref" value="${slot.rappelPref||""}">`}
-
-    ${blocks.bienEtre?`<div class="card">
-      <div class="stitle">Ton profil bien-être</div>
-      <div class="chart-hint" style="margin-top:0">Autres activités pratiquées</div>
-      ${multiChipRow("autresActivites", AUTRES_ACTIVITES_OPTIONS, slot.autresActivites)}
-      <input type="hidden" id="goal_autresActivites" value="${slot.autresActivites||""}">
-      <div class="chart-hint" style="margin-top:14px">Ce qui te motive le plus</div>
-      ${multiChipRow("motivationForme", MOTIVATION_OPTIONS, slot.motivationForme)}
-      <input type="hidden" id="goal_motivationForme" value="${slot.motivationForme||""}">
-      <div class="chart-hint" style="margin-top:14px">Objectifs chiffrés ou suivi passif ?</div>
-      <div class="chart-hint" style="margin-top:0;margin-bottom:8px">Certains préfèrent juste courir, sans se fixer de chiffres précis — les deux approches se valent.</div>
-      ${chipRow("objectifsChiffres", OBJECTIFS_CHIFFRES_OPTIONS, slot.objectifsChiffres)}
-      <input type="hidden" id="goal_objectifsChiffres" value="${slot.objectifsChiffres||""}">
-    </div>`:`<input type="hidden" id="goal_autresActivites" value="${slot.autresActivites||""}"><input type="hidden" id="goal_motivationForme" value="${slot.motivationForme||""}"><input type="hidden" id="goal_objectifsChiffres" value="${slot.objectifsChiffres||""}">`}
-
-    ${blocks.allure?`<div class="card">
-      <div class="stitle">Allure cible</div>
-      <div class="chart-hint">Optionnel — sert de repère sur les graphs de l'onglet Progression.</div>
-      ${isAmelioAllure?`<div class="account-row">
-        <span class="lbl">Allure EF actuelle (5 dernières séances)</span>
-        <span class="v">${efPaceRef!=null?fmtA(efPaceRef)+"/km":"pas encore assez de données"}</span>
-      </div>`:""}
-      <div class="field" style="${isAmelioAllure?"margin-top:10px":""}">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure EF</span>
-        <div class="pace-stepper">
-          <button type="button" onclick="adjustPaceGoal('allureEfVisee',-5,360)">−</button>
-          <span class="val" id="allureEfVisee_display">${slot.allureEfVisee?fmtA(Number(slot.allureEfVisee)):"—"}</span>
-          <button type="button" onclick="adjustPaceGoal('allureEfVisee',5,360)">+</button>
-        </div>
-      </div>
-      <input type="hidden" id="goal_allureEfVisee" value="${slot.allureEfVisee||""}">
-      ${isAmelioAllure?`<div class="account-row">
-        <span class="lbl">Séances fractionné/tempo actuelles (4 dernières sem.)</span>
-        <span class="v">${intensiveFreqRef!=null?intensiveFreqRef+"/semaine":"pas encore assez de données"}</span>
-      </div>`:""}
-      <div class="field" style="margin-bottom:0;${isAmelioAllure?"margin-top:10px":""}">
-        <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Allure Work (fractionné)</span>
-        <div class="pace-stepper">
-          <button type="button" onclick="adjustPaceGoal('allureWorkVisee',-5,300)">−</button>
-          <span class="val" id="allureWorkVisee_display">${slot.allureWorkVisee?fmtA(Number(slot.allureWorkVisee)):"—"}</span>
-          <button type="button" onclick="adjustPaceGoal('allureWorkVisee',5,300)">+</button>
-        </div>
-      </div>
-      <input type="hidden" id="goal_allureWorkVisee" value="${slot.allureWorkVisee||""}">
-      ${isAmelioAllure?`
-      <div class="chart-hint" style="margin-top:12px">Connais-tu ta VMA ?</div>
-      ${chipRow("vmaConnue", ["Oui","Non"], slot.vmaConnue)}
-      <input type="hidden" id="goal_vmaConnue" value="${slot.vmaConnue||""}">
-      <div id="vmaBlock" style="margin-top:10px;display:${slot.vmaConnue==="Oui"?"":"none"}">
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">VMA (km/h)</span>
-          <input type="number" min="8" max="25" step="0.1" id="goal_vma" value="${slot.vma||""}" placeholder="ex: 15" onchange="saveGoals()" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-        </div>
-      </div>
-      <div id="vmaNonHint" class="chart-hint" style="margin-top:8px;display:${slot.vmaConnue==="Non"?"":"none"}">Pas de souci — un test pour l'estimer arrivera dans une prochaine étape.</div>`:`<input type="hidden" id="goal_vmaConnue" value="${slot.vmaConnue||""}"><input type="hidden" id="goal_vma" value="${slot.vma||""}">`}
-    </div>`:`<input type="hidden" id="goal_allureEfVisee" value="${slot.allureEfVisee||""}"><input type="hidden" id="goal_allureWorkVisee" value="${slot.allureWorkVisee||""}">`}
-    ${!blocks.blessure?`<input type="hidden" id="goal_dureeArret" value="${slot.dureeArret||""}"><input type="hidden" id="goal_zoneConcernee" value="${slot.zoneConcernee||""}">`:""}
-    </div>
-
-    <div class="card">
-      <div class="stitle">Autre chose à préciser</div>
-      <div class="chart-hint" style="margin-top:0">Préférences d'entraînement, contexte particulier...</div>
-      ${ta("goal_autre", goals.autre)}
-      <div id="goalsSaved" class="save-confirm"></div>
-    </div>`;
+    el.innerHTML = profilObjectifsHTML();
   }
 
   else if(activeTab==="profil" && profilSection==="compte"){
-    const estMaxHr = estimatedMaxHr();
-    el.innerHTML=`
-      <div class="card">
-        <div class="stitle">Profil</div>
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
-          <div style="width:60px;height:60px;border-radius:50%;overflow:hidden;background:var(--card-2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            ${avatarUrl?`<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover">`:icon("user",26)}
-          </div>
-          <div>
-            <div style="font-size:12px;color:var(--text-dim)">Photo de profil temporairement désactivée — les photos sont hébergées publiquement pour l'instant, en attendant de passer sur un stockage privé.</div>
-          </div>
-        </div>
-        <div class="account-row"><span class="lbl">Email</span><span class="v">${userEmail||"—"}</span></div>
-        <div class="field" style="margin-top:10px">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Pseudo</span>
-          <input type="text" id="profPseudo" value="${pseudo}" placeholder="Pour que tes amis te retrouvent" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-        </div>
-        <div class="field">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Âge</span>
-          <input type="number" id="profAge" min="10" max="100" value="${age||""}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-        </div>
-        <div class="field">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Genre</span>
-          <select id="profGender" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-            <option value="" ${!gender?"selected":""}>—</option>
-            <option value="F" ${gender==='F'?"selected":""}>Femme</option>
-            <option value="H" ${gender==='H'?"selected":""}>Homme</option>
-            <option value="Autre" ${gender==='Autre'?"selected":""}>Autre</option>
-          </select>
-        </div>
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Villes</span>
-          <input type="text" id="profCities" value="${cities.join(', ')}" placeholder="Paris, Rabat..." style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="stitle">Sécurité</div>
-        <div class="field">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Nouveau mot de passe</span>
-          <input type="password" id="newPassword" placeholder="6 caractères min." style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-        </div>
-        <button class="btn-secondary" onclick="changePassword()">Changer le mot de passe</button>
-        <div id="pwMsg" style="font-size:12px;margin-top:8px;text-align:center;min-height:16px"></div>
-      </div>
-
-      <div class="card">
-        <div class="stitle">Fréquence cardiaque max</div>
-        <div class="chart-hint">Utilisée pour calculer tes zones cardio (onglet Progression). ${maxHr?`Saisie manuellement à <strong style="color:var(--text)">${maxHr} bpm</strong> — remplace le calcul automatique. Vide le champ pour y repasser.`:estMaxHr?`Calculée automatiquement à <strong style="color:var(--text)">${estMaxHr} bpm</strong> (220 − ton âge). Tu peux la remplacer ci-dessous si tu connais ta vraie FC max (mesurée sur un effort proche du maximum) — ce sera plus précis.`:"Renseigne ton âge (ci-dessus) pour un calcul automatique, ou indique directement ta FC max ci-dessous si tu la connais."}</div>
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">FC max (bpm) — vide = calcul auto</span>
-          <input type="number" id="maxHrInput" min="120" max="230" value="${maxHr||""}" placeholder="${estMaxHr?`Auto : ${estMaxHr}`:"ex: 190"}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="stitle">Fréquence cardiaque de repos</div>
-        <div class="chart-hint">${restingHr?`Utilisée avec ta FC max pour calculer des zones cardio identiques à l'app Santé (méthode réserve de FC). ${restingHrIsManual?"Saisie manuellement : ne sera jamais écrasée automatiquement.":`Rafraîchie automatiquement depuis ta Watch une fois par mois${restingHrUpdatedAt?` (dernière maj : ${new Date(restingHrUpdatedAt).toLocaleDateString('fr-FR')})`:""}.`}`:"Récupérée automatiquement depuis ta Watch si elle capte des données au repos. Si tu ne la portes que pendant tes séances, HealthKit n'a rien de fiable à analyser : renseigne-la manuellement ci-dessous, elle ne sera alors plus jamais modifiée automatiquement."}</div>
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">FC repos (bpm)</span>
-          <input type="number" id="restingHrInput" min="30" max="100" value="${restingHr||""}" data-original="${restingHr||""}" placeholder="ex: 60" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="stitle">VO2 max</div>
-        <div class="chart-hint">${vo2Max?`Capacité cardio-respiratoire estimée. ${vo2MaxIsManual?"Saisie manuellement : ne sera jamais écrasée automatiquement.":`Rafraîchie automatiquement depuis ta Watch une fois par mois${vo2MaxUpdatedAt?` (dernière maj : ${new Date(vo2MaxUpdatedAt).toLocaleDateString('fr-FR')})`:""}.`}`:"Récupérée automatiquement depuis ta Watch (nécessite des sorties extérieures avec GPS). Sinon, renseigne-la manuellement si tu la connais."}</div>
-        <div class="field" style="margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">VO2 max (ml/kg/min)</span>
-          <input type="number" id="vo2MaxInput" min="20" max="90" step="0.1" value="${vo2Max||""}" data-original="${vo2Max||""}" placeholder="ex: 45" style="background:none;border:none;color:var(--text);font-size:13px;flex:1">
-        </div>
-      </div>
-
-      <div class="card">
-        <button class="btn-primary" onclick="saveAccountInfo()">Enregistrer</button>
-        <div id="accountSaved" class="save-confirm"></div>
-      </div>
-
-      <div class="card">
-        <div class="stitle">Parcours de démarrage</div>
-        <div class="chart-hint">Refais les questions de départ (objectif, niveau, disponibilités). Tes réponses actuelles sont préremplies.</div>
-        <button class="btn-secondary" onclick="restartOnboarding()">Refaire le parcours</button>
-      </div>
-      <div class="card">
-        <div class="stitle">Synchronisation</div>
-        <button class="btn-secondary" onclick="location.href='myrunningapp://sync'">Synchroniser mes courses</button>
-        <div class="chart-hint" style="margin-top:10px">Ouvre l'app iOS et lance la sync — fonctionne uniquement depuis Safari sur ton iPhone.</div>
-        <div class="field" style="margin-top:6px;margin-bottom:0">
-          <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">Importer depuis</span>
-          <input type="date" value="${syncSinceDate||""}" style="background:none;border:none;color:var(--text);font-size:13px;flex:1" onchange="saveSyncSinceDate(this.value)">
-        </div>
-      </div>
-      <div class="card">
-        <div class="stitle">Export</div>
-        <div class="chart-hint">Un backup perso de toutes tes séances, en dehors de Supabase.</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn-secondary" onclick="exportData('json')">Exporter en JSON</button>
-          <button class="btn-secondary" onclick="exportData('csv')">Exporter en CSV</button>
-        </div>
-      </div>
-      <div class="card">
-        <button class="btn-danger" onclick="logout()">Déconnexion</button>
-      </div>`;
+    el.innerHTML = profilCompteHTML();
   }
 
   else if(activeTab==="programme"){

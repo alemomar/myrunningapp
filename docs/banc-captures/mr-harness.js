@@ -263,6 +263,9 @@
     ratingSlide("rpe", 4);
     if(scen==="ressenti_corps"){ ratingGene(true); ratingZone("genoux_g"); ratingZoneSlide(5); }
     if(scen==="ressenti_dos"){ ratingGene(true); ratingView("back"); ratingZone("mollets_d"); ratingZoneSlide(7); }
+  } else if(scen==="objectif_feuille" || scen==="niveau_feuille"){
+    celebrationOff(); plannedSessions=[...wkSessions, ...future]; setProfilSectionState("objectifs"); show("profil");
+    if(scen==="objectif_feuille") openObjectiveSheet("principal"); else openLevelSheet();
   } else if(scen==="jauge_charge" || scen==="jauge_info"){
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; openMonths=null; openManageRow=new Set(); show("progression");
     openChargeSheet(); if(scen==="jauge_info") toggleChargeInfo();

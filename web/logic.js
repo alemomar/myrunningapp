@@ -1907,6 +1907,16 @@ function trendSegments(points, projDays){
   return { fromTs:t0, fromValue:at(t0), toTs:lastTs, toValue:at(lastTs), projTs, projValue:at(projTs) };
 }
 
+// « aujourd'hui, 07:33 », « hier, 18:42 » ou « 28 sept., 07:33 » (Mon compte : dernière course reçue).
+function relativeDayTime(ts, nowTs){
+  const d = new Date(ts), n = new Date(nowTs);
+  const hhmm = `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  const diff = Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate()) - new Date(d.getFullYear(),d.getMonth(),d.getDate())) / DAY_MS);
+  if(diff===0) return `aujourd'hui, ${hhmm}`;
+  if(diff===1) return `hier, ${hhmm}`;
+  return `${d.getDate()===1?"1er":d.getDate()} ${MONTH_SHORT[d.getMonth()]}, ${hhmm}`;
+}
+
 // --- Chiffres clés (D27) ---
 function formatHoursMinutes(sec){
   const m = Math.round((sec||0)/60);

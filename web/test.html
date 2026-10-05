@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=75"></script>
+<script src="logic.js?v=76"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1466,6 +1466,16 @@ try {
   assertEqual("durée saisie : texte illisible", [parseDurationInput("abc"), parseDurationInput(""), parseDurationInput("1:2:3:4"), parseDurationInput("-5")], [NaN, NaN, NaN, NaN]);
   assertEqual("durée saisie : affichage d'une durée pré-remplie", [formatDurationInput(45), formatDurationInput(65.5), formatDurationInput(0)], ["45:00", "1:05:30", ""]);
   assertEqual("saisie : le message de durée ne parle plus de minutes seulement", validateManualRun({date:"2026-10-01", type:"EF", distKm:"5", durationMin:NaN, hr:""}, "2026-10-05").errors, ["Indique la durée de la séance."]);
+}
+
+
+// ---------- S11 : Mon compte ----------
+{
+  const now = new Date(2026,9,5,12,0).getTime();
+  assertEqual("dernière course reçue : aujourd'hui", relativeDayTime(new Date(2026,9,5,7,33).getTime(), now), "aujourd'hui, 07:33");
+  assertEqual("dernière course reçue : hier", relativeDayTime(new Date(2026,9,4,18,42).getTime(), now), "hier, 18:42");
+  assertEqual("dernière course reçue : plus ancien", relativeDayTime(new Date(2026,8,28,7,5).getTime(), now), "28 sept., 07:05");
+  assertEqual("dernière course reçue : le 1er du mois", relativeDayTime(new Date(2026,8,1,7,5).getTime(), now), "1er sept., 07:05");
 }
 
 // ---------- S6.3a : géométrie des courbes ----------
