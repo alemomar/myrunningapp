@@ -1740,6 +1740,7 @@ function regularityPhrase(r){
   if(r.status!=="ok") return "Pas encore assez d'historique : reviens après ta première semaine complète.";
   if(r.weeksWithRun===0) return `Aucune course ces ${r.totalWeeks} dernières semaines : une petite sortie facile pour reprendre ?`;
   const avg = String(r.avgPerWeek).replace(".", ",");
+  if(r.weeksWithRun===r.totalWeeks) return `Au moins une course par semaine, ${avg} en moyenne.`;
   return `Tu as couru au moins une fois dans ${r.weeksWithRun} semaine${r.weeksWithRun>1?"s":""} sur ${r.totalWeeks}, soit ${avg} course${r.avgPerWeek>=2?"s":""} par semaine en moyenne.`;
 }
 function volumeComparison(runs, todayStr){

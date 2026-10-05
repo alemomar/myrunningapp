@@ -234,6 +234,17 @@
   } else if(scen==="progression"){
     celebrationOff(); plannedSessions=[...wkSessions, ...future];
     openMonths=null; openManageRow=new Set([lastRun.id]); show("progression");
+  } else if(/^progression_(allure|regularite|forme)$/.test(scen)){
+    // Les trois autres variantes de la carte objectif (journal 5f, 5g, 5h)
+    goals.principal = { objectifPrincipal: scen==="progression_allure" ? "Améliorer mon allure" : scen==="progression_regularite" ? "Courir plus régulièrement" : "Rester en forme" };
+    // programme commencé il y a 9 semaines (une séance déjà faite cette semaine-là) : « Semaine 10 du programme »
+    const oldMonday = localDateStr(at(mondayOff-63));
+    const startRow = P(-63, {type:"EF", pace_zone:"easy", title:"Sortie easy", status:"done"});
+    startRow.week_start_date = oldMonday;
+    celebrationOff(); plannedSessions=[startRow, ...wkSessions, ...future]; openMonths=null; openManageRow=new Set(); show("progression");
+  } else if(scen==="jauge_charge" || scen==="jauge_info"){
+    celebrationOff(); plannedSessions=[...wkSessions, ...future]; openMonths=null; openManageRow=new Set(); show("progression");
+    openChargeSheet(); if(scen==="jauge_info") toggleChargeInfo();
   } else if(scen==="profil_objectifs"){
     setProfilSectionState("objectifs"); show("profil");
   } else if(scen==="profil_compte"){

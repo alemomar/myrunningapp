@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=68"></script>
+<script src="logic.js?v=69"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -682,6 +682,7 @@ try {
   assertEqual("regularitySummary : aucune course -> insuffisant", regularitySummary([], today).status, "insuffisant");
   assertEqual("regularitySummary : première course cette semaine -> insuffisant", regularitySummary([d(1)], today).status, "insuffisant");
   assertEqual("regularityPhrase : cas normal", regularityPhrase({status:"ok", weeksWithRun:6, totalWeeks:8, avgPerWeek:2.5}), "Tu as couru au moins une fois dans 6 semaines sur 8, soit 2,5 courses par semaine en moyenne.");
+  assertEqual("regularityPhrase : toutes les semaines (phrase du design)", regularityPhrase({status:"ok", weeksWithRun:8, totalWeeks:8, avgPerWeek:3.3}), "Au moins une course par semaine, 3,3 en moyenne.");
   assertEqual("regularityPhrase : aucune semaine", regularityPhrase({status:"ok", weeksWithRun:0, totalWeeks:8, avgPerWeek:0}).startsWith("Aucune course ces 8 dernières semaines"), true);
   assertEqual("regularityPhrase : singulier", regularityPhrase({status:"ok", weeksWithRun:1, totalWeeks:2, avgPerWeek:0.5}), "Tu as couru au moins une fois dans 1 semaine sur 2, soit 0,5 course par semaine en moyenne.");
   const v = volumeComparison([{date:d(0), distKm:10}, {date:d(27), distKm:5.5}, {date:d(28), distKm:8}, {date:d(55), distKm:12}, {date:d(56), distKm:99}], today);

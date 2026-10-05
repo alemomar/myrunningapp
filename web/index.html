@@ -640,6 +640,99 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .al-need .ttl{display:flex;gap:10px;align-items:flex-start}
 .al-need .ttl>svg{flex:none;margin-top:2px;color:var(--text-muted)}
 .al-info .x{margin-left:auto;flex:none;width:36px;height:36px;border:none;background:none;color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer}
+/* Progression (S6) : carte objectif + anneaux, tuiles, chiffres clés, records, jauge de charge */
+.pg-card{background:var(--surface);border-radius:var(--r-xl);padding:16px;margin-bottom:12px;display:flex;flex-direction:column;gap:12px}
+.pg-over{font-size:11px;letter-spacing:.14em;color:var(--text-muted);text-transform:uppercase}
+.pg-obj-top{display:flex;justify-content:space-between;align-items:center}
+.pg-badge{height:22px;padding:0 8px;border-radius:11px;border:1px solid var(--accent);color:var(--accent);font-size:11px;font-weight:600;display:flex;align-items:center}
+.pg-obj-title{font:700 24px/1.1 var(--font-display);text-transform:uppercase}
+.pg-block{display:flex;flex-direction:column;gap:6px;min-height:40px;justify-content:center}
+.pg-bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.pg-bar>i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.pg-sub{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-muted)}
+.pg-sub b{color:var(--text);font-weight:600}
+.pg-sep{height:1px;background:var(--line)}
+.pg-pace{display:flex;align-items:baseline;gap:10px;font:700 22px/1 var(--font-display)}
+.pg-pace .a{color:var(--text-2)}
+.pg-pace .b{color:var(--accent)}
+.pg-pace svg{color:var(--text-muted);align-self:center}
+.pg-pace small{font:500 12px var(--font-text);color:var(--text-muted)}
+.pg-dots{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.pg-dots i{height:14px;border-radius:4px;background:var(--accent)}
+.pg-dots i.off{background:none;box-shadow:inset 0 0 0 1.5px var(--line-empty)}
+.pg-rings{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pg-ring{display:flex;align-items:center;gap:10px;min-width:0}
+.pg-ring svg{flex:none;transform:rotate(-90deg)}
+.pg-ring .v{font:700 20px/1 var(--font-display);text-transform:uppercase}
+.pg-ring .s{font-size:11.5px;color:var(--text-muted)}
+.pg-h2{font:700 18px/1 var(--font-display);text-transform:uppercase;color:var(--text-2);padding:8px 4px 10px}
+.pg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.pg-tile{background:var(--surface);border:none;border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0;text-align:left;color:inherit;font:inherit}
+button.pg-tile{cursor:pointer}
+.pg-tile .big{font:700 26px/1.05 var(--font-display);text-transform:uppercase}
+.pg-coach{display:flex;gap:6px;font-size:12.5px;line-height:1.35;color:var(--text-2)}
+.pg-coach svg{color:var(--accent);margin-top:3px;flex:none}
+.pg-chg-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.pg-chg-row .z{font:700 20px/1.05 var(--font-display);text-transform:uppercase}
+.pg-chg-row .n{font:700 22px/1 var(--font-display)}
+.pg-mini{position:relative;display:flex;gap:2px;height:6px}
+.pg-mini i{display:block;height:100%}
+.pg-mini i:first-child{border-radius:3px 1px 1px 3px}
+.pg-mini i:nth-child(2){border-radius:1px}
+.pg-mini i:nth-child(3){border-radius:1px 3px 3px 1px}
+.pg-mark{position:absolute;top:-3px;width:3px;height:12px;margin-left:-1.5px;border-radius:2px;background:var(--text);box-shadow:0 0 0 2px var(--surface)}
+.pg-key{background:var(--surface);border-radius:var(--r-lg);padding:12px 14px;min-width:0}
+.pg-key .big{font:700 24px/1.1 var(--font-display);text-transform:uppercase;margin-top:4px}
+.pg-key .big.none{color:var(--text-faint)}
+.pg-key .u{font-size:12px;color:var(--text-muted)}
+.pg-rec-head{display:flex;justify-content:space-between;align-items:center}
+.pg-rec-head svg{color:var(--accent)}
+.pg-rec-row{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:44px;border:none;border-top:1px solid var(--surface-control);background:none;color:inherit;font:inherit;text-align:left;width:100%;padding:0}
+button.pg-rec-row{cursor:pointer}
+.pg-rec-row .k{font:700 18px var(--font-display);text-transform:uppercase}
+.pg-rec-row .d{font-size:12.5px;color:var(--text-muted)}
+.pg-rec-row .t{font:700 20px var(--font-display)}
+.pg-rec-row .t.none{color:var(--text-faint)}
+.pg-rec-sub{display:flex;flex-direction:column;gap:2px}
+.pg-rec-note{font-size:12px;color:var(--text-muted)}
+/* Feuille de la jauge de charge (4c) */
+.cg-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px}
+.cg-top .btns{display:flex;gap:8px;align-items:center}
+.cg-info{width:36px;height:36px;border:none;border-radius:50%;background:var(--line-field);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.cg-zone{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:18px}
+.cg-zone .z{font:700 28px/1.05 var(--font-display);text-transform:uppercase}
+.cg-zone .n{font:700 28px/1 var(--font-display);flex:none}
+.cg-bar{position:relative;display:flex;gap:3px;height:8px}
+.cg-bar i{display:block;height:100%}
+.cg-bar i:first-child{border-radius:4px 2px 2px 4px}
+.cg-bar i:nth-child(2){border-radius:2px}
+.cg-bar i:nth-child(3){border-radius:2px 4px 4px 2px}
+.cg-mark{position:absolute;top:-5px;width:4px;height:18px;margin-left:-2px;border-radius:2px;background:var(--text);box-shadow:0 0 0 2px var(--surface-raised)}
+.cg-ticks{position:relative;height:16px;margin-top:6px;font-size:11px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.cg-ticks span{position:absolute;transform:translateX(-50%)}
+.cg-curve{position:relative;height:80px;margin-top:18px}
+.cg-curve .band{position:absolute;left:0;right:0;background:rgba(198,244,50,.08);border-top:1px dashed rgba(198,244,50,.35);border-bottom:1px dashed rgba(198,244,50,.35)}
+.cg-curve svg{position:absolute;inset:0;overflow:visible}
+.cg-curve .dot{position:absolute;width:10px;height:10px;margin:-5px -5px 0 0;border-radius:50%;box-shadow:0 0 0 3px var(--surface-raised)}
+.cg-legend{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-muted);margin-top:6px}
+.cg-coach{display:flex;gap:8px;font-size:14px;line-height:1.4;color:var(--text-2);margin-top:16px}
+.cg-coach svg{color:var(--accent);margin-top:3px;flex:none}
+.cg-text{font-size:14px;line-height:1.45;color:var(--text-2)}
+.cg-levels{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:var(--r-md);background:var(--surface-sunken);margin:14px 0}
+.cg-levels div{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.4;color:var(--text-2)}
+.cg-levels i{width:10px;height:10px;border-radius:3px;flex:none;margin-top:4px}
+.cg-levels b{color:var(--text)}
+.cg-src{font-size:12px;color:var(--text-muted);margin-top:10px}
+@media (prefers-reduced-motion: no-preference){
+  .pg-bar.anim>i{animation:pgBar .8s ease-out both}
+  .pg-ring.anim circle.fg{animation:ringFill .8s ease-out both}
+  .cg-bar.anim .cg-mark{animation:cgMark .6s ease-out both}
+  .cg-curve.anim .reveal{animation:cgReveal .6s ease-out both}
+}
+@keyframes pgBar{from{width:0}}
+@keyframes ringFill{from{stroke-dasharray:0 100}}
+@keyframes cgMark{from{left:0}}
+@keyframes cgReveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
 .sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface-raised);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:var(--shadow-sheet)}
 .sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--grabber);margin:0 auto 14px}
@@ -711,7 +804,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=68"></script>
+<script src="logic.js?v=69"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
@@ -780,6 +873,10 @@ const ICONS = {
   chevronUp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`,
   chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`,
+  arrowRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`,
+  history: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>`,
+  info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`,
+  trophy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`,
   calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>`,
 };
 function icon(name,size=18){ return ICONS[name].replace("<svg ",`<svg width="${size}" height="${size}" `); }
@@ -2115,6 +2212,196 @@ function lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate){
   </div>`;
 }
 
+// ---------- Progression : carte objectif, tuiles, chiffres clés, records, jauge de charge (S6, design 5 et 4c) ----------
+const fmtKm1 = (v) => Number(v).toLocaleString("fr-FR", { maximumFractionDigits:1 });
+function sinceDateText(startMonday){
+  const d = parseDay(startMonday);
+  return `${d.getDate()===1?"1er":d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
+}
+function ringHTML(color, pct, animate, aria){
+  return `<svg width="52" height="52" viewBox="0 0 52 52" role="img" aria-label="${escHtml(aria)}"><circle cx="26" cy="26" r="23" fill="none" stroke="var(--line)" stroke-width="6"/><circle class="fg" cx="26" cy="26" r="23" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round" pathLength="100" stroke-dasharray="${Math.max(pct, pct>0?1:0)} 100"/></svg>`;
+}
+function objectiveCardHTML(){
+  const slot = goals.principal || {};
+  const type = slot.objectifPrincipal;
+  if(!type){
+    return `<div class="pg-card"><div class="pg-obj-top"><span class="pg-over">Objectif principal</span></div>
+      <div class="pg-obj-title" style="color:var(--text-faint)">Pas encore d'objectif</div>
+      <div class="pg-sub"><span>Choisis ce que tu veux atteindre : ton programme et ces chiffres s'y adaptent.</span></div>
+      <button type="button" class="btn-secondary" onclick="setTab('objectifs')">Choisir mon objectif</button></div>`;
+  }
+  const today = new Date(), todayStr = localDateStr(today), todayTs = today.getTime();
+  const variant = objectiveVariant(type);
+  const start = programStartMonday(plannedSessions);
+  const weekNum = programWeekNumber(start, todayStr);
+  const since = start && weekNum ? `Semaine ${weekNum} du programme · depuis le ${sinceDateText(start)}` : "";
+  const animate = playOnce("prog_objective");
+  let title = type.toUpperCase(), block = "";
+  if(variant==="race"){
+    const dist = (slot.distanceCourse||"").replace(/(\d)km$/, "$1 km");
+    const dateTxt = slot.dateCible ? parseDay(slot.dateCible).toLocaleDateString("fr-FR", { weekday:"short", day:"numeric", month:"short" }) : "";
+    title = [dist, dateTxt].filter(Boolean).join(" · ") || "Préparer une course";
+    const rp = raceProgress(start, slot.dateCible, todayStr);
+    if(rp && rp.past) block = `<div class="pg-sub"><span>La date de ta course est passée.</span></div>`;
+    else if(rp && rp.totalWeeks) block = `<div class="pg-block"><div class="pg-bar${animate?" anim":""}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${rp.pct}" aria-label="Semaine ${rp.week} sur ${rp.totalWeeks}"><i style="width:${rp.pct}%"></i></div><div class="pg-sub"><span>Semaine ${rp.week} sur ${rp.totalWeeks}</span><span>${rp.daysLeft===0?"Jour J":"J-"+rp.daysLeft}</span></div></div>`;
+    else if(rp) block = `<div class="pg-sub"><span>${rp.daysLeft===0?"Jour J":"J-"+rp.daysLeft}</span></div>`;
+    else if(since) block = `<div class="pg-sub"><span>${escHtml(since)}</span></div>`;
+  } else if(variant==="pace"){
+    const efPts = efRuns.filter(r=>r.allure).map(r=>({ ts:dateFromRun(r).getTime(), value:r.allure }));
+    const p = efPaceSinceStart(efPts, start, todayTs);
+    block = p.status==="ok"
+      ? `<div class="pg-block"><div class="pg-pace"><span class="a">${fmtA(Math.round(p.firstAvg))}</span>${icon("arrowRight",16)}<span class="b">${fmtA(Math.round(p.lastAvg))}</span><small>/km en EF</small></div><div class="pg-sub"><span>Départ → 4 dernières semaines${since?" · "+escHtml(since):""}</span></div></div>`
+      : `<div class="pg-block"><div class="pg-sub"><span>Pas encore assez de recul pour comparer ton allure EF.${since?" "+escHtml(since)+".":""}</span></div></div>`;
+  } else if(variant==="streak"){
+    const st = weeklyStreak(runningRuns.map(r=>localDateStr(dateFromRun(r))), todayStr, 8);
+    const msg = st.streak>0 ? `<b>${st.streak} semaine${st.streak>1?"s":""} d'affilée</b> avec au moins une course` : "Une course cette semaine pour démarrer ta série";
+    block = `<div class="pg-block"><div class="pg-dots" aria-hidden="true">${st.dots.map(d=>`<i class="${d?"":"off"}"></i>`).join("")}</div><div class="pg-sub"><span>${msg}</span>${weekNum?`<span>Sem. ${weekNum}</span>`:""}</div></div>`;
+  }
+  // Anneaux : km et séances du mois ; pas d'objectif chiffré, pas d'anneau (journal 5).
+  const monthS = periodStats("monthly");
+  const kmGoal = goals.kmMensuel ? Number(goals.kmMensuel) : null;
+  const sessGoal = goals.frequence ? Math.round(Number(goals.frequence)*4.33) : null;
+  const kmRing = ringModel(Math.round(monthS.dist*10)/10, kmGoal), sessRing = ringModel(monthS.runs.length, sessGoal);
+  const rings = [];
+  if(kmRing) rings.push(`<div class="pg-ring${animate?" anim":""}">${ringHTML("var(--accent)", kmRing.pct, animate, `Km ce mois : ${fmtKm1(kmRing.value)} sur ${kmRing.goal}`)}<div><div class="v">${fmtKm1(kmRing.value)} km</div><div class="s">sur ${kmRing.goal} · ce mois</div></div></div>`);
+  if(sessRing) rings.push(`<div class="pg-ring${animate?" anim":""}">${ringHTML("var(--data-cyan)", sessRing.pct, animate, `Séances ce mois : ${sessRing.value} sur ${sessRing.goal}`)}<div><div class="v">${sessRing.value} séance${sessRing.value>1?"s":""}</div><div class="s">sur ${sessRing.goal} · ce mois</div></div></div>`);
+  return `<div class="pg-card" id="progObjective">
+    <div class="pg-obj-top"><span class="pg-over">Objectif principal</span><span class="pg-badge">Principal</span></div>
+    <div class="pg-obj-title">${escHtml(title)}</div>
+    ${block}
+    ${rings.length?`<div class="pg-sep"></div><div class="pg-rings">${rings.join("")}</div>`:""}
+  </div>`;
+}
+// Tuiles d'indicateur (2 × 2) : valeur, ligne du coach, tuile cliquable vers son graphique (la charge ouvre la jauge).
+function indicatorTilesHTML(){
+  const todayStr = localDateStr(new Date());
+  const ds = (r) => localDateStr(dateFromRun(r));
+  const eff = efficiencyTrend(efRuns.map(r=>({date:ds(r), allure:r.allure, fc:r.fc})), todayStr);
+  const reg = regularitySummary(runningRuns.map(ds), todayStr);
+  const vol = volumeComparison(runningRuns.map(r=>({date:ds(r), distKm:r.dist||0})), todayStr);
+  const { acwr } = computeProgramInputs();
+  const gauge = chargeEntrainementGauge(acwr);
+  const effText = { mieux:`+${eff.pct} %`, moins:`−${eff.pct} %`, stable:"Stable", insuffisant:"—" }[eff.status];
+  const effColor = eff.status==="mieux" ? "var(--accent)" : eff.status==="insuffisant" ? "var(--text-faint)" : "var(--text)";
+  const coach = (txt) => `<div class="pg-coach">${icon("sparkle",11)}<span>${escHtml(txt)}</span></div>`;
+  const tile = (over, big, color, txt, target) => {
+    const inner = `<div class="pg-over">${over}</div><div class="big" style="color:${color}">${big}</div>${coach(txt)}`;
+    return target ? `<button type="button" class="pg-tile" onclick="scrollToCard('${target}')">${inner}</button>` : `<div class="pg-tile">${inner}</div>`;
+  };
+  const ci = chargeLineInfo(gauge, acwr), seg = chargeSegments(), pos = chargeGaugePosition(acwr);
+  const shortZone = { "sous-charge":"En dessous", "idéale":"Zone idéale", "attention":"Au-dessus", "inconnue":"Pas de repère" }[gauge.zone];
+  const barColors = ["var(--text-faint)", "var(--accent)", "var(--attention)"];
+  const mini = [seg.low, seg.ideal, seg.high].map((w,i)=>`<i style="flex:${w};background:${pos==null?"var(--line-field)":barColors[i]}"></i>`).join("");
+  const chargeTile = `<button type="button" class="pg-tile" onclick="openChargeSheet()" aria-label="${escHtml(chargeAriaLabel(gauge, acwr))}. Ouvre la jauge complète.">
+    <div class="pg-over">Charge</div>
+    <div class="pg-chg-row"><span class="z" style="color:${gauge.zone==="sous-charge"?"var(--text-muted)":gauge.color}">${shortZone}</span>${ci.value?`<span class="n">${ci.value}</span>`:""}</div>
+    <div class="pg-mini" aria-hidden="true">${mini}${pos!=null?`<span class="pg-mark" style="left:${pos*100}%"></span>`:""}</div>
+    <div style="font-size:12px;color:var(--text-muted)">Touche pour la jauge complète</div>
+  </button>`;
+  return `<div class="pg-h2" id="progIndicators">Tes indicateurs</div>
+    <div class="pg-grid">
+      ${tile("Efficience cardiaque", effText, effColor, efficiencyPhrase(eff), "cardEff")}
+      ${tile("Régularité", reg.status==="ok" ? `${reg.weeksWithRun}/${reg.totalWeeks} sem.` : "—", reg.status==="ok" ? "var(--text)" : "var(--text-faint)", regularityPhrase(reg), null)}
+      ${tile("Volume", `${fmtKm1(vol.last28)} km`, "var(--text)", `4 dernières semaines. Les 4 d'avant : ${fmtKm1(vol.prev28)} km.`, "cardVol")}
+      ${chargeTile}
+    </div>`;
+}
+function keyFiguresHTML(){
+  const kf = keyFigures(runningRuns.map(runAsRecord), Date.now());
+  const key = (over, big, unit) => `<div class="pg-key"><div class="pg-over">${over}</div><div class="big${big==null?" none":""}">${big==null?"—":big}</div>${unit?`<div class="u">${unit}</div>`:""}</div>`;
+  return `<div class="pg-h2">Chiffres clés</div>
+    <div class="pg-grid">
+      ${key("Distance annuelle", `${fmtKm1(kf.yearKm)} km`, "")}
+      ${key("Plus longue sortie", kf.longestMonthKm!=null?`${fmtKm1(kf.longestMonthKm)} km`:null, "ce mois")}
+      ${key("Temps de course", formatHoursMinutes(kf.monthTimeSec), "ce mois")}
+      ${key("Meilleure allure EF", kf.bestEfPaceSecKm!=null?fmtA(kf.bestEfPaceSecKm):null, "/km")}
+    </div>`;
+}
+// « Tes records » : une ligne par distance (D26), les chronos déclarés à part en gris (jamais célébrés), meilleure allure fractionné dessous.
+function recordsCardHTML(){
+  const holders = recordHolders(runningRuns.map(runAsRecord));
+  const rows = recordsListModel(holders).map(r=>{
+    const inner = `<span class="k">${escHtml(r.label)}</span><span class="d">${escHtml(r.dateText)}</span><span class="t${r.timeText?"":" none"}">${r.timeText||"—"}</span>`;
+    return r.runId ? `<button type="button" class="pg-rec-row" onclick="openHistoryRun('${r.runId}')">${inner}</button>` : `<div class="pg-rec-row">${inner}</div>`;
+  }).join("");
+  // Chrono déclaré : repris de ce que l'app utilise aujourd'hui comme temps de référence (S8 le limitera à « Ton niveau »).
+  const prof = resolveRunnerProfile(goals, programSettings, RACE_DISTANCES_KM);
+  let declared = "";
+  if(prof && prof.source!=="goal_vma" && prof.timeSec>0){
+    const known = RECORD_DISTANCES.find(d=>Math.abs(d.km-prof.distanceKm)<0.05);
+    const label = known ? known.label : fmtKm1(prof.distanceKm)+" km";
+    declared = `<div class="pg-rec-sub"><div class="pg-over">Déclaré dans « Ton niveau »</div><div class="pg-rec-row"><span class="k">${escHtml(label)}</span><span class="d">déclaré</span><span class="t" style="color:var(--text-muted)">${fmtDur(prof.timeSec)}</span></div></div>`;
+  }
+  const frac = holders.allure_frac ? `<div class="pg-rec-note">Meilleure allure fractionné : ${fmtA(holders.allure_frac.workPaceSecKm)}/km</div>` : "";
+  return `<div class="pg-card" id="progRecords">
+    <div class="pg-rec-head"><span class="pg-over">Tes records</span>${icon("trophy",16)}</div>
+    <div>${rows}</div>${declared}${frac}
+  </div>`;
+}
+window.scrollToCard = (id) => { document.getElementById(id)?.scrollIntoView({ behavior: prefersReducedMotion()?"auto":"smooth", block:"start" }); };
+window.goToHistory = () => scrollToCard("histCard");
+// Une ligne de record ouvre la séance dans l'historique (l'historique devient un écran à part en S7).
+window.openHistoryRun = (id) => {
+  const r = RUNS.find(x=>x.id===id);
+  if(!r) return;
+  const key = `${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`;
+  if(openMonths===null) openMonths = new Set();
+  openMonths.add(key); openManageRow.add(id);
+  renderContent();
+  setTimeout(()=>scrollToCard("hist_"+id), 120);
+};
+
+// Feuille de la jauge de charge (4c) : barre à 3 zones, courbe des 8 dernières semaines, ligne du coach ; le « i » ouvre l'explication (D22, A7).
+let chargeSheet = null; // "gauge" | "info"
+window.openChargeSheet = () => { chargeSheet = "gauge"; playedChargeSheet = false; refreshSheet(); };
+window.closeChargeSheet = () => { chargeSheet = null; refreshSheet(); };
+window.toggleChargeInfo = () => { chargeSheet = chargeSheet==="info" ? "gauge" : "info"; refreshSheet(); };
+let playedChargeSheet = false;
+function renderChargeSheet(){
+  const root = document.getElementById("sheetRoot");
+  if(!chargeSheet) return false;
+  const { acwr } = computeProgramInputs();
+  const gauge = chargeEntrainementGauge(acwr), seg = chargeSegments(), pos = chargeGaugePosition(acwr);
+  let body;
+  if(chargeSheet==="info"){
+    body = `${sheetHeadHTML("La charge d'entraînement", "toggleChargeInfo()")}
+      <div class="cg-text">Elle compare ce que tu as couru ces 7 derniers jours à ce que ton corps a l'habitude de faire (la moyenne de tes 4 dernières semaines). Autour de 1, tu progresses à un rythme qu'il encaisse bien.</div>
+      <div class="cg-levels">
+        <div><i style="background:var(--text-faint)"></i><span><b>En dessous de 0,8 :</b> tu peux en faire un peu plus.</span></div>
+        <div><i style="background:var(--accent)"></i><span><b>Entre 0,8 et 1,3 :</b> zone idéale.</span></div>
+        <div><i style="background:oklch(0.72 0.17 300 / .6)"></i><span><b>Au-dessus de 1,3 :</b> ta charge monte vite, écoute ton corps.</span></div>
+        <div><i style="background:var(--attention)"></i><span><b>Au-dessus de 1,5 :</b> elle monte très vite, un jour de repos en plus serait bienvenu.</span></div>
+      </div>
+      <div class="cg-text">C'est un repère, pas une règle absolue : chaque coureur est différent, et une douleur compte plus qu'un chiffre.</div>
+      <div class="cg-src">Source : Gabbett (2016), British Journal of Sports Medicine.</div>`;
+  } else {
+    const ci = chargeLineInfo(gauge, acwr);
+    const animate = !playedChargeSheet && !prefersReducedMotion(); playedChargeSheet = true;
+    const dailySeries = buildDailyLoadSeries(chargeLoadSessions());
+    const curve = chargeCurve(chargeWeeklySeries(dailySeries, new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()), 8), 280, 80);
+    const barColors = ["var(--text-faint)", "var(--accent)", "var(--attention)"];
+    const bar = [seg.low, seg.ideal, seg.high].map((w,i)=>`<i style="flex:${w};background:${pos==null?"var(--line-field)":barColors[i]}"></i>`).join("");
+    const tick = (v) => `<span style="left:${chargeScale(v)*100}%">${fmtDec(v,2)}</span>`;
+    const lastColor = curve.last ? (curve.last.acwr<CHARGE_LOW ? "var(--text-muted)" : curve.last.acwr<=CHARGE_HIGH ? "var(--accent)" : "var(--attention)") : "";
+    const graph = curve.points.length>=2 ? `<div class="cg-curve${animate?" anim":""}" aria-hidden="true">
+        <div class="band" style="top:${curve.band.top}px;height:${curve.band.bottom-curve.band.top}px"></div>
+        <div class="reveal" style="position:absolute;inset:0"><svg width="100%" height="80" viewBox="0 0 280 80" preserveAspectRatio="none"><polyline points="${curve.points.map(p=>p.x.toFixed(1)+","+p.y.toFixed(1)).join(" ")}" fill="none" stroke="var(--text)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg></div>
+        ${curve.last?`<div class="dot" style="right:0;top:${curve.last.y}px;background:${lastColor}"></div>`:""}
+      </div>
+      <div class="cg-legend"><span>il y a 8 sem.</span><span>bande = zone idéale</span><span>cette sem.</span></div>` : "";
+    body = `<div class="cg-top"><span class="pg-over">Charge d'entraînement</span><div class="btns"><button type="button" class="cg-info" aria-label="Comprendre la charge d'entraînement" onclick="toggleChargeInfo()">${icon("info",16)}</button><button class="sheet-close" type="button" aria-label="Fermer" onclick="closeChargeSheet()">${icon("x",16)}</button></div></div>
+      <div role="group" aria-label="${escHtml(chargeAriaLabel(gauge, acwr))}">
+        <div class="cg-zone"><span class="z" style="color:${gauge.zone==="sous-charge"?"var(--text-muted)":gauge.color}">${escHtml(ci.label)}</span>${ci.value?`<span class="n">${ci.value}</span>`:""}</div>
+        <div class="cg-bar${animate?" anim":""}">${bar}${pos!=null?`<span class="cg-mark" style="left:${pos*100}%"></span>`:""}</div>
+        <div class="cg-ticks" aria-hidden="true">${tick(CHARGE_LOW)}${tick(CHARGE_HIGH)}</div>
+        ${graph}
+        <div class="cg-coach">${icon("sparkle",13)}<span>${escHtml(pos!=null?gauge.phrase:gauge.phrase+" Note tes séances pour la voir apparaître.")}</span></div>
+      </div>`;
+  }
+  root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeChargeSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Charge d'entraînement">${body}</div></div>`;
+  return true;
+}
+
 // Indicateurs en tête de Progression (4.9.a) : efficience cardiaque,
 // régularité, volume et charge, chacun en une phrase claire (voir
 // efficiencyTrend / regularitySummary / volumeComparison, logic.js).
@@ -3155,13 +3442,16 @@ function dayLabelShort(date){ return date.toLocaleDateString('fr-FR',{weekday:'s
 // (ACWR) + ressenti récent (douleur répétée, fatigue/mental) en une
 // structure hebdo ajustée — utilisé à la fois pour générer une semaine et
 // pour décider si la prochaine séance planifiée doit être ajustée.
+// Séances qui comptent dans la charge : celles qui ont un ressenti d'effort (RPE).
+function chargeLoadSessions(){
+  return runningRuns.filter(r=>r.painRatings?.rpe!=null).map(r=>({ date: dateFromRun(r), durationMin: (r.durationSec||0)/60, rpe: r.painRatings.rpe }));
+}
 function computeProgramInputs(){
   const principalType = goals.principal?.objectifPrincipal;
   const secondaireEnabled = goals.secondaireEnabled!==undefined ? !!goals.secondaireEnabled : !!(goals.secondaire?.objectifPrincipal);
   const secondaryType = secondaireEnabled ? goals.secondaire?.objectifPrincipal : null;
   let structure = weeklyStructureForObjective(principalType, secondaryType);
-  const loadSessions = runningRuns.filter(r=>r.painRatings?.rpe!=null).map(r=>({ date: dateFromRun(r), durationMin: (r.durationSec||0)/60, rpe: r.painRatings.rpe }));
-  const dailySeries = buildDailyLoadSeries(loadSessions);
+  const dailySeries = buildDailyLoadSeries(chargeLoadSessions());
   const { acwr } = acwrAt(dailySeries, new Date());
   structure = applyAcwrAdjustment(structure, acwr);
   const ratedRuns = runningRuns.filter(r=>r.painRatings);
@@ -4164,7 +4454,7 @@ function weekTileHTML(day, i){
     <span class="wk-tile ${m?m.status:"repos"}" style="${style}">${m?icon(TICON[m.type]||"activity",18):""}${bang}${plus}</span>
   </button>`;
 }
-// Toucher un jour ouvre ce jour dans Programme ; la ligne de charge ouvre les indicateurs de Progression (R8, D19).
+// Toucher un jour ouvre ce jour dans Programme ; la ligne de charge ouvre la jauge de charge (R8, D19, journal 4).
 window.openProgramDay = (dateStr) => { programViewMode = "week"; programWeekOffset = 0; programSelectedDate = dateStr; setTab("programme"); };
 window.goToIndicators = () => { setTab("progression"); setTimeout(()=>document.getElementById("progIndicators")?.scrollIntoView({behavior:"smooth", block:"start"}), 150); };
 function weekRecapCardHTML(){
@@ -4196,7 +4486,7 @@ function weekRecapCardHTML(){
       <span><span class="plus">+</span>2e séance (plein = faite)</span>
     </div>
     <div class="wk-msg" role="status">${msg.kind==="missed" ? `<span class="bang" aria-hidden="true">!</span>` : icon("sparkle",16)}<span>${escHtml(msg.text)}</span></div>
-    <button type="button" class="wk-charge" onclick="goToIndicators()" aria-label="Charge d'entraînement : ${escHtml(ci.label)}${ci.value?", "+ci.value:""}">
+    <button type="button" class="wk-charge" onclick="openChargeSheet()" aria-label="Charge d'entraînement : ${escHtml(ci.label)}${ci.value?", "+ci.value:""}">
       <span style="color:var(--text-muted)">Charge d'entraînement</span>
       <span class="r"><b style="color:${ci.color}">${escHtml(ci.label)}</b>${ci.value?`<span>· ${ci.value}</span>`:""}${icon("chevronRight",16)}</span>
     </button>
@@ -4633,6 +4923,7 @@ function refreshSheet(){
   if(manualRunForm) renderManualRunSheet();
   else if(exerciseSheet) renderExerciseSheet();
   else if(typeof renderProgramSheet==="function" && renderProgramSheet()) { /* feuille Ajouter / Modifier */ }
+  else if(typeof renderChargeSheet==="function" && renderChargeSheet()) { /* jauge de charge */ }
   else if(sessionSheetId) renderSessionSheet();
   else root.innerHTML = "";
 }
@@ -4800,7 +5091,7 @@ function sessionHistoryCardHTML(){
       <button class="btn-primary" style="margin-top:6px" onclick="saveSessionRating('${r.id}')">Enregistrer</button>
       <div id="sessRatingSaved_${r.id}" class="save-confirm"></div>
     </div>`;
-  return `<div class="card">
+  return `<div class="card" id="histCard">
     <div class="stitle">Historique des séances et des ressentis</div>
     <button class="btn-secondary" style="margin-bottom:10px" onclick="openManualRun()">+ Ajouter une séance réalisée</button>
     <div class="chart-hint">Ouvre une séance pour changer son type ou l'interrupteur "Suivi" (ce qui compte dans tes stats), voir le détail cardio quand il est disponible, et noter ton ressenti.</div>
@@ -4836,7 +5127,8 @@ function setPageTitle(){
   const names = { programme:"Programme", progression:"Progression", profil:"Profil" };
   el.textContent = activeTab==="aujourdhui" ? dayLabelShort(new Date()) : (names[activeTab]||"");
   const act = document.getElementById("pageAction");
-  if(act) act.innerHTML = activeTab==="programme" ? `<button type="button" class="page-action" onclick="openAddSheet()">${icon("plus",16)} Ajouter</button>` : "";
+  if(act) act.innerHTML = activeTab==="programme" ? `<button type="button" class="page-action" onclick="openAddSheet()">${icon("plus",16)} Ajouter</button>`
+    : activeTab==="progression" ? `<button type="button" class="page-action" onclick="goToHistory()"><span style="color:var(--text-muted);display:flex">${icon("history",15)}</span>Historique<span style="color:var(--text-muted);display:flex">${icon("chevronRight",14)}</span></button>` : "";
 }
 function renderContent(){
   renderContentInner();
@@ -4875,7 +5167,7 @@ function renderContentInner(){
     // Progression (3.c, 4.9) : anneaux, indicateurs, chiffres clés, dernière
     // séance, graphiques, puis l'historique unique des séances et ressentis.
     if(runningRuns.length===0){
-      el.innerHTML=heroHTML()+kpisHTML()+`<div class="card">${emptyState("Aucune séance de course incluse","Ouvre une séance dans l'historique ci-dessous et active l'interrupteur « Suivi » pour l'inclure dans tes stats.",true)}</div>`+sessionHistoryCardHTML();
+      el.innerHTML=objectiveCardHTML()+`<div class="card">${emptyState("Aucune séance de course incluse","Ouvre une séance dans l'historique ci-dessous et active l'interrupteur « Suivi » pour l'inclure dans tes stats.",true)}</div>`+sessionHistoryCardHTML();
       setTimeout(sessionHistoryAfterRender,50);
       return;
     }
@@ -4894,9 +5186,9 @@ function renderContentInner(){
     const withHr = efRuns.filter(r=>r.fc);
     const cardioRuns = [...efRuns, ...fracRuns].sort((a,b)=>dateFromRun(b)-dateFromRun(a));
     const monthly = effMaxHr ? monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr).filter(m=>m.secs.reduce((a,b)=>a+b,0)>0) : [];
-    el.innerHTML=heroHTML()+progressIndicatorsHTML()+kpisHTML()+(lastRun?lastRunCardHTML(lastRun, effMaxHr, effRestingHr, celebrate):"")+`
+    el.innerHTML=objectiveCardHTML()+indicatorTilesHTML()+keyFiguresHTML()+recordsCardHTML()+`
       <div class="card-row">
-        <div class="card"><div class="stitle">Progression allure — EF</div>
+        <div class="card" id="cardEf"><div class="stitle">Progression allure — EF</div>
           <div class="chart-hint">Points = séances · pointillés = tendance et projection à 2 mois · 🚩 = course</div>
           <div style="position:relative;width:100%;height:180px"><canvas id="cEFmini"></canvas></div>
         </div>
@@ -4906,14 +5198,14 @@ function renderContentInner(){
           <div style="position:relative;width:100%;height:180px"><canvas id="cFracMini"></canvas></div>
         </div>`:""}
       </div>
-      <div class="card"><div class="stitle">Volume ${isMonthly?"mensuel":"hebdomadaire"} (km)</div>
+      <div class="card" id="cardVol"><div class="stitle">Volume ${isMonthly?"mensuel":"hebdomadaire"} (km)</div>
         <div class="chart-hint">${isMonthly&&goals.kmMensuel
           ?`Couleur = vs objectif de ${goals.kmMensuel} km/mois : <span style="color:#ffd60a">trop bas</span> · <span style="color:#C6F432">dans la cible</span> · <span style="color:#ff9f0a">au-dessus</span> · <span style="color:#ff375f">largement dépassé</span>`
           :isMonthly?`Renseigne un objectif km/mois dans Objectifs pour colorer ce graph par rapport à ta cible.`
           :`Couleur = part de fractionné/seuil sur la période : <span style="color:#C6F432">peu</span> · <span style="color:#ff9f0a">modéré</span> · <span style="color:#ff375f">beaucoup</span>`}</div>
         <div style="position:relative;width:100%;height:180px"><canvas id="cVolMini"></canvas></div>
       </div>
-      ${withHr.length?`<div class="card"><div class="stitle">Efficience cardiaque</div>
+      ${withHr.length?`<div class="card" id="cardEff"><div class="stitle">Efficience cardiaque</div>
         <div class="chart-hint">Allure EF ÷ FC moyenne, par séance — plus la courbe monte, plus ton efficience cardiaque progresse.</div>
         <div style="position:relative;width:100%;height:200px"><canvas id="cPaceFc"></canvas></div>
       </div>`:""}
