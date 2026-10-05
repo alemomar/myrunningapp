@@ -24,7 +24,7 @@ function linearRegression(points){
 }
 
 /* ---------- Zones cardio & détection fractionné (calculées ici, jamais côté iOS) ---------- */
-// Réserve de FC (Karvonen) : zone = FC repos + %×(FC max − FC repos).
+// Couleurs des zones : design V2 (Z1 gris, Z2 cyan, Z3 citron, Z4 violet, Z5 corail). Réserve de FC (Karvonen) : zone = FC repos + %×(FC max − FC repos).
 // C'est la méthode utilisée par l'app Santé — sans FC repos on retombe sur
 // un simple % de FC max (moins précis mais reste utilisable).
 function hrZoneDefs(maxHr, restingHr){
@@ -32,11 +32,11 @@ function hrZoneDefs(maxHr, restingHr){
   const range = maxHr - base;
   const bound = pct => Math.round(base + range*pct);
   return [
-    {zone:1,label:"Zone 1",color:"#5ac8fa",max:bound(0.6)},
-    {zone:2,label:"Zone 2",color:"#C6F432",max:bound(0.7)},
-    {zone:3,label:"Zone 3",color:"#a8e063",max:bound(0.8)},
-    {zone:4,label:"Zone 4",color:"#ff9f0a",max:bound(0.9)},
-    {zone:5,label:"Zone 5",color:"#ff375f",max:999},
+    {zone:1,label:"Zone 1",color:"#5A6068",max:bound(0.6)},
+    {zone:2,label:"Zone 2",color:"#44E7EF",max:bound(0.7)},
+    {zone:3,label:"Zone 3",color:"#C6F432",max:bound(0.8)},
+    {zone:4,label:"Zone 4",color:"#B688FE",max:bound(0.9)},
+    {zone:5,label:"Zone 5",color:"#FF645F",max:999},
   ];
 }
 /* ---------- Consigne d'intensité par zone d'allure du Programme (4.3.b) ----------
@@ -2520,7 +2520,7 @@ function validateManualRun(input, todayStr){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date||"")) errors.push("Indique la date de la séance.");
   else if(date > todayStr) errors.push("La date ne peut pas être dans le futur.");
   if(!type) errors.push("Choisis le type de séance.");
-  if(!(durationMin>0)) errors.push("Indique la durée en minutes.");
+  if(!(durationMin>0)) errors.push("Indique la durée de la séance.");
   else if(durationMin>720) errors.push("Plus de 12 heures : vérifie la durée.");
   if(running){
     if(!(distKm>0)) errors.push("Indique la distance en km.");
@@ -2536,11 +2536,24 @@ function validateManualRun(input, todayStr){
     const paceSec = durationMin*60/distKm;
     if(paceSec<150 || paceSec>1200){
       const m = Math.floor(paceSec/60), s = Math.round(paceSec%60);
-      warnings.push(`${String(distKm).replace(".",",")} km en ${Math.round(durationMin)} min, ça fait ${m}'${String(s).padStart(2,"0")}''/km. Ces chiffres sont-ils bons ?`);
+      warnings.push(`${String(distKm).replace(".",",")} km en ${Math.round(durationMin)} min, ça fait ${m}'${String(s).padStart(2,"0")}"/km : ces chiffres sont-ils bons ?`);
     }
   }
   return { errors, warnings };
 }
+// Durée saisie : « 45 » ou « 45,5 » (minutes), « 45:00 » (min:s), « 1:05:30 » (h:min:s). Renvoie des minutes, NaN si illisible.
+function parseDurationInput(text){
+  const t = String(text==null?"":text).trim().replace(",",".");
+  if(!t) return NaN;
+  if(!t.includes(":")){ const n = Number(t); return isFinite(n) && n>=0 ? n : NaN; }
+  const parts = t.split(":");
+  if(parts.length>3 || parts.some(p=>!/^\d+$/.test(p))) return NaN;
+  const nums = parts.map(Number);
+  const [h,m,sec] = nums.length===3 ? nums : [0, nums[0], nums[1]];
+  if(sec>=60 || (nums.length===3 && m>=60)) return NaN;
+  return h*60 + m + sec/60;
+}
+function formatDurationInput(min){ return min>0 ? fmtDur(Math.round(min*60)) : ""; }
 // Date de départ d'une saisie : heure donnée (HH:MM), sinon l'heure à laquelle
 // on saisit (évite la collision unique(user_id,start_date) entre deux saisies).
 function manualRunStartDate(dateStr, timeStr, now){

@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=74"></script>
+<script src="logic.js?v=75"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1076,7 +1076,7 @@ try {
   assertEqual("saisie : date future refusée", validateManualRun({date:"2026-10-03", type:"EF", distKm:5, durationMin:30}, T0).errors, ["La date ne peut pas être dans le futur."]);
   assertEqual("saisie : course sans distance refusée", validateManualRun({date:T0, type:"EF", distKm:"", durationMin:30}, T0).errors, ["Indique la distance en km."]);
   assertEqual("saisie : yoga sans distance accepté", validateManualRun({date:T0, type:"Yoga", distKm:"", durationMin:40}, T0), {errors:[], warnings:[]});
-  assertEqual("saisie : durée manquante refusée", validateManualRun({date:T0, type:"Yoga", distKm:"", durationMin:""}, T0).errors, ["Indique la durée en minutes."]);
+  assertEqual("saisie : durée manquante refusée", validateManualRun({date:T0, type:"Yoga", distKm:"", durationMin:""}, T0).errors, ["Indique la durée de la séance."]);
   assertEqual("saisie : FC hors plage refusée", validateManualRun({date:T0, type:"EF", distKm:5, durationMin:30, hr:300}, T0).errors, ["La fréquence cardiaque doit être entre 30 et 230."]);
   assertEqual("saisie : 50 km en 20 min -> doute d'allure", validateManualRun({date:T0, type:"EF", distKm:50, durationMin:20}, T0).warnings.length, 1);
   assertEqual("saisie : 5 km en 30 min -> pas de doute", validateManualRun({date:T0, type:"EF", distKm:5, durationMin:30}, T0).warnings.length, 0);
@@ -1451,6 +1451,21 @@ try {
   assertEqual("enregistrement : sans gêne, toutes les zones à 0", maxZoneIntensity(buildPainRatings({ sliders:{rpe:4}, gene:false, zones:{ genoux_g:{value:5} } })), 0);
   assertEqual("enregistrement : une zone notée sans moment = « pendant »", buildPainRatings({ sliders:{}, gene:true, zones:{ dos:{value:3} } }).dos_moment, ["pendant"]);
   assertEqual("enregistrement : gêne non répondue = null", buildPainRatings({ sliders:{}, gene:null, zones:{} }).gene, null);
+}
+
+
+// ---------- S7.5 : saisie de la durée ----------
+{
+  assertEqual("durée saisie : minutes entières", parseDurationInput("45"), 45);
+  assertEqual("durée saisie : virgule décimale", parseDurationInput("45,5"), 45.5);
+  assertEqual("durée saisie : min:s", parseDurationInput("45:00"), 45);
+  assertEqual("durée saisie : min:s avec secondes", parseDurationInput("38:30"), 38.5);
+  assertEqual("durée saisie : h:min:s", parseDurationInput("1:05:30"), 65.5);
+  assertEqual("durée saisie : secondes impossibles", parseDurationInput("45:75"), NaN);
+  assertEqual("durée saisie : minutes impossibles en h:min:s", parseDurationInput("1:75:00"), NaN);
+  assertEqual("durée saisie : texte illisible", [parseDurationInput("abc"), parseDurationInput(""), parseDurationInput("1:2:3:4"), parseDurationInput("-5")], [NaN, NaN, NaN, NaN]);
+  assertEqual("durée saisie : affichage d'une durée pré-remplie", [formatDurationInput(45), formatDurationInput(65.5), formatDurationInput(0)], ["45:00", "1:05:30", ""]);
+  assertEqual("saisie : le message de durée ne parle plus de minutes seulement", validateManualRun({date:"2026-10-01", type:"EF", distKm:"5", durationMin:NaN, hr:""}, "2026-10-05").errors, ["Indique la durée de la séance."]);
 }
 
 // ---------- S6.3a : géométrie des courbes ----------

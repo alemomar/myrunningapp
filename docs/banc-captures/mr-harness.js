@@ -170,7 +170,7 @@
     openManualRun(todayEasy.id);
     out.prefill = {...manualRunForm};
     out.sheetShown = !!document.querySelector("#sheetRoot .sheet");
-    manualRunSet("distKm","7.4"); manualRunSet("durationMin","44"); manualRunSet("hr","150");
+    manualRunSet("distKm","7.4"); manualRunSet("durationText","44:00"); manualRunSet("hr","150"); ratingSlide("rpe", 5); ratingGene(false);
     await saveManualRun();
     const ins = window.__calls.find(c=>c[0]==="insert"&&c[1]==="runs");
     out.insertRow = ins && ins[2];
@@ -179,14 +179,19 @@
     out.newRun = RUNS.filter(r=>r.appleType==="Manuel").map(r=>({id:r.id,type:r.type,dist:r.dist,dur:r.durationSec,includeInStats:r.includeInStats}));
     out.histText = document.getElementById("content").innerText.includes("Saisie à la main");
     out.deleteBefore = todayEasy.status;
-    await deleteRun(todayEasy.linked_run_id, "02 Oct");
+    await deleteRunNow(todayEasy.linked_run_id);
     out.afterDelete = {status:todayEasy.status, linked:todayEasy.linked_run_id, manualLeft:RUNS.filter(r=>r.appleType==="Manuel").length};
     // erreurs de validation
-    openManualRun(); manualRunSet("durationMin",""); await saveManualRun(); out.err = document.getElementById("mrError").textContent;
+    openManualRun(); manualRunSet("durationText",""); await saveManualRun(); out.err = document.getElementById("mrError").textContent;
   } else if(scen==="feuille_saisie"){
     // Feuille de saisie à la main ouverte (en-tête commun, poignée, ×) + message en bas
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayEasy, ...future]; activeTab="aujourdhui"; renderApp();
     openManualRun(todayEasy.id); toast("Séance enregistrée");
+  } else if(scen==="saisie_doublon"){
+    // N1b : ajout depuis l'historique, une course synchronisée existe déjà ce jour-là
+    celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayEasy, ...future]; show("progression"); openHistory();
+    const y = yest ? RUNS.find(r=>r.id===yest.id) : lastRun;
+    openManualRun(); manualRunSet("date", localDateStr(dateFromRun(y))); manualRunSet("type", y.type); manualRunSet("distKm","8"); manualRunSet("durationText", fmtDur(y.durationSec)); renderManualRunSheet();
   } else if(scen==="composants"){
     // Planche des composants de base du design (S1) : pastilles, boutons, champ, interrupteur, badge, types
     show("aujourdhui");
@@ -242,6 +247,22 @@
     const startRow = P(-63, {type:"EF", pace_zone:"easy", title:"Sortie easy", status:"done"});
     startRow.week_start_date = oldMonday;
     celebrationOff(); plannedSessions=[startRow, ...wkSessions, ...future]; openMonths=null; openManageRow=new Set(); show("progression");
+  } else if(scen==="historique" || scen==="historique_mois"){
+    celebrationOff(); plannedSessions=[...wkSessions, ...future]; show("progression"); openHistory();
+    if(scen==="historique_mois"){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); toggleHistMonth(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")); }
+  } else if(scen==="detail_seance" || scen==="detail_cardio" || scen==="detail_suppression"){
+    celebrationOff(); plannedSessions=[...wkSessions, ...future]; show("progression"); openHistory();
+    const ef = runningRuns.filter(r=>r.type==="EF" && r.hrSeries && r.hrSeries.length>10).slice(-1)[0] || lastRun;
+    if(scen==="detail_cardio") openHrDetail.add(ef.id);
+    openRunSheet(ef.id); if(scen==="detail_suppression") askDeleteRun();
+  } else if(/^ressenti/.test(scen)){
+    celebrationOff(); plannedSessions=[...wkSessions, ...future]; show("progression"); openHistory();
+    const tgt = runningRuns.filter(r=>r.type==="EF").slice(-1)[0] || lastRun;
+    tgt.painRatings = null;    // séance pas encore notée : le préremplissage ne reprend que fatigue, mental, respiration
+    openRatingSheet(tgt.id);
+    ratingSlide("rpe", 4);
+    if(scen==="ressenti_corps"){ ratingGene(true); ratingZone("genoux_g"); ratingZoneSlide(5); }
+    if(scen==="ressenti_dos"){ ratingGene(true); ratingView("back"); ratingZone("mollets_d"); ratingZoneSlide(7); }
   } else if(scen==="jauge_charge" || scen==="jauge_info"){
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; openMonths=null; openManageRow=new Set(); show("progression");
     openChargeSheet(); if(scen==="jauge_info") toggleChargeInfo();

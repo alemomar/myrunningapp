@@ -274,7 +274,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 
 .session-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
 .session-row:last-child{border-bottom:none}
-.session-dot{width:38px;height:38px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .session-main{flex:1;min-width:0}
 .session-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
 .session-sub{font-size:12px;color:var(--text-dim);margin-top:2px}
@@ -283,7 +282,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .session-hr{font-size:11px;color:var(--text-dim);margin-top:2px}
 
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
-.type-select{background:var(--surface-sunken);border:1px solid var(--line-field);color:var(--text);border-radius:var(--r-xs);padding:5px 6px;font-size:12px;font-weight:600;font-family:inherit;width:100%}
 .toggle{position:relative;width:42px;height:25px;flex-shrink:0}
 .toggle input{opacity:0;width:100%;height:100%;position:absolute;margin:0;cursor:pointer;z-index:1}
 .toggle .track{position:absolute;inset:0;background:var(--surface-control);border-radius:13px;transition:background var(--t-fast)}
@@ -292,19 +290,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .toggle input:checked ~ .thumb{background:var(--on-accent)}
 .toggle input:checked ~ .thumb{transform:translateX(17px)}
 
-.manage-row{padding:14px 0;border-bottom:1px solid var(--border)}
-.manage-row:last-child{border-bottom:none}
-.manage-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.manage-date{font-size:14px;font-weight:600;flex:1}
-.toggle-col{display:flex;flex-direction:column;align-items:center;gap:3px}
-.toggle-col span{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
-.delete-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--card-2);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
-.delete-btn:hover{background:var(--surface-control);color:var(--text);border-color:var(--line-field)}
-.manage-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-left:48px}
-.manage-field{display:flex;flex-direction:column;gap:4px}
-.field-lbl{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em}
-.field-val{font-size:13px;font-weight:600}
-.field-sub{font-size:10px;color:var(--text-faint)}
 .filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;overflow-x:auto;padding-bottom:2px}
 .flt{display:inline-flex;align-items:center;min-height:var(--chip-h);padding:0 14px;border-radius:var(--r-pill);font-size:13px;cursor:pointer;background:var(--surface-sunken);color:var(--text-3);border:1px solid var(--line-field);font-weight:500;white-space:nowrap}
 .flt.active{background:var(--select);border-color:var(--select);color:var(--on-accent);font-weight:600}
@@ -325,36 +310,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .soon-card h3{font-size:17px;font-weight:700;margin-bottom:8px}
 .soon-card p{font-size:13px;color:var(--text-dim);line-height:1.6;max-width:320px;margin:0 auto}
 
-.pain-row{padding:10px 0;border-bottom:1px solid var(--border)}
-.pain-row:last-child{border-bottom:none}
-.pain-row-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-.pain-row-top .lbl{font-size:13px;color:var(--text)}
-.pain-row-top .val{font-size:13px;font-weight:700;min-width:20px;text-align:right}
-.pain-row input[type="range"],.zone-row input[type="range"]{width:100%;accent-color:var(--select);height:20px}
-.scale-ticks{display:flex;justify-content:space-between;margin-top:1px}
-.scale-ticks span{font-size:9px;color:var(--text-faint);width:12px;text-align:center;font-variant-numeric:tabular-nums}
-.pain-scale{display:flex;justify-content:space-between;gap:10px;margin-top:2px}
-.pain-scale span{font-size:10px;color:var(--text-faint);line-height:1.3;max-width:47%}
-.body-map-wrap{display:flex;gap:16px;align-items:flex-start;margin-top:4px}
-.body-svg{flex-shrink:0}
-/* Téléphone : la silhouette (257 px fixes) ne laisse pas de place au panneau
-   de détail à côté d'elle (il ne restait qu'une trentaine de pixels, curseurs
-   coupés) -> le panneau passe dessous, pleine largeur. */
-@media (max-width:560px){
-  .body-map-wrap{flex-direction:column;align-items:center;gap:10px}
-  .zone-rows{width:100%;align-self:stretch;padding-top:0;grid-template-columns:1fr}
-}
-.body-svg .zone{cursor:pointer;transition:opacity .15s,filter .15s}
-.body-svg .zone:hover{opacity:.8}
-.body-svg .zone.active{filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 4px #fff)}
-.zone-rows{flex:1;min-width:0;padding-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(max(150px,32%),1fr));gap:0 16px;align-content:start}
-.zone-placeholder{grid-column:1/-1;font-size:12px;color:var(--text-faint);padding:10px 0}
-.zone-row{padding:4px 0;border-bottom:1px solid var(--border)}
-.session-pick{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
-.session-pick:last-child{border-bottom:none}
-.session-pick .rated{color:var(--accent);font-size:11px;font-weight:600}
-.month-sep{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text);padding:18px 0 8px;margin-bottom:4px;border-bottom:1px solid var(--border)}
-.month-sep:first-child{padding-top:0}
 
 /* Programme : calendrier semaine (colonnes) / mois (empilement de
    plateaux-semaine, un par semaine du mois affiché) — les 7 jours
@@ -646,6 +601,152 @@ button.pg-rec-row{cursor:pointer}
 @keyframes ringFill{from{stroke-dasharray:0 100}}
 @keyframes cgMark{from{left:0}}
 @keyframes cgReveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+/* Feuille de détail d'une séance (S7, design 7s) et Détail cardio V2 */
+.rs-card{background:var(--surface);border-radius:var(--r-lg);padding:14px 16px;margin:14px 0}
+.rs-card .sc-metrics{margin:0}
+.rs-field{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.rs-field .l{font-size:12.5px;color:var(--text-2)}
+.rs-select{position:relative}
+.rs-select select{appearance:none;-webkit-appearance:none;width:100%;height:48px;padding:0 40px 0 36px;border-radius:var(--r-md);background:var(--surface-sunken);border:1px solid var(--line-field);color:var(--text);font:inherit;font-size:16px;cursor:pointer}
+.rs-select i{position:absolute;left:14px;top:19px;width:10px;height:10px;border-radius:3px;pointer-events:none}
+.rs-select svg{position:absolute;right:14px;top:16px;color:var(--text-muted);pointer-events:none}
+.rs-hint{font-size:12px;color:var(--text-muted)}
+.rs-row{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:48px;margin-top:14px;padding-top:6px;border-top:1px solid var(--line)}
+.rs-row .t{font-size:14.5px}
+.rs-row .h{font-size:12px;color:var(--text-muted);margin-top:2px}
+.rs-record{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--r-md);background:var(--accent-soft);font-size:14.5px;font-weight:600;margin-top:14px}
+.rs-record svg{color:var(--accent);flex:none}
+.rs-legs{display:flex;gap:8px;margin-top:6px}
+.rs-actions{margin-top:16px}
+.cd-row{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 4px;margin-top:10px;border:none;border-top:1px solid var(--line);background:none;color:var(--text);font:inherit;font-size:14px;cursor:pointer;text-align:left}
+.cd-row .chev{color:var(--text-muted);display:flex}
+.cd-row .tag{margin-left:auto;margin-right:8px;font-size:11.5px;color:var(--attention)}
+.cd-card{display:flex;flex-direction:column;gap:14px;padding:4px 0 6px}
+.cd-curve svg{display:block;overflow:visible}
+.cd-curve text{fill:var(--text-muted);font-size:10.5px;font-family:var(--font-text);font-variant-numeric:tabular-nums}
+.cd-zone{display:grid;grid-template-columns:54px 1fr 54px;gap:10px;align-items:center;font-size:12.5px}
+.cd-zone .bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.cd-zone .bar i{display:block;height:100%}
+.cd-zone .z{display:flex;align-items:center;gap:6px;color:var(--text-2)}
+.cd-zone .z i{width:8px;height:8px;border-radius:50%;flex:none}
+.cd-zone .t{text-align:right;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.cd-pace{display:flex;gap:18px}
+.cd-pace .k{font-size:11px;color:var(--text-muted)}
+.cd-pace .v{font:700 20px var(--font-display)}
+.cd-note{font-size:12px;color:var(--text-muted);line-height:1.45}
+.cd-flag{padding:10px 12px;border-radius:var(--r-sm);background:var(--attention-bg);box-shadow:inset 0 0 0 1px var(--attention-line);font-size:12.5px;line-height:1.4}
+.cd-flag button{margin-top:8px}
+.confirm-back{position:fixed;inset:0;z-index:320;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px}
+.confirm-card{width:100%;max-width:420px;background:#24272B;border-radius:var(--r-xl);padding:18px 16px 14px;box-shadow:var(--shadow-lift);display:flex;flex-direction:column;gap:14px}
+.confirm-card h2{font:700 20px/1.15 var(--font-display);text-transform:uppercase}
+.confirm-card p{font-size:14px;line-height:1.4;color:var(--text-2)}
+.confirm-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.confirm-btns button{height:44px;border:none;border-radius:22px;color:var(--text);font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;background:var(--surface-control)}
+.confirm-btns button.go{background:#3A3D42}
+/* Feuille de ressenti (S7, design 7a) */
+.rt-block{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.rt-top{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px}
+.rt-top b{font:700 17px var(--font-display);color:var(--text)}
+.rt-top b.none{color:var(--text-faint)}
+.rt-ends{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--text-muted)}
+.rt-range{-webkit-appearance:none;appearance:none;width:100%;height:28px;margin:0;background:none;cursor:pointer;--p:0%}
+.rt-range::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(to right,var(--select) var(--p),var(--line-field) var(--p))}
+.rt-range::-moz-range-track{height:6px;border-radius:3px;background:var(--line-field)}
+.rt-range::-moz-range-progress{height:6px;border-radius:3px;background:var(--select)}
+.rt-range::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;border-radius:50%;background:var(--select);border:none;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.rt-range::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--select);border:none;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.rt-range:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.rt-pills{display:flex;flex-wrap:wrap;gap:8px}
+.rt-pill{min-width:44px;height:40px;padding:0 14px;border-radius:20px;border:1px solid var(--line-field);background:var(--surface-sunken);color:var(--text);font:inherit;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.rt-pill[aria-pressed="true"]{background:var(--select);border-color:var(--select);color:var(--on-accent)}
+.rt-sep{height:1px;background:var(--line);margin:18px 0 14px}
+.rt-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface-sunken);border-radius:var(--r-sm);padding:3px;margin:10px 0}
+.rt-seg button{height:36px;border:none;border-radius:9px;background:none;color:var(--text-muted);font:inherit;font-size:14px;cursor:pointer}
+.rt-seg button[aria-pressed="true"]{background:var(--select);color:var(--on-accent);font-weight:600}
+.rt-body{display:flex;justify-content:center}
+.rt-body svg{display:block;width:100%;max-height:300px}
+.rt-body .zone{cursor:pointer}
+.rt-cap{font-size:12.5px;color:var(--text-muted);text-align:center;margin:8px 0 2px}
+.rt-legend{display:flex;justify-content:center;gap:14px;font-size:12px;color:var(--text-2);margin:6px 0 12px}
+.rt-legend span{display:flex;align-items:center;gap:6px}
+.rt-legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.rt-zone{background:var(--surface-sunken);border-radius:var(--r-md);padding:14px;display:flex;flex-direction:column;gap:12px;margin-bottom:6px}
+.rt-zone .hd{display:flex;justify-content:space-between;align-items:center}
+.rt-zone .nm{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600}
+.rt-zone .nm i{width:10px;height:10px;border-radius:50%}
+.rt-zone .x{border:none;background:none;color:var(--text-muted);cursor:pointer;display:flex;padding:6px}
+.rt-err{font-size:13px;font-weight:600;min-height:0;margin-top:12px}
+/* Saisie à la main (S7, N1) et cartes de rattachement / fusion (N2, N5) */
+.ms-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-md);background:var(--surface-sunken);font-size:13.5px;color:var(--text-2);margin-bottom:6px}
+.ms-link svg{color:var(--accent);flex:none}
+.ms-alert{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r-lg);background:var(--attention-bg);box-shadow:inset 0 0 0 1px var(--attention-line);font-size:14px;line-height:1.4;margin-top:12px}
+.ms-alert svg{color:var(--attention);flex:none;margin-top:1px}
+.btn-ghost{width:100%;height:48px;margin-top:6px;border:none;border-radius:24px;background:none;color:var(--text-2);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.ac-card{background:var(--surface);border-radius:var(--r-xl);padding:18px 16px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:14px}
+.ac-head{display:flex;align-items:center;gap:10px}
+.ac-head .ic{width:32px;height:32px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center}
+.ac-title{font:700 23px/1.15 var(--font-display);text-transform:uppercase}
+.ac-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ac-tile{background:var(--surface-sunken);border-radius:var(--r-md);padding:10px 12px;min-width:0}
+.ac-tile .k{font-size:11px;color:var(--text-muted);text-transform:uppercase}
+.ac-tile .v{font:700 22px var(--font-display);text-transform:uppercase}
+.ac-opts{display:flex;flex-direction:column;gap:8px}
+.ac-opt{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 12px;border-radius:var(--r-md);background:var(--surface-sunken);box-shadow:inset 0 0 0 1.5px transparent;border:none;color:inherit;font:inherit;text-align:left;cursor:pointer;width:100%}
+.ac-opt[aria-checked="true"]{background:var(--accent-soft);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.ac-opt .rd{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--text-faint);display:flex;align-items:center;justify-content:center;flex:none}
+.ac-opt[aria-checked="true"] .rd{box-shadow:inset 0 0 0 2px var(--accent)}
+.ac-opt[aria-checked="true"] .rd::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.ac-opt .n{font-size:15px;font-weight:600}
+.ac-opt .d{font-size:12.5px;color:var(--text-muted)}
+.ac-notice{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-md);background:var(--surface);font-size:13.5px;line-height:1.4;color:var(--text-2);margin-bottom:14px}
+.ac-notice>svg{color:var(--text-muted);flex:none;margin-top:1px}
+.ac-notice span{flex:1}
+.ac-notice button{border:none;background:none;color:var(--text-muted);cursor:pointer;padding:0;display:flex;flex:none}
+.ac-ask{background:var(--surface);border-radius:var(--r-xl);padding:16px;margin-bottom:14px;display:flex;flex-direction:column;gap:12px}
+.ac-ask .q{font-size:15px;font-weight:600}
+.ac-ask p{font-size:14px;line-height:1.45;color:var(--text-2)}
+.ac-pair{display:flex;gap:8px}
+.ac-pair>div{flex:1;background:var(--surface-sunken);border-radius:var(--r-md);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ac-pair .k{font-size:11px;letter-spacing:.1em;color:var(--text-muted);text-transform:uppercase}
+.ac-pair .v{font:700 19px var(--font-display)}
+.ac-pair .s{font-size:12px;color:var(--text-3)}
+.ac-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ac-btns button{height:44px;border:none;border-radius:22px;background:var(--surface-control);color:var(--text);font:inherit;font-size:14.5px;font-weight:600;cursor:pointer}
+.ac-btns button.main{background:var(--select);color:var(--on-accent)}
+/* Historique (S7, design 7g) */
+.page-back{width:36px;height:36px;margin:-4px 4px -4px -8px;border:none;border-radius:50%;background:none;color:var(--text);display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;cursor:pointer}
+.page-action.outline{background:none;box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent);font-size:13px}
+.hs-filters{display:flex;gap:8px;align-items:center;margin-bottom:14px}
+.hs-filters .seg{flex:1;margin:0;padding:3px;border-radius:var(--r-sm);background:var(--surface-sunken);gap:4px}
+.hs-filters .seg button{height:34px;border-radius:9px;font-size:13px}
+.hs-type{position:relative;flex:none}
+.hs-type select{appearance:none;-webkit-appearance:none;height:40px;padding:0 30px 0 12px;border-radius:var(--r-sm);background:var(--surface-sunken);border:1px solid var(--line-field);color:var(--text);font:inherit;font-size:13px;cursor:pointer;max-width:130px}
+.hs-type svg{position:absolute;right:10px;top:13px;color:var(--text-muted);pointer-events:none}
+.hs-card{background:var(--surface);border-radius:var(--r-xl);padding:12px 16px 8px;margin-bottom:12px}
+.hs-head{display:flex;justify-content:space-between;align-items:baseline;padding-bottom:6px}
+.hs-head .t{font:700 17px var(--font-display);text-transform:uppercase}
+.hs-head .s{font-size:12.5px;color:var(--text-muted)}
+.hs-over{font-size:11px;letter-spacing:.14em;color:var(--text-muted);padding:6px 4px 8px;text-transform:uppercase}
+.hs-month{background:var(--surface);border-radius:var(--r-xl);padding:6px 16px 10px;margin-bottom:12px}
+.hs-mh{display:flex;justify-content:space-between;align-items:center;min-height:44px;width:100%;padding:0 4px;border:none;background:none;color:inherit;font:inherit;cursor:pointer;text-align:left}
+.hs-mh .t{display:flex;align-items:center;gap:8px;font:700 18px var(--font-display);text-transform:uppercase}
+.hs-mh .t svg{color:var(--text-muted)}
+.hs-mh .s{font-size:12.5px;color:var(--text-muted)}
+.hs-row{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;min-height:60px;padding:6px 0;width:100%;border:none;border-top:1px solid var(--surface-control);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.hs-row .ic{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center}
+.hs-row .mid{min-width:0;display:flex;flex-direction:column;gap:1px}
+.hs-row .l1{display:flex;align-items:center;gap:8px}
+.hs-row .l1 b{font-size:15px;font-weight:600}
+.hs-row .l1 span{font-size:12.5px;color:var(--text-muted)}
+.hs-row .l2{font-size:12.5px;color:var(--text-2)}
+.hs-row .rec{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--accent);margin-top:2px}
+.hs-row .man{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text-muted)}
+.hs-row .end{display:flex;align-items:center;gap:6px;color:var(--text-faint)}
+.hs-pill{height:22px;min-width:22px;padding:0 7px;border-radius:11px;box-sizing:border-box;background:var(--line);color:var(--text-2);font:600 11.5px/22px var(--font-text);text-align:center}
+.hs-pill.high{background:var(--attention);color:var(--on-accent)}
+.hs-pill.todo{background:none;box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent);padding:0 8px;display:flex;align-items:center}
+.hs-empty{font-size:13px;color:var(--text-muted);padding:14px 4px}
+@media (prefers-reduced-motion: no-preference){ .hs-mbody{animation:expandIn .2s ease-out} }
 /* Graphiques de Progression (S6.3, design 6) */
 .pc{gap:22px;padding:20px 16px 18px}
 .pc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
@@ -727,7 +828,6 @@ button.pg-rec-row{cursor:pointer}
 .sheet .field{flex-direction:column;align-items:stretch;gap:6px;background:none;border:none;padding:0;min-height:0}
 .sheet .field input.sheet-input{flex:none;background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-md);padding:9px 14px;outline:none;transition:border-color var(--t-fast)}
 .sheet .field input.sheet-input:focus{border-color:var(--select)}
-.sheet .type-select{min-height:var(--tap-min);font-size:16px;font-weight:500;padding:0 12px;border-radius:var(--r-md)}
 .sheet-input{background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-sm);color:var(--text);font-size:16px;min-height:var(--tap-min);padding:9px 12px;font-family:inherit;box-sizing:border-box}
 </style>
 </head>
@@ -766,12 +866,9 @@ button.pg-rec-row{cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="logic.js?v=74"></script>
+<script src="logic.js?v=75"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-// Graphiques : même police que le texte (par défaut Chart.js prend Helvetica).
-if(window.Chart){ Chart.defaults.font.family = getComputedStyle(document.documentElement).getPropertyValue("--font-text").trim() || "sans-serif"; }
 
 // Couleurs par type (D24, design v48). Écrites en hexadécimal, équivalents exacts des
 // --type-* du design (oklch) : plusieurs gabarits ajoutent un suffixe de transparence
@@ -837,6 +934,8 @@ const ICONS = {
   chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`,
   arrowRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`,
+  link: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  pencil: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>`,
   history: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>`,
   info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`,
   trophy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`,
@@ -968,7 +1067,7 @@ function initialActiveTab(){
 function persistActiveTab(){
   try{ localStorage.setItem("mra_activeTab", activeTab); }catch(e){}
 }
-let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=initialActiveTab(), activeFilter="Tous", charts=[], activeGoalSlot="principal";
+let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=initialActiveTab(), activeGoalSlot="principal";
 let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = null, restingHrUpdatedAt = null, restingHrIsManual = false, avatarUrl = null;
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let onboardingCompletedAt = null;
@@ -1006,15 +1105,8 @@ const WELLBEING_EXTRA=[
   ["mental","Mental","Bien dans ma tête, motivé","Difficile de me motiver"],
   ["respiration","Respiration","Je respire très facilement","Beaucoup de difficulté à respirer"],
 ];
-// RPE (Borg CR-10) : séparé de WELLBEING_EXTRA à dessein — contrairement à
-// fatigue/mental/respiration, qui varient peu d'une séance à l'autre et se
-// préremplissent depuis la dernière notation, la difficulté perçue est
-// propre à CHAQUE séance et ne doit jamais se préremplir (voir
-// prefillRatings, qui ne boucle que sur WELLBEING_EXTRA). Sert au calcul
-// Session-RPE (charge = durée × RPE) du futur onglet Programme.
-const SESSION_RPE=[
-  ["rpe","Difficulté perçue (RPE)","Repos total","Effort maximal"],
-];
+// La difficulté perçue (RPE, Borg CR-10) est propre à CHAQUE séance et ne se préremplit jamais (voir prefillRatings,
+// qui ne boucle que sur WELLBEING_EXTRA) ; elle sert à la charge (durée × RPE).
 const TABS=[
   {key:"aujourdhui", label:"Aujourd'hui", icon:"sun"},
   {key:"programme", label:"Programme", icon:"calendar"},
@@ -1107,21 +1199,6 @@ window.dismissPainPrompt = (id) => {
   list.push(id);
   localStorage.setItem("dismissedPainPrompts", JSON.stringify(list));
   setTimeout(()=>renderContent(), 380);
-};
-window.goRateSession = (id) => {
-  activeTab = "progression";
-  persistActiveTab();
-  // Ouvre le mois de la séance et sa ligne dans l'historique, où se trouve
-  // le formulaire de notation.
-  const r = RUNS.find(x=>x.id===id);
-  if(r){
-    if(openMonths===null) openMonths = new Set();
-    openMonths.add(`${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`);
-    openManageRow.add(id);
-  }
-  renderTabs();
-  renderContent();
-  setTimeout(()=>document.getElementById("hist_"+id)?.scrollIntoView({behavior:"smooth", block:"center"}), 150);
 };
 // Rappel léger (pas de vraie notification push, ça demanderait une infra
 // serveur qu'on n'a pas) : "tu n'as pas couru depuis X jours" (seuil 5
@@ -1685,60 +1762,81 @@ window.setLegsFocused = async (id, value) => {
    programme, etc.) ne la réinitialisent pas. */
 let manualRunForm = null;
 const MANUAL_RUN_TYPES = SESSION_TYPES_DONE;
+// N1a « J'ai fait cette séance » (séance prévue : date, type, distance et durée préremplis) et N1b « Ajouter une séance
+// réalisée » (rien de prérempli). Le ressenti se remplit dans la même feuille (difficulté, gêne ou douleur, carte du corps).
+// Un doublon possible ou des chiffres surprenants s'affichent dans la feuille (carte violette) : ils ne bloquent pas.
 window.openManualRun = (sessionId) => {
   const todayStr = localDateStr(new Date());
   const s = sessionId ? plannedSessions.find(p=>p.id===sessionId) : null;
-  let durationMin = "";
-  if(s && s.target_duration_min) durationMin = String(Math.round(s.target_duration_min));
-  else if(s && s.target_distance_km && s.target_pace_sec_per_km) durationMin = String(Math.round(s.target_distance_km*s.target_pace_sec_per_km/60));
+  let durationMin = 0;
+  if(s && s.target_duration_min) durationMin = Math.round(s.target_duration_min);
+  else if(s && s.target_distance_km && s.target_pace_sec_per_km) durationMin = Math.round(s.target_distance_km*s.target_pace_sec_per_km/60);
   manualRunForm = {
     sessionId: s ? s.id : null,
     date: s ? (s.planned_date <= todayStr ? s.planned_date : todayStr) : todayStr,
     type: s && MANUAL_RUN_TYPES.includes(s.type) ? s.type : "EF",
-    distKm: s && s.target_distance_km ? String(s.target_distance_km) : "",
-    durationMin, hr:"", time:"", error:"", saving:false,
+    distKm: s && s.target_distance_km ? String(s.target_distance_km).replace(".",",") : "",
+    durationText: formatDurationInput(durationMin), hr:"", error:"", saving:false,
+    rating: { ...newRatingState(null), sliders:{ rpe:null } },
   };
   renderManualRunSheet();
 };
-window.closeManualRun = () => {
-  manualRunForm = null;
-  refreshSheet();
-};
-window.manualRunSet = (field, value) => { if(manualRunForm) manualRunForm[field] = value; };
+window.closeManualRun = () => { manualRunForm = null; refreshSheet(); };
+window.manualRunSet = (field, value) => { if(manualRunForm){ manualRunForm[field] = value; manualRunForm.error = ""; if(field==="date" || field==="durationText") manualRunRefreshAlert(); } };
 window.manualRunSetType = (value) => { manualRunSet("type", value); renderManualRunSheet(); };
+function manualRunInput(f){
+  return { date:f.date, type:f.type, distKm:String(f.distKm).replace(",","."), durationMin:parseDurationInput(f.durationText), hr:f.hr, time:"" };
+}
+// Doute à afficher dans la feuille : doublon (même jour, même nature, durée proche) ou chiffres surprenants.
+function manualRunAlert(f){
+  const input = manualRunInput(f);
+  if(!(input.durationMin>0) || !/^\d{4}-\d{2}-\d{2}$/.test(f.date||"")) return null;
+  const dup = findLikelyDuplicateRun(RUNS.map(r=>({ id:r.id, date:localDateStr(dateFromRun(r)), type:r.type, durationSec:r.durationSec })), { date:f.date, type:f.type, durationSec:input.durationMin*60 });
+  if(dup) return { kind:"dup", text:"Une course synchronisée existe déjà ce jour-là, c'est peut-être la même.", runId:dup.id };
+  const v = validateManualRun(input, localDateStr(new Date()));
+  if(!v.errors.length && v.warnings.length) return { kind:"pace", text:v.warnings[0] };
+  return null;
+}
+function manualRunAlertHTML(al){ return al ? `<div class="ms-alert" role="status">${icon("alert",17)}<span>${escHtml(al.text)}</span></div>` : ""; }
+function manualRunButtonsHTML(al, saving){
+  return `<button type="button" class="btn-primary" id="mrSave" style="margin-top:16px" ${saving?"disabled":""} onclick="saveManualRun()">${al?"Enregistrer quand même":"Enregistrer"}</button>
+    ${al && al.kind==="dup" ? `<button type="button" class="btn-ghost" onclick="manualRunSeeDup('${al.runId}')">Voir la course synchronisée</button>` : ""}`;
+}
+// Met à jour la carte de doute et les boutons pendant la frappe, sans redessiner la feuille (le focus reste dans le champ).
+function manualRunRefreshAlert(){
+  const f = manualRunForm; if(!f) return;
+  const al = manualRunAlert(f);
+  const box = document.getElementById("mrAlert"), btns = document.getElementById("mrBtns");
+  if(box) box.innerHTML = manualRunAlertHTML(al);
+  if(btns) btns.innerHTML = manualRunButtonsHTML(al, f.saving);
+}
+window.manualRunSeeDup = (id) => { manualRunForm = null; openRunSheet(id); };
 function renderManualRunSheet(){
   const root = document.getElementById("sheetRoot");
   const f = manualRunForm;
   if(!f){ root.innerHTML = ""; return; }
   const running = isRunningRunType(f.type);
   const linked = f.sessionId ? plannedSessions.find(p=>p.id===f.sessionId) : null;
+  const al = manualRunAlert(f), c = TC[f.type]||TC.Other;
+  const linkTxt = linked ? `${sessionSmallTitle(linked)} · ${dayLabelShort(new Date(linked.planned_date+"T00:00:00"))}` : "";
   root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeManualRun()">
-    <div class="sheet" role="dialog" aria-modal="true" aria-label="Séance faite sans montre">
-      ${sheetHeadHTML("Séance faite sans montre", "closeManualRun()")}
-      <div class="chart-hint" style="margin-top:0">${linked?`Pour « ${escHtml(linked.title)} ». `:""}Ce que tu indiques compte comme une séance synchronisée : historique, stats, charge d'entraînement.</div>
-      <div class="sheet-row">
-        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">Date</span>
-          <input class="sheet-input" type="date" max="${localDateStr(new Date())}" value="${f.date}" oninput="manualRunSet('date',this.value)"></div>
-        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">Heure de départ (facultatif)</span>
-          <input class="sheet-input" type="time" value="${f.time}" oninput="manualRunSet('time',this.value)"></div>
+    <div class="sheet psheet" role="dialog" aria-modal="true" aria-label="${linked?"J'ai fait cette séance":"Ajouter une séance réalisée"}">
+      ${sheetHeadHTML(linked ? "J'ai fait cette séance" : "Ajouter une séance réalisée", "closeManualRun()")}
+      ${linked ? `<div class="ms-link">${icon("link",15)}<span>Liée à ta séance prévue : ${escHtml(linkTxt)}</span></div>` : ""}
+      <div class="ps-grid">
+        <div><label class="l" for="mr_date">Date</label><input class="sheet-input" id="mr_date" type="date" max="${localDateStr(new Date())}" value="${f.date}" oninput="manualRunSet('date',this.value)"></div>
+        <div><label class="l" for="mr_type">Type</label><div class="rs-select"><i style="background:${c}"></i><select id="mr_type" onchange="manualRunSetType(this.value)">${MANUAL_RUN_TYPES.map(t=>`<option value="${t}"${t===f.type?" selected":""}>${escHtml(sessionTypeLabel(t))}</option>`).join("")}</select>${icon("chevronDown",16)}</div></div>
       </div>
-      <div class="sheet-row">
-        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">Type de séance</span>
-          <select class="type-select" onchange="manualRunSetType(this.value)">${MANUAL_RUN_TYPES.map(t=>`<option value="${t}" ${t===f.type?"selected":""}>${t==="Other"?"Autre":t}</option>`).join("")}</select></div>
+      <div id="mrAlert">${manualRunAlertHTML(al)}</div>
+      <div class="ps-grid">
+        <div><label class="l" for="mr_dist">Distance${running?"":" · facultatif"}</label><div class="ps-unit"><input class="sheet-input" id="mr_dist" type="text" inputmode="decimal" value="${escHtml(f.distKm)}" oninput="manualRunSet('distKm',this.value)"><span>km</span></div></div>
+        <div><label class="l" for="mr_dur">Durée</label><div class="ps-unit"><input class="sheet-input" id="mr_dur" type="text" inputmode="numeric" placeholder="45:00" value="${escHtml(f.durationText)}" oninput="manualRunSet('durationText',this.value)"><span style="font-size:11.5px">h:min:s</span></div></div>
       </div>
-      <div class="sheet-row">
-        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">Distance${running?"":" (facultatif)"}</span>
-          <div style="display:flex;align-items:center;gap:4px"><input class="sheet-input" type="number" inputmode="decimal" min="0" step="0.01" style="width:90px" value="${f.distKm}" oninput="manualRunSet('distKm',this.value)"><span style="font-size:12px;color:var(--text-dim)">km</span></div></div>
-        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">Durée</span>
-          <div style="display:flex;align-items:center;gap:4px"><input class="sheet-input" type="number" inputmode="numeric" min="1" step="1" style="width:80px" value="${f.durationMin}" oninput="manualRunSet('durationMin',this.value)"><span style="font-size:12px;color:var(--text-dim)">min</span></div></div>
-        <div class="field" style="margin-bottom:0"><span style="font-size:12px;color:var(--text-dim)">FC moyenne (facultatif)</span>
-          <div style="display:flex;align-items:center;gap:4px"><input class="sheet-input" type="number" inputmode="numeric" min="30" max="230" step="1" style="width:80px" value="${f.hr}" oninput="manualRunSet('hr',this.value)"><span style="font-size:12px;color:var(--text-dim)">bpm</span></div></div>
-      </div>
-      <div id="mrError" role="alert" style="font-size:13px;font-weight:600;color:var(--text);margin-top:12px;min-height:0">${escHtml(f.error)}</div>
-      <div style="display:flex;gap:8px;margin-top:14px">
-        <button class="btn-primary" style="margin-top:0" id="mrSave" ${f.saving?"disabled":""} onclick="saveManualRun()">Enregistrer</button>
-        <button class="btn-secondary" onclick="closeManualRun()">Annuler</button>
-      </div>
+      <div class="ps-grid" style="grid-template-columns:1fr"><div><label class="l" for="mr_hr">FC moyenne <span style="color:var(--text-muted)">· facultatif</span></label><div class="ps-unit"><input class="sheet-input" id="mr_hr" type="text" inputmode="numeric" value="${escHtml(f.hr)}" oninput="manualRunSet('hr',this.value)"><span>bpm</span></div></div></div>
+      <div class="rs-hint" style="margin-top:12px">Elle apparaîtra avec l'étiquette « Saisie à la main ». Pour corriger une erreur, supprime-la puis ressaisis-la.</div>
+      ${running ? `<div class="rt-sep"></div><div class="pg-over">Ton ressenti</div>${ratingFormHTML(f.rating, false)}` : ""}
+      <div class="ps-err" id="mrError" role="alert">${escHtml(f.error)}</div>
+      <div id="mrBtns">${manualRunButtonsHTML(al, f.saving)}</div>
     </div>
   </div>`;
 }
@@ -1747,21 +1845,26 @@ window.saveManualRun = async () => {
   if(!f || f.saving) return;
   const showError = (msg) => { f.error = msg; const el = document.getElementById("mrError"); if(el) el.textContent = msg; };
   const todayStr = localDateStr(new Date());
-  const { errors, warnings } = validateManualRun(f, todayStr);
+  const input = manualRunInput(f);
+  const { errors } = validateManualRun(input, todayStr);
   if(errors.length){ showError(errors.join(" ")); return; }
-  const dup = findLikelyDuplicateRun(
-    RUNS.map(r=>({ id:r.id, date:localDateStr(dateFromRun(r)), type:r.type, durationSec:r.durationSec })),
-    { date:f.date, type:f.type, durationSec:Number(f.durationMin)*60 });
-  if(dup && !confirm("Une séance du même type existe déjà ce jour-là (peut-être synchronisée depuis ta montre) : c'est peut-être la même. L'ajouter quand même ?")) return;
-  for(const w of warnings){ if(!confirm(w)) return; }
   f.saving = true;
   const saveBtn = document.getElementById("mrSave"); if(saveBtn) saveBtn.disabled = true;
   const { data:{user} } = await supa.auth.getUser();
-  if(!user){ f.saving = false; showError("Session expirée : reconnecte-toi."); return; }
-  const { data, error } = await supa.from("runs").insert(manualRunRow(f, user.id, new Date())).select("id").single();
+  if(!user){ f.saving = false; if(saveBtn) saveBtn.disabled = false; showError("Tu n'es plus connecté : reconnecte-toi."); return; }
+  // Pas d'heure de départ à saisir : on prend l'heure de la saisie (le jour choisi) ; deux saisies à la même seconde se décalent d'une seconde.
+  const rated = isRunningRunType(f.type) && f.rating.sliders.rpe!=null;
+  const ratings = rated ? buildPainRatings({ sliders:f.rating.sliders, gene:f.rating.gene, zones:f.rating.zones }) : null;
+  let data = null, error = null;
+  for(let attempt=0; attempt<3; attempt++){
+    const row = manualRunRow(input, user.id, new Date(Date.now()+attempt*1000));
+    if(ratings) row.pain_ratings = ratings;
+    ({ data, error } = await supa.from("runs").insert(row).select("id").single());
+    if(!error || error.code!=="23505") break;
+  }
   if(error){
     f.saving = false; if(saveBtn) saveBtn.disabled = false;
-    showError(error.code==="23505" ? "Une séance existe déjà à cette minute : change l'heure de départ." : "Erreur d'enregistrement : "+error.message);
+    showError("Pas enregistrée, vérifie ta connexion.");
     return;
   }
   const newId = data.id, sessionId = f.sessionId;
@@ -1774,8 +1877,8 @@ window.saveManualRun = async () => {
     if(run) await applyGuidedTestResult(run);
   }
   await runProgramMaintenance(); // rapproche aussi les autres séances prévues du même jour
-  const run = RUNS.find(r=>r.id===newId);
-  if(run && run.includeInStats) goRateSession(newId); else renderContent();
+  renderContent();
+  painFollowUpToast(ratings || {}, "Séance enregistrée.");
 };
 /* ---------- Fusion saisie à la main / course synchronisée (chantier 3, Q2) ----------
    Quand la montre synchronise la course qu'on avait saisie à la main, la
@@ -1816,25 +1919,21 @@ async function mergeManualRuns(){
 function mergeNoticeCardHTML(){
   const notices = lsJson("mra_mergeNotices", []);
   if(!notices.length) return "";
-  return `<div class="card" role="status" style="border-color:rgba(198,244,50,0.4);background:var(--accent-dim)">
-    ${notices.map(n=>`<div style="font-size:13px;line-height:1.5">On a remplacé ta saisie du ${escHtml(n.label)} par la course synchronisée depuis ta montre.</div>`).join("")}
-    <button class="btn-secondary" style="margin-top:10px" onclick="dismissMergeNotices()">Compris</button>
-  </div>`;
+  return notices.map(n=>`<div class="ac-notice" role="status">${icon("refresh",16)}<span>On a remplacé ta saisie du ${escHtml(n.label)} par la course reçue d'Apple Santé. Ta notation et tes notes sont gardées.</span><button type="button" aria-label="Fermer" onclick="dismissMergeNotices()">${icon("x",15)}</button></div>`).join("");
 }
 window.dismissMergeNotices = () => { lsSetJson("mra_mergeNotices", []); renderContent(); };
+// Doute (N5) : les deux séances côte à côte ; « Oui » garde celle d'Apple Santé et y reporte ressenti et notes.
 function mergeAskCardHTML(){
   const { ask } = matchManualRuns(manualMergeRuns(), lsJson("mra_notSamePairs", []));
   if(!ask.length) return "";
   const m = RUNS.find(r=>r.id===ask[0].manualId), s = RUNS.find(r=>r.id===ask[0].syncedId);
   if(!m || !s) return "";
-  const desc = (r) => `${r.dist>0?String(r.dist.toFixed(1)).replace(".",",")+" km, ":""}${Math.round(r.durationSec/60)} min`;
-  return `<div class="card" style="border-color:var(--attention-line);background:var(--attention-bg)">
-    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Est-ce la même séance ?</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ta saisie du ${escHtml(m.label)} (${desc(m)}) et la course synchronisée depuis ta montre (${desc(s)}) ont l'air proches. Si c'est la même, on garde celle de la montre et on y reporte ton ressenti.</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn-primary" style="margin-top:0" onclick="mergeSame('${m.id}','${s.id}')">Oui, c'est la même</button>
-      <button class="btn-secondary" onclick="mergeNotSame('${m.id}','${s.id}')">Non, ce sont deux séances</button>
-    </div>
+  const title = (r) => `${sessionTypeLabel(r.type)}${r.dist>0?" · "+fmtDec(r.dist,1)+" km":""}`;
+  const pair = (k, r) => `<div><div class="k">${k}</div><div class="v">${escHtml(title(r))}</div><div class="s">${Math.round(r.durationSec/60)} min</div></div>`;
+  return `<div class="ac-ask"><div class="q">Est-ce la même séance ?</div>
+    <p>Une course est arrivée d'Apple Santé le même jour qu'une séance saisie à la main.</p>
+    <div class="ac-pair">${pair("Saisie à la main", m)}${pair("Apple Santé", s)}</div>
+    <div class="ac-btns"><button type="button" class="main" onclick="mergeSame('${m.id}','${s.id}')">Oui, garder Apple Santé</button><button type="button" onclick="mergeNotSame('${m.id}','${s.id}')">Non, ce sont 2 séances</button></div>
   </div>`;
 }
 window.mergeSame = async (manualId, syncedId) => {
@@ -1856,6 +1955,9 @@ function unlinkedRunDatesThisWeek(){
   return runningRuns.filter(r=>!runIsLinked(r.id) && sessionCategory({type:r.type})==="run" && daysBetween(monday, localDateStr(dateFromRun(r)))>=0)
     .map(r=>localDateStr(dateFromRun(r))).sort();
 }
+// Rattachement (N2) : jusqu'à 3 séances proposées (±3 jours), la plus probable cochée d'avance.
+let attachChoice = {};   // id de la sortie → id de la séance cochée
+window.selectAttach = (runId, plannedId) => { attachChoice[runId] = plannedId; renderContent(); };
 function attachCardHTML(){
   const todayStr = localDateStr(new Date());
   const dismissed = new Set(lsJson("mra_notLinked", []));
@@ -1864,17 +1966,15 @@ function attachCardHTML(){
   for(const r of recent){
     const cands = attachCandidates({ id:r.id, date:localDateStr(dateFromRun(r)), type:r.type, distKm:r.dist }, plannedSessions);
     if(!cands.length) continue;
-    const desc = `${r.dist>0?String(r.dist.toFixed(1)).replace(".",",")+" km, ":""}${Math.round(r.durationSec/60)} min`;
-    return `<div class="card" style="border-color:var(--attention-line);background:var(--attention-bg)">
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Cette sortie correspond à une séance prévue ?</div>
-      <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px">Ta sortie du ${escHtml(r.label)} (${desc}) n'est liée à aucune séance du programme. Si elle remplace l'une d'elles, elle comptera comme faite.</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        ${cands.map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-          <div style="font-size:13px;min-width:0"><div style="font-weight:600">${escHtml(p.title)}</div><div style="font-size:12px;color:var(--text-dim)"><span style="text-transform:capitalize">${dayLabelShort(new Date(p.planned_date+"T00:00:00"))}</span>${p.target_distance_km?" · "+String(p.target_distance_km).replace(".",",")+" km":""}${p.status==="missed"?" · à replacer":""}</div></div>
-          <button class="btn-secondary" style="flex-shrink:0;width:auto;padding:8px 12px" onclick="attachRun('${r.id}','${p.id}')">Oui, c'est celle-là</button>
-        </div>`).join("")}
-        <button class="btn-secondary" onclick="notLinked('${r.id}')">Non, c'était une sortie en plus</button>
-      </div>
+    const chosen = cands.some(p=>p.id===attachChoice[r.id]) ? attachChoice[r.id] : cands[0].id;
+    const tile = (k, v) => `<div class="ac-tile"><div class="k">${k}</div><div class="v">${escHtml(v)}</div></div>`;
+    return `<div class="ac-card">
+      <div class="ac-head"><div class="ic">${icon("link",17)}</div><span class="pg-over">Sortie de ${escHtml(dayLabelShort(dateFromRun(r)))}</span></div>
+      <div class="ac-title">Cette sortie correspond à une séance prévue ?</div>
+      <div class="ac-tiles">${tile("Distance", r.dist>0 ? fmtDec(r.dist,1)+" km" : "—")}${tile("Durée", r.dur)}${tile("Allure", r.allure ? fmtA(r.allure) : "—")}</div>
+      <div class="ac-opts" role="radiogroup" aria-label="Séance prévue">${cands.map(p=>`<button type="button" role="radio" class="ac-opt" aria-checked="${p.id===chosen}" onclick="selectAttach('${r.id}','${p.id}')"><span class="rd"></span><span style="min-width:0"><div class="n">${escHtml(sessionSmallTitle(p))}</div><div class="d">Prévue ${escHtml(dayLabelShort(new Date(p.planned_date+"T00:00:00")))}${p.status==="missed"?" · à replacer":""}</div></span></button>`).join("")}</div>
+      <button type="button" class="btn-primary" style="margin-top:0" onclick="attachRun('${r.id}','${chosen}')">Oui, c'est celle-là</button>
+      <button type="button" class="btn-ghost" style="margin-top:0" onclick="notLinked('${r.id}')">Non, c'était une sortie en plus</button>
     </div>`;
   }
   return "";
@@ -1889,7 +1989,7 @@ window.attachRun = async (runId, plannedId) => {
     status:"done", linked_run_id:runId, planned_date:newDate,
     week_start_date:localDateStr(mondayOf(new Date(newDate+"T00:00:00"))), updated_at:new Date().toISOString(),
   }).eq("id", plannedId);
-  if(error){ alert("Erreur : "+error.message); return; }
+  if(error){ toast("Pas enregistré, vérifie ta connexion."); return; }
   await loadData();
   const updated = plannedSessions.find(x=>x.id===plannedId);
   if(updated && updated.generation_reason==="guided_test") await applyGuidedTestResult(r);
@@ -1899,30 +1999,6 @@ window.notLinked = (runId) => {
   lsSetJson("mra_notLinked", [...lsJson("mra_notLinked", []), runId].slice(-100));
   renderContent();
 };
-window.deleteRun = async (id, label) => {
-  // Une séance prévue liée à cette course repasse "à faire" / "à replacer"
-  // (sinon elle resterait "faite" sans course derrière).
-  const linked = plannedSessions.filter(p=>p.linked_run_id===id && p.status==="done");
-  const note = linked.length ? ` La séance prévue « ${linked[0].title} » repassera à faire.` : "";
-  if(!confirm(`Supprimer définitivement la séance du ${label} ? Cette action est irréversible.${note}`)) return;
-  const { error } = await supa.from("runs").delete().eq("id", id);
-  if(error){ alert("Erreur de suppression : "+error.message); return; }
-  const todayStr = localDateStr(new Date());
-  for(const p of linked){
-    await supa.from("planned_sessions").update({status:plannedStatusAfterRunDeleted(p, todayStr), linked_run_id:null, updated_at:new Date().toISOString()}).eq("id", p.id);
-  }
-  await refreshAfterEdit();
-};
-function readPainForm(prefix){
-  const ratings={};
-  [...SESSION_RPE, ...WELLBEING_EXTRA, ...BODY_ZONES].forEach(([key])=>{ ratings[key]=parseInt(document.getElementById(`${prefix}_${key}`).value,10); });
-  BODY_ZONES.forEach(([key])=>{ ratings[`${key}_moment`] = document.getElementById(`${prefix}_${key}_moment`).value; });
-  const noteVal = document.getElementById(`${prefix}_note`).value;
-  ratings.note = noteVal ? parseInt(noteVal,10) : null;
-  const geneVal = document.getElementById(`${prefix}_gene`).value;
-  ratings.gene = geneVal==="1" ? true : geneVal==="0" ? false : null;
-  return ratings;
-}
 // Valeurs de la dernière séance notée (plus de check-in général indépendant
 // — uniquement la notation par séance désormais).
 function lastKnownRatings(){
@@ -1944,16 +2020,6 @@ function prefillRatings(existingRatings){
   WELLBEING_EXTRA.forEach(([key])=>{ if(last[key]!=null) prefill[key]=last[key]; });
   return prefill;
 }
-window.saveSessionRating = async (id) => {
-  const ratings = readPainForm(`sess_${id}`);
-  if(!(await updateRun(id, { pain_ratings: ratings }))) return;
-  // Laisse l'animation de confirmation le temps de se voir avant que
-  // refreshAfterEdit() ne reconstruise le DOM en dessous (sinon elle
-  // disparaît instantanément, invisible pour l'utilisateur).
-  flashSaved(`sessRatingSaved_${id}`);
-  await new Promise(r=>setTimeout(r, 550));
-  await refreshAfterEdit();
-};
 window.logout = async () => {
   await supa.auth.signOut();
   document.getElementById("appView").style.display="none";
@@ -2187,17 +2253,7 @@ function recordsCardHTML(){
   </div>`;
 }
 window.scrollToCard = (id) => { document.getElementById(id)?.scrollIntoView({ behavior: prefersReducedMotion()?"auto":"smooth", block:"start" }); };
-window.goToHistory = () => scrollToCard("histCard");
-// Une ligne de record ouvre la séance dans l'historique (l'historique devient un écran à part en S7).
-window.openHistoryRun = (id) => {
-  const r = RUNS.find(x=>x.id===id);
-  if(!r) return;
-  const key = `${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`;
-  if(openMonths===null) openMonths = new Set();
-  openMonths.add(key); openManageRow.add(id);
-  renderContent();
-  setTimeout(()=>scrollToCard("hist_"+id), 120);
-};
+window.goToHistory = () => openHistory();
 
 // ---------- Graphiques de Progression (S6.3, design 6) : SVG maison ----------
 // Courbes dans le temps (allure EF, fractionné, efficience) : période, progression, ligne du coach, curseur qui
@@ -2487,6 +2543,246 @@ document.addEventListener("keydown", (e)=>{
   else if(e.key==="End"){ e.preventDefault(); selectChart(k,m.nav.length-1); }
 });
 
+// ---------- Historique : écran à part (design 7g) ----------
+// « Cette semaine » toujours dépliée avec son total, puis « Plus ancien » : les mois à déplier. Filtres Tout / Courses / Autres + type.
+let historyOpen = false, historyCat = "all", historyType = "all", openHistMonths = new Set();
+window.openHistory = () => { historyOpen = true; historyCat = "all"; historyType = "all"; openHistMonths = new Set(); renderContent(); window.scrollTo({ top:0 }); };
+window.closeHistory = () => { historyOpen = false; renderContent(); window.scrollTo({ top:0 }); };
+window.setHistoryCat = (c) => { historyCat = c; historyType = "all"; renderContent(); };
+window.setHistoryType = (t) => { historyType = t; renderContent(); };
+window.toggleHistMonth = (key) => { if(openHistMonths.has(key)) openHistMonths.delete(key); else openHistMonths.add(key); renderContent(); };
+function historyRowHTML(r, holders){
+  const c = TC[r.type]||TC.Other;
+  const pill = difficultyPill(r), badge = recordBadgeText(r.id, holders);
+  const pillHTML = !pill ? "" : pill.kind==="todo" ? `<span class="hs-pill todo" aria-label="${pill.aria}">${pill.text}</span>` : `<span class="hs-pill${pill.high?" high":""}" aria-label="${pill.aria}">${pill.text}</span>`;
+  const day = dayLabelShort(dateFromRun(r));
+  return `<button type="button" class="hs-row" onclick="openRunSheet('${r.id}')">
+    <span class="ic" style="background:${c}24;color:${c}">${icon(TICON[r.type]||"activity",18)}</span>
+    <span class="mid"><span class="l1"><b>${escHtml(sessionTypeLabel(r.type))}</b><span>${escHtml(day)}</span></span><span class="l2">${escHtml(historyRowInfo(r))}</span>
+      ${badge?`<span class="rec">${icon("trophy",12)}${escHtml(badge)}</span>`:""}${r.appleType===MANUAL_RUN_MARKER?`<span class="man">${icon("pencil",11)}Saisie à la main</span>`:""}</span>
+    <span class="end">${pillHTML}${icon("chevronRight",16)}</span>
+  </button>`;
+}
+function historyScreenHTML(){
+  const holders = recordHolders(runningRuns.map(runAsRecord));
+  const byId = new Map(RUNS.map(r=>[r.id, r]));
+  const list = RUNS.filter(r=>historyMatches(r, historyCat, historyType)).map(r=>({ id:r.id, ts:dateFromRun(r).getTime(), type:r.type, distKm:r.dist||0 }));
+  const sp = historySplit(list, localDateStr(new Date()));
+  const seg = [["all","Tout"],["runs","Courses"],["others","Autres"]].map(([k,l])=>`<button type="button" aria-pressed="${historyCat===k}" class="${historyCat===k?"active":""}" onclick="setHistoryCat('${k}')">${l}</button>`).join("");
+  const typeChoices = SESSION_TYPES_DONE.filter(t=>historyMatches({type:t}, historyCat, "all"));
+  const typeSel = `<label class="hs-type"><select aria-label="Filtrer par type" onchange="setHistoryType(this.value)"><option value="all">Type</option>${typeChoices.map(t=>`<option value="${t}"${historyType===t?" selected":""}>${escHtml(sessionTypeLabel(t))}</option>`).join("")}</select>${icon("chevronDown",14)}</label>`;
+  const rows = (g) => g.map(x=>historyRowHTML(byId.get(x.id), holders)).join("");
+  const week = `<div class="hs-card"><div class="hs-head"><span class="t">Cette semaine</span><span class="s">${escHtml(sp.thisWeek.text || "aucune séance")}</span></div>${rows(sp.thisWeek.runs)}</div>`;
+  const months = sp.months.length ? `<div class="hs-over">Plus ancien</div>` + sp.months.map(m=>{
+    const open = openHistMonths.has(m.key);
+    return `<div class="hs-month"><button type="button" class="hs-mh" aria-expanded="${open}" onclick="toggleHistMonth('${m.key}')"><span class="t">${icon(open?"chevronDown":"chevronRight",16)}${escHtml(m.label)}</span><span class="s">${m.runs.length} séance${m.runs.length>1?"s":""}</span></button>${open?`<div class="hs-mbody">${rows(m.runs)}</div>`:""}</div>`;
+  }).join("") : "";
+  const none = !list.length ? `<div class="hs-empty">Aucune séance de ce type.</div>` : "";
+  return `<div class="hs-filters"><div class="seg" role="group" aria-label="Catégorie">${seg}</div>${typeSel}</div>${week}${months}${none}`;
+}
+
+// ---------- Feuille de détail d'une séance faite (design 7s) ----------
+// Carte de séance faite (chiffres + Détail cardio repliable), type, « Compter dans mes stats », ressenti ; « … » → Supprimer
+// avec confirmation (la séance prévue liée redevient « à faire » ou « à replacer »).
+let runSheet = null; // { id, menu, confirm }
+window.openRunSheet = (id) => { if(!RUNS.some(r=>r.id===id)) return; runSheet = { id, menu:false, confirm:false }; refreshSheet(); };
+window.closeRunSheet = () => { runSheet = null; refreshSheet(); };
+window.toggleRunMenu = () => { if(runSheet){ runSheet.menu = !runSheet.menu; refreshSheet(); } };
+window.askDeleteRun = () => { if(runSheet){ runSheet.menu = false; runSheet.confirm = true; refreshSheet(); } };
+window.cancelDeleteRun = () => { if(runSheet){ runSheet.confirm = false; refreshSheet(); } };
+async function deleteRunNow(id){
+  // Une séance prévue liée à cette course repasse « à faire » / « à replacer » (sinon elle resterait « faite » sans course derrière).
+  const linked = plannedSessions.filter(p=>p.linked_run_id===id && p.status==="done");
+  const { error } = await supa.from("runs").delete().eq("id", id);
+  if(error){ toast("Pas supprimée, vérifie ta connexion."); return false; }
+  const todayStr = localDateStr(new Date());
+  for(const p of linked){
+    await supa.from("planned_sessions").update({status:plannedStatusAfterRunDeleted(p, todayStr), linked_run_id:null, updated_at:new Date().toISOString()}).eq("id", p.id);
+  }
+  await refreshAfterEdit();
+  return true;
+}
+window.confirmDeleteRun = async () => {
+  if(!runSheet) return;
+  const id = runSheet.id;
+  if(!(await deleteRunNow(id))) return;
+  runSheet = null; refreshSheet();
+  toast("Séance supprimée.");
+};
+function renderRunSheet(){
+  const root = document.getElementById("sheetRoot");
+  const st = runSheet;
+  if(!st) return false;
+  const r = RUNS.find(x=>x.id===st.id);
+  if(!r){ runSheet = null; return false; }
+  const c = TC[r.type]||TC.Other, todayStr = localDateStr(new Date());
+  const effMaxHr = maxHr || estimatedMaxHr();
+  const recs = r.includeInStats ? runRecordLabels(r.id, recordHolders(runningRuns.map(runAsRecord))) : [];
+  const linked = plannedSessions.filter(p=>p.linked_run_id===r.id && p.status==="done");
+  const big = r.dist>0 ? { value:r.dist.toFixed(1).replace(".",","), unit:"km", note:"" } : { value:String(Math.round(r.durationSec/60)), unit:"min", note:"" };
+  const tiles = [scTile("Durée", r.dur)];
+  if(r.dist>0 && r.allure) tiles.push(scTile("Allure /km", fmtA(r.allure)));
+  const src = r.appleType===MANUAL_RUN_MARKER ? "Saisie à la main" : r.appleType ? `Reçue d'Apple Santé · reconnue comme « ${r.appleType} »` : "Reçue d'Apple Santé";
+  const legs = r.type==="Renfo" ? `<div class="rs-field"><span class="l">Ciblé jambes ?</span><div class="rs-legs"><button type="button" class="flt${r.legsFocused===true?" active":""}" onclick="setLegsFocused('${r.id}', true)">Oui</button><button type="button" class="flt${r.legsFocused===false?" active":""}" onclick="setLegsFocused('${r.id}', false)">Non</button></div></div>` : "";
+  const rated = !!(r.painRatings && r.painRatings.rpe!=null);
+  const menu = `<div class="menu-wrap"><button class="sheet-close" type="button" aria-label="Plus d'actions" aria-haspopup="menu" aria-expanded="${st.menu}" onclick="toggleRunMenu()">${icon("more",18)}</button>${st.menu?`<div class="menu-pop" role="menu"><button type="button" role="menuitem" class="danger" onclick="askDeleteRun()">Supprimer cette séance</button></div>`:""}</div>`;
+  const delInfo = { typeLabel:sessionTypeLabel(r.type), dateText:dayLabelShort(dateFromRun(r)), distKm:r.dist, linked: linked.length ? { status:plannedStatusAfterRunDeleted(linked[0], todayStr) } : null };
+  const confirm = st.confirm ? `<div class="confirm-back" onclick="if(event.target===this)cancelDeleteRun()"><div class="confirm-card" role="alertdialog" aria-modal="true" aria-label="Supprimer cette séance ?"><h2>Supprimer cette séance ?</h2><p>${escHtml(deleteRunText(delInfo))}</p><div class="confirm-btns"><button type="button" onclick="cancelDeleteRun()">Annuler</button><button type="button" class="go" onclick="confirmDeleteRun()">Supprimer</button></div></div></div>` : "";
+  root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeRunSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="${escHtml(sessionTypeLabel(r.type))}, ${escHtml(dayLabelShort(dateFromRun(r)))}">
+    <div class="sheet-head"><div><div class="sheet-overline">${escHtml(dayLabelShort(dateFromRun(r)))} · ${escHtml(r.time)}</div><div class="sheet-title">${escHtml(sessionTypeLabel(r.type))}</div></div>
+      <div style="display:flex;gap:6px">${menu}<button class="sheet-close" type="button" aria-label="Fermer" onclick="closeRunSheet()">${icon("x",16)}</button></div></div>
+    <div class="rs-card">${scMetricsHTML(big, tiles)}${cardioDetailBlockHTML(r, effMaxHr, restingHr || null)}</div>
+    <div class="rs-field"><label class="l" for="rs_type">Type de séance</label>
+      <div class="rs-select"><i style="background:${c}"></i><select id="rs_type" onchange="changeType('${r.id}', this.value)">${SESSION_TYPES_DONE.map(t=>`<option value="${t}"${t===r.type?" selected":""}>${escHtml(sessionTypeLabel(t))}</option>`).join("")}</select>${icon("chevronDown",16)}</div>
+      <div class="rs-hint">${escHtml(src)}</div></div>
+    ${legs}
+    <div class="rs-row"><div><div class="t">Compter dans mes stats</div><div class="h">Décoche si la séance est faussée (ex. montre oubliée en marche)</div></div>
+      <label class="toggle"><input type="checkbox" aria-label="Compter dans mes stats" ${r.includeInStats?"checked":""} onchange="toggleInclude('${r.id}', this.checked)"><span class="track"></span><span class="thumb"></span></label></div>
+    ${recs.map(x=>`<div class="rs-record">${icon("trophy",18)}<span>Record : ${escHtml(x.text)}</span></div>`).join("")}
+    ${r.includeInStats ? `<div class="rs-actions"><button type="button" class="btn-primary" onclick="openRatingSheet('${r.id}')">${rated?"Modifier mon ressenti":"Noter mon ressenti"}</button></div>` : ""}
+  </div></div>${confirm}`;
+  return true;
+}
+window.openHistoryRun = (id) => openRunSheet(id);
+// « Noter mon ressenti » depuis Aujourd'hui, Programme ou une saisie : la feuille 7a s'ouvre directement.
+window.goRateSession = (id) => openRatingSheet(id);
+
+// ---------- Feuille de ressenti (design 7a), la même partout ----------
+// Quatre curseurs toujours visibles (difficulté perçue, fatigue, mental, respiration), puis « Une gêne ou une douleur ? ».
+// Avec « Oui », la carte du corps s'ouvre : silhouette devant / derrière, fiche de la zone touchée (intensité, avant / pendant / après).
+// Le même formulaire sert dans la saisie à la main (difficulté + gêne seulement) : l'état vit dans ratingSheet ou dans manualRunForm.rating.
+let ratingSheet = null; // { id, ...état }
+const RATING_SLIDERS = [
+  { key:"rpe", label:"Difficulté perçue", lo:"Repos total", hi:"Effort maximal" },
+  { key:"fatigue", label:"Fatigue générale", lo:"Plein d'énergie", hi:"Complètement épuisé" },
+  { key:"mental", label:"Mental", lo:"Bien dans ma tête, motivé", hi:"Difficile de me motiver" },
+  { key:"respiration", label:"Respiration", lo:"Je respire très facilement", hi:"Beaucoup de difficulté à respirer" },
+];
+const MOMENT_CHOICES = [["avant","Avant"],["pendant","Pendant"],["apres","Après"]];
+const curRating = () => (typeof manualRunForm!=="undefined" && manualRunForm) ? manualRunForm.rating : ratingSheet;
+// État du formulaire : reprend la notation existante, sinon fatigue / mental / respiration de la dernière séance notée ; la difficulté
+// n'est jamais préremplie (propre à chaque séance).
+function newRatingState(painRatings){
+  const base = prefillRatings(painRatings);
+  const zones = {};
+  BODY_ZONE_KEYS.forEach(k=>{ zones[k] = { value:Number(base[k])||0, moments:zoneMoments(base[k+"_moment"]) }; });
+  const sliders = {};
+  RATING_SLIDERS.forEach(sl=>{ sliders[sl.key] = base[sl.key]!=null ? Number(base[sl.key]) : (sl.key==="rpe" ? null : 0); });
+  return { sliders, gene: base.gene===true ? true : base.gene===false ? false : null, zones, view:"front", sel:null };
+}
+window.openRatingSheet = (id) => {
+  const r = RUNS.find(x=>x.id===id);
+  if(!r) return;
+  ratingSheet = { id, ...newRatingState(r.painRatings), saving:false, error:"" };
+  refreshSheet();
+};
+window.closeRatingSheet = () => { ratingSheet = null; refreshSheet(); };
+const ratingClearError = () => { const st = curRating(); if(st) st.error = ""; const er = document.getElementById("rtError"); if(er) er.textContent = ""; };
+window.ratingSlide = (key, v) => {
+  const st = curRating(); if(!st) return;
+  st.sliders[key] = Number(v);
+  const val = document.getElementById("rt_v_"+key), inp = document.getElementById("rt_"+key);
+  if(val){ val.textContent = v; val.classList.remove("none"); }
+  if(inp) inp.style.setProperty("--p", (Number(v)/10*100)+"%");
+  ratingClearError();
+};
+window.ratingGene = (v) => { const st = curRating(); if(st){ st.gene = v; if(!v) st.sel = null; refreshSheet(); } };
+window.ratingView = (v) => { const st = curRating(); if(st){ st.view = v; st.sel = null; refreshSheet(); } };
+window.ratingZone = (key) => { const st = curRating(); if(st){ st.sel = key; refreshSheet(); } };
+window.ratingZoneClose = () => { const st = curRating(); if(st){ st.sel = null; refreshSheet(); } };
+window.ratingZoneSlide = (v) => {
+  const st = curRating(); if(!st || !st.sel) return;
+  const z = st.zones[st.sel], hadMoment = z.moments.length>0; z.value = Number(v);
+  if(z.value>0 && !hadMoment) z.moments = ["pendant"];
+  const val = document.getElementById("rt_zv"), inp = document.getElementById("rt_zone");
+  if(val) val.textContent = v;
+  if(inp) inp.style.setProperty("--p", (Number(v)/10*100)+"%");
+  const f = zoneFill(z.value), el = document.querySelector(`#rtBody [data-zone="${st.sel}"] ellipse.vis`);
+  if(el){ el.setAttribute("fill", f.fill); el.setAttribute("fill-opacity", f.opacity); el.setAttribute("stroke", z.value>0 ? f.stroke : "#4A4F55"); }
+  const dot = document.getElementById("rt_zdot"); if(dot) dot.style.background = z.value>0 ? f.fill : "var(--text-faint)";
+  ratingClearError();
+  if(z.value>0 && !hadMoment){ document.querySelectorAll("#rt_moments .rt-pill").forEach(b=>b.setAttribute("aria-pressed", b.textContent==="Pendant")); }
+};
+window.ratingMoment = (m) => {
+  const st = curRating(); if(!st || !st.sel) return;
+  const z = st.zones[st.sel], i = z.moments.indexOf(m);
+  if(i>=0) z.moments.splice(i,1); else z.moments.push(m);
+  document.querySelectorAll("#rt_moments .rt-pill").forEach(b=>{ const k = (MOMENT_CHOICES.find(x=>x[1]===b.textContent)||[])[0]; b.setAttribute("aria-pressed", z.moments.includes(k)); });
+};
+function ratingBodySVG(st){
+  const base = `<circle cx="100" cy="24" r="16" fill="#22252A"/><rect x="68" y="44" width="64" height="104" rx="26" fill="#22252A"/><rect x="44" y="52" width="18" height="96" rx="9" fill="#22252A"/><rect x="138" y="52" width="18" height="96" rx="9" fill="#22252A"/><rect x="68" y="140" width="28" height="154" rx="14" fill="#22252A"/><rect x="104" y="140" width="28" height="154" rx="14" fill="#22252A"/>`;
+  const zones = BODY_VIEWS[st.view].map(([key,cx,cy,rx,ry])=>{
+    const v = st.zones[key].value, f = zoneFill(v), sel = st.sel===key;
+    return `<g class="zone" data-zone="${key}" role="button" tabindex="0" aria-label="${escHtml(ZONE_FULL_NAMES[key])}${v>0?", intensité "+v:""}" onclick="ratingZone('${key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ratingZone('${key}')}">
+      <ellipse class="vis" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${f.fill}" fill-opacity="${f.opacity}" stroke="${v>0?f.stroke:"#4A4F55"}" stroke-width="${sel?2.5:1.5}"/>
+      <circle cx="${cx}" cy="${cy}" r="${Math.max(rx,ry)+7}" fill="transparent"/></g>`;
+  }).join("");
+  return `<svg viewBox="0 0 200 300" role="group" aria-label="Carte du corps, vue de ${st.view==="front"?"devant":"derrière"}">${base}${zones}</svg>`;
+}
+// Curseurs, question « gêne ou douleur », carte du corps. `full` : les 4 curseurs (feuille 7a) ou seulement la difficulté (saisie à la main).
+function ratingFormHTML(st, full){
+  const sliders = RATING_SLIDERS.filter(sl=>full || sl.key==="rpe").map(sl=>{
+    const v = st.sliders[sl.key], none = v==null;
+    return `<div class="rt-block"><div class="rt-top"><label for="rt_${sl.key}">${sl.label}</label><b id="rt_v_${sl.key}"${none?' class="none"':""}>${none?"—":v}</b></div>
+      <input type="range" class="rt-range" id="rt_${sl.key}" min="0" max="10" step="1" value="${none?0:v}" style="--p:${none?0:v*10}%" oninput="ratingSlide('${sl.key}', this.value)" aria-valuetext="${none?"pas encore choisie":v+" sur 10"}">
+      <div class="rt-ends"><span>0 · ${sl.lo}</span><span style="text-align:right">10 · ${sl.hi}</span></div></div>`;
+  }).join("");
+  const gene = `<div class="rt-block"><div class="rt-top"><span>Une gêne ou une douleur ?</span></div><div class="rt-pills">
+      <button type="button" class="rt-pill" aria-pressed="${st.gene===true}" onclick="ratingGene(true)">Oui</button>
+      <button type="button" class="rt-pill" aria-pressed="${st.gene===false}" onclick="ratingGene(false)">Non</button></div></div>`;
+  let body = "";
+  if(st.gene===true){
+    const sel = st.sel ? st.zones[st.sel] : null, f = sel ? zoneFill(sel.value) : null;
+    const card = sel ? `<div class="rt-zone"><div class="hd"><div class="nm"><i id="rt_zdot" style="background:${sel.value>0?f.fill:"var(--text-faint)"}"></i>${escHtml(ZONE_FULL_NAMES[st.sel])}</div><button type="button" class="x" aria-label="Fermer la fiche" onclick="ratingZoneClose()">${icon("x",16)}</button></div>
+      <div class="rt-block" style="margin-top:0"><div class="rt-top"><label for="rt_zone">Intensité</label><b id="rt_zv">${sel.value}</b></div>
+        <input type="range" class="rt-range" id="rt_zone" min="0" max="10" step="1" value="${sel.value}" style="--p:${sel.value*10}%" oninput="ratingZoneSlide(this.value)">
+        <div class="rt-ends"><span>0 · Aucune gêne</span><span>10 · Très intense</span></div></div>
+      <div class="rt-block" style="margin-top:0"><span style="font-size:12.5px;color:var(--text-2)">Quand ?</span><div class="rt-pills" id="rt_moments">${MOMENT_CHOICES.map(([k,l])=>`<button type="button" class="rt-pill" aria-pressed="${sel.moments.includes(k)}" onclick="ratingMoment('${k}')">${l}</button>`).join("")}</div></div></div>` : "";
+    body = `<div class="rt-sep"></div><div class="pg-over">Où as-tu mal ?</div>
+      <div class="rt-seg" role="group" aria-label="Vue"><button type="button" aria-pressed="${st.view==="front"}" onclick="ratingView('front')">Devant</button><button type="button" aria-pressed="${st.view==="back"}" onclick="ratingView('back')">Derrière</button></div>
+      <div class="rt-body" id="rtBody">${ratingBodySVG(st)}</div>
+      <div class="rt-cap">Touche une zone. Gauche / droite = les tiennes.</div>
+      <div class="rt-legend"><span><i style="background:#F2F3F0;opacity:.6"></i>1 à 5 : blanc</span><span><i style="background:var(--attention)"></i>6 et plus : violet (alerte)</span></div>${card}`;
+  }
+  return sliders + gene + body;
+}
+function renderRatingSheet(){
+  const root = document.getElementById("sheetRoot");
+  const st = ratingSheet;
+  if(!st) return false;
+  const r = RUNS.find(x=>x.id===st.id);
+  if(!r){ ratingSheet = null; return false; }
+  const overline = [sessionTypeLabel(r.type), dayLabelShort(dateFromRun(r)), r.dist>0 ? fmtDec(r.dist,1)+" km" : ""].filter(Boolean).join(" · ");
+  root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeRatingSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Ton ressenti">
+    ${sheetHeadHTML("Ton ressenti", "closeRatingSheet()", overline)}
+    ${ratingFormHTML(st, true)}
+    <div class="rt-err" id="rtError" role="alert">${escHtml(st.error)}</div>
+    <button type="button" class="btn-primary" style="margin-top:14px" ${st.saving?"disabled":""} onclick="saveRating()">Enregistrer</button>
+  </div></div>`;
+  return true;
+}
+// Après l'enregistrement d'une douleur de 6 ou plus : proposition d'adapter le programme (R6).
+function painFollowUpToast(ratings, extra){
+  if(maxZoneIntensity(ratings)>=6) toast("On te propose d'adapter ton programme.", { actionLabel:"Voir", onAction:()=>{ closeRunSheet(); setTab("programme"); }, ms:8000 });
+  else toast(extra || "Ressenti enregistré.");
+}
+window.saveRating = async () => {
+  const st = ratingSheet;
+  if(!st || st.saving) return;
+  const r = RUNS.find(x=>x.id===st.id);
+  const fail = (m) => { st.error = m; const el = document.getElementById("rtError"); if(el) el.textContent = m; };
+  if(st.sliders.rpe==null) return fail("Indique d'abord la difficulté perçue de cette séance.");
+  if(st.gene===null) return fail("Réponds à « Une gêne ou une douleur ? » : Oui ou Non.");
+  st.saving = true;
+  const ratings = buildPainRatings({ sliders:st.sliders, gene:st.gene, zones:st.zones }, r && r.painRatings);
+  const ok = await updateRun(st.id, { pain_ratings: ratings });
+  st.saving = false;
+  if(!ok) return;
+  ratingSheet = null;
+  await refreshAfterEdit(); refreshSheet();
+  painFollowUpToast(ratings);
+};
+
 // Feuille de la jauge de charge (4c) : barre à 3 zones, courbe des 8 dernières semaines, ligne du coach ; le « i » ouvre l'explication (D22, A7).
 let chargeSheet = null; // "gauge" | "info"
 window.openChargeSheet = () => { chargeSheet = "gauge"; playedChargeSheet = false; refreshSheet(); };
@@ -2540,7 +2836,6 @@ function renderChargeSheet(){
 
 
 
-function destroyCharts(){charts.forEach(c=>c.destroy());charts=[];}
 // Menu du bas. La barre est construite une fois ; les rendus suivants ne changent que les
 // états (onglet actif, point violet, noms accessibles) pour que la pilule citron glisse.
 function renderTabs(){
@@ -2628,20 +2923,20 @@ function runCountUps(){
 // redessiné en entier à chaque clic).
 let justOpenedKey = null;
 window.setTab=i=>{
+  if(i===activeTab && i==="progression" && historyOpen){ closeHistory(); return; }
   if(i===activeTab && !PROFIL_SECTIONS.includes(i)){ window.scrollTo({top:0,behavior:"smooth"}); return; }
-  destroyCharts();
+  historyOpen = false;
   countedValues = {}; animatedOnce = new Set();
   // "objectifs"/"compte" ne sont plus des onglets mais les deux sections de
   // Profil : les liens internes qui les nomment (setTab('objectifs')) restent valides.
   if(PROFIL_SECTIONS.includes(i)){ setProfilSectionState(i); i="profil"; }
   activeTab=i;persistActiveTab();renderTabs();renderContent();playViewTransition();window.scrollTo({top:0,behavior:"smooth"});
 };
-window.setProfilSection = (section) => { destroyCharts(); setProfilSectionState(section); renderContent(); playViewTransition(); window.scrollTo({top:0,behavior:"smooth"}); };
+window.setProfilSection = (section) => { setProfilSectionState(section); renderContent(); playViewTransition(); window.scrollTo({top:0,behavior:"smooth"}); };
 function profilSwitchHTML(){
   const chip = (key, label) => `<button class="flt${profilSection===key?" active":""}" onclick="setProfilSection('${key}')">${label}</button>`;
   return `<div class="card"><div class="filters" style="margin-bottom:0">${chip("objectifs","Objectifs")}${chip("compte","Mon compte")}</div></div>`;
 }
-window.setFilter=f=>{activeFilter=f;destroyCharts();renderContent();};
 
 
 
@@ -2662,28 +2957,6 @@ function monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr){
   });
   return Object.values(byMonth).sort((a,b)=>a.sortKey-b.sortKey);
 }
-function mkHrCurveChart(canvasId, hrSeries){
-  const grid="rgba(255,255,255,0.06)",tick="#A3A7AD",tbg="#17191C",tbr="rgba(255,255,255,0.1)",ttx="#F2F3F0";
-  const sorted = hrSeries.slice().sort((a,b)=>a.t-b.t);
-  const c = new Chart(document.getElementById(canvasId), {
-    type:'line',
-    data:{datasets:[{data:sorted.map(p=>({x:p.t,y:p.hr})), borderColor:"#ff375f", backgroundColor:"rgba(255,55,95,0.08)", fill:true, borderWidth:1.5, pointRadius:0, tension:0.25}]},
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}, tooltip:{backgroundColor:tbg,borderColor:tbr,borderWidth:1,titleColor:ttx,bodyColor:ttx,callbacks:{title:items=>fmtDur(items[0].parsed.x), label:ctx=>Math.round(ctx.parsed.y)+" bpm"}}},
-      scales:{
-        x:{type:'linear', ticks:{color:tick,font:{size:10},callback:v=>fmtDur(v)}, grid:{display:false}},
-        // Bornes fixes (100-190 bpm) plutôt qu'un auto-scale sur les données :
-        // sinon une séance EF tranquille (ex: 90-150 bpm) s'affiche collée en
-        // haut du graph, donnant l'impression trompeuse d'un effort proche du
-        // maximum alors que ce n'est pas le cas.
-        y:{min:100, max:190, ticks:{color:tick,font:{size:10},stepSize:30}, grid:{color:grid}},
-      }
-    }
-  });
-  charts.push(c);
-  return c;
-}
 
 
 function emptyState(title,sub,withSyncCta){
@@ -2691,321 +2964,60 @@ function emptyState(title,sub,withSyncCta){
   return `<div class="empty-state">${icon("runner",44)}<div class="title">${title}</div><div class="sub">${sub}</div>${cta}</div>`;
 }
 
-function painColor(v){
-  if(v<=3) return "#6fd98c"; // vert pâle
-  if(v<=5) return "#6cb8fa"; // bleu pâle
-  if(v<=7) return "#d29cf0"; // violet pâle
-  return "#ff8f7a"; // rouge orangé pâle
-}
-// Repères 0-10 alignés sous le curseur (mêmes proportions que le range
-// lui-même, qui fait toute la largeur) pour viser une valeur précise du
-// premier coup plutôt que de deviner où se trouve le chiffre voulu.
-function scaleTicksHTML(){
-  return `<div class="scale-ticks">${Array.from({length:11},(_,i)=>`<span>${i}</span>`).join("")}</div>`;
-}
-function painSliderRow(prefix, key, label, initial, lowLabel, highLabel){
-  const v = initial[key] ?? 0;
-  const c = painColor(v);
-  return `<div class="pain-row">
-    <div class="pain-row-top"><span class="lbl">${label}</span><span class="val" id="${prefix}_${key}_v" style="color:${c}">${v}</span></div>
-    <input type="range" min="0" max="10" value="${v}" id="${prefix}_${key}" style="accent-color:${c}"
-      oninput="const v=document.getElementById('${prefix}_${key}_v');v.textContent=this.value;const c=painColor(this.value);v.style.color=c;this.style.accentColor=c;">
-    ${scaleTicksHTML()}
-    ${lowLabel?`<div class="pain-scale"><span>${lowLabel}</span><span style="text-align:right">${highLabel}</span></div>`:""}
-  </div>`;
-}
-// Capsules arrondies posées sur un contour de corps discret (viewBox
-// 257x470) — le contour donne le repère visuel ("c'est un corps"), les
-// capsules sont les vraies cibles tactiles, plus grosses et plus espacées
-// qu'un simple trait. Les organes visibles de face (épaules, abdos,
-// psoas, bassin, cuisse, genoux, tibias, pied) restent posés directement
-// sur la silhouette, à la bonne hauteur anatomique (abdos entre buste et
-// bassin, pas au niveau des poumons). Ceux à l'opposé — dos, fessiers,
-// ischios, mollets, tendons — seraient au même endroit que leur organe
-// "de face" sur une silhouette qui ne montre que l'avant du corps ; leurs
-// capsules flottent donc à côté (offBody). Chaque zone paire a sa propre
-// clé gauche/droite (ex. cuisse_g/cuisse_d) — indépendantes l'une de
-// l'autre. Le schéma est volontairement plus grand que le strict
-// nécessaire (échelle ~1,35x) pour laisser de la place à l'étiquette de
-// chaque zone, affichée systématiquement, sans se marcher dessus.
-const BODY_ZONE_CAPS={
-  epaules_g:  {cx:81,  cy:73,  rx:12, ry:11},
-  epaules_d:  {cx:176, cy:73,  rx:12, ry:11},
-  dos:        {cx:38,  cy:122, rx:12, ry:32, offBody:true},
-  abdos:      {cx:128, cy:125, rx:20, ry:20, sixpack:true},
-  psoas_g:    {cx:105, cy:172, rx:9,  ry:15},
-  psoas_d:    {cx:151, cy:172, rx:9,  ry:15},
-  bassin:     {cx:128, cy:210, rx:32, ry:13},
-  fessiers_g: {cx:65,  cy:210, rx:11, ry:22, offBody:true},
-  fessiers_d: {cx:192, cy:210, rx:11, ry:22, offBody:true},
-  cuisse_g:   {cx:94,  cy:272, rx:11, ry:36},
-  cuisse_d:   {cx:162, cy:272, rx:11, ry:36},
-  ischios_g:  {cx:59,  cy:272, rx:11, ry:34, offBody:true},
-  ischios_d:  {cx:197, cy:272, rx:11, ry:34, offBody:true},
-  genoux_g:   {cx:90,  cy:338, rx:9,  ry:10},
-  genoux_d:   {cx:166, cy:338, rx:9,  ry:10},
-  tibias_g:   {cx:86,  cy:382, rx:9,  ry:19},
-  tibias_d:   {cx:170, cy:382, rx:9,  ry:19},
-  mollets_g:  {cx:54,  cy:382, rx:9,  ry:18, offBody:true},
-  mollets_d:  {cx:202, cy:382, rx:9,  ry:18, offBody:true},
-  tendons_g:  {cx:49,  cy:420, rx:8,  ry:9,  offBody:true},
-  tendons_d:  {cx:208, cy:420, rx:8,  ry:9,  offBody:true},
-  pied_g:     {cx:81,  cy:440, rx:16, ry:8},
-  pied_d:     {cx:176, cy:440, rx:16, ry:8},
-};
-// Version courte du nom, affichée sur le schéma (le nom complet reste
-// dans la liste à droite une fois la zone touchée) — sans indication
-// gauche/droite, déjà donnée par la position de la capsule.
-const ZONE_SHORT_LABEL={
-  epaules_g:"Épaule", epaules_d:"Épaule",
-  dos:"Dos", abdos:"Abdos",
-  psoas_g:"Psoas", psoas_d:"Psoas",
-  bassin:"Bassin",
-  fessiers_g:"Fessier", fessiers_d:"Fessier",
-  cuisse_g:"Cuisse", cuisse_d:"Cuisse",
-  ischios_g:"Ischio", ischios_d:"Ischio",
-  genoux_g:"Genou", genoux_d:"Genou",
-  tibias_g:"Tibia", tibias_d:"Tibia",
-  mollets_g:"Mollet", mollets_d:"Mollet",
-  tendons_g:"Tendon", tendons_d:"Tendon",
-  pied_g:"Pied", pied_d:"Pied",
-};
-// Tête + bras courts, décoratifs (pas des zones). Le tronc/jambes est un
-// tracé fermé séparé (sans manches) pour laisser de la place aux capsules
-// hors-corps sur les côtés ; les bras ne sont que deux courts traits
-// arrondis suggérant les épaules, plutôt qu'un bras entier jusqu'au poignet.
-const HEAD_CIRCLE = {cx:128, cy:35, r:22};
-const ARM_STUBS = [
-  "M105,62 Q81,68 76,84",
-  "M151,62 Q176,68 181,84",
-];
-// Contour du corps (tronc + jambes en un seul tracé fermé, sans manches),
-// dessiné par-dessus les capsules pour rester visible quel que soit le
-// recouvrement.
-const BODY_OUTLINE="M105,59 C101,81 99,115 97,148 C94,173 92,192 89,209 L84,310 L81,346 L76,405 C73,413 70,417 70,421 C70,428 72,432 73,435 L94,437 C96,432 94,423 92,416 L97,346 L100,310 L105,227 C108,213 109,209 111,205 L146,205 C147,209 148,213 151,227 L157,310 L159,346 L165,416 C162,423 161,432 162,437 L184,435 C185,432 186,428 186,421 C186,417 184,413 181,405 L176,346 L173,310 L167,209 C165,192 162,173 159,148 C158,115 155,81 151,59 C142,68 119,68 105,59 Z";
-const ZONE_NEUTRAL = "#48484c";
-// Moment de la douleur (4.5.c, CDC v2) : champ séparé par zone
-// (`${key}_moment`), distinct de l'intensité existante (`${key}`) pour ne
-// rien casser côté lecture ailleurs dans l'app (painColor, historique...).
-// "Pendant" par défaut — le cas le plus fréquent, modifiable en un clic.
-const MOMENT_OPTIONS = [["avant","Avant"],["pendant","Pendant"],["apres","Après"]];
-// Étiquette collée sous chaque capsule (nom court, systématique, dedans
-// comme dehors) — teinte claire pour rester lisible sur le fond sombre.
-function zoneLabelSVG(x, y, text){
-  return `<text x="${x}" y="${y}" text-anchor="middle" font-size="9" fill="#d1d1d6" style="pointer-events:none">${text}</text>`;
-}
-// Forme d'une zone : une simple ellipse pour la plupart des zones, sauf
-// l'abdos qui reçoit un petit motif "tablette de chocolat" (coutures en
-// couleur de fond sur un rectangle arrondi) pour se distinguer d'un coup
-// d'œil des autres capsules — toutes identiques sinon. Le remplissage
-// (unique classe "zone-fill", même sur plusieurs éléments) est ce que
-// bodyZoneSlide recolore au fil du curseur.
-function zoneShapeSVG(key, s, fill){
-  if(key === "abdos"){
-    const x=s.cx-s.rx, y=s.cy-s.ry, w=s.rx*2, h=s.ry*2;
-    const seam = (x1,y1,x2,y2)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#17191C" stroke-width="2"/>`;
-    return `<rect class="zone-fill" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="${fill}"/>
-      ${seam(s.cx, y+4, s.cx, y+h-4)}
-      ${seam(x+4, s.cy-s.ry/3, x+w-4, s.cy-s.ry/3)}
-      ${seam(x+4, s.cy+s.ry/3, x+w-4, s.cy+s.ry/3)}`;
-  }
-  return `<ellipse class="zone-fill" cx="${s.cx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}" fill="${fill}"/>`;
-}
-function bodyMapHTML(prefix, initial){
-  // Zones déjà notées (valeur > 0) : leur ligne reste visible d'entrée,
-  // pas la peine de retoucher la capsule pour la revoir.
-  const revealed = new Set(BODY_ZONES.filter(([key])=>(initial[key] ?? 0) > 0).map(([key])=>key));
-  const svgZones = BODY_ZONES.map(([key])=>{
-    const v = initial[key] ?? 0;
-    const s = BODY_ZONE_CAPS[key];
-    const fill = v>0 ? painColor(v) : ZONE_NEUTRAL;
-    const zoneLabel = zoneLabelSVG(s.cx, s.cy+s.ry+11, ZONE_SHORT_LABEL[key]);
-    return `<g class="zone" id="${prefix}_zone_${key}" onclick="bodyZoneTap('${prefix}','${key}')">${zoneShapeSVG(key,s,fill)}</g>${zoneLabel}`;
-  }).join("");
-  const rows = BODY_ZONES.map(([key,label])=>{
-    const v = initial[key] ?? 0;
-    const c = painColor(v);
-    const moment = initial[`${key}_moment`] || "pendant";
-    return `<div class="zone-row" id="${prefix}_${key}_row" style="display:${revealed.has(key)?"":"none"}">
-      <div class="pain-row-top"><span class="lbl">${label}</span><span class="val" id="${prefix}_${key}_v" style="color:${c}">${v}</span></div>
-      <input type="range" min="0" max="10" value="${v}" id="${prefix}_${key}" style="accent-color:${c}"
-        oninput="bodyZoneSlide('${prefix}','${key}',this.value)">
-      ${scaleTicksHTML()}
-      <div class="filters" style="margin-top:6px;margin-bottom:0" data-chipgroup="${prefix}_${key}_moment">
-        ${MOMENT_OPTIONS.map(([val,lbl])=>`<button type="button" class="flt${moment===val?" active":""}" data-value="${val}" onclick="setZoneMoment('${prefix}','${key}','${val}')">${lbl}</button>`).join("")}
-      </div>
-      <input type="hidden" id="${prefix}_${key}_moment" value="${moment}">
-    </div>`;
-  }).join("");
-  const decor = [
-    `<circle cx="${HEAD_CIRCLE.cx}" cy="${HEAD_CIRCLE.cy}" r="${HEAD_CIRCLE.r}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>`,
-    ...ARM_STUBS.map(d=>`<path d="${d}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"/>`),
-    `<path d="${BODY_OUTLINE}" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" pointer-events="none"/>`,
-  ].join("");
-  return `<div class="body-map-wrap">
-    <svg class="body-svg" width="257" height="470" viewBox="0 0 257 470">
-      ${svgZones}
-      ${decor}
-    </svg>
-    <div class="zone-rows">
-      <div class="zone-placeholder" id="${prefix}_zoneph" style="display:${revealed.size?"none":""}">Touche une zone sur le schéma</div>
-      ${rows}
-    </div>
-  </div>`;
-}
-// Chaque capsule touchée affiche sa ligne définitivement (au lieu de
-// remplacer la précédente) : on construit la liste des zones notées au
-// fur et à mesure des clics, plutôt que de perdre de vue une zone déjà
-// réglée dès qu'on en touche une autre. Seul le halo (zone en cours
-// d'édition) se déplace d'un clic à l'autre.
-window.setZoneMoment = (prefix, key, val) => {
-  document.getElementById(`${prefix}_${key}_moment`).value = val;
-  document.querySelectorAll(`[data-chipgroup="${prefix}_${key}_moment"] .flt`).forEach(b=>{ const on = b.dataset.value===val; b.classList.toggle("active", on); if(on) popChip(b); });
-};
-window.bodyZoneTap = (prefix, key) => {
-  const row = document.getElementById(`${prefix}_${key}_row`);
-  if(row) row.style.display = "";
-  BODY_ZONES.forEach(([k])=>{
-    const zone = document.getElementById(`${prefix}_zone_${k}`);
-    if(zone) zone.classList.toggle("active", k===key);
-  });
-  const ph = document.getElementById(`${prefix}_zoneph`);
-  if(ph) ph.style.display = "none";
-};
-window.bodyZoneSlide = (prefix, key, val) => {
-  const v = document.getElementById(`${prefix}_${key}_v`);
-  const input = document.getElementById(`${prefix}_${key}`);
-  const zone = document.getElementById(`${prefix}_zone_${key}`);
-  const c = painColor(val);
-  if(v){ v.textContent = val; v.style.color = c; }
-  if(input) input.style.accentColor = c;
-  if(zone){
-    const fill = val>0 ? c : ZONE_NEUTRAL;
-    zone.querySelectorAll(".zone-fill").forEach(e=>e.setAttribute("fill", fill));
-  }
-};
-// Format court par défaut (4.5.b, CDC v2) : note globale 1-5 + "une
-// gêne/douleur ?" (+ RPE, toujours demandé — voir
-// shouldShowDetailedRatingForm, logic.js). Le détaillé (fatigue/mental/
-// respiration + carte du corps) ne s'affiche que si la note est basse ou
-// qu'une gêne est signalée — jamais les deux formats affichés d'un bloc
-// comme avant. `updateRatingFormVisibility` bascule juste l'affichage du
-// bloc détaillé sans tout re-render, pour ne pas perdre une saisie en
-// cours sur un curseur.
-function painFormHTML(prefix, initial){
-  initial = initial || {};
-  const note = initial.note ?? null;
-  const gene = initial.gene===true ? true : initial.gene===false ? false : null;
-  const showDetailed = shouldShowDetailedRatingForm(note, gene);
-  return `
-    ${SESSION_RPE.map(([key,label,lo,hi])=>painSliderRow(prefix,key,label,initial,lo,hi)).join("")}
-    <div class="pain-row">
-      <div class="pain-row-top"><span class="lbl">Note globale de la séance</span></div>
-      <div class="filters" style="margin-bottom:0" data-chipgroup="${prefix}_note">
-        ${[1,2,3,4,5].map(n=>`<button type="button" class="flt${note===n?" active":""}" data-value="${n}" onclick="setRatingNote('${prefix}',${n})">${n}</button>`).join("")}
-      </div>
-    </div>
-    <div class="pain-row">
-      <div class="pain-row-top"><span class="lbl">Une gêne ou une douleur ?</span></div>
-      <div class="filters" style="margin-bottom:0" data-chipgroup="${prefix}_gene">
-        <button type="button" class="flt${gene===true?" active":""}" data-value="1" onclick="setRatingGene('${prefix}',true)">Oui</button>
-        <button type="button" class="flt${gene===false?" active":""}" data-value="0" onclick="setRatingGene('${prefix}',false)">Non</button>
-      </div>
-    </div>
-    <input type="hidden" id="${prefix}_note" value="${note??""}">
-    <input type="hidden" id="${prefix}_gene" value="${gene===true?"1":gene===false?"0":""}">
-    <div id="${prefix}_detailed" style="display:${showDetailed?"block":"none"}">
-      ${WELLBEING_EXTRA.map(([key,label,lo,hi])=>painSliderRow(prefix,key,label,initial,lo,hi)).join("")}
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);margin:14px 0 4px">Douleurs par zone</div>
-      ${bodyMapHTML(prefix, initial)}
-    </div>
-  `;
-}
-window.setRatingNote = (prefix, n) => {
-  document.getElementById(`${prefix}_note`).value = n;
-  document.querySelectorAll(`[data-chipgroup="${prefix}_note"] .flt`).forEach(b=>{ const on = Number(b.dataset.value)===n; b.classList.toggle("active", on); if(on) popChip(b); });
-  updateRatingFormVisibility(prefix);
-};
-window.setRatingGene = (prefix, val) => {
-  document.getElementById(`${prefix}_gene`).value = val ? "1" : "0";
-  document.querySelectorAll(`[data-chipgroup="${prefix}_gene"] .flt`).forEach(b=>{ const on = b.dataset.value===(val?"1":"0"); b.classList.toggle("active", on); if(on) popChip(b); });
-  updateRatingFormVisibility(prefix);
-};
-function updateRatingFormVisibility(prefix){
-  const noteVal = document.getElementById(`${prefix}_note`).value;
-  const note = noteVal ? parseInt(noteVal,10) : null;
-  const geneVal = document.getElementById(`${prefix}_gene`).value;
-  const gene = geneVal==="1" ? true : geneVal==="0" ? false : null;
-  const el = document.getElementById(`${prefix}_detailed`);
-  if(el) el.style.display = shouldShowDetailedRatingForm(note, gene) ? "block" : "none";
-}
 
 let openHrDetail = new Set();
 // Liste "Toutes les séances" repliée par défaut (date/type/km) : dépliée au
 // clic pour voir le détail complet (édition, cardio) — évite une liste très
 // longue de cartes toutes ouvertes en permanence.
-let openManageRow = new Set();
-window.toggleManageRow = (id) => {
-  if(openManageRow.has(id)) openManageRow.delete(id);
-  else { openManageRow.add(id); justOpenedKey = "mr_"+id; }
-  renderContent(); justOpenedKey = null;
-};
 // Mois repliés par défaut (sauf le plus récent) dans "Toutes les séances" :
 // null tant que non initialisé, pour ne calculer le mois le plus récent à
 // ouvrir qu'une fois, sans écraser les choix de l'utilisateur aux rendus
 // suivants (changement de filtre, ouverture d'une séance...).
-let openMonths = null;
-window.toggleMonthGroup = (key) => {
-  if(openMonths.has(key)) openMonths.delete(key);
-  else { openMonths.add(key); justOpenedKey = "mg_"+key; }
-  renderContent(); justOpenedKey = null;
-};
 // Vrai seulement au tout premier rendu du dashboard depuis l'ouverture de
 // l'app : l'animation de célébration de la carte "Dernière séance" ne doit
 // jouer qu'une fois, pas à chaque re-render (changement de filtre, etc.).
 window.toggleHrDetail = (id) => {
   if(openHrDetail.has(id)) openHrDetail.delete(id);
-  else openHrDetail.add(id);
-  renderContent();
+  else { openHrDetail.add(id); justOpenedKey = "hr_"+id; }
+  renderContent(); refreshSheet(); justOpenedKey = null;
 };
 
-function hrDetailHTML(r, effMaxHr, effRestingHr){
-  if(!r.hrSeries || r.hrSeries.length<2){
-    return `<div style="padding:8px 0 14px;font-size:12px;color:var(--text-dim)">Pas de détail FC pour cette séance — resynchronise-la depuis l'app pour le récupérer.</div>`;
-  }
-  if(!effMaxHr){
-    return `<div style="padding:8px 0 14px;font-size:12px;color:var(--text-dim)">Renseigne ta FC max (Profil › Mon compte) pour voir la répartition par zones.</div>`;
-  }
-  const {secs, defs} = computeHrZoneSeconds(r.hrSeries, effMaxHr, effRestingHr);
+// Courbe cardiaque (V2) : trait corail, limite EF (haut de la zone 2) en pointillés cyan. `series` : [{t (s), hr}].
+function hrCurveSVG(series, efLimit, W){
+  const pts = series.slice().sort((a,b)=>a.t-b.t);
+  const H = 130, l = 30, r = W-6, t = 10, b = 108;
+  const hrs = pts.map(p=>p.hr);
+  let lo = Math.min(...hrs, efLimit||Infinity), hi = Math.max(...hrs, efLimit||-Infinity);
+  lo = Math.floor((lo-5)/10)*10; hi = Math.ceil((hi+5)/10)*10;
+  const tmax = pts[pts.length-1].t || 1;
+  const X = (sec) => l + sec/tmax*(r-l), Y = (hr) => t + (hi-hr)/(hi-lo)*(b-t);
+  const ticks = niceTicks(lo, hi, 4, [5,10,20,25,50]).ticks;
+  const grid = ticks.map(v=>`<line x1="${l}" x2="${r}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="#26292E"/><text x="${l-6}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end">${v}</text>`).join("");
+  const line = pts.map(p=>`${X(p.t).toFixed(1)},${Y(p.hr).toFixed(1)}`).join(" ");
+  const area = `${X(pts[0].t).toFixed(1)},${b} ${line} ${X(tmax).toFixed(1)},${b}`;
+  const lim = efLimit ? `<line x1="${l}" x2="${r}" y1="${Y(efLimit).toFixed(1)}" y2="${Y(efLimit).toFixed(1)}" stroke="#44E7EF" stroke-width="1.2" stroke-dasharray="4 4"/><text x="${r}" y="${(Y(efLimit)-4).toFixed(1)}" text-anchor="end" style="fill:#44E7EF">limite EF ${efLimit} bpm</text>` : "";
+  const xl = [0, tmax/2, tmax].map((sec,i)=>`<text x="${X(sec).toFixed(1)}" y="124" text-anchor="${i===0?"start":i===2?"end":"middle"}">${fmtDur(sec)}</text>`).join("");
+  return `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Fréquence cardiaque pendant la séance">${grid}<polygon points="${area}" fill="#FF645F" opacity=".08"/><polyline points="${line}" fill="none" stroke="#FF645F" stroke-width="1.8" stroke-linejoin="round"/>${lim}${xl}</svg>`;
+}
+// Contenu déployé du « Détail cardio » : FC moyenne et maximale, courbe, temps par zone, allures du fractionné, suggestions de type.
+function cardioCardHTML(r, effMaxHr, effRestingHr){
+  if(!r.hrSeries || r.hrSeries.length<2) return `<div class="cd-note">Pas de détail de fréquence cardiaque pour cette séance.</div>`;
+  if(!effMaxHr) return `<div class="cd-note">Renseigne ta FC max (Profil › Mon compte) pour voir la répartition par zones.</div>`;
+  const { secs, defs } = computeHrZoneSeconds(r.hrSeries, effMaxHr, effRestingHr);
   const total = secs.reduce((a,b)=>a+b,0)||1;
   const flagFrac = r.type!=="Fractionné" && looksLikeFractionne(r.hrSeries);
   const flagSeuil = !flagFrac && r.type!=="Seuil" && looksLikeSeuil(r.hrSeries, effMaxHr, effRestingHr);
-  const intervalPaces = r.type==="Fractionné" ? getIntervalPaces(r) : null;
-  return `<div style="padding:8px 0 14px">
-    <div style="position:relative;width:100%;height:130px"><canvas id="cHr_${r.id}"></canvas></div>
-    <div style="margin-top:12px">
-      ${defs.map((d,i)=>`
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px">
-          <span style="width:52px;color:${d.color}">${d.label}</span>
-          <div style="flex:1;height:6px;border-radius:3px;background:var(--card-2);overflow:hidden">
-            <div style="width:${Math.round(secs[i]/total*100)}%;height:100%;background:${d.color}"></div>
-          </div>
-          <span style="width:48px;text-align:right;color:var(--text-dim)">${fmtDur(secs[i])}</span>
-        </div>`).join("")}
-    </div>
-    ${!effRestingHr?`<div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Zones basées sur % de FC max uniquement. Renseigne ta FC de repos (Mon compte) pour matcher exactement l'app Santé.</div>`:""}
-    ${intervalPaces && (intervalPaces.manual || intervalPaces.workCount>=2)?`<div style="margin-top:12px;display:flex;gap:16px">
-      <div><div style="font-size:11px;color:var(--text-dim)">Allure Work ${intervalPaces.manual?"(manuel)":`(${intervalPaces.workCount})`}</div><div style="font-size:15px;font-weight:700;color:#C6F432">${fmtA(intervalPaces.work)}/km</div></div>
-      ${intervalPaces.recovery?`<div><div style="font-size:11px;color:var(--text-dim)">Allure Récup ${intervalPaces.manual?"(manuel)":`(${intervalPaces.recoveryCount})`}</div><div style="font-size:15px;font-weight:700;color:#A3A7AD">${fmtA(intervalPaces.recovery)}/km</div></div>`:""}
-    </div>`:r.allure?`<div style="margin-top:12px"><div style="font-size:11px;color:var(--text-dim)">Allure moyenne</div><div style="font-size:15px;font-weight:700;color:var(--text)">${fmtA(r.allure)}/km</div></div>`:""}
-    ${flagFrac?`<div style="margin-top:10px;padding:8px 10px;background:var(--attention-bg);border:1px solid var(--attention-line);border-radius:8px;font-size:12px">
-      La FC oscille beaucoup sur cette séance — ça ressemble à un fractionné.
-      <div><button class="btn-secondary" style="margin-top:6px" onclick="changeType('${r.id}','Fractionné')">Reclasser en Fractionné</button></div>
-    </div>`:""}
-    ${flagSeuil?`<div style="margin-top:10px;padding:8px 10px;background:rgba(215,0,21,0.1);border:1px solid rgba(215,0,21,0.3);border-radius:8px;font-size:12px">
-      Plus de la moitié de cette séance est passée en zones 3-5 — ça ressemble à du Seuil.
-      <div><button class="btn-secondary" style="margin-top:6px" onclick="changeType('${r.id}','Seuil')">Reclasser en Seuil</button></div>
-    </div>`:""}
+  const ip = r.type==="Fractionné" ? getIntervalPaces(r) : null;
+  const W = 320;
+  const tiles = r.fc ? `<div class="sc-tiles2" style="margin:0">${scTile("FC moy.", r.fc, "var(--data-coral)")}${r.peakHr?scTile("FC max", r.peakHr, "var(--data-coral)"):""}</div>` : "";
+  return `<div class="cd-card">
+    ${tiles}
+    <div class="cd-curve">${hrCurveSVG(r.hrSeries, defs[1].max, W)}</div>
+    <div>${defs.map((d,i)=>`<div class="cd-zone"><span class="z"><i style="background:${d.color}"></i>Z${d.zone}</span><div class="bar"><i style="width:${Math.round(secs[i]/total*100)}%;background:${d.color}"></i></div><span class="t">${fmtDur(secs[i])}</span></div>`).join("")}</div>
+    ${!effRestingHr ? `<div class="cd-note">Zones calculées avec ta FC max seulement. Renseigne ta FC de repos (Profil › Mon compte) pour coller à l'app Santé.</div>` : ""}
+    ${ip && (ip.manual || ip.workCount>=2) ? `<div class="cd-pace"><div><div class="k">Allure travail ${ip.manual?"(manuel)":`(${ip.workCount})`}</div><div class="v" style="color:var(--accent)">${fmtA(ip.work)}/km</div></div>${ip.recovery?`<div><div class="k">Allure récup ${ip.manual?"(manuel)":`(${ip.recoveryCount})`}</div><div class="v" style="color:var(--text-3)">${fmtA(ip.recovery)}/km</div></div>`:""}</div>` : ""}
+    ${flagFrac ? `<div class="cd-flag">La FC oscille beaucoup sur cette séance : ça ressemble à un fractionné.<div><button type="button" class="btn-secondary" onclick="changeType('${r.id}','Fractionné')">Reclasser en Fractionné</button></div></div>` : ""}
+    ${flagSeuil ? `<div class="cd-flag">Plus de la moitié de cette séance est passée en zones 3 à 5 : ça ressemble à du Seuil.<div><button type="button" class="btn-secondary" onclick="changeType('${r.id}','Seuil')">Reclasser en Seuil</button></div></div>` : ""}
   </div>`;
 }
 
@@ -3018,60 +3030,14 @@ function soonCard(iconName,title,sub){
   </div>`;
 }
 
-// Ligne "gérable" : type modifiable + inclusion dans les stats + question
-// jambes pour le renfo + détail FC/zones si disponible (fusion Séances/Cardio).
-function manageableRow(r, effMaxHr, effRestingHr){
-  const c=TC[r.type]||TC.Other;
-  const legsPrompt = r.type==="Renfo" ? `
-      <div class="manage-field" style="grid-column:1/-1">
-        <span class="field-lbl">Ciblé jambes ?</span>
-        <div style="display:flex;gap:8px;margin-top:2px">
-          <button class="flt${r.legsFocused===true?" active":""}" onclick="setLegsFocused('${r.id}', true)">Oui</button>
-          <button class="flt${r.legsFocused===false?" active":""}" onclick="setLegsFocused('${r.id}', false)">Non</button>
-        </div>
-      </div>` : "";
-  return `<div class="manage-row">
-    <div class="manage-top">
-      <div class="session-dot" style="background:${c}22;color:${c}">${icon(TICON[r.type]||"activity",18)}</div>
-      <div class="manage-date">${r.label}</div>
-      <label class="toggle-col" title="Inclure dans le suivi">
-        <span>Suivi</span>
-        <label class="toggle">
-          <input type="checkbox" ${r.includeInStats?"checked":""} onchange="toggleInclude('${r.id}', this.checked)">
-          <span class="track"></span><span class="thumb"></span>
-        </label>
-      </label>
-      <button class="delete-btn" title="Supprimer définitivement" onclick="deleteRun('${r.id}', '${r.label}')">${icon("trash",15)}</button>
-    </div>
-    <div class="manage-grid">
-      <div class="manage-field">
-        <span class="field-lbl">Type de séance</span>
-        <select class="type-select" onchange="changeType('${r.id}', this.value)">
-          ${TYPE_OPTIONS.map(t=>`<option value="${t}" ${t===r.type?"selected":""}>${sessionTypeLabel(t)}</option>`).join("")}
-        </select>
-        ${r.appleType?`<span class="field-sub">${r.appleType===MANUAL_RUN_MARKER?"Saisie à la main":"Importée d'Apple Santé"}</span>`:""}
-      </div>
-      <div class="manage-field"><span class="field-lbl">Temps d'effort</span><span class="field-val">${r.dur}</span></div>
-      ${r.dist>0?`<div class="manage-field"><span class="field-lbl">Distance</span><span class="field-val">${r.dist.toFixed(2)} km</span></div>
-      <div class="manage-field"><span class="field-lbl">Allure</span><span class="field-val">${fmtA(r.allure)}/km</span></div>`:""}
-      ${legsPrompt}
-    </div>
-    ${cardioDetailBlockHTML(r, effMaxHr, effRestingHr)}
-  </div>`;
-}
-// Détail FC/zones intégré à la ligne de séance (fusion des anciens onglets
-// Séances et Cardio) : n'apparaît que si la séance a des échantillons FC.
+// Ligne « Détail cardio » (V2), repliée par défaut ; n'apparaît que si la séance a des échantillons de FC.
 function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
   if(!r.hrSeries || r.hrSeries.length<2) return "";
   const open = openHrDetail.has(r.id);
   const flagFrac = r.type!=="Fractionné" && looksLikeFractionne(r.hrSeries);
   const flagSeuil = !flagFrac && r.type!=="Seuil" && looksLikeSeuil(r.hrSeries, effMaxHr, effRestingHr);
-  return `<div class="session-pick" style="margin-top:6px" onclick="toggleHrDetail('${r.id}')">
-    <span>${icon(open?"chevronDown":"chevronRight",13)} Détail cardio</span>
-    ${flagFrac?`<span class="badge" style="background:var(--attention-bg);color:var(--attention)">⚠️ Fractionné détecté</span>`:""}
-    ${flagSeuil?`<span class="badge" style="background:#d7001522;color:#d70015">Zone haute</span>`:""}
-  </div>
-  ${open?hrDetailHTML(r, effMaxHr, effRestingHr):""}`;
+  return `<button type="button" class="cd-row" aria-expanded="${open}" onclick="toggleHrDetail('${r.id}')"><span>Détail cardio</span>${flagFrac?`<span class="tag">Fractionné détecté ?</span>`:flagSeuil?`<span class="tag">Zone haute ?</span>`:""}<span class="chev">${icon(open?"chevronUp":"chevronDown",18)}</span></button>
+    ${open?`<div class="${justOpenedKey==="hr_"+r.id?"expand-in":""}">${cardioCardHTML(r, effMaxHr, effRestingHr)}</div>`:""}`;
 }
 
 /* ============================================================
@@ -4418,7 +4384,6 @@ function programSessionCardHTML(session, date){
       const tiles = [scTile("Durée", run.dur)];
       if(run.dist>0 && run.allure) tiles.push(scTile("Allure /km", fmtA(run.allure)));
       metrics = scMetricsHTML(big, tiles);
-      if(run.fc) metrics += `<div class="sc-tiles2">${scTile("FC moy.", run.fc, "var(--data-coral)")}${run.peakHr?scTile("FC max", run.peakHr, "var(--data-coral)"):""}</div>`;
     }
   } else {
     const h = sessionHeadline(session, sessionStructureSegments(session));
@@ -4573,7 +4538,7 @@ function programSelectedDayPanelHTML(){
     </button>`;
   }).concat(lonely.map(r=>{
     const c = TC[r.type]||TC.Other;
-    return `<button type="button" class="sv5 fait" onclick="goRateSession('${r.id}')">
+    return `<button type="button" class="sv5 fait" onclick="openRunSheet('${r.id}')">
       <span class="ic" style="background:${c}">${icon(TICON[r.type]||"activity",18)}</span>
       <span><div class="st">Faite</div><div class="tt">${escHtml(sessionTypeLabel(r.type))}${r.dist>0?" · "+String(r.dist.toFixed(1)).replace(".",",")+" km":""}</div></span>
       <span class="chev">${icon("chevronRight",18)}</span>
@@ -4598,9 +4563,11 @@ function refreshSheet(){
   const root = document.getElementById("sheetRoot");
   if(!root) return;
   if(manualRunForm) renderManualRunSheet();
+  else if(typeof renderRatingSheet==="function" && renderRatingSheet()) { /* feuille de ressenti */ }
   else if(exerciseSheet) renderExerciseSheet();
   else if(typeof renderProgramSheet==="function" && renderProgramSheet()) { /* feuille Ajouter / Modifier */ }
   else if(typeof renderChargeSheet==="function" && renderChargeSheet()) { /* jauge de charge */ }
+  else if(typeof renderRunSheet==="function" && renderRunSheet()) { /* détail d'une séance faite */ }
   else if(sessionSheetId) renderSessionSheet();
   else root.innerHTML = "";
 }
@@ -4732,85 +4699,22 @@ window.saveProgramSheet = async () => {
 
 function addDays(base,n){ const d=new Date(base); d.setDate(d.getDate()+n); return d; }
 
-// Wrapper autour de renderContentInner : celle-ci a plusieurs "return"
-// anticipés par onglet (empty state, etc.), donc prépendre la bulle de tuto
-// après coup ici évite de dupliquer cette logique dans chaque branche.
-// Historique unique des séances et des ressentis (4.9.c) : fusion des
-// anciennes listes "Séances" (type, interrupteur Suivi, détail cardio) et
-// "Ressenti" (notation). Groupé par mois, ligne repliée par défaut ; une ligne
-// ouverte montre l'édition ET le formulaire de ressenti. Seules les séances
-// comptées dans les stats (includeInStats, comme l'ancienne liste Ressenti)
-// peuvent être notées.
-function sessionHistoryCardHTML(){
-  const effMaxHr = maxHr || estimatedMaxHr();
-  const effRestingHr = restingHr || null;
-  const filtered = activeFilter==="Tous" ? RUNS : RUNS.filter(r=>r.type===activeFilter);
-  const monthLabel = (d) => {
-    const s = d.toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  };
-  // Marche exclue de cette liste : jamais utilisée nulle part en aval (déjà
-  // hors stats par défaut), elle ne fait qu'encombrer l'historique.
-  const monthGroups = [];
-  filtered.filter(r=>r.type!=="Marche").slice().reverse().forEach(r=>{
-    const key = `${r.fullDate.getFullYear()}-${r.fullDate.getMonth()}`;
-    let group = monthGroups[monthGroups.length-1];
-    if(!group || group.key!==key){
-      group = {key, label:monthLabel(r.fullDate), sessions:[]};
-      monthGroups.push(group);
-    }
-    group.sessions.push(r);
-  });
-  if(openMonths===null) openMonths = new Set(monthGroups.length?[monthGroups[0].key]:[]);
-  const ratingBlock = (r) => !r.includeInStats ? "" : `<div style="padding:12px 0 4px;border-top:1px solid var(--border);margin-top:12px">
-      <div class="chart-hint" style="margin-top:0">Ton ressenti — 0 = aucune gêne, 10 = très intense. Les critères généraux reprennent ta dernière saisie ; les zones du corps repartent à 0 à chaque fois, ne note que ce qui fait mal maintenant.</div>
-      ${painFormHTML(`sess_${r.id}`, prefillRatings(r.painRatings))}
-      <button class="btn-primary" style="margin-top:6px" onclick="saveSessionRating('${r.id}')">Enregistrer</button>
-      <div id="sessRatingSaved_${r.id}" class="save-confirm"></div>
-    </div>`;
-  return `<div class="card" id="histCard">
-    <div class="stitle">Historique des séances et des ressentis</div>
-    <button class="btn-secondary" style="margin-bottom:10px" onclick="openManualRun()">+ Ajouter une séance réalisée</button>
-    <div class="chart-hint">Ouvre une séance pour changer son type ou l'interrupteur "Suivi" (ce qui compte dans tes stats), voir le détail cardio quand il est disponible, et noter ton ressenti.</div>
-    <div class="filters">${["Tous",...TYPE_OPTIONS.filter(t=>t!=="Other" && t!=="Marche")].map(t=>`<button class="flt${activeFilter===t?" active":""}" onclick="setFilter('${t}')">${sessionTypeLabel(t)}</button>`).join("")}</div>
-    ${monthGroups.length?monthGroups.map(g=>{
-      const monthOpen = openMonths.has(g.key);
-      return `<div class="month-sep" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleMonthGroup('${g.key}')">
-        <span>${icon(monthOpen?"chevronDown":"chevronRight",12)} ${g.label}</span>
-        <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-dim);font-size:11px">${g.sessions.length} séance${g.sessions.length>1?"s":""}</span>
-      </div>
-      ${monthOpen?`<div class="${justOpenedKey==="mg_"+g.key?"expand-in":""}">${g.sessions.map(r=>{
-        const open = openManageRow.has(r.id);
-        return `<div class="session-pick" id="hist_${r.id}" onclick="toggleManageRow('${r.id}')">
-          <span>${icon(open?"chevronDown":"chevronRight",13)} ${icon(TICON[r.type]||"activity",13)} ${r.type} · ${r.label}${r.dist>0?" · "+r.dist.toFixed(2)+" km":""}</span>
-          ${r.includeInStats?`<span class="rated">${r.painRatings?"Notée ✓":"À noter"}</span>`:""}
-        </div>
-        ${open?`<div class="${justOpenedKey==="mr_"+r.id?"expand-in":""}">${manageableRow(r, effMaxHr, effRestingHr)+ratingBlock(r)}</div>`:""}`;
-      }).join("")}</div>`:""}`;
-    }).join(""):`<div style="font-size:13px;color:var(--text-dim);padding:12px 0">Aucune séance de ce type</div>`}
-  </div>`;
-}
-function sessionHistoryAfterRender(){
-  const effMaxHr = maxHr || estimatedMaxHr();
-  const filtered = activeFilter==="Tous" ? RUNS : RUNS.filter(r=>r.type===activeFilter);
-  filtered.filter(r=>openManageRow.has(r.id) && openHrDetail.has(r.id) && r.hrSeries && r.hrSeries.length>1 && effMaxHr).forEach(r=>{
-    mkHrCurveChart("cHr_"+r.id, r.hrSeries);
-  });
-}
 // Titre de l'écran (Barlow Condensed, majuscules) : la date sur Aujourd'hui, le nom ailleurs.
 function setPageTitle(){
   const el = document.getElementById("pageTitle");
   if(!el) return;
   const names = { programme:"Programme", progression:"Progression", profil:"Profil" };
-  el.textContent = activeTab==="aujourdhui" ? dayLabelShort(new Date()) : (names[activeTab]||"");
+  if(activeTab==="progression" && historyOpen) el.innerHTML = `<button type="button" class="page-back" aria-label="Retour à Progression" onclick="closeHistory()">${icon("chevronLeft",24)}</button>Historique`;
+  else el.textContent = activeTab==="aujourdhui" ? dayLabelShort(new Date()) : (names[activeTab]||"");
   const act = document.getElementById("pageAction");
   if(act) act.innerHTML = activeTab==="programme" ? `<button type="button" class="page-action" onclick="openAddSheet()">${icon("plus",16)} Ajouter</button>`
-    : activeTab==="progression" ? `<button type="button" class="page-action" onclick="goToHistory()"><span style="color:var(--text-muted);display:flex">${icon("history",15)}</span>Historique<span style="color:var(--text-muted);display:flex">${icon("chevronRight",14)}</span></button>` : "";
+    : activeTab==="progression" && historyOpen ? `<button type="button" class="page-action outline" onclick="openManualRun()">${icon("plus",15)} Séance réalisée</button>`
+    : activeTab==="progression" ? `<button type="button" class="page-action" onclick="openHistory()"><span style="color:var(--text-muted);display:flex">${icon("history",15)}</span>Historique<span style="color:var(--text-muted);display:flex">${icon("chevronRight",14)}</span></button>` : "";
 }
 function renderContent(){
   renderContentInner();
   setPageTitle();
-  if(sessionSheetId) refreshSheet(); // la carte de séance ouverte en feuille suit les changements
+  if(sessionSheetId || runSheet) refreshSheet(); // la feuille ouverte (carte de séance, détail d'une séance) suit les changements
   if(document.querySelector("#tabs .tabs-bar")) renderTabs();
   runCountUps();
   const el = document.getElementById("content");
@@ -4820,7 +4724,6 @@ function renderContent(){
 }
 function renderContentInner(){
   const el=document.getElementById("content");
-  const filtered=activeFilter==="Tous"?RUNS:RUNS.filter(r=>r.type===activeFilter);
 
   // Objectifs, Mon compte, Programme et Aujourd'hui n'ont pas besoin de séances
   // (un nouvel utilisateur doit pouvoir régler ses objectifs avant sa première).
@@ -4831,25 +4734,18 @@ function renderContentInner(){
 
   if(activeTab==="aujourdhui"){
     el.innerHTML = todayScreenHTML();
-    // « Détail cardio » ouvert sur une séance faite : la courbe de FC se trace après l'affichage.
-    const effMax = maxHr || estimatedMaxHr();
-    plannedSessions.filter(p=>p.status==="done" && p.planned_date===localDateStr(new Date())).forEach(p=>{
-      const run = RUNS.find(r=>r.id===p.linked_run_id);
-      if(run && openHrDetail.has(run.id) && run.hrSeries && run.hrSeries.length>1 && effMax) mkHrCurveChart("cHr_"+run.id, run.hrSeries);
-    });
     return;
   }
 
   if(activeTab==="progression"){
     // Progression (3.c, 4.9) : anneaux, indicateurs, chiffres clés, dernière
     // séance, graphiques, puis l'historique unique des séances et ressentis.
+    if(historyOpen){ el.innerHTML = historyScreenHTML(); return; }
     if(runningRuns.length===0){
-      el.innerHTML=objectiveCardHTML()+`<div class="card">${emptyState("Aucune séance de course incluse","Ouvre une séance dans l'historique ci-dessous et active l'interrupteur « Suivi » pour l'inclure dans tes stats.",true)}</div>`+sessionHistoryCardHTML();
-      setTimeout(sessionHistoryAfterRender,50);
+      el.innerHTML=objectiveCardHTML()+`<div class="card">${emptyState("Aucune séance de course incluse","Ouvre l'historique, choisis une séance et active « Compter dans mes stats » pour l'inclure.",true)}<button class="btn-secondary" style="margin-top:10px" onclick="openHistory()">Ouvrir l'historique</button></div>`;
       return;
     }
-    el.innerHTML=objectiveCardHTML()+indicatorTilesHTML()+keyFiguresHTML()+recordsCardHTML()+chartsHTML()+sessionHistoryCardHTML();
-    setTimeout(sessionHistoryAfterRender,50);
+    el.innerHTML=objectiveCardHTML()+indicatorTilesHTML()+keyFiguresHTML()+recordsCardHTML()+chartsHTML();
   }
 
   else if(activeTab==="profil" && profilSection==="objectifs"){
