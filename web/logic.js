@@ -7,7 +7,7 @@
 // navigateurs (y compris pendant les tests) continuent de servir l'ancienne
 // version en cache — un vrai piège déjà rencontré une fois.
 
-const fmtA=s=>{if(!s)return"—";const m=Math.floor(s/60),sc=Math.round(s%60);return m+"'"+String(sc).padStart(2,"0")+"''"};
+const fmtA=s=>{if(!s)return"—";let m=Math.floor(s/60),sc=Math.round(s%60);if(sc===60){m++;sc=0;}return m+"'"+String(sc).padStart(2,"0")+'"'};
 function fmtDur(sec){
   sec=Math.round(sec||0);
   const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
@@ -1621,16 +1621,20 @@ function weekRecap(runs, plannedSessions, todayStr){
 }
 
 /* ---------- Jauge de charge (4.8.c) et phrase de synthèse (4.8.d) ----------
-   Position du repère sur la barre : échelle visuelle 0 -> 2 (au-delà, le
-   repère reste au bout). Segments : 0-0,8 (40%), 0,8-1,3 (25%), 1,3-2
-   (35%), mêmes seuils que chargeEntrainementGauge. null -> pas de repère.
+   Position du repère sur la barre : échelle commune à la barre et à la courbe
+   des 8 semaines, de 0,50 à 1,80 (design 4c ; au-delà, le repère reste au
+   bout). Segments : sous 0,8, de 0,8 à 1,3, au-dessus de 1,3 (mêmes seuils que
+   chargeEntrainementGauge). null -> pas de repère.
    La phrase de synthèse suit des règles validées avec l'utilisateur
    (02/10/2026), la première qui s'applique l'emporte ; elle ne compare
    jamais à la semaine dernière (pas de pression, CDC 4.10). */
-const CHARGE_SCALE_MAX = 2;
+const CHARGE_MIN = 0.5, CHARGE_MAX = 1.8, CHARGE_LOW = 0.8, CHARGE_HIGH = 1.3;
+function chargeScale(v){
+  return (Math.min(Math.max(v, CHARGE_MIN), CHARGE_MAX) - CHARGE_MIN) / (CHARGE_MAX - CHARGE_MIN);
+}
 function chargeGaugePosition(acwr){
   if(acwr==null) return null;
-  return Math.min(Math.max(acwr,0), CHARGE_SCALE_MAX) / CHARGE_SCALE_MAX;
+  return chargeScale(acwr);
 }
 function weekSummaryPhrase(recap, gauge){
   const done = recap.days.filter(d=>d.status==="fait").length;
@@ -1662,9 +1666,12 @@ function weekMessage(recap, gauge, missedDates, unlinkedRunDates){
   if(missedLine) return { kind:"missed", text:missedLine };
   return { kind:"summary", text:weekSummaryPhrase(recap, gauge) };
 }
+function chargeZoneLabel(zone){
+  return { "sous-charge":"En dessous de la zone idéale", "idéale":"Dans la zone idéale", "attention":"Au-dessus de la zone idéale", "inconnue":"Pas encore de repère" }[zone] || "";
+}
 // Ligne de charge de « Ta semaine » : « Charge d'entraînement · Dans la zone idéale · 1,08 › ».
 function chargeLineInfo(gauge, acwr){
-  const label = { "sous-charge":"Sous la zone idéale", "idéale":"Dans la zone idéale", "attention":"Au-dessus de la zone", "inconnue":"Pas encore de repère" }[gauge.zone] || "";
+  const label = chargeZoneLabel(gauge.zone);
   return { label, value: acwr==null ? "" : Number(acwr).toFixed(2).replace(".",","), color:gauge.color };
 }
 function formatMinutesShort(min){
@@ -1741,6 +1748,233 @@ function volumeComparison(runs, todayStr){
   const daysAgo = (dateStr) => Math.round((today - parse(dateStr)) / 86400000);
   const sum = (from, to) => Math.round((runs||[]).filter(r=>{ const a=daysAgo(r.date); return a>=from && a<=to; }).reduce((a,r)=>a+(r.distKm||0),0)*10)/10;
   return { last28: sum(0,27), prev28: sum(28,55) };
+}
+
+/* ---------- Progression (S6) : jauge 4c, courbes, chiffres clés, carte objectif ----------
+   Fonctions pures, testées dans test.html. Les « points » des courbes sont
+   {ts (ms), value, id?} ; les séances {ts, type, distKm, durationSec, paceSecKm, cleanEf},
+   déjà limitées à celles qui comptent dans les stats (règle D78). */
+const DAY_MS = 86400000;
+const MONTH_NAMES = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const MONTH_SHORT = ["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+const fmtDec = (v, d) => Number(v).toFixed(d).replace(".", ",");
+
+// Barre de la jauge : largeur de chaque zone, en fraction de l'échelle 0,50 à 1,80 (23 % / 38 % / 38 %).
+function chargeSegments(){
+  const a = chargeScale(CHARGE_LOW), b = chargeScale(CHARGE_HIGH);
+  return { low:a, ideal:b-a, high:1-b };
+}
+// Charge d'entraînement des `weeks` dernières semaines, une valeur par semaine (la dernière = aujourd'hui).
+// `dailySeries` : sortie de buildDailyLoadSeries. acwr peut être null (pas assez d'historique ce jour-là).
+function chargeWeeklySeries(dailySeries, today, weeks){
+  const n = weeks || 8, out = [];
+  for(let i=n-1;i>=0;i--){
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate()-7*i);
+    out.push({ date:d, acwr: acwrAt(dailySeries, d).acwr });
+  }
+  return out;
+}
+// Courbe de la jauge dans un cadre width × height : points (les semaines sans valeur sont sautées), bande de la
+// zone idéale (haut = 1,30, bas = 0,80) et dernier point.
+function chargeCurve(series, width, height){
+  const n = (series||[]).length;
+  const points = [];
+  (series||[]).forEach((s,i)=>{
+    if(s.acwr==null) return;
+    points.push({ x: n>1 ? width*i/(n-1) : width, y: height*(1-chargeScale(s.acwr)), acwr:s.acwr });
+  });
+  return { points, band:{ top:height*(1-chargeScale(CHARGE_HIGH)), bottom:height*(1-chargeScale(CHARGE_LOW)) }, last: points.length ? points[points.length-1] : null };
+}
+function chargeAriaLabel(gauge, acwr){
+  const zone = { "sous-charge":"en dessous de la zone idéale", "idéale":"dans la zone idéale", "attention":"au-dessus de la zone idéale" }[gauge.zone];
+  return zone && acwr!=null ? `Charge d'entraînement : ${zone}, ${fmtDec(acwr,2)}` : "Charge d'entraînement : pas encore de repère";
+}
+
+// --- Périodes des courbes (6c) : 3 mois, 6 mois, 12 mois, Tout (par défaut) ---
+const PROGRESS_PERIODS = [
+  { key:"3m", label:"3 mois", months:3 }, { key:"6m", label:"6 mois", months:6 },
+  { key:"12m", label:"12 mois", months:12 }, { key:"all", label:"Tout", months:null },
+];
+function periodStartTs(key, todayTs){
+  const p = PROGRESS_PERIODS.find(x=>x.key===key);
+  if(!p || p.months==null) return null;
+  const d = new Date(todayTs); d.setMonth(d.getMonth()-p.months);
+  return d.getTime();
+}
+function pointsInPeriod(points, key, todayTs){
+  const start = periodStartTs(key, todayTs);
+  return (points||[]).filter(p=>p.ts<=todayTs+DAY_MS && (start==null || p.ts>=start)).slice().sort((a,b)=>a.ts-b.ts);
+}
+// « depuis juin » (l'année seulement si c'est loin : « depuis juin 2025 »).
+function sinceLabel(startTs, todayTs){
+  const d = new Date(startTs), t = new Date(todayTs);
+  const months = (t.getFullYear()-d.getFullYear())*12 + t.getMonth()-d.getMonth();
+  return "depuis " + MONTH_NAMES[d.getMonth()] + (months>=11 ? " "+d.getFullYear() : "");
+}
+// Progression = moyenne des 4 premières semaines → moyenne des 4 dernières (D30). Si les données couvrent moins de
+// 8 semaines, chaque fenêtre vaut la moitié de la durée (elles ne se recouvrent jamais) ; en dessous de 2 semaines
+// de recul, pas de progression. `points` : [{ts, value}]. Bornes explicites : startTs → endTs.
+function windowProgress(points, startTs, endTs){
+  const pts = (points||[]).filter(p=>p.ts>=startTs && p.ts<=endTs && p.value>0);
+  if(pts.length<2) return { status:"insuffisant" };
+  const span = endTs - startTs;
+  if(span < 14*DAY_MS) return { status:"insuffisant" };
+  const w = Math.min(28*DAY_MS, Math.floor(span/2));
+  const first = pts.filter(p=>p.ts < startTs+w), last = pts.filter(p=>p.ts > endTs-w);
+  if(!first.length || !last.length) return { status:"insuffisant" };
+  const avg = (a) => a.reduce((x,p)=>x+p.value,0)/a.length;
+  return { status:"ok", firstAvg:avg(first), lastAvg:avg(last), startTs };
+}
+// Progression d'une courbe sur une période : de la première à la dernière séance de la période.
+function periodProgress(points, key, todayTs){
+  const pts = pointsInPeriod(points, key, todayTs);
+  if(pts.length<2) return { status:"insuffisant" };
+  const p = windowProgress(pts, pts[0].ts, pts[pts.length-1].ts);
+  return p.status==="ok" ? { ...p, since: sinceLabel(pts[0].ts, todayTs) } : p;
+}
+// Texte de la progression d'une allure : « −16 s/km » (citron) ; une allure qui ralentit « +5 s/km » en gris,
+// jamais en rouge. null quand il n'y a pas assez de recul.
+function paceProgressText(p){
+  if(!p || p.status!=="ok") return null;
+  const delta = Math.round(p.lastAvg - p.firstAvg);
+  if(delta<0) return { text:`−${Math.abs(delta)} s/km`, tone:"good" };
+  if(delta>0) return { text:`+${delta} s/km`, tone:"muted" };
+  return { text:"0 s/km", tone:"muted" };
+}
+// Efficience (allure ÷ FC, plus bas = mieux) : « +3 % » quand le rapport baisse.
+function ratioProgressText(p){
+  if(!p || p.status!=="ok") return null;
+  const pct = Math.round((p.firstAvg - p.lastAvg) / p.firstAvg * 100);
+  if(pct>0) return { text:`+${pct} %`, tone:"good" };
+  if(pct<0) return { text:`−${Math.abs(pct)} %`, tone:"muted" };
+  return { text:"0 %", tone:"muted" };
+}
+// Décimales d'un axe pour que deux graduations ne s'écrivent jamais pareil (D34) : pas de 0,25 → 1 décimale, 0,02 → 2.
+function axisDecimals(min, max, ticks){
+  const step = (max-min)/Math.max(1,(ticks||5)-1);
+  if(!(step>0)) return 1;
+  if(step>=1) return 0;
+  return Math.min(3, Math.max(1, Math.ceil(-Math.log10(step)-1e-9)));
+}
+// Fractionné (6e) : à partir de 4 séances, sinon un état d'attente.
+const FRACTIONNE_MIN_SESSIONS = 4;
+function fractionneChartState(count){
+  return count>=FRACTIONNE_MIN_SESSIONS ? { ready:true } : { ready:false, count, missing: FRACTIONNE_MIN_SESSIONS-count };
+}
+
+// --- Chiffres clés (D27) ---
+function formatHoursMinutes(sec){
+  const m = Math.round((sec||0)/60);
+  return `${Math.floor(m/60)} h ${String(m%60).padStart(2,"0")}`;
+}
+function keyFigures(runs, todayTs){
+  const t = new Date(todayTs);
+  const yearStart = new Date(t.getFullYear(),0,1).getTime(), monthStart = new Date(t.getFullYear(),t.getMonth(),1).getTime();
+  const list = (runs||[]).filter(r=>r.ts<=todayTs+DAY_MS);
+  const year = list.filter(r=>r.ts>=yearStart), month = list.filter(r=>r.ts>=monthStart);
+  const longest = month.reduce((m,r)=>Math.max(m, r.distKm||0), 0);
+  const best = recordHolders(list).allure_ef;
+  return {
+    yearKm: Math.round(year.reduce((a,r)=>a+(r.distKm||0),0)*10)/10,
+    longestMonthKm: longest>0 ? Math.round(longest*10)/10 : null,
+    monthTimeSec: month.reduce((a,r)=>a+(r.durationSec||0),0),
+    bestEfPaceSecKm: best ? best.paceSecKm : null,
+  };
+}
+
+// --- « Tes records » (D26) : une ligne par distance, « pas encore couru » sinon ---
+function shortDateFr(ts){
+  const d = new Date(ts);
+  return `${d.getDate()}${d.getDate()===1?"er":""} ${MONTH_SHORT[d.getMonth()]}`;
+}
+function recordsListModel(holders){
+  return RECORD_DISTANCES.map(d=>{
+    const h = holders.distances[d.key];
+    return h ? { key:d.key, label:d.label, timeText:fmtDur(h.timeSec), dateText:shortDateFr(h.ts), runId:h.runId }
+             : { key:d.key, label:d.label, timeText:null, dateText:"pas encore couru", runId:null };
+  });
+}
+
+// --- Carte objectif de Progression (D25, journal 5) ---
+// Début du programme : lundi de la première semaine planifiée, jamais remis à zéro quand le programme est recalculé.
+function programStartMonday(plannedSessions){
+  const weeks = (plannedSessions||[]).map(p=>p.week_start_date).filter(Boolean).sort();
+  return weeks.length ? weeks[0] : null;
+}
+const parseDay = (str) => { const [y,m,d] = str.split("-").map(Number); return new Date(y, m-1, d); };
+function programWeekNumber(startMonday, todayStr){
+  if(!startMonday) return null;
+  const n = Math.floor((parseDay(todayStr) - parseDay(startMonday)) / (7*DAY_MS)) + 1;
+  return n>=1 ? n : null;
+}
+// Préparer une course : « Semaine X sur Y » + « J-N ». Y = semaines du début du programme à la course.
+function raceProgress(startMonday, raceDateStr, todayStr){
+  if(!raceDateStr) return null;
+  const race = parseDay(raceDateStr), today = parseDay(todayStr);
+  const daysLeft = Math.round((race - today) / DAY_MS);
+  if(daysLeft<0) return { past:true, daysLeft:0 };
+  const start = startMonday ? parseDay(startMonday) : null;
+  const total = start ? Math.max(1, Math.ceil((race - start) / (7*DAY_MS))) : null;
+  const week = total ? Math.min(total, Math.max(1, programWeekNumber(startMonday, todayStr) || 1)) : null;
+  return { daysLeft, totalWeeks:total, week, pct: total ? Math.round(week/total*100) : null };
+}
+// Courir plus régulièrement / Rester en forme : 8 pastilles (une par semaine, les 8 dernières, la semaine en cours
+// à la fin), pleine s'il y a eu au moins une course ; « N semaines d'affilée » (la semaine en cours ne compte que si
+// elle a déjà une course).
+function weeklyStreak(runDates, todayStr, weeks){
+  const n = weeks || 8, dates = (runDates||[]).map(parseDay);
+  const today = parseDay(todayStr);
+  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay()+6)%7));
+  const dots = [];
+  for(let i=n-1;i>=0;i--){
+    const from = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate()-7*i), to = new Date(from.getFullYear(), from.getMonth(), from.getDate()+7);
+    dots.push(dates.some(d=>d>=from && d<to));
+  }
+  let streak = 0, i = dots.length-1;
+  if(!dots[i]) i--;                                  // semaine en cours encore vide : on compte à partir de la précédente
+  for(; i>=0 && dots[i]; i--) streak++;
+  return { dots, streak, currentWeekHasRun: dots[dots.length-1] };
+}
+// Améliorer mon allure : allure EF des 4 premières semaines du programme → des 4 dernières semaines.
+function efPaceSinceStart(efPoints, startMonday, todayTs){
+  if(!startMonday) return { status:"insuffisant" };
+  return windowProgress(efPoints, parseDay(startMonday).getTime(), todayTs);
+}
+function objectiveVariant(objectifPrincipal){
+  return { "Préparer une course":"race", "Améliorer mon allure":"pace", "Courir plus régulièrement":"streak", "Rester en forme":"streak" }[objectifPrincipal] || null;
+}
+// Anneaux (D29) : km et séances du mois ; pas d'objectif chiffré = pas d'anneau.
+function ringModel(value, goal){
+  if(!(goal>0)) return null;
+  return { value, goal, pct: Math.min(100, Math.round(value/goal*100)) };
+}
+
+// --- Volume mensuel (6f, D32) ---
+const VOLUME_HIGH_FACTOR = 1.3;   // « trop élevé » = objectif + 30 % (repère pragmatique, pas une règle sourcée)
+function monthlyVolumeBars(runs, goalKm, todayTs, months){
+  const n = months || 12, t = new Date(todayTs);
+  const list = (runs||[]).filter(r=>r.distKm>0);
+  const goal = goalKm>0 ? goalKm : null;
+  const first = list.length ? new Date(Math.min(...list.map(r=>r.ts))) : null;
+  const bars = [];
+  for(let i=n-1;i>=0;i--){
+    const d = new Date(t.getFullYear(), t.getMonth()-i, 1);
+    if(first && d < new Date(first.getFullYear(), first.getMonth(), 1)) continue;
+    if(!first) continue;
+    const km = Math.round(list.filter(r=>{ const x=new Date(r.ts); return x.getFullYear()===d.getFullYear() && x.getMonth()===d.getMonth(); }).reduce((a,r)=>a+r.distKm,0)*10)/10;
+    const state = !goal ? "none" : km > goal*VOLUME_HIGH_FACTOR ? "high" : km >= goal ? "met" : "under";
+    bars.push({ key:d.getFullYear()+"-"+(d.getMonth()+1), label:MONTH_SHORT[d.getMonth()], km, current:i===0, state });
+  }
+  return { bars, goalKm:goal, limitKm: goal ? Math.round(goal*VOLUME_HIGH_FACTOR*10)/10 : null };
+}
+
+// --- Facile / soutenu (6h, D35) : facile = zones 1 à 3, soutenu = zones 4 et 5, repère à 80 % ---
+const EASY_TARGET_PCT = 80;
+function easyHardMonthly(monthly){
+  return (monthly||[]).map(m=>{
+    const secs = m.secs || [], easy = (secs[0]||0)+(secs[1]||0)+(secs[2]||0), hard = (secs[3]||0)+(secs[4]||0), total = easy+hard;
+    return total>0 ? { label:m.label, easySec:easy, hardSec:hard, easyPct:Math.round(easy/total*100), hardPct:100-Math.round(easy/total*100) } : null;
+  }).filter(Boolean);
 }
 
 /* ---------- Base d'exercices renfo/mobilité (CDC v2, 4.7 — base pour 4.6.a) ----------

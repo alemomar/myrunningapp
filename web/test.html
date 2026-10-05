@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=67"></script>
+<script src="logic.js?v=68"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -625,11 +625,12 @@ try {
 // --- chargeGaugePosition / weekSummaryPhrase / plannedThisWeek (4.8.c, 4.8.d) ---
 {
   assertEqual("chargeGaugePosition : null -> pas de repère", chargeGaugePosition(null), null);
-  assertEqual("chargeGaugePosition : 0 -> début", chargeGaugePosition(0), 0);
-  assertEqual("chargeGaugePosition : 1 -> milieu", chargeGaugePosition(1), 0.5);
-  assertEqual("chargeGaugePosition : 0,8 -> bord de la zone idéale (40%)", chargeGaugePosition(0.8), 0.4);
-  assertEqual("chargeGaugePosition : 1,3 -> fin de la zone idéale (65%)", chargeGaugePosition(1.3), 0.65);
-  assertEqual("chargeGaugePosition : 3 -> plafonné au bout", chargeGaugePosition(3), 1);
+  const pos = (v) => Math.round(chargeGaugePosition(v)*1000)/1000;
+  assertEqual("chargeGaugePosition : 0,5 et moins -> début", [pos(0.5), pos(0.2)], [0, 0]);
+  assertEqual("chargeGaugePosition : 0,8 -> bord de la zone idéale (23 %)", pos(0.8), 0.231);
+  assertEqual("chargeGaugePosition : 1 -> 38 %", pos(1), 0.385);
+  assertEqual("chargeGaugePosition : 1,3 -> fin de la zone idéale (62 %)", pos(1.3), 0.615);
+  assertEqual("chargeGaugePosition : 1,8 et plus -> plafonné au bout", [pos(1.8), pos(3)], [1, 1]);
   const day = (status) => ({status});
   const recap = (statuses, planned) => ({ days: statuses.map(day), plannedThisWeek: planned });
   const ok = {severe:false}, severe = {severe:true};
@@ -828,8 +829,8 @@ try {
   assertEqual("seules les séances antérieures servent de référence", keys(mk(2,{distKm:6.5, durationSec:2100, paceSecKm:400}), hist), []);
   assertEqual("recordPhrase : distance", recordPhrase({key:"distance", value:12.4}), "Ta plus longue sortie : 12,4 km !");
   assertEqual("recordPhrase : durée", recordPhrase({key:"duree", value:5100}), "Ta plus longue durée de course : 1 h 25 !");
-  assertEqual("recordPhrase : allure easy", recordPhrase({key:"allure_ef", value:342}), "Ta meilleure allure en sortie easy : 5'42''/km !");
-  assertEqual("recordPhrase : allure fractionné", recordPhrase({key:"allure_frac", value:260}), "Ta meilleure allure en fractionné : 4'20''/km !");
+  assertEqual("recordPhrase : allure easy", recordPhrase({key:"allure_ef", value:342}), "Ta meilleure allure en sortie easy : 5'42\"/km !");
+  assertEqual("recordPhrase : allure fractionné", recordPhrase({key:"allure_frac", value:260}), "Ta meilleure allure en fractionné : 4'20\"/km !");
   const now = Date.UTC(2026,9,2,12);
   assertEqual("shouldCelebrateRun : séance d'hier non célébrée -> oui", shouldCelebrateRun(now-DAY, now, "a", []), true);
   assertEqual("shouldCelebrateRun : séance de 5 jours -> non (pas tout l'historique)", shouldCelebrateRun(now-5*DAY, now, "a", []), false);
@@ -1061,7 +1062,8 @@ try {
 
 // --- fmtA / fmtDur ---
 {
-  assertEqual("fmtA : 270s/km -> 4'30''", fmtA(270), "4'30''");
+  assertEqual("fmtA : 270s/km -> 4'30\"", fmtA(270), "4'30\"");
+  assertEqual("fmtA : 359,6 s arrondi à la seconde ne donne pas 5'60", fmtA(359.6), "6'00\"");
   assertEqual("fmtA : valeur nulle -> —", fmtA(null), "—");
   assertEqual("fmtDur : 90min -> 1:30:00", fmtDur(5400), "1:30:00");
   assertEqual("fmtDur : 5min -> 5:00", fmtDur(300), "5:00");
@@ -1207,7 +1209,7 @@ try {
   assertEqual("runRecordLabels : une course sans record = aucun trophée", runRecordLabels("a", h), []);
   const hEf=recordHolders([run(0,{id:"e1",cleanEf:true,distKm:6,paceSecKm:360}), run(1,{id:"e2",cleanEf:false,distKm:6,paceSecKm:320}), run(2,{id:"e3",cleanEf:true,distKm:6,paceSecKm:350})]);
   assertEqual("détenteur allure EF : e3 (e2, plus rapide mais non propre, est écartée)", hEf.allure_ef.runId, "e3");
-  assertEqual("runRecordLabels : allure EF", runRecordLabels("e3", hEf).map(x=>x.text), ["meilleure allure EF, 5'50''/km"]);
+  assertEqual("runRecordLabels : allure EF", runRecordLabels("e3", hEf).map(x=>x.text), ["meilleure allure EF, 5'50\"/km"]);
   const hFr=recordHolders([run(0,{id:"f1",type:"Fractionné",workPaceSecKm:290,distKm:6}), run(1,{id:"f2",type:"Fractionné",workPaceSecKm:280,distKm:6})]);
   assertEqual("détenteur allure fractionné : f2", hFr.allure_frac.runId, "f2");
   assertEqual("recordPhrase : record 5 km avec gain", recordPhrase({key:"record_5k", value:1706, previous:1800, label:"5 km"}), "Nouveau record sur 5 km : 28:26, 94 s de mieux !");
@@ -1250,7 +1252,7 @@ try {
   assertEqual("bandeau coach : rien à dire", coachReminder({}), null);
   assertEqual("bandeau coach : carte Ton niveau affichée -> rappels de niveau masqués, on passe au suivant", coachReminder({graduation:true, guidedTestPending:true, levelCardShown:true, daysSinceRun:7}), {key:"no_recent_run", days:7});
   assertEqual("bandeau coach : carte Ton niveau affichée et rien d'autre -> aucun bandeau", coachReminder({graduation:true, levelCardShown:true, daysSinceRun:1}), null);
-  assertEqual("hierRecordInfo : record d'allure EF", hierRecordInfo({key:"allure_ef", value:343, previous:350}), {title:"Nouveau record d'allure !", overline:"MEILLEURE ALLURE EF", value:"5'43''/km", before:"Avant : 5'50''/km"});
+  assertEqual("hierRecordInfo : record d'allure EF", hierRecordInfo({key:"allure_ef", value:343, previous:350}), {title:"Nouveau record d'allure !", overline:"MEILLEURE ALLURE EF", value:"5'43\"/km", before:"Avant : 5'50\"/km"});
   assertEqual("hierRecordInfo : record d'allure fractionné", hierRecordInfo({key:"allure_frac", value:260, previous:270}).overline, "MEILLEURE ALLURE FRACTIONNÉ");
   assertEqual("hierRecordInfo : plus longue sortie", hierRecordInfo({key:"distance", value:15.4, previous:13.1}), {title:"Nouvelle plus longue sortie !", overline:"PLUS LONGUE SORTIE", value:"15,4 km", before:"Avant : 13,1 km"});
   assertEqual("hierRecordInfo : plus longue durée", hierRecordInfo({key:"duree", value:5100, previous:4800}), {title:"Nouvelle plus longue durée !", overline:"PLUS LONGUE DURÉE", value:"1 h 25", before:"Avant : 1 h 20"});
@@ -1268,7 +1270,7 @@ try {
   assertEqual("état de carte : séance prévue demain", sessionCardState({status:"planned", planned_date:"2026-10-05"}, "2026-10-04"), "planned");
   assertEqual("état de carte : jour passé sans course reçue = en retard", sessionCardState({status:"planned", planned_date:"2026-10-02"}, "2026-10-04"), "late");
   assertEqual("état de carte : à replacer = en retard", sessionCardState({status:"missed", planned_date:"2026-10-02"}, "2026-10-04"), "late");
-  assertEqual("chiffres : 7,5 km à 6'00 = allure et durée de 45 min", sessionHeadline({target_distance_km:7.5, target_pace_sec_per_km:360}, null), {big:{value:"7,5", unit:"km", note:""}, tiles:[{label:"Allure /km", value:"6'00''"},{label:"Durée", value:"45 min"}], structure:[]});
+  assertEqual("chiffres : 7,5 km à 6'00 = allure et durée de 45 min", sessionHeadline({target_distance_km:7.5, target_pace_sec_per_km:360}, null), {big:{value:"7,5", unit:"km", note:""}, tiles:[{label:"Allure /km", value:"6'00\""},{label:"Durée", value:"45 min"}], structure:[]});
   assertEqual("chiffres : distance entière sans décimale", sessionHeadline({target_distance_km:13}, null).big.value, "13");
   assertEqual("chiffres : durée de la séance utilisée quand elle est donnée", sessionHeadline({target_distance_km:8, target_pace_sec_per_km:360, target_duration_min:50}, null).tiles[1], {label:"Durée", value:"50 min"});
   const seg=[{type:"marche",sec:300},{type:"course",sec:60},{type:"marche",sec:90},{type:"course",sec:60},{type:"marche",sec:300}];
@@ -1337,7 +1339,7 @@ try {
   assertEqual("message : séance à replacer = la ligne « ! » remplace la synthèse", weekMessage(recapOk, null, ["2026-10-08"], []).kind, "missed");
   assertEqual("message : sinon la phrase de synthèse", weekMessage(recapOk, null, [], []).kind, "summary");
   assertEqual("ligne de charge : zone idéale", chargeLineInfo({zone:"idéale", color:"#C6F432"}, 1.08), {label:"Dans la zone idéale", value:"1,08", color:"#C6F432"});
-  assertEqual("ligne de charge : au-dessus", chargeLineInfo({zone:"attention", color:"x"}, 1.456).label, "Au-dessus de la zone");
+  assertEqual("ligne de charge : au-dessus", chargeLineInfo({zone:"attention", color:"x"}, 1.456).label, "Au-dessus de la zone idéale");
   assertEqual("ligne de charge : pas d'historique, pas de chiffre", chargeLineInfo({zone:"inconnue", color:"#A3A7AD"}, null), {label:"Pas encore de repère", value:"", color:"#A3A7AD"});
   assertEqual("charge sous la zone : gris lisible (le cyan est réservé aux données)", chargeEntrainementGauge(0.5).color, "#8B8F96");
 }
@@ -1401,6 +1403,103 @@ try {
   assertEqual("ajustement léger : trop ancien (plus de 3 jours)", lightAdjustments([{...base, id:"e", created_at:"2026-10-01T07:00:00Z", rationale:"… automatiquement …"}], [], now), []);
   assertEqual("ajustement léger : séance sans remplacement ignorée", lightAdjustments([{...base, replaces_session_id:null, id:"f", rationale:"… automatiquement …"}], [], now), []);
   assertEqual("ajustement léger : la plus récente d'abord", lightAdjustments([{...base, id:"g", created_at:"2026-10-04T07:00:00Z", rationale:"… automatiquement …"},{...base, id:"h", created_at:"2026-10-05T08:00:00Z", rationale:"… automatiquement …"}], [], now).map(x=>x.id), ["h","g"]);
+}
+
+
+// ---------- S6.1 : Progression (jauge 4c, courbes, chiffres clés, carte objectif, volume, facile / soutenu) ----------
+{
+  const r3 = (v) => Math.round(v*1000)/1000;
+  const seg = chargeSegments();
+  assertEqual("jauge : barre en 3 zones (23 % / 38 % / 38 %)", [r3(seg.low), r3(seg.ideal), r3(seg.high), r3(seg.low+seg.ideal+seg.high)], [0.231, 0.385, 0.385, 1]);
+  const T = new Date(2026, 9, 5);
+  const daily = []; for(let d=new Date(2026,6,1); d<=T; d=new Date(d.getFullYear(), d.getMonth(), d.getDate()+1)) daily.push({ date:d, load:60 });
+  const ser = chargeWeeklySeries(daily, T, 8);
+  assertEqual("courbe de charge : 8 semaines, la dernière = aujourd'hui, charge stable = 1", [ser.length, ser[7].date.getTime()===T.getTime(), ser.every(x=>Math.abs(x.acwr-1)<0.001)], [8, true, true]);
+  assertEqual("courbe de charge : sans historique, aucune valeur", chargeWeeklySeries([], T, 8).every(x=>x.acwr===null), true);
+  const curve = chargeCurve([{acwr:0.5},{acwr:null},{acwr:1.8}], 100, 80);
+  assertEqual("courbe de charge : points aux bornes, semaine sans valeur sautée", curve.points.map(p=>[p.x,p.y]), [[0,80],[100,0]]);
+  assertEqual("courbe de charge : bande de la zone idéale", [Math.round(curve.band.top*10)/10, Math.round(curve.band.bottom*10)/10], [30.8, 61.5]);
+  assertEqual("courbe de charge : dernier point", curve.last.acwr, 1.8);
+  assertEqual("courbe de charge : rien à tracer", chargeCurve([{acwr:null}], 100, 80).last, null);
+  assertEqual("charge : phrase lue (aria-label)", chargeAriaLabel({zone:"idéale"}, 1.08), "Charge d'entraînement : dans la zone idéale, 1,08");
+  assertEqual("charge : phrase lue sans repère", chargeAriaLabel({zone:"inconnue"}, null), "Charge d'entraînement : pas encore de repère");
+
+  const todayTs = new Date(2026, 9, 5).getTime();
+  const wk = (i, v) => ({ ts:new Date(2026, 6, 6+7*i).getTime(), value:v });
+  const pts = Array.from({length:12}, (_,i)=>wk(i, 380-4*i));
+  assertEqual("période : 3 mois commence le 5 juillet", new Date(periodStartTs("3m", todayTs)).toISOString().slice(0,10), new Date(2026,6,5).toISOString().slice(0,10));
+  assertEqual("période : « Tout » n'a pas de début", periodStartTs("all", todayTs), null);
+  assertEqual("période : 3 mois garde les points récents seulement", pointsInPeriod([{ts:new Date(2026,5,1).getTime()},{ts:new Date(2026,7,1).getTime()}], "3m", todayTs).length, 1);
+  assertEqual("depuis : mois de départ", sinceLabel(new Date(2026,5,10).getTime(), todayTs), "depuis juin");
+  assertEqual("depuis : année ajoutée quand c'est loin", sinceLabel(new Date(2025,5,10).getTime(), todayTs), "depuis juin 2025");
+  const prog = windowProgress(pts, pts[0].ts, pts[11].ts);
+  assertEqual("progression : 4 premières semaines (374) → 4 dernières (342)", [prog.status, prog.firstAvg, prog.lastAvg], ["ok", 374, 342]);
+  assertEqual("progression d'allure : −32 s/km, en citron", paceProgressText(prog), {text:"−32 s/km", tone:"good"});
+  assertEqual("progression d'allure : une allure qui ralentit reste grise", paceProgressText({status:"ok", firstAvg:340, lastAvg:345}), {text:"+5 s/km", tone:"muted"});
+  assertEqual("progression d'allure : inchangée", paceProgressText({status:"ok", firstAvg:340, lastAvg:340.2}), {text:"0 s/km", tone:"muted"});
+  assertEqual("progression d'allure : pas assez de recul", paceProgressText({status:"insuffisant"}), null);
+  assertEqual("progression : moins de 2 semaines de recul", windowProgress([wk(0,380), {ts:wk(0,0).ts+10*86400000, value:370}], wk(0,0).ts, wk(0,0).ts+10*86400000).status, "insuffisant");
+  assertEqual("progression : un seul point", windowProgress([wk(0,380)], wk(0,0).ts, wk(5,0).ts).status, "insuffisant");
+  const short = windowProgress([wk(0,380), wk(1,376), wk(2,372)], wk(0,0).ts, wk(2,0).ts);
+  assertEqual("progression : recul court (2 semaines), fenêtres d'une semaine, le point du milieu n'est dans aucune", [short.status, short.firstAvg, short.lastAvg], ["ok", 380, 372]);
+  const pp = periodProgress(pts, "3m", todayTs);
+  assertEqual("progression d'une période : suit la période choisie", [pp.status, pp.since], ["ok", "depuis juillet"]);
+  assertEqual("progression d'une période : pas de points", periodProgress([], "all", todayTs).status, "insuffisant");
+  assertEqual("efficience : rapport en baisse = +3 %", ratioProgressText({status:"ok", firstAvg:1.5, lastAvg:1.455}), {text:"+3 %", tone:"good"});
+  assertEqual("efficience : rapport en hausse = −2 %, en gris", ratioProgressText({status:"ok", firstAvg:1.5, lastAvg:1.53}), {text:"−2 %", tone:"muted"});
+  assertEqual("axe : pas de 0,25 → 1 décimale", axisDecimals(1, 2, 5), 1);
+  assertEqual("axe : plage serrée → 2 décimales (pas de graduations répétées)", axisDecimals(1.02, 1.10, 5), 2);
+  assertEqual("axe : grands pas → entiers", axisDecimals(0, 100, 5), 0);
+  assertEqual("fractionné : 3 séances = état d'attente, il en manque 1", fractionneChartState(3), {ready:false, count:3, missing:1});
+  assertEqual("fractionné : 4 séances = courbe", fractionneChartState(4), {ready:true});
+  assertEqual("durée de course : 46 min", formatHoursMinutes(2760), "0 h 46");
+  assertEqual("durée de course : 1 h 02", formatHoursMinutes(3725), "1 h 02");
+
+  const run = (y,m,d,o) => ({ ts:new Date(y,m,d,8).getTime(), type:"EF", distKm:0, durationSec:0, paceSecKm:0, cleanEf:false, ...o });
+  const kf = keyFigures([
+    run(2026,1,15,{distKm:10, durationSec:3600, paceSecKm:360, cleanEf:true}),
+    run(2026,9,2,{distKm:8.1, durationSec:2760, paceSecKm:341, cleanEf:true}),
+    run(2026,8,20,{type:"Long", distKm:15, durationSec:5400, paceSecKm:360}),
+    run(2026,9,4,{distKm:5, durationSec:1800, paceSecKm:360}),
+  ], todayTs);
+  assertEqual("chiffres clés : année, plus longue du mois, temps du mois, meilleure allure EF propre", kf, {yearKm:38.1, longestMonthKm:8.1, monthTimeSec:4560, bestEfPaceSecKm:341});
+  assertEqual("chiffres clés : rien de couru", keyFigures([], todayTs), {yearKm:0, longestMonthKm:null, monthTimeSec:0, bestEfPaceSecKm:null});
+  assertEqual("date courte : 12 sept.", shortDateFr(new Date(2026,8,12).getTime()), "12 sept.");
+  assertEqual("date courte : 1er oct.", shortDateFr(new Date(2026,9,1).getTime()), "1er oct.");
+  const rl = recordsListModel(recordHolders([ run(2026,8,12,{distKm:5.1, durationSec:1500, paceSecKm:294}) ]));
+  assertEqual("records : 4 lignes, 5 km couru (ramené à 5 km), les autres « pas encore couru »", rl.map(x=>[x.label, x.timeText, x.dateText]), [["5 km","24:31","12 sept."],["10 km",null,"pas encore couru"],["Semi",null,"pas encore couru"],["Marathon",null,"pas encore couru"]]);
+
+  assertEqual("début du programme : première semaine planifiée", programStartMonday([{week_start_date:"2026-08-10"},{week_start_date:"2026-08-03"},{week_start_date:null}]), "2026-08-03");
+  assertEqual("début du programme : aucun programme", programStartMonday([]), null);
+  assertEqual("semaine du programme : 10e semaine", programWeekNumber("2026-08-03", "2026-10-05"), 10);
+  assertEqual("semaine du programme : pas encore commencé", programWeekNumber("2026-10-12", "2026-10-05"), null);
+  assertEqual("course : semaine 6 sur 13, J-55", raceProgress("2026-08-31", "2026-11-29", "2026-10-05"), {daysLeft:55, totalWeeks:13, week:6, pct:46});
+  assertEqual("course : date passée", raceProgress("2026-08-31", "2026-09-01", "2026-10-05").past, true);
+  assertEqual("course : sans date, pas de J-N", raceProgress("2026-08-31", "", "2026-10-05"), null);
+  assertEqual("course : sans programme, seulement J-N", raceProgress(null, "2026-11-29", "2026-10-05"), {daysLeft:55, totalWeeks:null, week:null, pct:null});
+  const dates = ["2026-10-06","2026-09-29","2026-09-22","2026-09-08"];
+  const st = weeklyStreak(dates, "2026-10-07", 8);
+  assertEqual("régularité : 8 pastilles, 3 semaines d'affilée (celle en cours comprise)", [st.dots, st.streak, st.currentWeekHasRun], [[false,false,false,true,false,true,true,true], 3, true]);
+  const st2 = weeklyStreak(dates.slice(1), "2026-10-07", 8);
+  assertEqual("régularité : semaine en cours encore vide, on compte depuis la précédente", [st2.streak, st2.currentWeekHasRun], [2, false]);
+  assertEqual("régularité : aucune course", weeklyStreak([], "2026-10-07", 8).streak, 0);
+  const ef = efPaceSinceStart(pts, "2026-07-06", pts[11].ts);
+  assertEqual("allure EF depuis le début : 374 → 342", [ef.status, ef.firstAvg, ef.lastAvg], ["ok", 374, 342]);
+  assertEqual("allure EF depuis le début : sans programme", efPaceSinceStart(pts, null, todayTs).status, "insuffisant");
+  assertEqual("variante de la carte objectif", ["Préparer une course","Améliorer mon allure","Courir plus régulièrement","Rester en forme","Autre"].map(objectiveVariant), ["race","pace","streak","streak",null]);
+  assertEqual("anneau : 8 sur 90 = 9 %", ringModel(8, 90), {value:8, goal:90, pct:9});
+  assertEqual("anneau : au-delà de l'objectif, plafonné à 100 %", ringModel(100, 90).pct, 100);
+  assertEqual("anneau : pas d'objectif, pas d'anneau", ringModel(8, 0), null);
+
+  const vol = monthlyVolumeBars([{ts:new Date(2026,7,10).getTime(), distKm:60},{ts:new Date(2026,8,10).getTime(), distKm:120},{ts:new Date(2026,9,2).getTime(), distKm:20}], 90, todayTs, 12);
+  assertEqual("volume : commence au premier mois couru, 3 mois", vol.bars.map(b=>[b.label, b.km, b.state, b.current]), [["août",60,"under",false],["sept.",120,"high",false],["oct.",20,"under",true]]);
+  assertEqual("volume : limite = objectif + 30 %", vol.limitKm, 117);
+  const vol2 = monthlyVolumeBars([{ts:new Date(2026,8,10).getTime(), distKm:90}, {ts:new Date(2026,9,2).getTime(), distKm:117}], 90, todayTs, 12);
+  assertEqual("volume : objectif atteint (90) = « met », pile à la limite (117) = encore « met »", vol2.bars.map(b=>b.state), ["met","met"]);
+  const vol3 = monthlyVolumeBars([{ts:new Date(2026,9,2).getTime(), distKm:20}], 0, todayTs, 12);
+  assertEqual("volume : sans objectif, ni limite ni couleur d'état", [vol3.limitKm, vol3.bars[0].state], [null, "none"]);
+  assertEqual("volume : aucune course", monthlyVolumeBars([], 90, todayTs, 12).bars, []);
+  assertEqual("facile / soutenu : zones 1 à 3 contre 4 et 5", easyHardMonthly([{label:"sept.", secs:[600,1200,600,300,100]}, {label:"août", secs:[0,0,0,0,0]}]), [{label:"sept.", easySec:2400, hardSec:400, easyPct:86, hardPct:14}]);
 }
 
 document.getElementById("summary").innerHTML =
