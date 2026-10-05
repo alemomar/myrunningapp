@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=72"></script>
+<script src="logic.js?v=74"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1407,6 +1407,51 @@ try {
 }
 
 
+
+
+// ---------- S7.1 : historique, détail, ressenti ----------
+{
+  assertEqual("filtres : EF est une course, Renfo et Récup sont des autres", [historyCategory("EF"), historyCategory("Renfo"), historyCategory("Récup"), historyCategory("Marche")], ["runs","others","others","others"]);
+  assertEqual("filtres : Courses ne garde que les courses", ["EF","Renfo","Course"].filter(t=>historyMatches({type:t}, "runs", "all")), ["EF","Course"]);
+  assertEqual("filtres : Autres ne garde que le reste", ["EF","Renfo","Course"].filter(t=>historyMatches({type:t}, "others", "all")), ["Renfo"]);
+  assertEqual("filtres : un type précis", ["EF","Long","Renfo"].filter(t=>historyMatches({type:t}, "all", "Long")), ["Long"]);
+  const T = "2026-10-01";   // jeudi
+  const r = (id,y,m,d,o) => ({ id, ts:new Date(y,m,d,8).getTime(), type:"EF", distKm:5, ...o });
+  const sp2 = historySplit([ r("a",2026,8,25), r("b",2026,9,1,{distKm:8.1}), r("c",2026,8,29,{type:"Renfo",distKm:0}), r("e",2026,8,28,{distKm:10}) ], T);
+  assertEqual("découpage : lundi 28 → jeudi 1er = 3 séances, 18,1 km", [sp2.thisWeek.runs.map(x=>x.id), sp2.thisWeek.km, sp2.thisWeek.text], [["b","c","e"], 18.1, "18,1 km · 3 séances"]);
+  assertEqual("découpage : les mois suivent sans répéter la semaine", sp2.months.map(m=>[m.label, m.runs.map(x=>x.id)]), [["septembre 2026", ["a"]]]);
+  assertEqual("découpage : plus récent d'abord et mois séparés", historySplit([ r("x",2026,7,5), r("y",2026,8,5), r("z",2026,8,6) ], T).months.map(m=>[m.key, m.runs.map(x=>x.id)]), [["2026-09",["z","y"]],["2026-08",["x"]]]);
+  assertEqual("découpage : rien", historySplit([], T), {thisWeek:{runs:[], km:0, count:0, text:""}, months:[]});
+  assertEqual("ligne : course avec allure et durée", historyRowInfo({dist:8.1, allure:343, dur:"46:18", durationSec:2778}), "8,1 km · 5'43\"/km · 46:18");
+  assertEqual("ligne : séance sans distance, en minutes", historyRowInfo({dist:0, dur:"22:00", durationSec:1320}), "22 min");
+  assertEqual("ligne : séance longue sans distance", historyRowInfo({dist:0, dur:"1:05:00", durationSec:3900}), "1:05:00");
+  assertEqual("pastille : difficulté notée", difficultyPill({includeInStats:true, painRatings:{rpe:3}}), {kind:"score", text:"3/10", high:false, aria:"Difficulté 3 sur 10"});
+  assertEqual("pastille : 6 et plus passe en violet", difficultyPill({includeInStats:true, painRatings:{rpe:7}}).high, true);
+  assertEqual("pastille : ressenti manquant = À noter", difficultyPill({includeInStats:true, painRatings:null}).kind, "todo");
+  assertEqual("pastille : noté sans difficulté = À noter", difficultyPill({includeInStats:true, painRatings:{note:4}}).kind, "todo");
+  assertEqual("pastille : une séance hors stats n'en a pas", difficultyPill({includeInStats:false, painRatings:null}), null);
+  const holders = recordHolders([ {id:"r1", ts:1, type:"Course", distKm:10, durationSec:3210, paceSecKm:321}, {id:"r2", ts:2, type:"EF", distKm:6, durationSec:2100, paceSecKm:350, cleanEf:true} ]);
+  assertEqual("trophée : « Record 10 km »", recordBadgeText("r1", holders), "Record 10 km");
+  assertEqual("trophée : allure EF", recordBadgeText("r2", holders), "Record allure EF");
+  assertEqual("trophée : aucune distinction", recordBadgeText("zz", holders), "");
+  assertEqual("suppression : séance liée à replacer", deleteRunText({typeLabel:"EF", dateText:"jeu. 1 oct.", distKm:8.1, linked:{status:"missed"}}), "EF du jeu. 1 oct. · 8,1 km. Elle disparaît de l'historique et des stats. La séance prévue liée redevient « à replacer » (son jour est passé).");
+  assertEqual("suppression : séance liée à faire", deleteRunText({typeLabel:"EF", dateText:"jeu. 1 oct.", distKm:0, linked:{status:"planned"}}).endsWith("redevient « à faire »."), true);
+  assertEqual("suppression : pas de séance liée, rien à ajouter", deleteRunText({typeLabel:"Yoga", dateText:"mar. 29 sept.", distKm:0, linked:null}), "Yoga du mar. 29 sept. Elle disparaît de l'historique et des stats.");
+  assertEqual("silhouette : 14 zones devant, 9 derrière, les 23 zones de l'app une seule fois", [BODY_VIEWS.front.length, BODY_VIEWS.back.length, new Set(BODY_ZONE_KEYS).size, BODY_ZONE_KEYS.length], [14, 9, 23, 23]);
+  assertEqual("silhouette : chaque zone a un nom complet", BODY_ZONE_KEYS.every(k=>!!ZONE_FULL_NAMES[k]), true);
+  assertEqual("silhouette : dos derrière, genou devant", [bodyViewOf("dos"), bodyViewOf("genoux_g")], ["back","front"]);
+  assertEqual("moments : plusieurs choix", zoneMoments(["avant","apres"]), ["avant","apres"]);
+  assertEqual("moments : ancienne valeur unique lisible", zoneMoments("pendant"), ["pendant"]);
+  assertEqual("moments : rien", zoneMoments(undefined), []);
+  assertEqual("couleur de zone : 0 neutre, 5 blanc plein, 6 violet", [zoneFill(0).fill, zoneFill(1).opacity, zoneFill(5).opacity, zoneFill(6).fill, zoneFill(10).opacity], ["#33373C", 0.35, 1, "#B688FE", 1]);
+  assertEqual("douleur maximale : prend la plus forte zone", maxZoneIntensity({genoux_g:5, dos:7, rpe:9}), 7);
+  assertEqual("douleur maximale : rien de noté", maxZoneIntensity({rpe:9}), 0);
+  const pr = buildPainRatings({ sliders:{rpe:4, fatigue:3, mental:"2", respiration:2}, gene:true, zones:{ genoux_g:{value:5, moments:["pendant","apres"]}, dos:{value:0} } }, { note:4 });
+  assertEqual("enregistrement : curseurs, gêne, zone avec ses moments, ancienne note gardée", [pr.rpe, pr.mental, pr.gene, pr.genoux_g, pr.genoux_g_moment, pr.dos, pr.dos_moment, pr.note], [4, 2, true, 5, ["pendant","apres"], 0, [], 4]);
+  assertEqual("enregistrement : sans gêne, toutes les zones à 0", maxZoneIntensity(buildPainRatings({ sliders:{rpe:4}, gene:false, zones:{ genoux_g:{value:5} } })), 0);
+  assertEqual("enregistrement : une zone notée sans moment = « pendant »", buildPainRatings({ sliders:{}, gene:true, zones:{ dos:{value:3} } }).dos_moment, ["pendant"]);
+  assertEqual("enregistrement : gêne non répondue = null", buildPainRatings({ sliders:{}, gene:null, zones:{} }).gene, null);
+}
 
 // ---------- S6.3a : géométrie des courbes ----------
 {

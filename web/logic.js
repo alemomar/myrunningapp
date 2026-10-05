@@ -2022,6 +2022,105 @@ function easyHardMonthly(monthly){   // chaque mois garde sortKey (année × 12 
   }).filter(Boolean);
 }
 
+/* ---------- Historique, détail d'une séance et ressenti (S7, design 7) ---------- */
+// Filtres de l'historique (7g) : Courses = EF, Long, Fractionné, Seuil, Course ; Autres = le reste (Récup et Marche inclus, A9).
+function historyCategory(type){ return RUNNING_RUN_TYPES.includes(type) ? "runs" : "others"; }
+function historyMatches(run, cat, type){
+  if(type && type!=="all" && run.type!==type) return false;
+  if(cat==="runs") return historyCategory(run.type)==="runs";
+  if(cat==="others") return historyCategory(run.type)==="others";
+  return true;
+}
+// « Cette semaine » (du lundi à aujourd'hui, toujours dépliée, avec son total) puis les mois précédents sans répéter
+// ces séances (D42). `runs` : [{id, ts, type, distKm}] ; chaque groupe, plus récent d'abord.
+function historySplit(runs, todayStr){
+  const today = parseDay(todayStr);
+  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay()+6)%7)).getTime();
+  const sorted = (runs||[]).slice().sort((a,b)=>b.ts-a.ts);
+  const week = sorted.filter(r=>r.ts>=monday), rest = sorted.filter(r=>r.ts<monday);
+  const months = [];
+  rest.forEach(r=>{
+    const d = new Date(r.ts), key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    let g = months[months.length-1];
+    if(!g || g.key!==key){ g = { key, label:`${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`, runs:[] }; months.push(g); }
+    g.runs.push(r);
+  });
+  const km = Math.round(week.reduce((a,r)=>a+(r.distKm||0),0)*10)/10;
+  return { thisWeek:{ runs:week, km, count:week.length, text: week.length ? `${km>0?fmtDec(km,1)+" km · ":""}${week.length} séance${week.length>1?"s":""}` : "" }, months };
+}
+// Deuxième ligne d'une ligne d'historique : « 8,1 km · 5'43"/km · 46:18 » ; sans distance, la durée seule.
+function historyRowInfo(run){
+  if(run.dist>0) return [`${fmtDec(run.dist,1)} km`, run.allure ? `${fmtA(run.allure)}/km` : "", run.dur].filter(Boolean).join(" · ");
+  return run.durationSec>=3600 ? run.dur : `${Math.round((run.durationSec||0)/60)} min`;
+}
+// Pastille de droite : la difficulté perçue (« 3/10 », violette à partir de 6) ou « À noter » quand le ressenti manque.
+// Rien pour une séance qui ne compte pas dans les stats.
+function difficultyPill(run){
+  if(!run.includeInStats) return null;
+  const rpe = run.painRatings ? run.painRatings.rpe : null;
+  if(rpe==null) return { kind:"todo", text:"À noter", aria:"Ressenti à noter" };
+  return { kind:"score", text:`${rpe}/10`, high: rpe>=6, aria:`Difficulté ${rpe} sur 10` };
+}
+// Trophée sous la ligne d'une séance qui détient un record actuel : « Record 10 km » (le premier, « +1 » s'il y en a d'autres).
+function recordBadgeText(runId, holders){
+  const labels = runRecordLabels(runId, holders);
+  if(!labels.length) return "";
+  const names = { "5k":"5 km", "10k":"10 km", "semi":"semi", "marathon":"marathon", "allure_ef":"allure EF", "allure_frac":"allure fractionné" };
+  return `Record ${names[labels[0].key]}${labels.length>1?` +${labels.length-1}`:""}`;
+}
+// Confirmation de suppression (feuille) : dit ce qui arrive à la séance prévue liée (D45, journal 7).
+// info : { typeLabel, dateText, distKm, linked:{status:"missed"|"planned"}|null }
+function deleteRunText(info){
+  const head0 = `${info.typeLabel} du ${info.dateText}${info.distKm>0?` · ${fmtDec(info.distKm,1)} km`:""}`;
+  const head = head0.endsWith(".") ? head0 : head0+".";   // « 29 sept. » finit déjà par un point
+  const tail = !info.linked ? "" : info.linked.status==="missed"
+    ? " La séance prévue liée redevient « à replacer » (son jour est passé)."
+    : " La séance prévue liée redevient « à faire ».";
+  return `${head} Elle disparaît de l'historique et des stats.${tail}`;
+}
+
+// --- Silhouette de la carte du corps (7a) : devant (14 zones) et derrière (9 zones), « gauche » = côté gauche de l'écran ---
+// [clé, cx, cy, rx, ry] dans une vue de 200 × 300.
+const BODY_VIEWS = {
+  front:[["epaules_g",62,62,16,12],["epaules_d",138,62,16,12],["abdos",100,92,22,22],["psoas_g",84,120,9,12],["psoas_d",116,120,9,12],["bassin",100,136,26,9],["cuisse_g",82,172,12,26],["cuisse_d",118,172,12,26],["genoux_g",82,214,9,9],["genoux_d",118,214,9,9],["tibias_g",82,246,8,20],["tibias_d",118,246,8,20],["pied_g",80,286,11,6],["pied_d",120,286,11,6]],
+  back:[["dos",100,92,24,30],["fessiers_g",86,138,13,12],["fessiers_d",114,138,13,12],["ischios_g",84,178,11,24],["ischios_d",116,178,11,24],["mollets_g",82,236,10,18],["mollets_d",118,236,10,18],["tendons_g",82,272,6,9],["tendons_d",118,272,6,9]],
+};
+const ZONE_FULL_NAMES = {
+  epaules_g:"Épaule gauche", epaules_d:"Épaule droite", dos:"Dos", abdos:"Abdos", psoas_g:"Psoas gauche", psoas_d:"Psoas droit", bassin:"Bassin",
+  fessiers_g:"Fessier gauche", fessiers_d:"Fessier droit", cuisse_g:"Cuisse gauche", cuisse_d:"Cuisse droite", ischios_g:"Ischio gauche", ischios_d:"Ischio droit",
+  genoux_g:"Genou gauche", genoux_d:"Genou droit", tibias_g:"Tibia gauche", tibias_d:"Tibia droit", mollets_g:"Mollet gauche", mollets_d:"Mollet droit",
+  tendons_g:"Tendon gauche", tendons_d:"Tendon droit", pied_g:"Pied gauche", pied_d:"Pied droit",
+};
+const BODY_ZONE_KEYS = [...BODY_VIEWS.front, ...BODY_VIEWS.back].map(z=>z[0]);
+function bodyViewOf(zoneKey){ return BODY_VIEWS.front.some(z=>z[0]===zoneKey) ? "front" : "back"; }
+// Plusieurs moments possibles par zone (D39) ; les anciennes valeurs uniques (« pendant ») restent lisibles.
+function zoneMoments(v){ return Array.isArray(v) ? v.filter(Boolean) : v ? [v] : []; }
+// Couleur d'une zone selon l'intensité : 1 à 5 en blanc (opacité de 35 à 100 %), 6 à 10 en violet (50 à 100 %), 0 = neutre.
+function zoneFill(v){
+  const n = Number(v)||0;
+  if(n<=0) return { fill:"#33373C", stroke:"#4A4F55", opacity:1 };
+  if(n<=5) return { fill:"#F2F3F0", stroke:"#F2F3F0", opacity: Math.round((0.35+(n-1)*0.1625)*100)/100 };
+  return { fill:"#B688FE", stroke:"#B688FE", opacity: Math.round((0.5+(n-6)*0.125)*100)/100 };
+}
+// Plus forte intensité notée sur une zone du corps : ≥ 6 déclenche « On te propose d'adapter ton programme ».
+function maxZoneIntensity(ratings){
+  return BODY_ZONE_KEYS.reduce((m,k)=>Math.max(m, Number(ratings && ratings[k])||0), 0);
+}
+// Enregistrement de la feuille de ressenti : mêmes clés qu'avant (rpe, fatigue, mental, respiration, gene, une valeur par zone,
+// `${zone}_moment`) ; la note globale n'est plus demandée (D38), l'ancienne valeur reste en base si elle existait.
+function buildPainRatings(form, existing){
+  const out = { ...(existing||{}) };
+  ["rpe","fatigue","mental","respiration"].forEach(k=>{ const v = form.sliders && form.sliders[k]; if(v!=null && v!=="") out[k] = parseInt(v,10); });
+  out.gene = form.gene===true ? true : form.gene===false ? false : null;
+  BODY_ZONE_KEYS.forEach(k=>{
+    const z = (form.zones && form.zones[k]) || {};
+    const v = form.gene===false ? 0 : (parseInt(z.value,10)||0);
+    out[k] = v;
+    out[k+"_moment"] = v>0 ? (zoneMoments(z.moments).length ? zoneMoments(z.moments) : ["pendant"]) : [];
+  });
+  return out;
+}
+
 /* ---------- Base d'exercices renfo/mobilité (CDC v2, 4.7 — base pour 4.6.a) ----------
    Fournie par l'utilisateur (01/10/2026), 20 exercices (14 Renfo + 6
    Mobilité) — destinée à être relue par un kiné avant la phase 3 (CDC v2,
