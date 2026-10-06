@@ -266,7 +266,7 @@ final class HealthKitManager {
             userId: userId,
             startDate: isoFormatter.string(from: start),
             appleType: appleType,
-            type: guessType(appleType: appleType, distanceKm: distanceKm),
+            type: guessType(appleType: appleType, distanceKm: distanceKm, blocks: lapMarkers.count),
             distanceKm: distanceKm,
             durationSec: workout.duration,
             avgHr: avgHR,
@@ -292,12 +292,15 @@ enum SyncError: LocalizedError {
 }
 
 extension HKWorkoutActivityType {
-    // Nom envoyé au backend, lu par guessType() dans AppsScript.gs
+    // Nom envoyé à MyRunningApp (colonne apple_type) et lu par guessType(). Tout type absent d'ici part en « Other » :
+    // le Pilates et le gainage y partaient par oubli (guessType les connaissait déjà), corrigé le 06/10/2026.
     var name: String {
         switch self {
         case .running: return "Running"
         case .walking: return "Walking"
         case .yoga: return "Yoga"
+        case .pilates: return "Pilates"
+        case .coreTraining: return "CoreTraining"
         case .functionalStrengthTraining: return "FunctionalStrengthTraining"
         case .traditionalStrengthTraining: return "TraditionalStrengthTraining"
         case .flexibility: return "Flexibility"

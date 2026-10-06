@@ -102,17 +102,26 @@ struct WorkoutPayload: Codable {
     }
 }
 
-// Best-effort : Apple ne connait pas la notion d'EF/Fractionné/Long/Récup,
-// ni les catégories Marche/Souplesse/Pilates qu'on distingue nous-mêmes.
-// Éditable plus tard depuis le dashboard.
-func guessType(appleType: String, distanceKm: Double) -> String {
+// Type de départ, donné une seule fois à l'envoi (une resynchro ne réécrit jamais le type : la correction de
+// l'utilisateur dans MyRunningApp reste). Apple ne connait pas la notion d'EF/Fractionné/Long/Récup : on la déduit.
+// Les noms doivent exister dans MyRunningApp (SESSION_TYPES_DONE, web/logic.js).
+//
+// Fractionné : séance programmée sur la montre avec au moins 4 blocs (échauffement, efforts, récupérations,
+// retour au calme). Vérifié le 06/10/2026 sur les 66 courses d'Omar : 9 fractionnés sur 9, aucune autre course
+// n'a de blocs ; un seuil programmé (échauffement, seuil, retour au calme) n'en a que 3 et reste à part.
+// Limites connues : un fractionné fait sans programme reste « EF », une compétition ou un seuil aussi.
+let fractionneMinBlocks = 4
+
+func guessType(appleType: String, distanceKm: Double, blocks: Int) -> String {
     switch appleType {
-    case "Running": return distanceKm > 10 ? "Long" : "EF"
+    case "Running":
+        if blocks >= fractionneMinBlocks { return "Fractionné" }
+        return distanceKm > 10 ? "Long" : "EF"
     case "Walking": return "Marche"
     case "Yoga": return "Yoga"
     case "Pilates": return "Pilates"
     case "FunctionalStrengthTraining", "TraditionalStrengthTraining", "CoreTraining": return "Renfo"
-    case "Flexibility": return "Souplesse"
+    case "Flexibility": return "Étirements"   // « Souplesse » n'existe pas dans MyRunningApp
     case "Cooldown": return "Mobilité"
     default: return "Other"
     }
