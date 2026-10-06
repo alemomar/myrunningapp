@@ -22,9 +22,12 @@ final class BackgroundSyncManager {
 
     // À appeler une fois, tôt, à chaque lancement du process (y compris un
     // lancement en arrière-plan déclenché par iOS) : la query ne survit pas
-    // au process, il faut la ré-enregistrer systématiquement.
+    // au process, il faut la ré-enregistrer systématiquement. Rappelée aussi
+    // juste après l'autorisation Apple Santé du premier lancement (avant, elle
+    // n'avait pas l'accès) : l'ancienne query est alors arrêtée d'abord.
     func start() {
         guard HKHealthStore.isHealthDataAvailable() else { return }
+        if let observerQuery { store.stop(observerQuery) }
         let workoutType = HKObjectType.workoutType()
 
         let query = HKObserverQuery(sampleType: workoutType, predicate: nil) { _, completionHandler, error in

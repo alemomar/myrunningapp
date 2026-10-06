@@ -956,12 +956,6 @@ button.pg-rec-row{cursor:pointer}
 .sg-mail{display:flex;align-items:center;justify-content:space-between;gap:10px;height:52px;padding:0 6px 0 14px;border-radius:var(--r-md);background:var(--surface-sunken);border:1px solid var(--line-field);font-size:15px}
 .sg-mail span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sg-mail button{height:40px;padding:0 14px;border:none;border-radius:20px;background:var(--surface-control);color:var(--text);font:inherit;font-size:14px;font-weight:600;cursor:pointer;flex:none}
-.sg-apple{border-radius:var(--r-md);background:var(--surface-sunken);padding:12px 14px;display:flex;flex-direction:column;gap:10px;font-size:13.5px}
-.sg-apple .cap{font-size:11px;letter-spacing:.14em;color:var(--text-muted);text-transform:uppercase}
-.sg-apple .r{display:flex;justify-content:space-between;align-items:center;color:var(--text-2)}
-.sg-apple .r.all{color:var(--text);font-weight:600}
-.sg-apple i{display:inline-block;width:32px;height:19px;border-radius:10px;background:var(--accent);position:relative;flex:none}
-.sg-apple i::after{content:"";position:absolute;right:2px;top:2px;width:15px;height:15px;border-radius:50%;background:#fff}
 .sg-wait{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text-2)}
 .sg-wait .spinner{width:18px;height:18px;margin:0}
 .sg-tips{margin:0;padding-left:18px;font-size:13.5px;line-height:1.5;color:var(--text-2)}
@@ -1126,7 +1120,7 @@ button.pg-rec-row{cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=85"></script>
+<script src="logic.js?v=86"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -3905,7 +3899,7 @@ function profilCompteHTML(){
       <div class="pf-title">Synchronisation</div>
       <div class="pf-sync${lastSynced && !silentDaysShown ? "" : " off"}"><i></i><span>Apple Santé · ${!lastSynced ? "Pas encore connecté" : silentDaysShown ? `aucune course depuis ${silentDaysShown} jours` : "Connecté"}</span></div>
       ${lastSynced ? `<div class="pf-hint" style="margin-top:-6px">Dernière course reçue : ${escHtml(relativeDayTime(dateFromRun(lastSynced).getTime(), Date.now()))}</div>` : `<div class="pf-hint" style="margin-top:-6px">Aucune course reçue pour l'instant.</div>`}
-      ${silentDaysShown ? `<div class="pf-hint" style="margin-top:-6px">Pas de souci si tu n'as pas couru. Sinon, ouvre RunSync et touche « Forcer une synchronisation ».</div>` : ""}
+      ${silentDaysShown ? `<div class="pf-hint" style="margin-top:-6px">Pas de souci si tu n'as pas couru. Sinon, ouvre RunSync et touche « Synchroniser maintenant ».</div>` : ""}
       <button type="button" class="pf-btn" onclick="location.href='myrunningapp://sync'">Synchroniser mes courses</button>
       ${lastSynced ? "" : `<button type="button" class="pf-btn" onclick="openSyncGuide()">Voir comment</button>`}
       <div class="pf-hint">Ouvre l'app iOS et lance la synchronisation : fonctionne uniquement depuis Safari sur ton iPhone.</div>
@@ -6507,16 +6501,16 @@ window.onbLeave = () => {
 // Courses arrivées d'Apple Santé (pas celles saisies à la main) : le guide de connexion s'appuie dessus.
 function receivedRuns(){ return RUNS.filter(r=>r.appleType && r.appleType!==MANUAL_RUN_MARKER); }
 
-// ---------- Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13 ; D60) ----------
-// 4 étapes dans une feuille, une seule ouverte : installer RunSync, s'y connecter avec le même email, autoriser Apple Santé,
-// recevoir les courses. Les trois premières se cochent toutes seules quand on revient dans l'app après les avoir ouvertes ;
-// la quatrième interroge régulièrement l'arrivée des premières courses. Ouvert depuis la fin du parcours (étape 5) et depuis
+// ---------- Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13 ; D60 ; lot 2, D102) ----------
+// 3 étapes dans une feuille, une seule ouverte : installer RunSync, l'ouvrir et se laisser guider (connexion, date de départ,
+// Apple Santé et import se font dans RunSync), recevoir les courses. Les deux premières se cochent toutes seules quand on
+// revient dans l'app après les avoir ouvertes ; la dernière interroge régulièrement l'arrivée des premières courses. Ouvert
+// depuis la fin du parcours (étape 5) et depuis
 // Mon compte › Synchronisation. L'état est gardé sur l'appareil : si l'app est rechargée pendant qu'on est dans TestFlight ou
 // RunSync, le guide se rouvre où on l'avait laissé.
 const RUNSYNC_INSTALL_URL = "https://testflight.apple.com/join/vYx5KKUw";   // lien public TestFlight fourni par Omar (groupe « Amis_Testeurs », limite de testeurs fixée dans App Store Connect) ; builds valables jusqu'au 25/12/2026 environ ; à remplacer par le lien App Store à la sortie ; s'il est vide, le bouton l'explique
-const RUNSYNC_OPEN_URL = "myrunningapp://";   // schéma déclaré par l'app iOS RunSync (Info.plist)
 const SYNC_GUIDE_KEY = "mra_syncGuide";
-let syncGuide = null;      // { done:[b,b,b], pending:0|1|2|3, waitStart, received, fromOnb }
+let syncGuide = null;      // { done:[b,b], pending:0|1|2, waitStart, received, fromOnb }
 let syncPollTimer = null;
 function saveSyncGuide(){
   try{ if(syncGuide) localStorage.setItem(SYNC_GUIDE_KEY, JSON.stringify({ open:true, done:syncGuide.done, pending:syncGuide.pending })); else localStorage.removeItem(SYNC_GUIDE_KEY); }catch(e){}
@@ -6535,7 +6529,9 @@ function syncGuideModelNow(){
 window.openSyncGuide = () => {
   let saved = null;
   try{ saved = JSON.parse(localStorage.getItem(SYNC_GUIDE_KEY)||"null"); }catch(e){}
-  syncGuide = { done:(saved && saved.done) || [false,false,false], pending:(saved && saved.pending) || 0, waitStart:null, received:receivedRuns().length, fromOnb:onbConnect };
+  // Un état gardé par l'ancien guide en 4 étapes (3 cases, étape 3 = Apple Santé, qui se fait maintenant dans RunSync) se ramène à 2 cases.
+  const savedDone = (saved && saved.done) || [];
+  syncGuide = { done:[!!savedDone[0], !!savedDone[1]], pending:Math.min((saved && saved.pending) || 0, 2), waitStart:null, received:receivedRuns().length, fromOnb:onbConnect };
   settleSyncGuide(); saveSyncGuide();
   refreshSheet(); startSyncPoll();
 };
@@ -6558,7 +6554,7 @@ function startSyncPoll(){ stopSyncPoll(); syncPollTimer = setInterval(syncPollOn
 async function syncPollOnce(){
   if(!syncGuide){ stopSyncPoll(); return; }
   const m = syncGuideModelNow();
-  if(m.connected || m.active<4){ refreshSheet(); return; }
+  if(m.connected || m.active<SYNC_GUIDE_TITLES.length){ refreshSheet(); return; }
   const { count, error } = await supa.from("runs").select("id", { count:"exact", head:true }).not("apple_type","is",null).neq("apple_type", MANUAL_RUN_MARKER);
   if(error || !syncGuide) return;
   if((count||0)>0 && !syncGuide.received){ syncGuide.received = count; stopSyncPoll(); await loadData(); }
@@ -6573,7 +6569,7 @@ window.syncInstall = () => {
 };
 window.syncOpenRunSync = (step) => {
   syncGuide.pending = step; saveSyncGuide();
-  window.location.href = RUNSYNC_OPEN_URL;
+  window.location.href = runSyncOpenUrl(userEmail);   // RunSync s'ouvre avec l'e-mail du compte déjà rempli
   setTimeout(()=>{ if(document.visibilityState==="visible" && syncGuide && syncGuide.pending===step) toast("RunSync ne s'ouvre pas ? Ouvre-le depuis ton écran d'accueil."); }, 1800);
 };
 window.syncMarkDone = (step) => { syncGuide.done[step-1] = true; syncGuide.pending = 0; saveSyncGuide(); refreshSheet(); };
@@ -6586,18 +6582,15 @@ function syncStepBodyHTML(m, n){
   const skip = (step) => `<button type="button" class="sg-skip" onclick="syncMarkDone(${step})">C'est déjà fait</button>`;
   if(n===1) return `<div class="sg-tx">RunSync est une petite app relais : elle récupère tes courses dans Apple Santé et les envoie ici, toute seule.</div>
     <div class="sg-flow"><div class="c">${icon("heart",20)}<span>Apple Santé</span></div><span class="ar">${icon("arrowRight",16)}</span><div class="c">${icon("refresh",20)}<span>RunSync</span></div><span class="ar">${icon("arrowRight",16)}</span><div class="c me">${icon("runner",20)}<span>MyRunningApp</span></div></div>
-    <div class="sg-note">${icon("info",16)}<span>Tu n'auras pas besoin de l'ouvrir ensuite : une fois installée, elle travaille en arrière-plan. Tout se passe ici.</span></div>
+    <div class="sg-note">${icon("info",16)}<span>RunSync est encore en test : Apple te fait d'abord installer <b>TestFlight</b>, son app pour les apps en test. Suis ses 2 étapes, puis reviens ici.</span></div>
     ${next(`Installer RunSync ${icon("arrowUpRight",16)}`, "syncInstall()")}${skip(1)}`;
-  if(n===2) return `<div class="sg-tx">Dans RunSync, connecte-toi avec <b>le même email et le même mot de passe</b> que dans MyRunningApp.</div>
+  if(n===2) return `<div class="sg-tx">RunSync s'ouvre avec ton e-mail <b>déjà rempli</b>. Tape ton mot de passe MyRunningApp, puis suis ses écrans jusqu'à « C'est fait ».</div>
     <div class="sg-mail"><span>${escHtml(userEmail||"")}</span><button type="button" onclick="syncCopyEmail()">Copier</button></div>
+    <div class="sg-note">${icon("info",16)}<span>À la fin, reviens ici avec le petit retour, tout en haut à gauche de l'écran.</span></div>
     ${next("Ouvrir RunSync", "syncOpenRunSync(2)")}${skip(2)}`;
-  if(n===3) return `<div class="sg-tx">Dans RunSync, touche « Synchroniser mes courses ». Apple te demande l'accès : touche simplement <b>Tout activer</b>, puis Autoriser.</div>
-    <div class="sg-apple" aria-hidden="true"><div class="cap">Écran d'Apple</div><div class="r all"><span>Tout activer</span><i></i></div><div class="r"><span>Entraînements</span><i></i></div><div class="r"><span>Fréquence cardiaque</span><i></i></div><div class="r"><span>Distance</span><i></i></div><div class="r"><span>+ Calories, Nombre de pas</span><i></i></div></div>
-    ${next("Ouvrir RunSync", "syncOpenRunSync(3)")}
-    <div class="sg-note">${icon("info",16)}<span>On ne lit que tes séances de sport. Rien d'autre.</span></div>${skip(3)}`;
   if(m.phase==="ok") return `<div class="sg-tx"><b>${escHtml(m.summary.replace("C'est connecté · ",""))}.</b> Les prochaines arriveront toutes seules.</div>${next("Continuer", "closeSyncGuide(true)")}`;
   if(m.phase==="empty") return `<div class="sg-tx">Rien reçu pour l'instant. Pas grave si tu n'as encore jamais couru avec ta montre ou ton téléphone : ta prochaine course arrivera toute seule.</div>
-    <ul class="sg-tips"><li>Ouvre RunSync et touche « Forcer une synchronisation »</li><li>Vérifie l'accès : Réglages → Santé → Accès → RunSync</li></ul>
+    <ul class="sg-tips"><li>Ouvre RunSync et touche « Synchroniser maintenant »</li><li>Vérifie l'accès : Réglages › Confidentialité et sécurité › Santé › RunSync</li></ul>
     <div class="sg-btns"><button type="button" class="btn-secondary" style="min-height:48px" onclick="closeSyncGuide(true)">Continuer sans attendre</button><button type="button" class="btn-secondary" style="min-height:48px" onclick="syncRetry()">Réessayer</button></div>`;
   return `<div class="sg-wait"><div class="spinner" aria-hidden="true"></div><span>Synchronisation de tes courses…</span></div>`;
 }
@@ -6611,7 +6604,7 @@ function renderSyncGuide(){
   }).join("");
   document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeSyncGuide()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Connecter Apple Santé">
     ${sheetHeadHTML("Connecter Apple Santé", "closeSyncGuide()")}
-    <div class="np-intro">4 étapes, environ 2 minutes. On coche chaque étape tout seul quand tu reviens.</div>
+    <div class="np-intro">3 étapes, environ 3 minutes. On coche chaque étape tout seul quand tu reviens.</div>
     <div class="sg-list">${items}</div>
     ${m.connected ? "" : `<button type="button" class="btn-ghost" onclick="closeSyncGuide(false)">Je le ferai plus tard</button>`}
   </div></div>`;

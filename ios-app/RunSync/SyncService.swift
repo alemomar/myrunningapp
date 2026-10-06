@@ -6,7 +6,15 @@ private let syncLogger = Logger(subsystem: "com.omaralem.RunSync", category: "sy
 
 struct SyncResult {
     let workoutsFound: Int
-    let added: Int
+    let added: Int      // séances envoyées, doublons retirés
+    let runs: Int       // dont courses à pied
+    let since: Date     // date de départ utilisée pour cette synchro
+}
+
+// Avancement affiché pendant le premier import (écran « Import de tes séances »).
+enum SyncProgress: Equatable {
+    case reading(done: Int, total: Int)
+    case sending(total: Int)
 }
 
 enum SyncServiceError: LocalizedError {
@@ -23,22 +31,66 @@ enum SyncServiceError: LocalizedError {
     }
 }
 
-// Horodatage de la dernière sync réussie (déclenchée par l'app, le lien web,
-// ou l'automatisation Shortcuts) — permet de rassurer l'utilisateur qu'il n'a
-// pas besoin de resynchroniser à chaque ouverture.
+// Horodatage de la dernière sync réussie (déclenchée par l'app, le lien web, l'arrière-plan ou l'automatisation
+// Shortcuts) : rassure l'utilisateur qu'il n'a pas besoin de resynchroniser à chaque ouverture. Gardé PAR COMPTE
+// depuis la version 3 : changer de compte n'affiche plus la date de l'autre.
 enum LastSync {
-    private static let key = "runsync.lastSyncDate"
+    private static let legacyKey = "runsync.lastSyncDate"   // versions 1 et 2 : une seule date pour l'appareil
+    private static func key(_ userId: String) -> String { "runsync.lastSyncDate.\(userId)" }
 
-    static var date: Date? {
-        get { UserDefaults.standard.object(forKey: key) as? Date }
-        set { UserDefaults.standard.set(newValue, forKey: key) }
+    static func date(for userId: String) -> Date? {
+        UserDefaults.standard.object(forKey: key(userId)) as? Date
     }
+
+    static func set(_ date: Date, for userId: String) {
+        UserDefaults.standard.set(date, forKey: key(userId))
+    }
+
+    // Premier lancement après la mise à jour : la date de l'appareil revient au compte connecté à ce moment-là,
+    // celui qui a synchronisé avec l'ancienne version. Renvoie true si ce compte avait donc déjà synchronisé
+    // (il n'a pas à refaire le premier import guidé).
+    static func adoptLegacy(for userId: String) -> Bool {
+        guard let legacy = UserDefaults.standard.object(forKey: legacyKey) as? Date else { return false }
+        if date(for: userId) == nil { set(legacy, for: userId) }
+        UserDefaults.standard.removeObject(forKey: legacyKey)
+        return true
+    }
+
+    // Personne n'était connecté au lancement : impossible de savoir à quel compte elle revenait, on l'oublie
+    // (sinon le prochain compte connecté sauterait son premier import guidé).
+    static func discardLegacy() {
+        UserDefaults.standard.removeObject(forKey: legacyKey)
+    }
+}
+
+// Où en est le premier lancement guidé, par compte : fenêtre Apple Santé déjà montrée, premier import terminé.
+// Permet de reprendre là où on en était si l'app est fermée en route.
+enum FirstImport {
+    private static func key(_ name: String, _ userId: String) -> String { "runsync.\(name).\(userId)" }
+
+    static func isDone(_ userId: String) -> Bool { UserDefaults.standard.bool(forKey: key("firstImportDone", userId)) }
+    static func markDone(_ userId: String) { UserDefaults.standard.set(true, forKey: key("firstImportDone", userId)) }
+
+    static func healthAsked(_ userId: String) -> Bool { UserDefaults.standard.bool(forKey: key("healthAsked", userId)) }
+    static func markHealthAsked(_ userId: String) { UserDefaults.standard.set(true, forKey: key("healthAsked", userId)) }
 }
 
 final class SyncService {
     private let healthKit = HealthKitManager()
 
-    func syncRecentWorkouts() async throws -> SyncResult {
+    // Message à afficher quand une synchro échoue, sans jargon ni réponse brute du serveur.
+    static func message(for error: Error) -> String {
+        if error is URLError { return "Pas de connexion : vérifie ton réseau, puis réessaie." }
+        switch error {
+        case SyncServiceError.notSignedIn: return "Ta session a expiré : reconnecte-toi."
+        case SyncServiceError.noSyncDateConfigured: return "Choisis d'abord une date de départ."
+        case SyncServiceError.badResponse: return "MyRunningApp n'a pas pu enregistrer tes séances. Réessaie dans un instant."
+        case SyncError.healthDataUnavailable: return "Apple Santé n'est pas disponible sur cet appareil."
+        default: return "Quelque chose n'a pas marché. Réessaie dans un instant."
+        }
+    }
+
+    func syncRecentWorkouts(progress: (@MainActor (SyncProgress) -> Void)? = nil) async throws -> SyncResult {
         syncLogger.notice("[sync] start")
         guard AuthService.currentSession != nil else {
             syncLogger.notice("[sync] pas de session")
@@ -51,7 +103,7 @@ final class SyncService {
             throw SyncServiceError.notSignedIn
         }
 
-        guard let sinceDate = await ProfileService().fetchSyncSinceDate(session: session) else {
+        guard let sinceDate = try await ProfileService().loadSyncSinceDate(session: session) else {
             syncLogger.notice("[sync] pas de sync_since_date configurée")
             throw SyncServiceError.noSyncDateConfigured
         }
@@ -64,11 +116,13 @@ final class SyncService {
         syncLogger.notice("[sync] vo2max ok")
         let workouts = try await healthKit.fetchWorkouts(since: sinceDate)
         syncLogger.notice("[sync] \(workouts.count) séance(s) trouvée(s)")
+        await progress?(.reading(done: 0, total: workouts.count))
 
         var payloads: [WorkoutPayload] = []
-        for workout in workouts {
+        for (index, workout) in workouts.enumerated() {
             let payload = await healthKit.buildPayload(for: workout, userId: session.userId)
             payloads.append(payload)
+            await progress?(.reading(done: index + 1, total: workouts.count))
         }
         syncLogger.notice("[sync] payloads construits")
 
@@ -77,9 +131,10 @@ final class SyncService {
         var seenStartDates = Set<String>()
         let dedupedPayloads = payloads.filter { seenStartDates.insert($0.startDate).inserted }
 
+        await progress?(.sending(total: dedupedPayloads.count))
         try await send(dedupedPayloads, session: session)
         syncLogger.notice("[sync] envoi réussi")
-        LastSync.date = Date()
+        LastSync.set(Date(), for: session.userId)
 
         // Rattrapage ponctuel : ajoute lap_markers aux séances déjà
         // synchronisées avant l'ajout de ce champ (voir backfillLapMarkersIfNeeded).
@@ -94,8 +149,10 @@ final class SyncService {
         // processus avant la fin si ça prend trop longtemps → l'automatisation
         // échoue avec une "unknown error". Marge de 3 jours pour couvrir les
         // séances Watch qui remontent sur le téléphone avec un peu de retard.
+        // Rien trouvé : la date ne bouge pas. Sinon un accès Apple Santé refusé (qui ne renvoie rien, sans erreur)
+        // ferait perdre tout l'historique : « Réessayer » après avoir rouvert l'accès ne chercherait plus que 3 jours.
         let newSinceDate = Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date()
-        if newSinceDate > sinceDate {
+        if !payloads.isEmpty && newSinceDate > sinceDate {
             do {
                 try await ProfileService().setSyncSinceDate(session: session, date: newSinceDate)
                 syncLogger.notice("[sync] sync_since_date avancée avec succès à \(newSinceDate.description, privacy: .public)")
@@ -104,7 +161,8 @@ final class SyncService {
             }
         }
 
-        return SyncResult(workoutsFound: payloads.count, added: payloads.count)
+        let runs = dedupedPayloads.filter { $0.appleType == "Running" }.count
+        return SyncResult(workoutsFound: payloads.count, added: dedupedPayloads.count, runs: runs, since: sinceDate)
     }
 
     // Renseignée automatiquement depuis la Watch, mais au plus 1 fois par

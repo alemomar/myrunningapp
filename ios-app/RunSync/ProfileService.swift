@@ -11,19 +11,24 @@ final class ProfileService {
         return f
     }()
 
-    // nil = pas encore configuré par l'utilisateur
-    func fetchSyncSinceDate(session: Session) async -> Date? {
+    // nil = pas encore configuré par l'utilisateur. Une coupure réseau lève une erreur au lieu de renvoyer nil :
+    // sinon un simple trou de réseau renverrait l'utilisateur à l'écran « Depuis quand ? ».
+    func loadSyncSinceDate(session: Session) async throws -> Date? {
         var request = URLRequest(url: URL(string: "\(Config.supabaseURL)/rest/v1/profiles?user_id=eq.\(session.userId)&select=sync_since_date")!)
         request.setValue(Config.supabaseAnonKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
 
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
-              let rows = try? JSONDecoder().decode([[String: String]].self, from: data),
-              let dateString = rows.first?["sync_since_date"] else {
-            return nil
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw SyncServiceError.badResponse(String(data: data, encoding: .utf8) ?? "réponse invalide")
         }
+        let rows = ((try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]]) ?? []
+        guard let dateString = rows.first?["sync_since_date"] as? String else { return nil }
         return Self.isoDate.date(from: dateString)
+    }
+
+    func fetchSyncSinceDate(session: Session) async -> Date? {
+        try? await loadSyncSinceDate(session: session)
     }
 
     func setSyncSinceDate(session: Session, date: Date) async throws {

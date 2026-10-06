@@ -1,44 +1,82 @@
 import Foundation
 
-// État de sync partagé par toute l'app, pour pouvoir être déclenché soit par
-// le bouton de l'app, soit par le lien profond myrunningapp://sync ouvert
-// depuis le dashboard web.
+// Résultat du premier import, affiché sur l'écran « C'est fait ».
+struct ImportSummary: Equatable {
+    let sessions: Int
+    let runs: Int
+    let since: Date
+}
+
+// État de sync partagé par toute l'app : premier import guidé (avec compteur), bouton « Synchroniser maintenant »
+// de l'écran principal, et lien myrunningapp://sync ouvert depuis MyRunningApp (Mon compte).
 @MainActor
 final class SyncCoordinator: ObservableObject {
-    @Published var status = "Prêt à synchroniser"
-    @Published var isSyncing = false
-    @Published var lastSyncLabel = SyncCoordinator.formatLastSync(LastSync.date)
-    @Published var syncSinceDateLabel: String?
+    enum ImportPhase: Equatable {
+        case searching                          // liste des séances demandée à Apple Santé
+        case progressing(SyncProgress)
+    }
 
-    func refreshSyncSinceDateLabel() async {
-        guard let session = AuthService.currentSession else { return }
-        guard let date = await ProfileService().fetchSyncSinceDate(session: session) else { return }
-        syncSinceDateLabel = date.formatted(date: .abbreviated, time: .omitted)
+    enum HomeStatus: Equatable {
+        case idle
+        case syncing
+        case upToDate
+        case failed(String)
+    }
+
+    @Published var importPhase: ImportPhase = .searching
+    @Published var importError: String?
+    @Published var homeStatus: HomeStatus = .idle
+    @Published var lastSync: Date?
+
+    var isSyncing: Bool { homeStatus == .syncing }
+
+    func refreshLastSync() {
+        lastSync = AuthService.currentSession.flatMap { LastSync.date(for: $0.userId) }
+    }
+
+    func reset() {
+        importPhase = .searching
+        importError = nil
+        homeStatus = .idle
+        lastSync = nil
+    }
+
+    // Étape 3 du premier lancement. nil en cas d'erreur : l'écran affiche alors `importError` et « Réessayer ».
+    func firstImport() async -> ImportSummary? {
+        importError = nil
+        importPhase = .searching
+        do {
+            let result = try await SyncService().syncRecentWorkouts { [weak self] progress in
+                self?.importPhase = .progressing(progress)
+            }
+            refreshLastSync()
+            return ImportSummary(sessions: result.added, runs: result.runs, since: result.since)
+        } catch {
+            importError = SyncService.message(for: error)
+            return nil
+        }
     }
 
     func sync() async {
-        guard AuthService.currentSession != nil else {
-            status = "Connecte-toi dans l'app avant de synchroniser."
-            return
-        }
-        isSyncing = true
-        status = "Synchronisation en cours…"
+        guard AuthService.currentSession != nil, !isSyncing else { return }
+        homeStatus = .syncing
         do {
-            let result = try await SyncService().syncRecentWorkouts()
-            status = "\(result.workoutsFound) séance(s) importée(s).\nVous pouvez à présent vous rendre sur votre dashboard."
-            lastSyncLabel = Self.formatLastSync(LastSync.date)
+            _ = try await SyncService().syncRecentWorkouts()
+            refreshLastSync()
+            homeStatus = .upToDate
         } catch {
-            status = "Erreur : \(error.localizedDescription)"
+            homeStatus = .failed(SyncService.message(for: error))
         }
-        isSyncing = false
     }
 
-    private static func formatLastSync(_ date: Date?) -> String {
-        guard let date else { return "Jamais synchronisé pour l'instant" }
-        let cal = Calendar.current
-        let time = date.formatted(date: .omitted, time: .shortened)
-        if cal.isDateInToday(date) { return "Dernière synchronisation aujourd'hui à \(time)" }
-        if cal.isDateInYesterday(date) { return "Dernière synchronisation hier à \(time)" }
-        return "Dernière synchronisation le \(date.formatted(date: .abbreviated, time: .shortened))"
+    // « aujourd'hui à 10:18 », « hier à 18:42 », « le 3 oct. à 10:18 » : en français, quelle que soit la langue de l'iPhone.
+    static func lastSyncText(_ date: Date?) -> String {
+        guard let date else { return "pas encore" }
+        let time = date.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(Theme.locale))
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) { return "aujourd'hui à \(time)" }
+        if calendar.isDateInYesterday(date) { return "hier à \(time)" }
+        let day = date.formatted(Date.FormatStyle().day().month(.abbreviated).locale(Theme.locale))
+        return "le \(day) à \(time)"
     }
 }

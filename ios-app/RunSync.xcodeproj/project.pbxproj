@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		07C604F4C75C4CCB9D50C0C3 /* RunningAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04351D6F485B40D798566251 /* RunningAnimationView.swift */; };
 		0D48BC5C3BA54BDA8DFFDDD9 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02E4610CEA8540B7BE00EC1B /* AuthService.swift */; };
 		2768C78C09CD4F20B3CB2AF2 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE752CC0A6924671963EE04C /* ContentView.swift */; };
 		2D52B53A11D4498F8B31C896 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD088921B5CC4EA7B9C2EBB5 /* Models.swift */; };
@@ -21,12 +20,15 @@
 		C0D074D5074843098964DCCE /* ProfileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03976A00A5D64E08A214F8E8 /* ProfileService.swift */; };
 		FB9CAC019FE44ABC8197313C /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62EDB7F84C624CCCAE71FA24 /* HealthKit.framework */; };
 		38320B5539CA6ED0231FD2B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AFB146D99ED24C7823390FA9 /* Assets.xcassets */; };
+		5A1B2C3D4E5F600000000101 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1B2C3D4E5F600000000001 /* Theme.swift */; };
+		5A1B2C3D4E5F600000000102 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1B2C3D4E5F600000000002 /* LoginView.swift */; };
+		5A1B2C3D4E5F600000000103 /* SetupViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1B2C3D4E5F600000000003 /* SetupViews.swift */; };
+		5A1B2C3D4E5F600000000104 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1B2C3D4E5F600000000004 /* HomeView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		02E4610CEA8540B7BE00EC1B /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		03976A00A5D64E08A214F8E8 /* ProfileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileService.swift; sourceTree = "<group>"; };
-		04351D6F485B40D798566251 /* RunningAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunningAnimationView.swift; sourceTree = "<group>"; };
 		23E420785BE244F6B373F071 /* SyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncService.swift; sourceTree = "<group>"; };
 		24968408623A43AE8353F7F0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		27748970E9704731B29DFD42 /* RunSyncApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunSyncApp.swift; sourceTree = "<group>"; };
@@ -41,6 +43,10 @@
 		CD088921B5CC4EA7B9C2EBB5 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		F346190AE240450EB77F6873 /* SyncWorkoutsIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncWorkoutsIntent.swift; sourceTree = "<group>"; };
 		AFB146D99ED24C7823390FA9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5A1B2C3D4E5F600000000001 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		5A1B2C3D4E5F600000000002 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		5A1B2C3D4E5F600000000003 /* SetupViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupViews.swift; sourceTree = "<group>"; };
+		5A1B2C3D4E5F600000000004 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,6 +75,10 @@
 				700D81C2305087FC00228E61 /* BackgroundSyncManager.swift */,
 				27748970E9704731B29DFD42 /* RunSyncApp.swift */,
 				BE752CC0A6924671963EE04C /* ContentView.swift */,
+				5A1B2C3D4E5F600000000001 /* Theme.swift */,
+				5A1B2C3D4E5F600000000002 /* LoginView.swift */,
+				5A1B2C3D4E5F600000000003 /* SetupViews.swift */,
+				5A1B2C3D4E5F600000000004 /* HomeView.swift */,
 				B8656B37B7AD48C68DFC857C /* HealthKitManager.swift */,
 				23E420785BE244F6B373F071 /* SyncService.swift */,
 				CD088921B5CC4EA7B9C2EBB5 /* Models.swift */,
@@ -77,7 +87,6 @@
 				02E4610CEA8540B7BE00EC1B /* AuthService.swift */,
 				50665868EACB464980139C80 /* SyncCoordinator.swift */,
 				03976A00A5D64E08A214F8E8 /* ProfileService.swift */,
-				04351D6F485B40D798566251 /* RunningAnimationView.swift */,
 				24968408623A43AE8353F7F0 /* Info.plist */,
 				32C0D425DE3841EF8D42B038 /* RunSync.entitlements */,
 				AFB146D99ED24C7823390FA9 /* Assets.xcassets */,
@@ -139,10 +148,10 @@
 			};
 			buildConfigurationList = 143F6050C69141D59211218B /* Build configuration list for PBXProject "RunSync" */;
 			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = en;
+			developmentRegion = fr;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				fr,
 				Base,
 			);
 			mainGroup = E1E9E0AABB4644DEA4EBEC1B;
@@ -173,6 +182,10 @@
 			files = (
 				5C268EA5B5884FD4962E3C4D /* RunSyncApp.swift in Sources */,
 				2768C78C09CD4F20B3CB2AF2 /* ContentView.swift in Sources */,
+				5A1B2C3D4E5F600000000101 /* Theme.swift in Sources */,
+				5A1B2C3D4E5F600000000102 /* LoginView.swift in Sources */,
+				5A1B2C3D4E5F600000000103 /* SetupViews.swift in Sources */,
+				5A1B2C3D4E5F600000000104 /* HomeView.swift in Sources */,
 				A155B7F7CA474AA7B45CCDE4 /* HealthKitManager.swift in Sources */,
 				77FF2CC1CF5D493FA1924EEF /* SyncService.swift in Sources */,
 				2D52B53A11D4498F8B31C896 /* Models.swift in Sources */,
@@ -182,7 +195,6 @@
 				0D48BC5C3BA54BDA8DFFDDD9 /* AuthService.swift in Sources */,
 				778AFC6CD3E04399AC69EF12 /* SyncCoordinator.swift in Sources */,
 				C0D074D5074843098964DCCE /* ProfileService.swift in Sources */,
-				07C604F4C75C4CCB9D50C0C3 /* RunningAnimationView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -223,13 +235,13 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RunSync/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = MyRunningApp;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Utilisé pour synchroniser tes séances de course vers ton dashboard personnel.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Utilisé pour synchroniser tes séances de course vers ton dashboard personnel.";
+				INFOPLIST_KEY_CFBundleDisplayName = RunSync;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "RunSync lit tes entraînements pour les envoyer à MyRunningApp. Il n'écrit rien dans Santé.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "RunSync lit tes entraînements pour les envoyer à MyRunningApp. Il n'écrit rien dans Santé.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -255,13 +267,13 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RunSync/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = MyRunningApp;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Utilisé pour synchroniser tes séances de course vers ton dashboard personnel.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Utilisé pour synchroniser tes séances de course vers ton dashboard personnel.";
+				INFOPLIST_KEY_CFBundleDisplayName = RunSync;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "RunSync lit tes entraînements pour les envoyer à MyRunningApp. Il n'écrit rien dans Santé.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "RunSync lit tes entraînements pour les envoyer à MyRunningApp. Il n'écrit rien dans Santé.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

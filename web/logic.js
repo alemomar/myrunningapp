@@ -2662,25 +2662,34 @@ function dateStepBlocked(model, choice){
   return choice!=="none";
 }
 
-/* ---------- Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13 ; D60) ----------
-   4 étapes : installer RunSync, se connecter avec le même email, autoriser Apple Santé, recevoir les courses. Les trois
-   premières se cochent toutes seules quand on revient dans l'app après les avoir ouvertes ; la quatrième attend l'arrivée
-   des premières courses (interrogation régulière), puis « C'est connecté » ; au bout de 90 s sans rien : « Rien reçu ». */
-const SYNC_GUIDE_TITLES = ["Installe RunSync", "Connecte-toi avec ton email", "Autorise Apple Santé", "On reçoit tes courses"];
+/* ---------- Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13 ; D60 ; lot 2, D102) ----------
+   3 étapes : installer RunSync, l'ouvrir et se laisser guider (connexion avec l'e-mail déjà rempli, date de départ,
+   Apple Santé et import se font dans RunSync version 3), recevoir les courses. Les deux premières se cochent toutes seules
+   quand on revient dans l'app après les avoir ouvertes ; la troisième attend l'arrivée des premières courses
+   (interrogation régulière), puis « C'est connecté » ; au bout de 90 s sans rien : « Rien reçu ». */
+const SYNC_GUIDE_TITLES = ["Installe RunSync", "Ouvre RunSync et laisse-toi guider", "On reçoit tes courses"];
 const SYNC_WAIT_EMPTY_SEC = 90;
-// `done` : [bool, bool, bool] pour les trois premières étapes ; `received` : courses reçues d'Apple Santé ; `waitedSec` : attente à l'étape 4.
+// `done` : [bool, bool] pour les deux premières étapes (un état gardé par l'ancien guide en 4 étapes a 3 cases : la 3e
+// est ignorée) ; `received` : courses reçues d'Apple Santé ; `waitedSec` : attente à la dernière étape.
 function syncGuideModel(done, received, waitedSec){
-  const d = [!!(done&&done[0]), !!(done&&done[1]), !!(done&&done[2])];
+  const d = [!!(done&&done[0]), !!(done&&done[1])];
+  const last = SYNC_GUIDE_TITLES.length;
   const connected = (received||0)>0;
   const firstTodo = d.findIndex(x=>!x);
-  const active = connected ? 4 : (firstTodo<0 ? 4 : firstTodo+1);
+  const active = connected ? last : (firstTodo<0 ? last : firstTodo+1);
   const phase = connected ? "ok" : (firstTodo<0 ? ((waitedSec||0)>=SYNC_WAIT_EMPTY_SEC ? "empty" : "wait") : null);
   return {
     active, phase, connected,
-    // Les courses sont arrivées : les trois premières étapes sont cochées d'office (RunSync était déjà en place) et la 4e reste ouverte (« C'est connecté »).
-    steps: SYNC_GUIDE_TITLES.map((title,i)=>({ n:i+1, title, state: i<3 ? (d[i] || connected ? "done" : i+1===active ? "active" : "todo") : (active===4 ? "active" : "todo") })),
+    // Les courses sont arrivées : les deux premières étapes sont cochées d'office (RunSync était déjà en place) et la dernière reste ouverte (« C'est connecté »).
+    steps: SYNC_GUIDE_TITLES.map((title,i)=>({ n:i+1, title, state: i<last-1 ? (d[i] || connected ? "done" : i+1===active ? "active" : "todo") : (active===last ? "active" : "todo") })),
     summary: connected ? `C'est connecté · ${received} course${received>1?"s":""} reçue${received>1?"s":""}` : "",
   };
+}
+// Lien qui ouvre RunSync avec l'e-mail du compte déjà rempli (RunSync version 3 ; les versions 1 et 2 ignorent la suite
+// du lien et s'ouvrent simplement). Sans adresse valable, RunSync s'ouvre sans rien de rempli.
+function runSyncOpenUrl(email){
+  const e = String(email||"").trim();
+  return validEmail(e) ? "myrunningapp://connexion?email=" + encodeURIComponent(e) : "myrunningapp://";
 }
 
 /* ---------- Structure macro par objectif ----------
