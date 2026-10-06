@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=86"></script>
+<script src="logic.js?v=87"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1784,8 +1784,9 @@ try {
   assertEqual("guide : étape 1 cochée au retour dans l'app, RunSync à ouvrir", syncGuideModel([true,false], 0, 0).steps.map(x=>x.state), ["done","active","todo"]);
   assertEqual("guide : deux étapes faites, on attend les courses", [syncGuideModel([true,true], 0, 10).phase, syncGuideModel([true,true], 0, 10).active], ["wait", 3]);
   assertEqual("guide : rien reçu au bout de 90 s", syncGuideModel([true,true], 0, 90).phase, "empty");
-  assertEqual("guide : connecté, les deux premières étapes sont cochées même si on n'a rien cliqué (RunSync déjà en place), la dernière reste ouverte", [syncGuideModel([false,false], 12, 0).steps.map(x=>x.state), syncGuideModel([false,false], 12, 0).summary], [["done","done","active"], "C'est connecté · 12 courses reçues"]);
-  assertEqual("guide : une seule course reçue, au singulier", syncGuideModel([true,true], 1, 0).summary, "C'est connecté · 1 course reçue");
+  assertEqual("guide : connecté, les deux premières étapes sont cochées même si on n'a rien cliqué (RunSync déjà en place), la dernière reste ouverte", [syncGuideModel([false,false], 12, 0).steps.map(x=>x.state), syncGuideModel([false,false], 12, 0).summary], [["done","done","active"], "C'est connecté · 12 séances reçues"]);
+  assertEqual("guide : séances et courses comptées à part (234 séances, dont 77 courses : test d'Omar du 06/10)", syncGuideModel([true,true], 234, 0, 77).summary, "C'est connecté · 234 séances reçues, dont 77 courses");
+  assertEqual("guide : singuliers, que des courses, aucune course", [syncReceivedText(1, null), syncReceivedText(1, 1), syncReceivedText(12, 12), syncReceivedText(5, 0), syncReceivedText(3, 1)], ["1 séance reçue", "1 course reçue", "12 courses reçues", "5 séances reçues", "3 séances reçues, dont 1 course"]);
   assertEqual("guide : un état gardé par l'ancien guide en 4 étapes (3 cases) reste lisible", syncGuideModel([true,true,false], 0, 10).steps.map(x=>x.state), ["done","done","active"]);
   assertEqual("lien RunSync : e-mail rempli, + et @ encodés", [runSyncOpenUrl("camille@exemple.fr"), runSyncOpenUrl(" omaralempro+lot1a@gmail.com ")], ["myrunningapp://connexion?email=camille%40exemple.fr", "myrunningapp://connexion?email=omaralempro%2Blot1a%40gmail.com"]);
   assertEqual("lien RunSync : sans adresse valable, RunSync s'ouvre simplement", [runSyncOpenUrl(""), runSyncOpenUrl(null), runSyncOpenUrl("pas-une-adresse")], ["myrunningapp://", "myrunningapp://", "myrunningapp://"]);

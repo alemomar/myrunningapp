@@ -15,13 +15,30 @@ struct ChooseDateView: View {
     let onChosen: (Date) async throws -> Void
 
     @State private var period: Period
-    @State private var customDate = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+    @State private var customDate: Date
     @State private var isSaving = false
     @State private var error: String?
 
-    init(startPeriod: Period = .oneYear, onChosen: @escaping (Date) async throws -> Void) {
+    init(initial: Date? = nil, startPeriod: Period? = nil, onChosen: @escaping (Date) async throws -> Void) {
         self.onChosen = onChosen
-        _period = State(initialValue: startPeriod)
+        let preselected = Self.preselection(for: initial)
+        _period = State(initialValue: startPeriod ?? preselected.period)
+        _customDate = State(initialValue: preselected.custom ?? Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date())
+    }
+
+    // La base donne d'office un an à chaque nouveau compte (db/schema.sql) : l'écran est quand même proposé au premier
+    // lancement, avec le choix qui correspond à la date déjà enregistrée (« La dernière année » le plus souvent, « Une
+    // autre date » si elle a été changée dans MyRunningApp).
+    static func preselection(for date: Date?) -> (period: Period, custom: Date?) {
+        guard let date else { return (.oneYear, nil) }
+        let today = Calendar.current.startOfDay(for: Date())
+        for (candidate, months) in [(Period.threeMonths, 3), (.sixMonths, 6), (.oneYear, 12)] {
+            if let reference = Calendar.current.date(byAdding: .month, value: -months, to: today),
+               abs(date.timeIntervalSince(reference)) <= 3 * 86_400 {
+                return (candidate, nil)
+            }
+        }
+        return (.custom, date)
     }
 
     private func date(for period: Period) -> Date {
@@ -363,11 +380,8 @@ struct ImportView: View {
     private func counter(_ progress: SyncProgress) -> some View {
         let (done, total, fraction, label): (Int, Int, Double, String) = {
             switch progress {
-            case .reading(let done, let total):
-                let share = total == 0 ? 0 : Double(done) / Double(total)
-                return (done, total, share * 0.9, "Lecture d'Apple Santé…")
-            case .sending(let total):
-                return (total, total, 0.95, "Envoi vers MyRunningApp…")
+            case .importing(let done, let total):
+                return (done, total, total == 0 ? 1 : Double(done) / Double(total), "Envoi vers MyRunningApp…")
             }
         }()
         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -414,6 +428,9 @@ struct ImportView: View {
 
 struct DoneView: View {
     let summary: ImportSummary
+    // Le petit retour « ◀ MyRunningApp » d'iOS n'existe que si c'est MyRunningApp qui a ouvert RunSync (son lien).
+    // Ouvert depuis TestFlight ou l'écran d'accueil, il afficherait « ◀ TestFlight » ou rien (test d'Omar du 06/10/2026).
+    let cameFromMyRunningApp: Bool
     let onFinish: () -> Void
 
     private var summaryText: Text {
@@ -453,8 +470,12 @@ struct DoneView: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Theme.text)
                 }
-                BackLinkIllustration()
-                Text("Touche ce petit retour. Tu ne le vois pas ? Ouvre MyRunningApp depuis ton écran d'accueil.")
+                if cameFromMyRunningApp {
+                    BackLinkIllustration()
+                }
+                Text(cameFromMyRunningApp
+                     ? "Touche ce petit retour. Tu ne le vois pas ? Ouvre MyRunningApp depuis ton écran d'accueil."
+                     : "Ouvre MyRunningApp depuis ton écran d'accueil : tes séances y sont déjà.")
                     .font(.system(size: 14.5))
                     .foregroundStyle(Theme.text2)
                     .lineSpacing(2)

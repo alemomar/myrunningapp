@@ -36,6 +36,14 @@ final class BackgroundSyncManager {
                 completionHandler()
                 return
             }
+            // Pas pendant le premier lancement guidé : l'écran « Import de tes séances » s'en charge. Deux synchros en
+            // même temps doublaient la lecture d'Apple Santé (la requête se déclenche dès qu'on la relance, juste
+            // après l'autorisation).
+            guard let session = AuthService.currentSession, FirstImport.isDone(session.userId) else {
+                bgLogger.notice("[background] premier import pas encore fait : rien à faire")
+                completionHandler()
+                return
+            }
             bgLogger.notice("[background] nouvelle donnée détectée, synchro déclenchée")
             Task {
                 defer { completionHandler() }

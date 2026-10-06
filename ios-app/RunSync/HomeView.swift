@@ -5,6 +5,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var coordinator: SyncCoordinator
     let email: String?
+    let cameFromMyRunningApp: Bool   // voir DoneView : le petit retour d'iOS n'existe que dans ce cas
     let onSignOut: () -> Void
 
     @State private var confirmSignOut = false
@@ -79,7 +80,9 @@ struct HomeView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 8)
         } bottom: {
-            Text("Pour revenir dans MyRunningApp : touche le petit retour, tout en haut à gauche.")
+            Text(cameFromMyRunningApp
+                 ? "Pour revenir dans MyRunningApp : touche le petit retour, tout en haut à gauche."
+                 : "Pour revenir dans MyRunningApp : ouvre-la depuis ton écran d'accueil.")
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.muted)
                 .multilineTextAlignment(.center)

@@ -509,7 +509,7 @@
     syncGuide.done = done;
     if(scen==="guide_attente") syncGuide.waitStart = Date.now();
     if(scen==="guide_vide") syncGuide.waitStart = Date.now()-100000;
-    if(scen==="guide_ok") syncGuide.received = 12;
+    if(scen==="guide_ok"){ syncGuide.received = 12; syncGuide.runs = 9; }
     refreshSheet();
   } else if(scen.startsWith("onboarding")){
     RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbRestarting=false; onbConnect=false;

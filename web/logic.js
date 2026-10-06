@@ -2670,8 +2670,9 @@ function dateStepBlocked(model, choice){
 const SYNC_GUIDE_TITLES = ["Installe RunSync", "Ouvre RunSync et laisse-toi guider", "On reçoit tes courses"];
 const SYNC_WAIT_EMPTY_SEC = 90;
 // `done` : [bool, bool] pour les deux premières étapes (un état gardé par l'ancien guide en 4 étapes a 3 cases : la 3e
-// est ignorée) ; `received` : courses reçues d'Apple Santé ; `waitedSec` : attente à la dernière étape.
-function syncGuideModel(done, received, waitedSec){
+// est ignorée) ; `received` : séances reçues d'Apple Santé (courses, marches, renfo…) ; `waitedSec` : attente à la
+// dernière étape ; `runs` : combien de ces séances sont des courses (inconnu tant que les séances ne sont pas chargées).
+function syncGuideModel(done, received, waitedSec, runs){
   const d = [!!(done&&done[0]), !!(done&&done[1])];
   const last = SYNC_GUIDE_TITLES.length;
   const connected = (received||0)>0;
@@ -2682,8 +2683,16 @@ function syncGuideModel(done, received, waitedSec){
     active, phase, connected,
     // Les courses sont arrivées : les deux premières étapes sont cochées d'office (RunSync était déjà en place) et la dernière reste ouverte (« C'est connecté »).
     steps: SYNC_GUIDE_TITLES.map((title,i)=>({ n:i+1, title, state: i<last-1 ? (d[i] || connected ? "done" : i+1===active ? "active" : "todo") : (active===last ? "active" : "todo") })),
-    summary: connected ? `C'est connecté · ${received} course${received>1?"s":""} reçue${received>1?"s":""}` : "",
+    summary: connected ? `C'est connecté · ${syncReceivedText(received, runs)}` : "",
   };
+}
+// « 234 séances reçues, dont 77 courses » : RunSync envoie toutes les séances, pas seulement les courses (retour d'Omar,
+// 06/10/2026 : « 234 courses reçues » était faux).
+function syncReceivedText(received, runs){
+  const n = (k, one, many) => `${k} ${k>1?many:one}`;
+  if(runs==null || runs===0) return n(received, "séance reçue", "séances reçues");
+  if(runs===received) return n(received, "course reçue", "courses reçues");
+  return `${n(received, "séance reçue", "séances reçues")}, dont ${n(runs, "course", "courses")}`;
 }
 // Lien qui ouvre RunSync avec l'e-mail du compte déjà rempli (RunSync version 3 ; les versions 1 et 2 ignorent la suite
 // du lien et s'ouvrent simplement). Sans adresse valable, RunSync s'ouvre sans rien de rempli.

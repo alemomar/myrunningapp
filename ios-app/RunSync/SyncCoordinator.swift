@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 // Résultat du premier import, affiché sur l'écran « C'est fait ».
 struct ImportSummary: Equatable {
@@ -45,6 +46,10 @@ final class SyncCoordinator: ObservableObject {
     func firstImport() async -> ImportSummary? {
         importError = nil
         importPhase = .searching
+        // Si on quitte RunSync pendant l'import, iOS le met en pause tout de suite : on demande quelques secondes de
+        // plus pour finir le lot en cours (les lots déjà envoyés restent de toute façon dans MyRunningApp).
+        beginImportBackgroundTask()
+        defer { endImportBackgroundTask() }
         do {
             let result = try await SyncService().syncRecentWorkouts { [weak self] progress in
                 self?.importPhase = .progressing(progress)
@@ -55,6 +60,20 @@ final class SyncCoordinator: ObservableObject {
             importError = SyncService.message(for: error)
             return nil
         }
+    }
+
+    private var importBackgroundTask: UIBackgroundTaskIdentifier = .invalid
+
+    private func beginImportBackgroundTask() {
+        importBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Premier import") { [weak self] in
+            MainActor.assumeIsolated { self?.endImportBackgroundTask() }
+        }
+    }
+
+    private func endImportBackgroundTask() {
+        guard importBackgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(importBackgroundTask)
+        importBackgroundTask = .invalid
     }
 
     func sync() async {

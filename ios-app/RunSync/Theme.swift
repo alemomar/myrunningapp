@@ -302,6 +302,17 @@ struct CloseButton: View {
 }
 
 extension View {
+    // Bande de l'heure : le contenu qui défile ne passe plus dessous (le texte se mélangeait à l'heure, capture d'Omar
+    // du 06/10/2026). Une vue de hauteur nulle posée en haut de la zone sûre, dont le fond remonte dans la bande.
+    func statusBarMask() -> some View {
+        safeAreaInset(edge: .top, spacing: 0) {
+            Color.clear
+                .frame(height: 0)
+                .background(Theme.bg, ignoresSafeAreaEdges: .top)
+                .allowsHitTesting(false)
+        }
+    }
+
     func card(border: Color = Theme.line, borderWidth: CGFloat = 1, padding: CGFloat = 16) -> some View {
         self
             .padding(padding)
@@ -334,6 +345,7 @@ struct ScreenScaffold<Content: View, Bottom: View>: View {
                 .background(Theme.bg)
         }
         .background(Theme.bg.ignoresSafeArea())
+        .statusBarMask()
     }
 }
 

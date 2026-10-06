@@ -11,10 +11,9 @@ struct SyncResult {
     let since: Date     // date de départ utilisée pour cette synchro
 }
 
-// Avancement affiché pendant le premier import (écran « Import de tes séances »).
+// Avancement affiché pendant le premier import (écran « Import de tes séances ») : séances lues et envoyées.
 enum SyncProgress: Equatable {
-    case reading(done: Int, total: Int)
-    case sending(total: Int)
+    case importing(done: Int, total: Int)
 }
 
 enum SyncServiceError: LocalizedError {
@@ -73,6 +72,10 @@ enum FirstImport {
 
     static func healthAsked(_ userId: String) -> Bool { UserDefaults.standard.bool(forKey: key("healthAsked", userId)) }
     static func markHealthAsked(_ userId: String) { UserDefaults.standard.set(true, forKey: key("healthAsked", userId)) }
+
+    // « Depuis quand ? » validé dans RunSync (la date en base ne suffit pas : la base en met une d'office).
+    static func dateChosen(_ userId: String) -> Bool { UserDefaults.standard.bool(forKey: key("dateChosen", userId)) }
+    static func markDateChosen(_ userId: String) { UserDefaults.standard.set(true, forKey: key("dateChosen", userId)) }
 }
 
 final class SyncService {
@@ -116,23 +119,29 @@ final class SyncService {
         syncLogger.notice("[sync] vo2max ok")
         let workouts = try await healthKit.fetchWorkouts(since: sinceDate)
         syncLogger.notice("[sync] \(workouts.count) séance(s) trouvée(s)")
-        await progress?(.reading(done: 0, total: workouts.count))
+        await progress?(.importing(done: 0, total: workouts.count))
 
-        var payloads: [WorkoutPayload] = []
+        // Envoi au fur et à mesure, par lots : si l'import s'interrompt (RunSync quitté, réseau coupé), ce qui est déjà
+        // parti reste dans MyRunningApp (le guide le voit arriver), et la synchro suivante reprend sans doublon.
+        // HealthKit peut renvoyer la même séance en double (ex: source Watch + iPhone) : ON CONFLICT ne supporte pas
+        // deux lignes visant la même clé dans un seul envoi, d'où le filtre sur l'heure de départ.
+        var seenStartDates = Set<String>()
+        var batch: [WorkoutPayload] = []
+        var sent = 0, runs = 0, batchNum = 0
         for (index, workout) in workouts.enumerated() {
             let payload = await healthKit.buildPayload(for: workout, userId: session.userId)
-            payloads.append(payload)
-            await progress?(.reading(done: index + 1, total: workouts.count))
+            if seenStartDates.insert(payload.startDate).inserted { batch.append(payload) }
+            let isLast = index == workouts.count - 1
+            if batch.count == Self.batchSize || (isLast && !batch.isEmpty) {
+                batchNum += 1
+                syncLogger.notice("[sync] envoi lot \(batchNum) (\(batch.count) séance(s))")
+                try await sendBatch(batch, session: session)
+                sent += batch.count
+                runs += batch.filter { $0.appleType == "Running" }.count
+                batch.removeAll()
+            }
+            await progress?(.importing(done: index + 1, total: workouts.count))
         }
-        syncLogger.notice("[sync] payloads construits")
-
-        // HealthKit peut renvoyer la même séance en double (ex: source Watch + iPhone) :
-        // ON CONFLICT ne supporte pas deux lignes visant la même clé dans un seul envoi.
-        var seenStartDates = Set<String>()
-        let dedupedPayloads = payloads.filter { seenStartDates.insert($0.startDate).inserted }
-
-        await progress?(.sending(total: dedupedPayloads.count))
-        try await send(dedupedPayloads, session: session)
         syncLogger.notice("[sync] envoi réussi")
         LastSync.set(Date(), for: session.userId)
 
@@ -152,7 +161,7 @@ final class SyncService {
         // Rien trouvé : la date ne bouge pas. Sinon un accès Apple Santé refusé (qui ne renvoie rien, sans erreur)
         // ferait perdre tout l'historique : « Réessayer » après avoir rouvert l'accès ne chercherait plus que 3 jours.
         let newSinceDate = Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date()
-        if !payloads.isEmpty && newSinceDate > sinceDate {
+        if !workouts.isEmpty && newSinceDate > sinceDate {
             do {
                 try await ProfileService().setSyncSinceDate(session: session, date: newSinceDate)
                 syncLogger.notice("[sync] sync_since_date avancée avec succès à \(newSinceDate.description, privacy: .public)")
@@ -161,8 +170,7 @@ final class SyncService {
             }
         }
 
-        let runs = dedupedPayloads.filter { $0.appleType == "Running" }.count
-        return SyncResult(workoutsFound: payloads.count, added: dedupedPayloads.count, runs: runs, since: sinceDate)
+        return SyncResult(workoutsFound: workouts.count, added: sent, runs: runs, since: sinceDate)
     }
 
     // Renseignée automatiquement depuis la Watch, mais au plus 1 fois par
@@ -202,18 +210,7 @@ final class SyncService {
     // (ex: gros import initial, ou sync_since_date qui n'a pas encore avancé)
     // peut dépasser le statement_timeout de Postgres côté Supabase (déjà vu :
     // erreur 57014 "canceling statement due to statement timeout").
-    private func send(_ workouts: [WorkoutPayload], session: Session) async throws {
-        guard !workouts.isEmpty else { return }
-        let batchSize = 20
-        var batchNum = 0
-        for start in stride(from: 0, to: workouts.count, by: batchSize) {
-            batchNum += 1
-            let batch = Array(workouts[start..<min(start + batchSize, workouts.count)])
-            syncLogger.notice("[sync] envoi lot \(batchNum) (\(batch.count) séance(s))")
-            try await sendBatch(batch, session: session)
-            syncLogger.notice("[sync] lot \(batchNum) envoyé")
-        }
-    }
+    private static let batchSize = 20
 
     // Rattrapage ponctuel des séances déjà en base avant l'ajout du champ
     // lap_markers : contrairement à la sync normale (ignore-duplicates,

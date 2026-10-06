@@ -2,11 +2,11 @@ import SwiftUI
 
 // Parcours de RunSync : connexion, puis au premier lancement trois étapes guidées (date de départ, autorisation
 // Apple Santé, import), puis l'écran des jours suivants. Si l'app est fermée en route, chaque étape reprend là où
-// elle en était (date enregistrée dans Supabase, drapeaux par compte sur l'appareil : voir FirstImport).
+// elle en était (drapeaux par compte sur l'appareil : voir FirstImport).
 enum Stage: Equatable {
     case checking
     case login
-    case chooseDate
+    case chooseDate(initial: Date?)
     case healthAccess
     case importing
     case done(ImportSummary)
@@ -27,6 +27,8 @@ struct ContentView: View {
     @State private var linkEmail: String?
     @State private var mismatch: AccountMismatch?
     @State private var checkError: String?
+    // RunSync ouvert par un lien de MyRunningApp (guide, Mon compte) : iOS affiche alors le petit retour « ◀ MyRunningApp ».
+    @State private var openedFromMyRunningApp = false
 
     var body: some View {
         Group {
@@ -52,10 +54,11 @@ struct ContentView: View {
                     .task { await check() }
             case .login:
                 LoginView(prefilledEmail: linkEmail) { stage = .checking }
-            case .chooseDate:
-                ChooseDateView { date in
+            case .chooseDate(let initial):
+                ChooseDateView(initial: initial) { date in
                     guard let session = AuthService.currentSession else { return }
                     try await ProfileService().setSyncSinceDate(session: session, date: date)
+                    FirstImport.markDateChosen(session.userId)
                     stage = .healthAccess
                 }
             case .healthAccess:
@@ -63,11 +66,11 @@ struct ContentView: View {
             case .importing:
                 ImportView { startImport() }
             case .done(let summary):
-                DoneView(summary: summary) { finishFirstImport() }
+                DoneView(summary: summary, cameFromMyRunningApp: openedFromMyRunningApp) { finishFirstImport() }
             case .noWorkouts(let since):
                 NoWorkoutsView(since: since, onRetry: { startImport() }, onContinue: { finishFirstImport() })
             case .home:
-                HomeView(email: AuthService.currentSession?.accountEmail) { signOut() }
+                HomeView(email: AuthService.currentSession?.accountEmail, cameFromMyRunningApp: openedFromMyRunningApp) { signOut() }
                     .onAppear { coordinator.refreshLastSync() }
             }
         }
@@ -106,10 +109,12 @@ struct ContentView: View {
             if FirstImport.isDone(session.userId) { stage = .home } else { checkError = SyncService.message(for: error) }
             return
         }
-        if since == nil {
-            stage = .chooseDate
-        } else if FirstImport.isDone(session.userId) {
+        // La base donne d'office une date (un an) à chaque compte : « Depuis quand ? » est donc proposé tant que ce
+        // compte ne l'a pas validé dans RunSync, et pas seulement quand la date manque (écran sauté au test du 06/10/2026).
+        if FirstImport.isDone(session.userId) {
             stage = .home
+        } else if since == nil || !FirstImport.dateChosen(session.userId) {
+            stage = .chooseDate(initial: since)
         } else if FirstImport.healthAsked(session.userId) {
             startImport()
         } else {
@@ -151,6 +156,7 @@ struct ContentView: View {
     // myrunningapp://connexion?email=… (guide de MyRunningApp) et myrunningapp://sync (Mon compte).
     private func handle(_ url: URL) {
         guard url.scheme == "myrunningapp" else { return }
+        openedFromMyRunningApp = true
         switch url.host {
         case "connexion":
             let email = URLComponents(url: url, resolvingAgainstBaseURL: false)?
@@ -212,18 +218,24 @@ struct DemoScreen: View {
             Theme.bg.ignoresSafeArea()
             switch name {
             case "connexion-lien": LoginView(prefilledEmail: email) {}
+            case "connexion-clavier": LoginView(prefilledEmail: email, autoFocusPassword: true) {}
             case "pas-de-compte": LoginView(prefilledEmail: nil, startSheet: .noAccount) {}
             case "mot-de-passe": LoginView(prefilledEmail: email, startSheet: .forgotPassword) {}
-            case "date": ChooseDateView { _ in }
+            // Date mise d'office par la base à la création du compte (un an) : « La dernière année » présélectionnée.
+            case "date": ChooseDateView(initial: Calendar.current.date(byAdding: .day, value: -365, to: Calendar.current.startOfDay(for: Date()))) { _ in }
             case "date-autre": ChooseDateView(startPeriod: .custom) { _ in }
             case "sante": HealthAccessView {}
             case "import":
                 ImportView {}
-                    .onAppear { coordinator.importPhase = .progressing(.reading(done: 37, total: 120)) }
-            case "fini": DoneView(summary: ImportSummary(sessions: 120, runs: 87, since: lastYear)) {}
+                    .onAppear { coordinator.importPhase = .progressing(.importing(done: 37, total: 120)) }
+            case "fini": DoneView(summary: ImportSummary(sessions: 120, runs: 87, since: lastYear), cameFromMyRunningApp: true) {}
+            case "fini-testflight": DoneView(summary: ImportSummary(sessions: 120, runs: 87, since: lastYear), cameFromMyRunningApp: false) {}
             case "aucune": NoWorkoutsView(since: lastYear, onRetry: {}, onContinue: {})
             case "accueil":
-                HomeView(email: email) {}
+                HomeView(email: email, cameFromMyRunningApp: true) {}
+                    .onAppear { coordinator.lastSync = Calendar.current.date(bySettingHour: 10, minute: 18, second: 0, of: Date()) }
+            case "accueil-testflight":
+                HomeView(email: email, cameFromMyRunningApp: false) {}
                     .onAppear { coordinator.lastSync = Calendar.current.date(bySettingHour: 10, minute: 18, second: 0, of: Date()) }
             case "autre-compte": OtherAccountView(currentEmail: "autre@exemple.fr", wantedEmail: email, onSwitch: {}, onKeep: {})
             default: LoginView(prefilledEmail: nil) {}

@@ -10,6 +10,7 @@ struct LoginView: View {
     }
 
     let prefilledEmail: String?
+    let autoFocusPassword: Bool
     let onSignedIn: () -> Void
 
     @State private var email = ""
@@ -21,9 +22,11 @@ struct LoginView: View {
     @FocusState private var focus: Field?
 
     private enum Field { case email, password }
+    private let signInButton = "signIn"
 
-    init(prefilledEmail: String?, startSheet: Sheet? = nil, onSignedIn: @escaping () -> Void) {
+    init(prefilledEmail: String?, startSheet: Sheet? = nil, autoFocusPassword: Bool = false, onSignedIn: @escaping () -> Void) {
         self.prefilledEmail = prefilledEmail
+        self.autoFocusPassword = autoFocusPassword
         self.onSignedIn = onSignedIn
         _email = State(initialValue: prefilledEmail ?? "")
         _sheet = State(initialValue: startSheet)
@@ -38,36 +41,65 @@ struct LoginView: View {
         !isLoading && !password.isEmpty && trimmedEmail.wholeMatch(of: #/[^\s@]+@[^\s@]+\.[^\s@]+/#) != nil
     }
 
+    // Pas de barre en bas d'écran ici : elle remontait au-dessus du clavier et cachait « Se connecter » (capture
+    // d'Omar du 06/10/2026). Les deux liens sont sous le bouton, et la page défile jusqu'au bouton quand on tape
+    // le mot de passe.
     var body: some View {
-        ScreenScaffold {
-            header
-            FlowStrip().padding(.top, 14)
-            sameAccountNote.padding(.top, 16)
-            fields.padding(.top, 18)
-            if let error {
-                Text(error)
-                    .font(.system(size: 13.5))
-                    .foregroundStyle(Theme.text2)
-                    .multilineTextAlignment(.center)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    header
+                    FlowStrip().padding(.top, 14)
+                    sameAccountNote.padding(.top, 16)
+                    fields.padding(.top, 18)
+                    if let error {
+                        Text(error)
+                            .font(.system(size: 13.5))
+                            .foregroundStyle(Theme.text2)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 12)
+                            .accessibilityAddTraits(.updatesFrequently)
+                    }
+                    Button {
+                        Task { await signIn() }
+                    } label: {
+                        if isLoading { ProgressView().tint(Theme.onAccent) } else { Text("Se connecter") }
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(!canSubmit)
+                    .padding(.top, 14)
+                    .id(signInButton)
+                    VStack(spacing: 0) {
+                        Button("Mot de passe oublié ?") { sheet = .forgotPassword }
+                            .buttonStyle(QuietLinkStyle())
+                        Button("Pas encore de compte ?") { sheet = .noAccount }
+                            .buttonStyle(QuietLinkStyle(color: Theme.accent, weight: .semibold))
+                    }
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 12)
-                    .accessibilityAddTraits(.updatesFrequently)
+                    .padding(.top, 6)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
             }
-            Button {
-                Task { await signIn() }
-            } label: {
-                if isLoading { ProgressView().tint(Theme.onAccent) } else { Text("Se connecter") }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: focus) { _, field in
+                guard field == .password else { return }
+                // Une fois le clavier sorti, le bouton remonte au milieu de l'écran : au-dessus du clavier, avec le
+                // champ du mot de passe juste au-dessus de lui (viser le bas le laissait sous le clavier).
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo(signInButton, anchor: .center) }
+                }
             }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(!canSubmit)
-            .padding(.top, 14)
-            Button("Mot de passe oublié ?") { sheet = .forgotPassword }
-                .buttonStyle(QuietLinkStyle())
-                .frame(maxWidth: .infinity)
-                .padding(.top, 6)
-        } bottom: {
-            Button("Pas encore de compte ?") { sheet = .noAccount }
-                .buttonStyle(QuietLinkStyle(color: Theme.accent, weight: .semibold))
+        }
+        .background(Theme.bg.ignoresSafeArea())
+        .statusBarMask()
+        .onAppear {
+            guard autoFocusPassword else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { focus = .password }
         }
         .onChange(of: prefilledEmail) { _, newValue in
             if let newValue, !newValue.isEmpty { email = newValue }
