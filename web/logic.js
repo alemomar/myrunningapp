@@ -1286,9 +1286,10 @@ const RECORD_DISTANCES = [
   { key:"marathon", km:42.195,  label:"Marathon" },
 ];
 const RECORD_DISTANCE_TOLERANCE = 0.05;
+const RECORD_DISTANCE_TOLERANCE_BELOW = 0.01;   // un GPS qui mesure 9,99 km sur un vrai 10 km : la sortie compte, temps ramené à la distance exacte
 function distanceRecordTime(run, dist){
   if(!run || !isRunningRunType(run.type) || !(run.durationSec>0)) return null;
-  if(!(run.distKm>=dist.km && run.distKm<=dist.km*(1+RECORD_DISTANCE_TOLERANCE))) return null;
+  if(!(run.distKm>=dist.km*(1-RECORD_DISTANCE_TOLERANCE_BELOW) && run.distKm<=dist.km*(1+RECORD_DISTANCE_TOLERANCE))) return null;
   return Math.round(run.durationSec * dist.km / run.distKm);
 }
 /* Détenteurs ACTUELS des records (D43 : « la séance détient un record actuel »).
@@ -1522,11 +1523,11 @@ function sessionHeadline(session, segments){
   }
   return { big, tiles, structure };
 }
-// Titre affiché : « EF » avec le sous-titre « endurance, à allure facile » pour une séance EF ordinaire
+// Titre affiché : « EF » avec le sous-titre « Endurance Fondamentale, à allure facile » pour une séance EF ordinaire
 // (la donnée enregistrée garde son titre d'origine, ex. « Sortie easy »).
 function sessionDisplayTitle(session){
   const ordinary = !session.generation_reason || (session.generation_reason!=="beginner_plan" && session.generation_reason!=="guided_test");
-  if(session.type==="EF" && ordinary) return { title:"EF", subtitle:"endurance, à allure facile" };
+  if(session.type==="EF" && ordinary) return { title:"EF", subtitle:"Endurance Fondamentale, à allure facile" };
   return { title:session.title||sessionTypeLabel(session.type), subtitle:"" };
 }
 
@@ -2137,14 +2138,19 @@ function periodProgress(points, key, todayTs){
   const p = windowProgress(pts, pts[0].ts, pts[pts.length-1].ts);
   return p.status==="ok" ? { ...p, since: sinceLabel(pts[0].ts, todayTs) } : p;
 }
-// Texte de la progression d'une allure : « −16 s/km » (citron) ; une allure qui ralentit « +5 s/km » en gris,
-// jamais en rouge. null quand il n'y a pas assez de recul.
+// Texte de la progression d'une allure, dans le même référentiel que les allures affichées : « −0'16"/km » (citron) ;
+// une allure qui ralentit « +0'05"/km » en gris, jamais en rouge. 79 s = 1'19" (« −0'79 » n'existe pas).
+// null quand il n'y a pas assez de recul.
+function paceDeltaText(sec){
+  const s = Math.abs(sec);
+  return `${Math.floor(s/60)}'${String(s%60).padStart(2,"0")}"/km`;
+}
 function paceProgressText(p){
   if(!p || p.status!=="ok") return null;
   const delta = Math.round(p.lastAvg - p.firstAvg);
-  if(delta<0) return { text:`−${Math.abs(delta)} s/km`, tone:"good" };
-  if(delta>0) return { text:`+${delta} s/km`, tone:"muted" };
-  return { text:"0 s/km", tone:"muted" };
+  if(delta<0) return { text:`−${paceDeltaText(delta)}`, tone:"good" };
+  if(delta>0) return { text:`+${paceDeltaText(delta)}`, tone:"muted" };
+  return { text:`0'00"/km`, tone:"muted" };
 }
 // Efficience (allure ÷ FC, plus bas = mieux) : « +3 % » quand le rapport baisse.
 function ratioProgressText(p){
@@ -2231,13 +2237,16 @@ function keyFigures(runs, todayTs){
   const yearStart = new Date(t.getFullYear(),0,1).getTime(), monthStart = new Date(t.getFullYear(),t.getMonth(),1).getTime();
   const list = (runs||[]).filter(r=>r.ts<=todayTs+DAY_MS);
   const year = list.filter(r=>r.ts>=yearStart), month = list.filter(r=>r.ts>=monthStart);
-  const longest = month.reduce((m,r)=>Math.max(m, r.distKm||0), 0);
+  const longestRun = month.reduce((m,r)=>(r.distKm||0)>((m&&m.distKm)||0) ? r : m, null);
+  const longest = longestRun ? (longestRun.distKm||0) : 0;
   const best = recordHolders(list).allure_ef;
   return {
     yearKm: Math.round(year.reduce((a,r)=>a+(r.distKm||0),0)*10)/10,
     longestMonthKm: longest>0 ? Math.round(longest*10)/10 : null,
+    longestMonthRunId: longest>0 ? (longestRun.id ?? null) : null,   // la séance qu'ouvre la tuile « Plus longue sortie »
     monthTimeSec: month.reduce((a,r)=>a+(r.durationSec||0),0),
     bestEfPaceSecKm: best ? best.paceSecKm : null,
+    bestEfRunId: best ? (best.runId ?? null) : null,
   };
 }
 
@@ -2310,21 +2319,29 @@ function ringModel(value, goal){
 
 // --- Volume mensuel (6f, D32) ---
 const VOLUME_HIGH_FACTOR = 1.3;   // « trop élevé » = objectif + 30 % (repère pragmatique, pas une règle sourcée)
-function monthlyVolumeBars(runs, goalKm, todayTs, months){
+// `view` : une année civile (janvier à décembre, jusqu'au mois en cours pour l'année en cours) ; sinon les `months` derniers mois.
+function monthlyVolumeBars(runs, goalKm, todayTs, months, view){
   const n = months || 12, t = new Date(todayTs);
   const list = (runs||[]).filter(r=>r.distKm>0);
   const goal = goalKm>0 ? goalKm : null;
   const first = list.length ? new Date(Math.min(...list.map(r=>r.ts))) : null;
+  const starts = [];
+  if(view){ const last = view===t.getFullYear() ? t.getMonth() : 11; for(let m=0;m<=last;m++) starts.push(new Date(view, m, 1)); }
+  else for(let i=n-1;i>=0;i--) starts.push(new Date(t.getFullYear(), t.getMonth()-i, 1));
   const bars = [];
-  for(let i=n-1;i>=0;i--){
-    const d = new Date(t.getFullYear(), t.getMonth()-i, 1);
-    if(first && d < new Date(first.getFullYear(), first.getMonth(), 1)) continue;
-    if(!first) continue;
+  starts.forEach(d=>{
+    if(!first || d < new Date(first.getFullYear(), first.getMonth(), 1)) return;
     const km = Math.round(list.filter(r=>{ const x=new Date(r.ts); return x.getFullYear()===d.getFullYear() && x.getMonth()===d.getMonth(); }).reduce((a,r)=>a+r.distKm,0)*10)/10;
     const state = !goal ? "none" : km > goal*VOLUME_HIGH_FACTOR ? "high" : km >= goal ? "met" : "under";
-    bars.push({ key:d.getFullYear()+"-"+(d.getMonth()+1), label:MONTH_SHORT[d.getMonth()], km, current:i===0, state });
-  }
-  return { bars, goalKm:goal, limitKm: goal ? Math.round(goal*VOLUME_HIGH_FACTOR*10)/10 : null };
+    bars.push({ key:d.getFullYear()+"-"+(d.getMonth()+1), label:MONTH_SHORT[d.getMonth()], km, current:d.getFullYear()===t.getFullYear() && d.getMonth()===t.getMonth(), state });
+  });
+  const totalKm = Math.round(bars.reduce((a,b)=>a+b.km,0)*10)/10;
+  return { bars, goalKm:goal, limitKm: goal ? Math.round(goal*VOLUME_HIGH_FACTOR*10)/10 : null, totalKm };
+}
+// Années civiles ayant au moins une sortie, de la plus récente à la plus ancienne ; [] s'il n'y en a qu'une (pas de menu).
+function chartYears(runs){
+  const ys = [...new Set((runs||[]).filter(r=>r.distKm>0).map(r=>new Date(r.ts).getFullYear()))].sort((x,y)=>y-x);
+  return ys.length>=2 ? ys : [];
 }
 
 // --- Facile / soutenu (6h, D35) : facile = zones 1 à 3, soutenu = zones 4 et 5, repère à 80 % ---
@@ -3077,3 +3094,35 @@ function newsMessage(resumeInfo){
   const what = (resumeInfo.kind==="vma" || (resumeInfo.kind==="undated" && resumeInfo.fromTest)) ? "test" : "chrono";
   return { title, text:`Tes séances, ton programme et tes allures sont toujours là. Pour calculer tes allures conseillées, il nous faut un ${what} de référence avec sa date. On te pose une question sur la date du tien.` };
 }
+
+/* ---------- Retours d'Omar du 05/10/2026 (D92 et suivants) ---------- */
+// Séances ratées proposées dans la bannière du Programme : les plus récentes d'abord, jamais plus de 14 jours en arrière
+// (une séance d'il y a trois semaines n'a plus de sens à replacer) ; celles déjà écartées ne reviennent pas.
+const MISSED_BANNER_MAX_DAYS = 14;
+function missedBannerSessions(plannedSessions, dismissedIds, todayStr){
+  const skip = dismissedIds || [];
+  return (plannedSessions||[])
+    .filter(p=>p.status==="missed" && !skip.includes(p.id) && daysBetween(p.planned_date, todayStr)<=MISSED_BANNER_MAX_DAYS)
+    .sort((a,b)=>a.planned_date<b.planned_date ? 1 : a.planned_date>b.planned_date ? -1 : 0);
+}
+// « Ta séance de lundi n'a pas pu se faire. » dans les 6 derniers jours ; au-delà, avec la date (« du lundi 21 septembre »),
+// pour ne jamais être pris pour une séance d'aujourd'hui.
+function missedBannerTitle(session, todayStr){
+  const d = new Date(session.planned_date+"T00:00:00");
+  if(daysBetween(session.planned_date, todayStr)<=6) return `Ta séance de ${d.toLocaleDateString("fr-FR",{weekday:"long"})} n'a pas pu se faire.`;
+  return `Ta séance du ${d.toLocaleDateString("fr-FR",{weekday:"long", day:"numeric", month:"long"})} n'a pas pu se faire.`;
+}
+// Charge d'entraînement vide : pourquoi ? « unrated » = des sorties ces 4 dernières semaines mais aucun ressenti noté ;
+// « norun » = aucune sortie ; null = un ressenti existe (la charge se calcule). `runs` : [{ ts, rpe }].
+function chargeEmptyReason(runs, todayTs){
+  const from = todayTs - 28*DAY_MS;
+  const recent = (runs||[]).filter(r=>r.ts>=from && r.ts<=todayTs+DAY_MS);
+  if(recent.some(r=>r.rpe!=null)) return null;
+  return recent.length ? "unrated" : "norun";
+}
+const CHARGE_EMPTY_TEXTS = {
+  unrated:{ tile:"Note ton ressenti après tes séances pour la voir.",
+            sheet:"Ta charge se calcule avec la difficulté (0 à 10) que tu notes après chaque séance. Aucune de tes sorties des 4 dernières semaines n'en a." },
+  norun:{ tile:"Pas de course ces 4 dernières semaines.",
+          sheet:"Dès que tu auras repris et noté ta difficulté, ta charge apparaîtra." },
+};

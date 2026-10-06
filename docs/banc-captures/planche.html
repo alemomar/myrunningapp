@@ -36,14 +36,15 @@ const SCENARIOS = [
   "composants","feuille_saisie",
   "vide_aujourdhui","vide_programme","vide_progression","chargement_aujourdhui","chargement_progression","erreur_chargement","hors_ligne","message_erreur","profil_synchro_muette","onboarding_preparation",
   "onboarding_bienvenue","onboarding","onboarding_date_serree","onboarding_date_proche","onboarding_niveau","onboarding_niveau_chrono","onboarding_dispos","onboarding_recap","onboarding_connexion","guide_etape1","guide_etape2","guide_etape3","guide_attente","guide_ok","guide_vide",
-  "nouveaute_reprise","nouveaute_simple"
+  "nouveaute_reprise","nouveaute_simple",
+  "suppression_confirmation","menu_seance","programme_ratee_ancienne","progression_annees","charge_vide","charge_vide_fenetre"
 ];
 const LARGEURS = [375, 360];
 const HAUTEUR = 812;
 const ATTENTE_MS = 5500;   // le jeu de données termine son rendu vers 4,5 s
 
 const params = new URLSearchParams(location.search);
-const seul = params.get("s");               // ?s=progression : un seul scénario, laissé à l'écran
+const seul = params.get("s");               // ?s=progression : un seul scénario, laissé à l'écran ; ?s=merge,attach : plusieurs, séparés par une virgule
 const statut = document.getElementById("statut");
 const vue = document.getElementById("vue");
 const corps = document.querySelector("#res tbody");
@@ -124,7 +125,7 @@ function ligne(res) {
 }
 
 (async function () {
-  const liste = seul ? [seul] : SCENARIOS;
+  const liste = seul ? seul.split(",") : SCENARIOS;
   for (let i = 0; i < liste.length; i++) {
     statut.textContent = "Scénario " + (i + 1) + "/" + liste.length + " : " + liste[i];
     const res = await jouer(liste[i]);

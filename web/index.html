@@ -56,6 +56,8 @@
   --attention-bg:oklch(0.72 0.17 300 / .10);
   --attention-bg-strong:oklch(0.72 0.17 300 / .16);
   --attention-line:oklch(0.72 0.17 300 / .40);
+  --danger:#E6786F;
+  --danger-bg:rgba(230,120,111,.14);   /* rouge léger, réservé aux suppressions (D92) */
   /* Données (graphiques) */
   --data-cyan:oklch(0.85 0.13 200);
   --data-coral:oklch(0.7 0.19 25);
@@ -347,7 +349,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .sc-menu::after{content:"";position:absolute;inset:-4px}
 .menu-pop{position:absolute;right:0;top:40px;z-index:20;min-width:220px;padding:6px;background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-lift)}
 .menu-pop button{display:flex;align-items:center;width:100%;min-height:44px;padding:0 12px;border:none;border-radius:10px;background:none;color:var(--text);font-family:inherit;font-size:15px;text-align:left;cursor:pointer}
-.menu-pop button.danger{color:var(--text-3)}
+.menu-pop button.danger{color:var(--danger)}
 .menu-pop button:active{background:var(--surface-control)}
 .sc-title{font-family:var(--font-display);font-weight:700;font-size:23px;line-height:1.15;text-transform:uppercase}
 .sc-sub{font-size:14px;color:var(--text-muted);margin-top:2px}
@@ -459,12 +461,15 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .psheet textarea.sheet-input{min-height:72px;resize:vertical;font-family:inherit}
 .ps-pills{display:flex;flex-wrap:wrap;gap:8px}
 .ps-pills .flt i{display:inline-block;width:10px;height:10px;margin-right:7px;border-radius:3px}
-.ps-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ps-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.ps-grid>*{min-width:0}
+.psheet input[type="date"]{display:block;min-width:0;max-width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none;text-align:left}
 .ps-unit{display:flex;align-items:center;gap:8px}
 .ps-unit span{color:var(--text-muted);font-size:14px;white-space:nowrap}
 .ps-pace{display:flex;align-items:center;gap:6px}
 .ps-pace .sheet-input{text-align:center;min-width:0}
 .ps-err{margin-top:12px;font-size:13.5px;font-weight:600;color:var(--text)}
+.link-danger{color:var(--danger)!important}
 .link-gray{display:block;width:100%;margin-top:6px;padding:14px 12px;border:none;background:none;color:var(--text-3);font-family:inherit;font-size:14.5px;cursor:pointer}
 /* ---------- Bannières et alertes de Programme (design 9a) ---------- */
 .alert-card{margin-bottom:14px;padding:16px;border:1px solid var(--attention-line);border-radius:var(--r-xl);background:var(--attention-bg)}
@@ -518,7 +523,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .pg-ring .s{font-size:11.5px;color:var(--text-muted)}
 .pg-h2{font:700 18px/1 var(--font-display);text-transform:uppercase;color:var(--text-2);padding:8px 4px 10px}
 .pg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.pg-tile{background:var(--surface);border:none;border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0;text-align:left;color:inherit;font:inherit}
+.pg-tile{position:relative;background:var(--surface);border:none;border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0;text-align:left;color:inherit;font:inherit}
+.pg-chev{position:absolute;top:12px;right:12px;color:var(--text-faint);display:flex}
+.pg-tile:has(.pg-chev) .pg-over{padding-right:20px}
+.pg-key .pg-chev{top:auto;bottom:12px}
 button.pg-tile{cursor:pointer}
 .pg-tile .big{font:700 26px/1.05 var(--font-display);text-transform:uppercase}
 .pg-coach{display:flex;gap:6px;font-size:12.5px;line-height:1.35;color:var(--text-2)}
@@ -532,7 +540,8 @@ button.pg-tile{cursor:pointer}
 .pg-mini i:nth-child(2){border-radius:1px}
 .pg-mini i:nth-child(3){border-radius:1px 3px 3px 1px}
 .pg-mark{position:absolute;top:-3px;width:3px;height:12px;margin-left:-1.5px;border-radius:2px;background:var(--text);box-shadow:0 0 0 2px var(--surface)}
-.pg-key{background:var(--surface);border-radius:var(--r-lg);padding:12px 14px;min-width:0}
+.pg-key{position:relative;background:var(--surface);border-radius:var(--r-lg);padding:12px 14px;min-width:0}
+button.pg-key{display:block;width:100%;border:none;text-align:left;color:inherit;font:inherit;cursor:pointer}
 .pg-key .big{font:700 24px/1.1 var(--font-display);text-transform:uppercase;margin-top:4px}
 .pg-key .big.none{color:var(--text-faint)}
 .pg-key .u{font-size:12px;color:var(--text-muted)}
@@ -607,6 +616,8 @@ button.pg-rec-row{cursor:pointer}
 .rs-actions{margin-top:16px}
 .cd-row{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 4px;margin-top:10px;border:none;border-top:1px solid var(--line);background:none;color:var(--text);font:inherit;font-size:14px;cursor:pointer;text-align:left}
 .cd-row .chev{color:var(--text-muted);display:flex}
+.cd-row .cd-label{display:flex;align-items:center;gap:8px}
+.cd-row .cd-heart{color:var(--data-coral);display:flex}
 .cd-row .tag{margin-left:auto;margin-right:8px;font-size:11.5px;color:var(--attention)}
 .cd-card{display:flex;flex-direction:column;gap:14px;padding:4px 0 6px}
 .cd-curve svg{display:block;overflow:visible}
@@ -630,6 +641,7 @@ button.pg-rec-row{cursor:pointer}
 .confirm-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .confirm-btns button{height:44px;border:none;border-radius:22px;color:var(--text);font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;background:var(--surface-control)}
 .confirm-btns button.go{background:#3A3D42}
+.confirm-btns button.go.danger{background:var(--danger-bg);color:var(--danger)}
 /* Feuille de ressenti (S7, design 7a) */
 .rt-block{display:flex;flex-direction:column;gap:6px;margin-top:14px}
 .rt-top{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px}
@@ -707,7 +719,7 @@ button.pg-rec-row{cursor:pointer}
 .pf-over{padding:0 4px;margin-bottom:8px}
 .pf-obj{width:100%;border:none;text-align:left;color:inherit;font:inherit;background:var(--surface);border-radius:var(--r-lg);padding:14px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;cursor:pointer}
 .pf-obj .top{display:flex;align-items:center;gap:10px}
-.pf-obj .ic{width:36px;height:36px;border-radius:50%;background:var(--select);color:var(--on-accent);display:flex;align-items:center;justify-content:center;flex:none}
+.pf-obj .ic{width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;flex:none}
 .pf-obj .t{font:700 20px/1.1 var(--font-display);text-transform:uppercase}
 .pf-obj .s{font-size:13px;color:var(--text-3)}
 .pf-obj .chev{margin-left:auto;color:var(--text-faint);display:flex}
@@ -729,6 +741,10 @@ button.pg-rec-row{cursor:pointer}
 .pf-chips{display:flex;flex-wrap:wrap;gap:8px}
 .pf-chip{height:44px;padding:0 16px;border-radius:22px;border:1px solid var(--line-field);background:var(--surface);color:var(--text);font:inherit;font-size:15px;cursor:pointer}
 .pf-chip.active{background:var(--select);border-color:var(--select);color:var(--on-accent);font-weight:600}
+/* Profil › Objectifs (D93) : une couleur par réglage, reprise des couleurs des types de séances */
+.pf-tiles .tgt .v{color:var(--accent)}
+.pf-group[style*="--dot"]>.pf-lbl::before{content:"";display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:9px;background:var(--dot);transform:translateY(-1px)}
+.pf-group[style*="--dot"] .active{background:var(--dot);border-color:var(--dot);color:var(--on-accent)}
 .pf-hint{font-size:12.5px;color:var(--text-muted)}
 .pf-saved{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;background:var(--accent-soft);color:var(--accent);font-size:12.5px;font-weight:600}
 .pf-slot:empty{display:none}
@@ -970,6 +986,13 @@ button.pg-rec-row{cursor:pointer}
 /* Graphiques de Progression (S6.3, design 6) */
 .pc{gap:22px;padding:20px 16px 18px}
 .pc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+/* Menu d'année des graphiques par mois (D94) */
+.pc-year{position:relative;margin-left:auto;flex:none}
+.pc-year-btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px 0 12px;border:1px solid var(--line-field);border-radius:16px;background:var(--surface-control);color:var(--text-2);font:inherit;font-size:13px;cursor:pointer}
+.pc-year-pop{position:absolute;right:0;top:36px;z-index:25;min-width:180px;padding:6px;background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-lift)}
+.pc-year-pop button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:40px;padding:0 12px;border:none;border-radius:10px;background:none;color:var(--text);font:inherit;font-size:14.5px;text-align:left;cursor:pointer}
+.pc-year-pop button[aria-selected="true"]{color:var(--accent)}
+.pc-year-pop button:active{background:var(--surface-control)}
 .pc-title{display:flex;align-items:center;gap:8px;padding-top:4px}
 .pc-title .heart{color:var(--data-coral);display:flex}
 .pc-prog{text-align:right;flex:none}
@@ -1013,13 +1036,20 @@ button.pg-rec-row{cursor:pointer}
   .pc-plot.anim.time svg{animation:cgReveal .6s ease-out both}
   .pc-plot.anim .bar{transform-box:fill-box;transform-origin:50% 100%;animation:barRise .4s ease-out both;animation-delay:calc(var(--i) * 40ms)}
   .pc-slider .handle{transition:left .15s ease-out}
-  .pc-title .heart svg{animation:heartBeat 1.6s ease-in-out infinite}
+  .pc-title .heart svg,.cd-row .cd-heart svg{animation:heartBeat 1.6s ease-in-out infinite}
 }
 @keyframes barRise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 @keyframes heartBeat{0%,40%,100%{transform:scale(1)}10%{transform:scale(1.18)}20%{transform:scale(1)}30%{transform:scale(1.18)}}
 .sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface-raised);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:var(--shadow-sheet)}
 .sheet::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--grabber);margin:0 auto 14px}
+/* Fermer en tirant vers le bas (D96) : on prend la poignée ou la ligne du titre ; la fenêtre suit le doigt */
+.sheet{position:relative}
+.sheet-grab{position:absolute;left:0;right:0;top:0;height:30px;touch-action:none;z-index:3}
+.sheet-head{touch-action:none}
+.sheet.dragging{user-select:none;-webkit-user-select:none}
+.sheet.settle{transition:transform .22s ease-out}
+@media (prefers-reduced-motion: reduce){.sheet.settle{transition:none}}
 .sheet-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
 .sheet-overline{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px}
 .sheet-title{font-family:var(--font-display);font-weight:700;font-size:22px;line-height:1.1;text-transform:uppercase}
@@ -1080,6 +1110,7 @@ button.pg-rec-row{cursor:pointer}
 
   <div id="content"></div>
   <div id="sheetRoot"></div>
+  <div id="confirmRoot"></div>
   <div id="celebrationRoot"></div>
   <div id="toastRoot" aria-live="polite"></div>
 
@@ -1088,7 +1119,7 @@ button.pg-rec-row{cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=82"></script>
+<script src="logic.js?v=83"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -2370,18 +2401,20 @@ function indicatorTilesHTML(){
   const effColor = eff.status==="mieux" ? "var(--accent)" : eff.status==="insuffisant" ? "var(--text-faint)" : "var(--text)";
   const coach = (txt) => `<div class="pg-coach">${icon("sparkle",11)}<span>${escHtml(txt)}</span></div>`;
   const tile = (over, big, color, txt, target) => {
-    const inner = `<div class="pg-over">${over}</div><div class="big" style="color:${color}">${big}</div>${coach(txt)}`;
+    const inner = `<div class="pg-over">${over}</div><div class="big" style="color:${color}">${big}</div>${coach(txt)}${target?`<span class="pg-chev" aria-hidden="true">${icon("chevronRight",14)}</span>`:""}`;
     return target ? `<button type="button" class="pg-tile" onclick="scrollToCard('${target}')">${inner}</button>` : `<div class="pg-tile">${inner}</div>`;
   };
   const ci = chargeLineInfo(gauge, acwr), seg = chargeSegments(), pos = chargeGaugePosition(acwr);
+  const chargeReason = pos==null ? chargeEmptyReason(chargeRunsForReason(), Date.now()) : null;
+  const chargeFoot = chargeReason ? CHARGE_EMPTY_TEXTS[chargeReason].tile : "Touche pour la jauge complète";
   const shortZone = { "sous-charge":"En dessous", "idéale":"Zone idéale", "attention":"Au-dessus", "inconnue":"Pas de repère" }[gauge.zone];
   const barColors = ["var(--text-faint)", "var(--accent)", "var(--attention)"];
   const mini = [seg.low, seg.ideal, seg.high].map((w,i)=>`<i style="flex:${w};background:${pos==null?"var(--line-field)":barColors[i]}"></i>`).join("");
   const chargeTile = `<button type="button" class="pg-tile" onclick="openChargeSheet()" aria-label="${escHtml(chargeAriaLabel(gauge, acwr))}. Ouvre la jauge complète.">
-    <div class="pg-over">Charge</div>
+    <div class="pg-over">Charge</div><span class="pg-chev" aria-hidden="true">${icon("chevronRight",14)}</span>
     <div class="pg-chg-row"><span class="z" style="color:${gauge.zone==="sous-charge"?"var(--text-muted)":gauge.color}">${shortZone}</span>${ci.value?`<span class="n">${ci.value}</span>`:""}</div>
     <div class="pg-mini" aria-hidden="true">${mini}${pos!=null?`<span class="pg-mark" style="left:${pos*100}%"></span>`:""}</div>
-    <div style="font-size:12px;color:var(--text-muted)">Touche pour la jauge complète</div>
+    <div style="font-size:12px;color:var(--text-muted)">${escHtml(chargeFoot)}</div>
   </button>`;
   return `<div class="pg-h2" id="progIndicators">Tes indicateurs</div>
     <div class="pg-grid">
@@ -2393,13 +2426,17 @@ function indicatorTilesHTML(){
 }
 function keyFiguresHTML(){
   const kf = keyFigures(runningRuns.map(runAsRecord), Date.now());
-  const key = (over, big, unit) => `<div class="pg-key"><div class="pg-over">${over}</div><div class="big${big==null?" none":""}">${big==null?"—":big}</div>${unit?`<div class="u">${unit}</div>`:""}</div>`;
+  // Chaque tuile qui a une donnée mène quelque part (D95) ; « — » : pas cliquable.
+  const key = (over, big, unit, act) => {
+    const inner = `<div class="pg-over">${over}</div><div class="big${big==null?" none":""}">${big==null?"—":big}</div>${unit?`<div class="u">${unit}</div>`:""}`;
+    return act && big!=null ? `<button type="button" class="pg-key" onclick="${act}">${inner}<span class="pg-chev" aria-hidden="true">${icon("chevronRight",14)}</span></button>` : `<div class="pg-key">${inner}</div>`;
+  };
   return `<div class="pg-h2">Chiffres clés</div>
     <div class="pg-grid">
-      ${key("Distance annuelle", `${fmtKm1(kf.yearKm)} km`, "")}
-      ${key("Plus longue sortie", kf.longestMonthKm!=null?`${fmtKm1(kf.longestMonthKm)} km`:null, "ce mois")}
-      ${key("Temps de course", formatHoursMinutes(kf.monthTimeSec), "ce mois")}
-      ${key("Meilleure allure EF", kf.bestEfPaceSecKm!=null?fmtA(kf.bestEfPaceSecKm):null, "/km")}
+      ${key("Distance annuelle", `${fmtKm1(kf.yearKm)} km`, "", runningRuns.length ? "scrollToCard('cardVol')" : "")}
+      ${key("Plus longue sortie", kf.longestMonthKm!=null?`${fmtKm1(kf.longestMonthKm)} km`:null, "ce mois", kf.longestMonthRunId ? `openHistoryRun('${kf.longestMonthRunId}')` : "")}
+      ${key("Temps de course", formatHoursMinutes(kf.monthTimeSec), "ce mois", kf.monthTimeSec>0 ? "openHistoryThisMonth()" : "")}
+      ${key("Meilleure allure EF", kf.bestEfPaceSecKm!=null?fmtA(kf.bestEfPaceSecKm):null, "/km", kf.bestEfRunId ? "scrollToCard('cardEf')" : "")}
     </div>`;
 }
 // « Tes records » : une ligne par distance (D26), les chronos déclarés à part en gris (jamais célébrés), meilleure allure fractionné dessous.
@@ -2531,7 +2568,7 @@ function barChartModel(key, cfg){
     const sel1 = `<rect x="${(bx-bw/2-2).toFixed(1)}" y="${(by-2).toFixed(1)}" width="${(bw+4).toFixed(1)}" height="${(CH_B-by+2).toFixed(1)}" rx="5" fill="none" stroke="#F2F3F0" stroke-width="1.5"/>`;
     return `<svg width="${W}" height="${CH_H}" viewBox="0 0 ${W} ${CH_H}" role="img" aria-label="${svgEsc(cfg.title)}, ${n} mois">${g.join("")}<g>${bars}${cfg.extra?cfg.extra(geom):""}</g>${sel1}${chartBubbleSVG(bx, by-(b.flag?22:0), cfg.bubbleFn(b), W, "")}</svg>`;
   };
-  return { key, kind:"bars", W, title:cfg.title, progress:null, period:false, coach:cfg.coach, nav, svg, legend:cfg.legend, noun:"Mois", srText:(i)=>cfg.bubbleFn(nav[i].bar).map(p=>p.t).join("") };
+  return { key, kind:"bars", W, title:cfg.title, progress:null, period:false, coach:cfg.coach, nav, svg, legend:cfg.legend, noun:"Mois", yearMenu:cfg.yearMenu||null, srText:(i)=>cfg.bubbleFn(nav[i].bar).map(p=>p.t).join("") };
 }
 const svgText = (x, y, t) => `<text x="${x.toFixed(1)}" y="${y}" text-anchor="middle">${svgEsc(t)}</text>`;
 
@@ -2585,19 +2622,23 @@ function effChartModel(){
 }
 function volChartModel(){
   const goalKm = goals.kmMensuel ? Number(goals.kmMensuel) : 0;
-  const v = monthlyVolumeBars(runningRuns.map(runAsRecord), goalKm, Date.now(), 12);
+  const records = runningRuns.map(runAsRecord);
+  const years = chartYears(records);                       // le menu n'existe qu'avec au moins deux années de données (D94)
+  let view = chartSt("vol").view || null; if(view && !years.includes(view)) view = null;
+  const v = monthlyVolumeBars(records, goalKm, Date.now(), 12, view);
   if(!v.bars.length) return null;
+  const pastYear = view && view!==new Date().getFullYear();
   const maxV = Math.max(...v.bars.map(b=>b.km), v.limitKm||0, v.goalKm||0, 1);
   const tk = niceTicks(0, maxV*1.1, 5, [5,10,20,25,50,100,200,500]);
   const yMax = Math.max(maxV*1.1, tk.ticks[tk.ticks.length-1]);
   const cur = v.bars[v.bars.length-1];
   const color = (b) => b.state==="high" ? "#B688FE" : b.state==="met" ? "#C6F432" : b.state==="none" ? "#C6F432" : "#5A6068";
-  const coach = !v.goalKm ? "Renseigne un objectif de km par mois (Profil › Objectifs) pour voir si tu es dans la cible."
+  const coach = pastYear ? `${view} : ${fmtKm1(v.totalKm)} km sur l'année.` : !v.goalKm ? "Renseigne un objectif de km par mois (Profil › Objectifs) pour voir si tu es dans la cible."
     : cur.state==="high" ? `Repère : au-delà de ${fmtKm1(v.limitKm)} km par mois (objectif + 30 %), la hausse est rapide. Écoute ton corps.`
     : cur.state==="met" ? `Objectif atteint ce mois-ci : ${fmtKm1(cur.km)} km sur ${fmtKm1(v.goalKm)}.`
     : `Ce mois-ci : ${fmtKm1(cur.km)} km sur ${fmtKm1(v.goalKm)} visés.`;
   return barChartModel("vol", {
-    title:"Volume mensuel (km)", bars:v.bars.map(b=>({...b, value:b.km, flag:b.state==="high"})), yMax, ticks:tk.ticks, yFmt:(x)=>String(x), coach,
+    title:"Volume mensuel (km)", yearMenu:years.length ? { years, view } : null, bars:v.bars.map(b=>({...b, value:b.km, flag:b.state==="high"})), yMax, ticks:tk.ticks, yFmt:(x)=>String(x), coach,
     drawBar:(b,i,g)=>{
       const x = g.cx(i)-g.bw/2, y = g.Y(b.km), h = Math.max(0, 148-y), c = color(b);
       const shape = b.current ? `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${g.bw.toFixed(1)}" height="${h.toFixed(1)}" rx="5" fill="${c}" fill-opacity=".22" stroke="${c}" stroke-width="1.5" stroke-dasharray="4 3"/>`
@@ -2619,12 +2660,19 @@ function mixChartModel(){
   const effMaxHr = maxHr || estimatedMaxHr(), effRestingHr = restingHr || null;
   if(!effMaxHr) return null;
   const cardioRuns = [...efRuns, ...fracRuns].sort((a,b)=>dateFromRun(b)-dateFromRun(a));
-  const months = easyHardMonthly(monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr)).slice(-12).map(m=>({ ...m, label: m.sortKey!=null ? MONTH_SHORT[m.sortKey%12] : m.label }));
-  if(months.length<2) return null;
+  const allMonths = easyHardMonthly(monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr));
+  const ys = [...new Set(allMonths.filter(m=>m.sortKey!=null).map(m=>Math.floor(m.sortKey/12)))].sort((a,b)=>b-a);
+  const years = ys.length>=2 ? ys : [];                    // menu d'année : au moins deux années de données (D94)
+  let view = chartSt("mix").view || null; if(view && !years.includes(view)) view = null;
+  const picked = view ? allMonths.filter(m=>m.sortKey!=null && Math.floor(m.sortKey/12)===view) : allMonths.slice(-12);
+  const months = picked.map(m=>({ ...m, label: m.sortKey!=null ? MONTH_SHORT[m.sortKey%12] : m.label }));
+  if(months.length<2) return view ? { key:"mix", empty:true, title:"Facile / soutenu", yearMenu:{ years, view }, text:`Pas assez de séances avec cardio en ${view} pour ce graphique.` } : null;
   const last = months[months.length-1];
-  const coach = last.easyPct>=EASY_TARGET_PCT ? `Ce mois-ci : ${last.easyPct} % de facile, tu es au repère de ${EASY_TARGET_PCT} %.` : `Ce mois-ci : ${last.easyPct} % de facile. Le repère conseillé est de ${EASY_TARGET_PCT} % : la plupart de tes sorties en douceur.`;
+  const pastYear = view && view!==new Date().getFullYear();
+  const easyTot = months.reduce((a,m)=>a+m.easySec,0), allTot = months.reduce((a,m)=>a+m.easySec+m.hardSec,0);
+  const coach = pastYear ? `${view} : ${allTot>0 ? Math.round(easyTot/allTot*100) : 0} % de facile en moyenne (repère : ${EASY_TARGET_PCT} %).` : last.easyPct>=EASY_TARGET_PCT ? `Ce mois-ci : ${last.easyPct} % de facile, tu es au repère de ${EASY_TARGET_PCT} %.` : `Ce mois-ci : ${last.easyPct} % de facile. Le repère conseillé est de ${EASY_TARGET_PCT} % : la plupart de tes sorties en douceur.`;
   return barChartModel("mix", {
-    title:"Facile / soutenu", bars:months.map(m=>({ label:m.label, easyPct:m.easyPct, hardPct:m.hardPct, top:100 })), yMax:100, ticks:[0,50,100], yFmt:(x)=>x+" %", coach,
+    title:"Facile / soutenu", yearMenu:years.length ? { years, view } : null, bars:months.map(m=>({ label:m.label, easyPct:m.easyPct, hardPct:m.hardPct, top:100 })), yMax:100, ticks:[0,50,100], yFmt:(x)=>x+" %", coach,
     drawBar:(b,i,g)=>{
       const x = g.cx(i)-g.bw/2, ye = g.Y(b.easyPct), yh = g.Y(100);
       return `<rect x="${x.toFixed(1)}" y="${ye.toFixed(1)}" width="${g.bw.toFixed(1)}" height="${(148-ye).toFixed(1)}" rx="4" fill="#C6F432"/>${b.hardPct>0?`<rect x="${x.toFixed(1)}" y="${yh.toFixed(1)}" width="${g.bw.toFixed(1)}" height="${Math.max(0,ye-yh-1).toFixed(1)}" rx="4" fill="${FRAC_COLOR}"/>`:""}`;
@@ -2644,16 +2692,16 @@ function chartCardHTML(key){
   if(m.wait) return `<div class="pg-card pc pc-wait" id="${id}"><div class="big">${svgEsc(m.title)}</div><p>${svgEsc(m.text)}</p></div>`;
   if(m.empty){
     const st0 = chartSt(key);
-    return `<div class="pg-card pc" id="${id}" data-key="${key}"><div class="pc-head"><div class="pc-title">${m.heart?`<span class="heart">${icon("heart",14)}</span>`:""}<span class="pg-over">${svgEsc(m.title)}</span></div></div>
-      <div class="pc-seg" role="group" aria-label="Période">${PROGRESS_PERIODS.map(p=>`<button type="button" aria-pressed="${st0.period===p.key}" onclick="setChartPeriod('${key}','${p.key}')">${p.label}</button>`).join("")}</div>
+    return `<div class="pg-card pc" id="${id}" data-key="${key}"><div class="pc-head"><div class="pc-title">${m.heart?`<span class="heart">${icon("heart",14)}</span>`:""}<span class="pg-over">${svgEsc(m.title)}</span></div>${yearMenuHTML(key, m.yearMenu)}</div>
+      ${m.yearMenu ? "" : `<div class="pc-seg" role="group" aria-label="Période">${PROGRESS_PERIODS.map(p=>`<button type="button" aria-pressed="${st0.period===p.key}" onclick="setChartPeriod('${key}','${p.key}')">${p.label}</button>`).join("")}</div>`}
       <div class="pc-coach">${icon("sparkle",13)}<span>${svgEsc(m.text)}</span></div></div>`;
   }
-  const st = chartSt(key), sel = chartSel(m), animate = playOnce("chart_"+key+"_"+st.period);
+  const st = chartSt(key), sel = chartSel(m), animate = playOnce("chart_"+key+"_"+st.period+(st.view?"_"+st.view:""));
   const prog = m.progress ? `<div class="pc-prog"><div class="v${m.progress.tone==="muted"?" muted":""}">${svgEsc(m.progress.text)}</div>${m.since?`<div class="s">${svgEsc(m.since)}</div>`:""}</div>` : "";
   const seg = m.period ? `<div class="pc-seg" role="group" aria-label="Période">${PROGRESS_PERIODS.map(p=>`<button type="button" aria-pressed="${st.period===p.key}" onclick="setChartPeriod('${key}','${p.key}')">${p.label}</button>`).join("")}</div>` : "";
   const ticks = m.nav.map(n=>`<i class="tk${n.race?" race":""}" style="left:${(n.frac*100).toFixed(2)}%"></i>`).join("");
   return `<div class="pg-card pc" id="${id}" data-key="${key}">
-    <div class="pc-head"><div class="pc-title">${m.heart?`<span class="heart">${icon("heart",14)}</span>`:""}<span class="pg-over">${svgEsc(m.title)}</span></div>${prog}</div>
+    <div class="pc-head"><div class="pc-title">${m.heart?`<span class="heart">${icon("heart",14)}</span>`:""}<span class="pg-over">${svgEsc(m.title)}</span></div>${prog}${yearMenuHTML(key, m.yearMenu)}</div>
     ${seg}
     <div class="pc-coach">${icon("sparkle",13)}<span>${svgEsc(m.coach)}</span></div>
     <div class="pc-plot${animate?" anim":""}${m.kind==="time"?" time":""}" id="pcPlot_${key}">${m.svg(sel)}</div>
@@ -2667,6 +2715,21 @@ function chartCardHTML(key){
     </div>
   </div>`;
 }
+// Menu « 12 derniers mois ▾ » (D94) des graphiques par mois : les années civiles disponibles ; visible seulement avec 2 années de données.
+let openYearMenu = null;   // clé du graphique dont le menu est ouvert
+function yearMenuHTML(key, ym){
+  if(!ym || !ym.years || !ym.years.length) return "";
+  const cur = ym.view ? String(ym.view) : "12 derniers mois", open = openYearMenu===key;
+  const items = [[null, "12 derniers mois"], ...ym.years.map(y=>[y, String(y)])];
+  return `<div class="pc-year"><button type="button" class="pc-year-btn" aria-haspopup="listbox" aria-expanded="${open}" aria-label="Période du graphique : ${cur}" onclick="toggleYearMenu('${key}',event)"><span>${cur}</span>${icon("chevronDown",14)}</button>
+    ${open ? `<div class="pc-year-pop" role="listbox" aria-label="Période">${items.map(([v,l])=>{ const on = (ym.view||null)===v; return `<button type="button" role="option" aria-selected="${on}" onclick="setChartView('${key}',${v===null?"null":v},event)"><span>${l}</span>${on?icon("check",16):""}</button>`; }).join("")}</div>` : ""}
+  </div>`;
+}
+window.toggleYearMenu = (key, ev) => { if(ev) ev.stopPropagation(); const was = openYearMenu; openYearMenu = was===key ? null : key; if(was && was!==key) redrawChartCard(was); redrawChartCard(key); };
+window.setChartView = (key, view, ev) => { if(ev) ev.stopPropagation(); chartSt(key).view = view; chartSt(key).index = null; openYearMenu = null; redrawChartCard(key); };
+function closeYearMenu(){ if(!openYearMenu) return; const k = openYearMenu; openYearMenu = null; redrawChartCard(k); }
+document.addEventListener("click", (e) => { if(openYearMenu && !(e.target.closest && e.target.closest(".pc-year"))) closeYearMenu(); });
+document.addEventListener("keydown", (e) => { if(e.key==="Escape") closeYearMenu(); });
 function chartsHTML(){ return ["ef","frac","vol","eff","mix"].map(chartCardHTML).join(""); }
 function redrawChartCard(key){
   const el = document.getElementById(CHART_CARD_ID[key]);
@@ -2721,6 +2784,11 @@ window.openHistory = () => { historyOpen = true; historyCat = "all"; historyType
 window.closeHistory = () => { historyOpen = false; renderContent(); window.scrollTo({ top:0 }); };
 window.setHistoryCat = (c) => { historyCat = c; historyType = "all"; renderContent(); };
 window.setHistoryType = (t) => { historyType = t; renderContent(); };
+window.openHistoryThisMonth = () => {   // « Temps de course » : l'Historique avec le mois en cours déplié
+  const d = new Date();
+  historyOpen = true; historyCat = "all"; historyType = "all"; openHistMonths = new Set([`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`]);
+  renderContent(); window.scrollTo({ top:0 });
+};
 window.toggleHistMonth = (key) => { if(openHistMonths.has(key)) openHistMonths.delete(key); else openHistMonths.add(key); renderContent(); };
 function historyRowHTML(r, holders){
   const c = TC[r.type]||TC.Other;
@@ -2798,7 +2866,7 @@ function renderRunSheet(){
   const rated = !!(r.painRatings && r.painRatings.rpe!=null);
   const menu = `<div class="menu-wrap"><button class="sheet-close" type="button" aria-label="Plus d'actions" aria-haspopup="menu" aria-expanded="${st.menu}" onclick="toggleRunMenu()">${icon("more",18)}</button>${st.menu?`<div class="menu-pop" role="menu"><button type="button" role="menuitem" class="danger" onclick="askDeleteRun()">Supprimer cette séance</button></div>`:""}</div>`;
   const delInfo = { typeLabel:sessionTypeLabel(r.type), dateText:dayLabelShort(dateFromRun(r)), distKm:r.dist, linked: linked.length ? { status:plannedStatusAfterRunDeleted(linked[0], todayStr) } : null };
-  const confirm = st.confirm ? `<div class="confirm-back" onclick="if(event.target===this)cancelDeleteRun()"><div class="confirm-card" role="alertdialog" aria-modal="true" aria-label="Supprimer cette séance ?"><h2>Supprimer cette séance ?</h2><p>${escHtml(deleteRunText(delInfo))}</p><div class="confirm-btns"><button type="button" onclick="cancelDeleteRun()">Annuler</button><button type="button" class="go" onclick="confirmDeleteRun()">Supprimer</button></div></div></div>` : "";
+  const confirm = st.confirm ? `<div class="confirm-back" onclick="if(event.target===this)cancelDeleteRun()"><div class="confirm-card" role="alertdialog" aria-modal="true" aria-label="Supprimer cette séance ?"><h2>Supprimer cette séance ?</h2><p>${escHtml(deleteRunText(delInfo))}</p><div class="confirm-btns"><button type="button" onclick="cancelDeleteRun()">Annuler</button><button type="button" class="go danger" onclick="confirmDeleteRun()">Supprimer</button></div></div></div>` : "";
   root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeRunSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="${escHtml(sessionTypeLabel(r.type))}, ${escHtml(dayLabelShort(dateFromRun(r)))}">
     <div class="sheet-head"><div><div class="sheet-overline">${escHtml(dayLabelShort(dateFromRun(r)))} · ${escHtml(r.time)}</div><div class="sheet-title">${escHtml(sessionTypeLabel(r.type))}</div></div>
       <div style="display:flex;gap:6px">${menu}<button class="sheet-close" type="button" aria-label="Fermer" onclick="closeRunSheet()">${icon("x",16)}</button></div></div>
@@ -2977,7 +3045,7 @@ function objectiveSummaryHTML(slotKey){
   const dist = (slot.distanceCourse||"").replace(/(\d)km$/, "$1 km");
   const title = isRace ? [type, dist].filter(Boolean).join(" · ") : type;
   const sub = isRace ? (slot.dateCible ? `${parseDay(slot.dateCible).toLocaleDateString("fr-FR")} · ${weeksUntilText(slot.dateCible)}` : "Date de la course à renseigner") : "";
-  const tiles = isRace ? `<div class="pf-tiles"><div><div class="k">Terrain</div><div class="v">${escHtml(slot.terrainCourse||"—")}</div></div><div><div class="k">Record</div><div class="v">${slot.pbSec>0?fmtDur(slot.pbSec):"—"}</div></div><div><div class="k">Visé</div><div class="v">${slot.tempsViseSec>0?fmtDur(slot.tempsViseSec):"—"}</div></div></div>` : "";
+  const tiles = isRace ? `<div class="pf-tiles"><div><div class="k">Terrain</div><div class="v">${escHtml(slot.terrainCourse||"—")}</div></div><div><div class="k">Record</div><div class="v">${slot.pbSec>0?fmtDur(slot.pbSec):"—"}</div></div><div class="tgt"><div class="k">Visé</div><div class="v">${slot.tempsViseSec>0?fmtDur(slot.tempsViseSec):"—"}</div></div></div>` : "";
   return `<div class="pg-over pf-over">${over}</div><button type="button" class="pf-obj" onclick="openObjectiveSheet('${slotKey}')" aria-label="${escHtml(title)}, modifier l'objectif">
     <div class="top"><div class="ic">${icon(ic,18)}</div><div style="min-width:0"><div class="t">${escHtml(title)}</div>${sub?`<div class="s">${escHtml(sub)}</div>`:""}</div><span class="chev">${icon("chevronRight",16)}</span></div>${tiles}</button>`;
 }
@@ -2991,17 +3059,17 @@ function profilObjectifsHTML(){
     ${secEnabled ? objectiveSummaryHTML("secondaire") : `<button type="button" class="pf-add" onclick="addSecondaryGoal()">${icon("plus",16)} Ajouter un objectif secondaire</button>`}
     <div class="pf-card">
       <div class="pf-title">Ton profil coureur</div>
-      <div class="pf-group"><div class="pf-lbl">Séances de course / semaine</div>${nums("frequence", ["1","2","3","4","5","6","7"], goals.frequence, "saveFrequence")}<div class="pf-hint" id="frequenceHint">${FREQUENCE_HINTS[goals.frequence]||""}</div><div class="pf-slot"></div></div>
-      <div class="pf-group"><div class="pf-lbl">Renfo / mobilité / semaine</div>${nums("frequenceAutre", ["0","1","2","3","4","5","6","7"], goals.frequenceAutre, "saveFrequenceAutre")}<div class="pf-slot"></div></div>
+      <div class="pf-group" style="--dot:var(--type-ef)"><div class="pf-lbl">Séances de course / semaine</div>${nums("frequence", ["1","2","3","4","5","6","7"], goals.frequence, "saveFrequence")}<div class="pf-hint" id="frequenceHint">${FREQUENCE_HINTS[goals.frequence]||""}</div><div class="pf-slot"></div></div>
+      <div class="pf-group" style="--dot:var(--type-renfo)"><div class="pf-lbl">Renfo / mobilité / semaine</div>${nums("frequenceAutre", ["0","1","2","3","4","5","6","7"], goals.frequenceAutre, "saveFrequenceAutre")}<div class="pf-slot"></div></div>
       <div class="pf-two">
-        <div class="pf-group"><label class="pf-lbl" for="goal_kmMensuel">Objectif km par mois</label><div class="pf-row stack"><input type="number" inputmode="numeric" min="1" max="1000" id="goal_kmMensuel" value="${goals.kmMensuel||""}" oninput="syncKmGoal('mensuel')" onchange="saveVolumeGoal()"><span class="u">km</span></div><div class="pf-slot"></div></div>
-        <div class="pf-group"><label class="pf-lbl" for="goal_kmAnnuel">Objectif km par an</label><div class="pf-row stack"><input type="number" inputmode="numeric" min="1" max="12000" id="goal_kmAnnuel" value="${kmAn}" oninput="syncKmGoal('annuel')" onchange="saveVolumeGoal()"><span class="u">km</span></div></div>
+        <div class="pf-group" style="--dot:var(--data-cyan)"><label class="pf-lbl" for="goal_kmMensuel">Objectif km par mois</label><div class="pf-row stack"><input type="number" inputmode="numeric" min="1" max="1000" id="goal_kmMensuel" value="${goals.kmMensuel||""}" oninput="syncKmGoal('mensuel')" onchange="saveVolumeGoal()"><span class="u">km</span></div><div class="pf-slot"></div></div>
+        <div class="pf-group" style="--dot:var(--data-cyan)"><label class="pf-lbl" for="goal_kmAnnuel">Objectif km par an</label><div class="pf-row stack"><input type="number" inputmode="numeric" min="1" max="12000" id="goal_kmAnnuel" value="${kmAn}" oninput="syncKmGoal('annuel')" onchange="saveVolumeGoal()"><span class="u">km</span></div></div>
       </div>
       <div class="pf-hint" style="margin-top:-6px">Facultatif, alimente tes anneaux dans Progression.</div>
-      <div class="pf-group"><div class="pf-lbl">Terrain habituel</div>${chips("terrain", TERRAIN_OPTIONS, (o)=>o===goals.terrain, "saveTerrain")}<div class="pf-slot"></div></div>
-      <div class="pf-group"><div class="pf-lbl">Équipement connecté</div>${chips("equipement", EQUIPEMENT_OPTIONS, (o)=>sel(goals.equipement,o), "saveEquipement")}<div class="pf-slot"></div></div>
-      <div class="pf-group"><div class="pf-lbl">Jours indisponibles pour courir</div>${chips("joursIndisponibles", JOURS_OPTIONS, (o,i)=>sel(goals.joursIndisponibles,String(i)), "saveJoursIndisponibles", (o,i)=>String(i))}<div class="pf-slot"></div></div>
-      <div class="pf-group"><label class="pf-lbl" for="goal_autre">Autre chose à préciser</label><textarea class="pf-ta" id="goal_autre" placeholder="Préférences d'entraînement, contexte particulier…" onchange="saveAutre(this)">${escHtml(goals.autre||"")}</textarea><div class="pf-slot"></div></div>
+      <div class="pf-group" style="--dot:var(--type-seuil)"><div class="pf-lbl">Terrain habituel</div>${chips("terrain", TERRAIN_OPTIONS, (o)=>o===goals.terrain, "saveTerrain")}<div class="pf-slot"></div></div>
+      <div class="pf-group" style="--dot:var(--type-souple)"><div class="pf-lbl">Équipement connecté</div>${chips("equipement", EQUIPEMENT_OPTIONS, (o)=>sel(goals.equipement,o), "saveEquipement")}<div class="pf-slot"></div></div>
+      <div class="pf-group" style="--dot:var(--type-long)"><div class="pf-lbl">Jours indisponibles pour courir</div>${chips("joursIndisponibles", JOURS_OPTIONS, (o,i)=>sel(goals.joursIndisponibles,String(i)), "saveJoursIndisponibles", (o,i)=>String(i))}<div class="pf-slot"></div></div>
+      <div class="pf-group" style="--dot:var(--data-neutral)"><label class="pf-lbl" for="goal_autre">Autre chose à préciser</label><textarea class="pf-ta" id="goal_autre" placeholder="Préférences d'entraînement, contexte particulier…" onchange="saveAutre(this)">${escHtml(goals.autre||"")}</textarea><div class="pf-slot"></div></div>
     </div>
     <button type="button" class="pf-lvl" onclick="openLevelSheet()"><span class="k">Ton niveau</span><span class="r"><span class="v">${escHtml(goals.niveau||"à choisir")}</span>${icon("chevronRight",16)}</span></button>`;
 }
@@ -3651,6 +3719,13 @@ window.openChargeSheet = () => { chargeSheet = "gauge"; playedChargeSheet = fals
 window.closeChargeSheet = () => { chargeSheet = null; refreshSheet(); };
 window.toggleChargeInfo = () => { chargeSheet = chargeSheet==="info" ? "gauge" : "info"; refreshSheet(); };
 let playedChargeSheet = false;
+// Sorties avec leur difficulté notée (ou non) : sert à dire POURQUOI la charge est vide (D97).
+function chargeRunsForReason(){ return runningRuns.map(r=>({ id:r.id, ts:dateFromRun(r).getTime(), rpe:r.painRatings ? r.painRatings.rpe : null })); }
+window.rateLatestUnrated = () => {   // « Noter mon ressenti » : la sortie la plus récente des 4 dernières semaines sans difficulté notée
+  const from = Date.now() - 28*DAY_MS;
+  const last = chargeRunsForReason().filter(x=>x.ts>=from && x.rpe==null).sort((a,b)=>b.ts-a.ts)[0];
+  if(last) openRatingSheet(last.id);
+};
 function renderChargeSheet(){
   const root = document.getElementById("sheetRoot");
   if(!chargeSheet) return false;
@@ -3659,7 +3734,7 @@ function renderChargeSheet(){
   let body;
   if(chargeSheet==="info"){
     body = `${sheetHeadHTML("La charge d'entraînement", "toggleChargeInfo()")}
-      <div class="cg-text">Elle compare ce que tu as couru ces 7 derniers jours à ce que ton corps a l'habitude de faire (la moyenne de tes 4 dernières semaines). Autour de 1, tu progresses à un rythme qu'il encaisse bien.</div>
+      <div class="cg-text">Chaque séance compte pour sa durée multipliée par la difficulté que tu as notée (0 à 10). La charge compare ce que tu as couru ces 7 derniers jours à ce que ton corps a l'habitude de faire (la moyenne de tes 4 dernières semaines). Autour de 1, tu progresses à un rythme qu'il encaisse bien.</div>
       <div class="cg-levels">
         <div><i style="background:var(--text-faint)"></i><span><b>En dessous de 0,8 :</b> tu peux en faire un peu plus.</span></div>
         <div><i style="background:var(--accent)"></i><span><b>Entre 0,8 et 1,3 :</b> zone idéale.</span></div>
@@ -3670,6 +3745,7 @@ function renderChargeSheet(){
       <div class="cg-src">Source : Gabbett (2016), British Journal of Sports Medicine.</div>`;
   } else {
     const ci = chargeLineInfo(gauge, acwr);
+    const emptyReason = pos==null ? chargeEmptyReason(chargeRunsForReason(), Date.now()) : null;
     const animate = !playedChargeSheet && !prefersReducedMotion(); playedChargeSheet = true;
     const dailySeries = buildDailyLoadSeries(chargeLoadSessions());
     const curve = chargeCurve(chargeWeeklySeries(dailySeries, new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()), 8), 280, 80);
@@ -3689,7 +3765,8 @@ function renderChargeSheet(){
         <div class="cg-bar${animate?" anim":""}">${bar}${pos!=null?`<span class="cg-mark" style="left:${pos*100}%"></span>`:""}</div>
         <div class="cg-ticks" aria-hidden="true">${tick(CHARGE_LOW)}${tick(CHARGE_HIGH)}</div>
         ${graph}
-        <div class="cg-coach">${icon("sparkle",13)}<span>${escHtml(pos!=null?gauge.phrase:gauge.phrase+" Note tes séances pour la voir apparaître.")}</span></div>
+        <div class="cg-coach">${icon("sparkle",13)}<span>${escHtml(pos!=null ? gauge.phrase : (emptyReason ? CHARGE_EMPTY_TEXTS[emptyReason].sheet : gauge.phrase))}</span></div>
+        ${pos==null && emptyReason==="unrated" ? `<button type="button" class="btn-primary" style="margin-top:14px" onclick="rateLatestUnrated()">Noter mon ressenti</button>` : ""}
       </div>`;
   }
   root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeChargeSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Charge d'entraînement">${body}</div></div>`;
@@ -3871,7 +3948,7 @@ function cardioCardHTML(r, effMaxHr, effRestingHr){
   const flagSeuil = !flagFrac && r.type!=="Seuil" && looksLikeSeuil(r.hrSeries, effMaxHr, effRestingHr);
   const ip = r.type==="Fractionné" ? getIntervalPaces(r) : null;
   const W = 320;
-  const tiles = r.fc ? `<div class="sc-tiles2" style="margin:0">${scTile("FC moy.", r.fc, "var(--data-coral)")}${r.peakHr?scTile("FC max", r.peakHr, "var(--data-coral)"):""}</div>` : "";
+  const tiles = r.fc ? `<div class="sc-tiles2" style="margin:0">${scTile("FC moy.", Math.round(r.fc), "var(--data-coral)")}${r.peakHr?scTile("FC max", r.peakHr, "var(--data-coral)"):""}</div>` : "";
   return `<div class="cd-card">
     ${tiles}
     <div class="cd-curve">${hrCurveSVG(r.hrSeries, defs[1].max, W)}</div>
@@ -3898,7 +3975,7 @@ function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
   const open = openHrDetail.has(r.id);
   const flagFrac = r.type!=="Fractionné" && looksLikeFractionne(r.hrSeries);
   const flagSeuil = !flagFrac && r.type!=="Seuil" && looksLikeSeuil(r.hrSeries, effMaxHr, effRestingHr);
-  return `<button type="button" class="cd-row" aria-expanded="${open}" onclick="toggleHrDetail('${r.id}')"><span>Détail cardio</span>${flagFrac?`<span class="tag">Fractionné détecté ?</span>`:flagSeuil?`<span class="tag">Zone haute ?</span>`:""}<span class="chev">${icon(open?"chevronUp":"chevronDown",18)}</span></button>
+  return `<button type="button" class="cd-row" aria-expanded="${open}" onclick="toggleHrDetail('${r.id}')"><span class="cd-label"><span class="cd-heart" aria-hidden="true">${icon("heart",16)}</span>Détail cardio</span>${flagFrac?`<span class="tag">Fractionné détecté ?</span>`:flagSeuil?`<span class="tag">Zone haute ?</span>`:""}<span class="chev">${icon(open?"chevronUp":"chevronDown",18)}</span></button>
     ${open?`<div class="${justOpenedKey==="hr_"+r.id?"expand-in":""}">${cardioCardHTML(r, effMaxHr, effRestingHr)}</div>`:""}`;
 }
 
@@ -4197,19 +4274,43 @@ function warnIfDayBeforeRun(dateStr, type){
 // regenerateSession). 'skipped' n'apparaît dans aucune vue active
 // (programDayColHTML/programMonthCellHTML filtrent sur planned/done), le
 // jour redevient donc "Repos".
-// La séance est retirée tout de suite (statut « skipped », rien n'est effacé) ; un message de 5 s permet d'annuler.
-window.deleteSession = async (id) => {
+// La séance est retirée (statut « skipped », rien n'est effacé). Depuis le menu « … » ou la feuille « Modifier », on demande d'abord
+// confirmation (carte « Supprimer cette séance ? ») puis un court message « Séance supprimée. » ; depuis une alerte, où le choix est déjà
+// explicite, pas de carte : un message de 3,5 s propose « Annuler » (D92).
+async function deleteSessionNow(id, opts){
   const before = plannedSessions.find(p=>p.id===id);
   const previous = before ? before.status : "planned";
   const { error } = await supa.from("planned_sessions").update({status:"skipped", updated_at:new Date().toISOString()}).eq("id", id);
-  if(error){ toastRetry("Pas enregistré, vérifie ta connexion.", ()=>deleteSession(id)); return; }
+  if(error){ toastRetry("Pas enregistré, vérifie ta connexion.", ()=>deleteSessionNow(id, opts)); return; }
   await loadData(); renderContent();
-  toast("Séance retirée du calendrier.", { actionLabel:"Annuler", ms:5000, onAction: async () => {
+  if(opts && opts.confirmed){ toast("Séance supprimée."); return; }
+  toast("Séance retirée du calendrier.", { actionLabel:"Annuler", ms:3500, onAction: async () => {
     const { error:e2 } = await supa.from("planned_sessions").update({status:previous, updated_at:new Date().toISOString()}).eq("id", id);
     if(e2){ toast("Pas rétablie, vérifie ta connexion."); return; }
     await loadData(); renderContent();
   } });
+}
+window.deleteSession = (id) => deleteSessionNow(id, {});
+let sessionDelete = null;   // { id } : carte de confirmation ouverte
+window.askDeleteSession = (id) => { if(!plannedSessions.find(p=>p.id===id)) return; sessionDelete = { id }; renderSessionDeleteConfirm(); };
+window.cancelDeleteSession = () => { sessionDelete = null; renderSessionDeleteConfirm(); };
+window.confirmDeleteSession = async () => {
+  const id = sessionDelete && sessionDelete.id;
+  sessionDelete = null; renderSessionDeleteConfirm();
+  if(!id) return;
+  if(programSheet && programSheet.sessionId===id){ programSheet = null; refreshSheet(); }
+  await deleteSessionNow(id, { confirmed:true });
 };
+function renderSessionDeleteConfirm(){
+  const root = document.getElementById("confirmRoot");
+  if(!root) return;
+  if(!sessionDelete){ root.innerHTML = ""; return; }
+  const s = plannedSessions.find(p=>p.id===sessionDelete.id);
+  const what = s ? `${sessionSmallTitle(s)} · ${dayLabelShort(new Date(s.planned_date+"T00:00:00"))}` : "Cette séance";
+  root.innerHTML = `<div class="confirm-back" onclick="if(event.target===this)cancelDeleteSession()"><div class="confirm-card" role="alertdialog" aria-modal="true" aria-label="Supprimer cette séance ?"><h2>Supprimer cette séance ?</h2><p>${escHtml(what)} sera retirée de ton calendrier.</p><div class="confirm-btns"><button type="button" onclick="cancelDeleteSession()">Annuler</button><button type="button" class="go danger" onclick="confirmDeleteSession()">Supprimer</button></div></div></div>`;
+  const first = root.querySelector(".confirm-btns button"); if(first) first.focus();   // le focus est sur « Annuler », l'action sûre
+}
+document.addEventListener("keydown", (e) => { if(e.key==="Escape" && sessionDelete) cancelDeleteSession(); });
 const SAME_DAY_REFUSAL = "On ne peut pas mettre ces deux séances le même jour : une course accepte une séance légère, mais pas une autre course ni du renfo, pour que tu récupères entre deux efforts.";
 // Une séance planifiée passe automatiquement à "faite" dès qu'une séance
 // réelle synchronisée (HealthKit) existe le même jour — inutile de
@@ -4248,23 +4349,27 @@ async function reconcilePlannedSessions(){
 // autre séance intense (sauf en dernier recours si elle-même est une
 // séance de qualité, cf findRescheduleDay). Si aucun jour ne convient,
 // la séance reste "missed" (abandon, comme prévu par le CDC).
+// Jour où replacer une séance ratée : la semaine EN COURS, à partir d'aujourd'hui (jamais dans le passé, ni dans la semaine
+// d'origine d'une séance ancienne). Renvoie { date, weekStart } ou null s'il n'y a aucun jour sans surcharger la semaine.
+function currentWeekSlotFor(session, excludeId){
+  const monday = mondayOf(new Date()), mondayStr = localDateStr(monday);
+  const todayIdx = Math.round((new Date(localDateStr(new Date())+"T00:00:00") - monday)/86400000);
+  const weekSessions = plannedSessions
+    .filter(p=>p.id!==excludeId && p.week_start_date===mondayStr && (p.status==="planned"||p.status==="done"))
+    .map(p=>({ dayIndex: Math.round((new Date(p.planned_date+"T00:00:00")-monday)/86400000), pace_zone: p.pace_zone, type: p.type }));
+  const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
+  const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d) && d>=todayIdx);
+  const isPriority = isIntensePaceZone(session.pace_zone);
+  const day = findRescheduleDay({pace_zone:session.pace_zone, type:session.type}, weekSessions, availableDayIndexes, isPriority);
+  return day==null ? null : { date:localDateStr(addDays(monday, day)), weekStart:mondayStr };
+}
+const NO_FREE_DAY_TOAST = "On n'a pas trouvé de jour pour la replacer sans surcharger ta semaine. Pas de souci : on la laisse de côté, ce qui compte c'est de retrouver ton rythme.";
 window.rescheduleMissedSession = async (id) => {
   const old = plannedSessions.find(p=>p.id===id);
   if(!old) return;
-  const monday = new Date(old.week_start_date+"T00:00:00");
-  const weekSessions = plannedSessions
-    .filter(p=>p.id!==old.id && p.week_start_date===old.week_start_date && (p.status==="planned"||p.status==="done"))
-    .map(p=>({ dayIndex: Math.round((new Date(p.planned_date+"T00:00:00")-monday)/86400000), pace_zone: p.pace_zone, type: p.type }));
-  const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
-  const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d));
-  const isPriority = isIntensePaceZone(old.pace_zone);
-  const day = findRescheduleDay({pace_zone:old.pace_zone, type:old.type}, weekSessions, availableDayIndexes, isPriority);
-  if(day==null){
-    toast("On n'a pas trouvé de jour pour la replacer sans surcharger ta semaine. Pas de souci : on la laisse de côté, ce qui compte c'est de retrouver ton rythme.", { ms:6000 });
-    return;
-  }
-  const newDateStr = localDateStr(addDays(monday, day));
-  const { error } = await supa.from("planned_sessions").update({planned_date:newDateStr, status:"planned", updated_at:new Date().toISOString()}).eq("id", id);
+  const slot = currentWeekSlotFor(old, old.id);
+  if(!slot){ toast(NO_FREE_DAY_TOAST, { ms:6000 }); return; }
+  const { error } = await supa.from("planned_sessions").update({planned_date:slot.date, week_start_date:slot.weekStart, status:"planned", updated_at:new Date().toISOString()}).eq("id", id);
   if(error){ toast("Pas enregistré, vérifie ta connexion."); return; }
   await loadData(); renderContent();
 };
@@ -4326,7 +4431,7 @@ function grosAlert(inputs){
   return dismissedGrosIds().includes(sig) ? null : { kind:"gros", sig, issue:grosIssue };
 }
 function missedAlert(){
-  const missed = plannedSessions.filter(p=>p.status==="missed" && !dismissedMissedIds().includes(p.id));
+  const missed = missedBannerSessions(plannedSessions, dismissedMissedIds(), localDateStr(new Date()));   // les plus récentes d'abord, 14 jours au plus
   return missed.length ? { kind:"missed", sessions:missed } : null;
 }
 function programAlerts(){
@@ -4412,9 +4517,8 @@ function alertCardHTML(a){
       isPain ? "Si cette gêne persiste, pense à consulter un médecin ou un kiné pour préciser tes gênes et ajuster les exercices." : "", false);
   }
   const p = a.sessions[0];
-  const dayName = new Date(p.planned_date+"T00:00:00").toLocaleDateString("fr-FR",{weekday:"long"});
   const rows = alRow("La replacer cette semaine", `rescheduleMissedSession('${p.id}')`) + alRow("La remplacer par une EF", `replaceWithEasy('${p.id}')`) + alRow("La laisser passer", `dismissMissedSession('${p.id}')`);
-  return card("calendarX", `Ta séance de ${dayName} n'a pas pu se faire.`, "Ça arrive à tout le monde : choisis ce qui te convient le mieux.", rows, "", false);
+  return card("calendarX", missedBannerTitle(p, localDateStr(new Date())), "Ça arrive à tout le monde : choisis ce qui te convient le mieux.", rows, "", false);
 }
 function programBannersHTML(){
   const alerts = programAlerts();
@@ -4536,7 +4640,7 @@ window.moveSessionToDate = async (id, newDateStr, opts) => {
   await loadData(); renderContent();
   if(opts && opts.silent) return;
   const label = new Date(newDateStr+"T00:00:00").toLocaleDateString("fr-FR",{weekday:"long", day:"numeric"});
-  toast(`${sessionTypeLabel(s.type)} déplacé au ${label}.`, { actionLabel:"Annuler", ms:5000, onAction: () => window.moveSessionToDate(id, oldDate, { silent:true }) });
+  toast(`${sessionTypeLabel(s.type)} déplacé au ${label}.`, { actionLabel:"Annuler", ms:3500, onAction: () => window.moveSessionToDate(id, oldDate, { silent:true }) });
 };
 
 // Glisser-déposer par appui long (~0,5s), via Pointer Events plutôt que le
@@ -4668,8 +4772,12 @@ window.regenerateSession = async (id, reason, auto) => {
   const rationale = auto
     ? `Cette séance a été ${changeDesc} automatiquement, car ${reason}. Tu peux la modifier si elle ne te convient pas.`
     : `Cette séance a été ${changeDesc} à ta demande, car tu avais indiqué : « ${reason} ».`;
+  // Une séance ratée (dans le passé) est remplacée dans la semaine en cours, à partir d'aujourd'hui : jamais une séance neuve dans le passé.
+  const isPast = old.planned_date < localDateStr(new Date());
+  const slot = isPast ? currentWeekSlotFor(old, old.id) : null;
+  if(isPast && !slot){ toast(NO_FREE_DAY_TOAST, { ms:6000 }); return; }
   const { data: inserted, error: insErr } = await supa.from("planned_sessions").insert({
-    user_id:user.id, planned_date:old.planned_date, week_start_date:old.week_start_date,
+    user_id:user.id, planned_date:slot ? slot.date : old.planned_date, week_start_date:slot ? slot.weekStart : old.week_start_date,
     type: sessionRunType(newZone), pace_zone:newZone,
     title: softer ? "Sortie easy (ajustée)" : old.title,
     // 15% de réduction (palier "Petit", CDC v2 4.6.a : 10-20%) — pas 30%
@@ -5143,6 +5251,52 @@ function hierCardHTML(){
     ${buttons}
   </div>`;
 }
+// ---------- Fermer une fenêtre du bas en tirant vers le bas (D96) ----------
+// On prend la poignée (haut de la fenêtre) ou la ligne du titre ; la fenêtre suit le doigt et le fond s'éclaircit. Au relâchement,
+// à partir d'un quart de la hauteur ou d'un geste rapide, on ferme comme si on avait touché le fond (chaque fenêtre garde sa propre
+// fermeture) ; sinon elle revient en place. Avec « réduire les animations », pas de glissement de fin.
+(function(){
+  const reduced = () => !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const root = document.getElementById("sheetRoot");
+  const addGrab = () => root.querySelectorAll(".sheet:not([data-grab])").forEach(sh=>{
+    sh.setAttribute("data-grab","1");
+    const g = document.createElement("div"); g.className = "sheet-grab"; g.setAttribute("aria-hidden","true");
+    sh.insertBefore(g, sh.firstChild);
+  });
+  if(root) new MutationObserver(addGrab).observe(root, { childList:true, subtree:true });
+  let drag = null;
+  document.addEventListener("pointerdown", (e) => {
+    const sh = e.target.closest && e.target.closest("#sheetRoot .sheet");
+    if(!sh || (e.pointerType==="mouse" && e.button!==0)) return;
+    const grip = e.target.closest(".sheet-grab") || (e.target.closest(".sheet-head") && !e.target.closest("button,a,input,select,textarea"));
+    if(!grip) return;
+    drag = { sh, back:sh.closest(".sheet-back"), y0:e.clientY, dy:0, t0:performance.now(), id:e.pointerId, h:sh.getBoundingClientRect().height };
+    try{ sh.setPointerCapture(e.pointerId); }catch(_){}
+    sh.classList.remove("settle"); sh.classList.add("dragging");
+  });
+  document.addEventListener("pointermove", (e) => {
+    if(!drag || e.pointerId!==drag.id) return;
+    drag.dy = Math.max(0, e.clientY - drag.y0);
+    drag.sh.style.transform = `translateY(${drag.dy}px)`;
+    if(drag.back) drag.back.style.background = `rgba(0,0,0,${(0.6*Math.max(0, 1-drag.dy/drag.h)).toFixed(3)})`;
+  });
+  const end = (e) => {
+    const d = drag;
+    if(!d || (e && e.pointerId!==d.id)) return;
+    drag = null;
+    d.sh.classList.remove("dragging");
+    const fast = d.dy>40 && d.dy/Math.max(1, performance.now()-d.t0) > 0.5;      // plus de 0,5 px/ms
+    const reset = () => { d.sh.style.transform = ""; if(d.back) d.back.style.background = ""; };
+    if(d.dy > d.h*0.25 || fast){
+      const closeNow = () => { if(d.back) d.back.click(); };
+      if(reduced() || !d.back) closeNow();
+      else { d.sh.classList.add("settle"); d.sh.style.transform = `translateY(${d.h}px)`; setTimeout(closeNow, 200); }
+    } else { if(!reduced()) d.sh.classList.add("settle"); reset(); }
+  };
+  document.addEventListener("pointerup", end);
+  document.addEventListener("pointercancel", end);
+})();
+
 // ---------- Message « L'app a changé de look » (D91) ----------
 // Une seule fois, à l'ouverture, pour les comptes qui existaient avant la refonte (règle : shouldShowNews, logic.js). Un compte
 // neuf ne le voit jamais : la fin de son parcours le marque comme vu. « Déjà vu » = sur l'appareil, rien n'est écrit dans le
@@ -5263,7 +5417,7 @@ function sessionMenuHTML(session, todayStr){
   if(session.planned_date<=todayStr) items.push(["J'ai fait cette séance", `openManualRun('${session.id}')`, ""]);
   items.push(["Modifier la séance", `openEditSheet('${session.id}')`, ""]);
   if(session.pace_zone && session.pace_zone!=="easy") items.push(["Remplacer par une EF", `replaceWithEasy('${session.id}')`, ""]);
-  items.push(["Supprimer la séance", `deleteSession('${session.id}')`, "danger"]);
+  items.push(["Supprimer la séance", `askDeleteSession('${session.id}')`, "danger"]);
   const open = openSessionMenu===session.id;
   return `<div class="menu-wrap"><button type="button" class="sc-menu" aria-label="Plus d'actions" aria-haspopup="menu" aria-expanded="${open}" onclick="toggleSessionMenu('${session.id}')">${icon("more",20)}</button>
     ${open?`<div class="menu-pop" role="menu">${items.map(([label,call,cls])=>`<button type="button" role="menuitem" class="${cls}" onclick="closeSessionMenu();renderContent();${call}">${escHtml(label)}</button>`).join("")}</div>`:""}</div>`;
@@ -5548,11 +5702,11 @@ function renderProgramSheet(){
     ${showNotes ? `<label class="l" for="ps_notes">Notes <span style="color:var(--text-muted)">(facultatif)</span></label><textarea class="sheet-input" id="ps_notes" oninput="psField('notes',this.value)">${escHtml(f.notes)}</textarea>` : ""}
     <div class="ps-err" id="psError" role="alert">${escHtml(st.error||"")}</div>
     <button type="button" class="btn-primary" style="margin-top:16px" onclick="saveProgramSheet()" ${st.saving?"disabled":""}>${st.mode==="edit" ? "Enregistrer" : "Ajouter au programme"}</button>
-    ${st.mode==="edit" ? `<button type="button" class="link-gray" onclick="deleteSessionFromSheet('${st.sessionId}')">Supprimer la séance</button>` : ""}
+    ${st.mode==="edit" ? `<button type="button" class="link-gray link-danger" onclick="deleteSessionFromSheet('${st.sessionId}')">Supprimer la séance</button>` : ""}
   </div></div>`;
   return true;
 }
-window.deleteSessionFromSheet = (id) => { programSheet = null; refreshSheet(); deleteSession(id); };
+window.deleteSessionFromSheet = (id) => askDeleteSession(id);
 window.saveProgramSheet = async () => {
   const st = programSheet;
   if(!st || st.saving) return;

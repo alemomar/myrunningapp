@@ -72,6 +72,10 @@
     } else if(dow===6){
       const dist = 10 + progress*3 + (R()-0.5)*0.6; const dur=Math.round(dist*(efPace+14)); const avg=151;
       const s=push({start_date:d.toISOString(), type:"Long", distance_km:Math.round(dist*100)/100, duration_sec:dur, avg_hr:avg, hr_series:genHr(dur,avg,"ef"), calories:Math.round(dist*63)}); s.peak_hr=Math.max(...s.hr_series.map(x=>x.hr));
+    } else if(n===1){
+      // Hier tombe un jour sans sortie fictive (lundi, mercredi, vendredi) : on y met une sortie easy, car les scénarios « hier » (merge, attach, célébrations…) en ont besoin
+      const dist = 8 + (R()-0.5)*0.6; const dur=Math.round(dist*efPace); const avg=Math.round(149 - progress*3 + (R()-0.5)*3);
+      const s=push({start_date:d.toISOString(), type:"EF", distance_km:Math.round(dist*100)/100, duration_sec:dur, avg_hr:avg, hr_series:genHr(dur,avg,"ef"), calories:Math.round(dist*62)}); s.peak_hr=Math.max(...s.hr_series.map(x=>x.hr));
     }
   }
   // Séance d'hier : sortie easy rapide (meilleure allure easy) ; un renfo mercredi
@@ -312,6 +316,30 @@
         refreshSheet();
       }
       if(scen==="niveau_reprise_choix") levelResumePick("recent");
+    }
+  } else if(/^(suppression_confirmation|menu_seance)$/.test(scen)){
+    // Retours du 05/10 : carte « Supprimer cette séance ? » et menu « … » avec « Supprimer la séance » en rouge léger (D92)
+    celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayEasy, ...future];
+    if(scen==="suppression_confirmation"){ show("programme"); const s = plannedSessions.find(p=>p.status==="planned" && p.pace_zone && p.planned_date>=localDateStr(new Date())); askDeleteSession(s.id); }
+    else { show("aujourdhui"); toggleSessionMenu(todayEasy.id); }
+  } else if(scen==="programme_ratee_ancienne"){
+    // Bannière des séances ratées : la plus récente d'abord, avec la date quand elle est ancienne (D98)
+    celebrationOff(); rateYesterday(); localStorage.removeItem("dismissedMissedSessions");
+    const miss = (id, d) => ({ id, user_id:"demo", planned_date:d, week_start_date:localDateStr(mondayOf(parseDay(d))), type:"EF", pace_zone:"easy", title:"Sortie easy", status:"missed", source:"generated", target_distance_km:6, target_pace_sec_per_km:430 });
+    const d9 = localDateStr(addDays(new Date(), -9));
+    plannedSessions=[...wkSessions.filter(p=>p.status!=="missed"), todayEasy, ...future, miss("m_old", d9)]; show("programme");
+  } else if(/^(progression_annees|charge_vide|charge_vide_fenetre)$/.test(scen)){
+    celebrationOff(); plannedSessions=[...wkSessions, todayEasy, ...future];
+    if(scen==="progression_annees"){
+      // deux années de données : le menu « 12 derniers mois ▾ » apparaît, ouvert ici (D94)
+      const old = runningRuns.slice(0, 30).map((r,i)=>({ ...r, id:"old"+i, fullDate:new Date(new Date().getFullYear()-1, i%10, 3+(i%20), 8) }));
+      RUNS = [...old, ...RUNS]; runningRuns = [...old.filter(r=>r.includeInStats), ...runningRuns]; efRuns = [...old.filter(r=>r.type==="EF"), ...efRuns];
+      if(typeof fracRuns!=="undefined") fracRuns = [...old.filter(r=>r.type==="Fractionné"), ...fracRuns];
+      show("progression"); toggleYearMenu("vol"); scrollToCard("cardVol");
+    } else {
+      // des sorties récentes sans aucun ressenti noté : la charge est vide et dit pourquoi (D97)
+      runningRuns.forEach(r=>{ r.painRatings = null; }); RUNS.forEach(r=>{ r.painRatings = null; });
+      show("progression"); if(scen==="charge_vide_fenetre") openChargeSheet();
     }
   } else if(/^nouveaute_(reprise|simple)$/.test(scen)){
     // Message « L'app a changé de look » (D91) : compte existant, avec ou sans question de reprise en attente

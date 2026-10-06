@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=82"></script>
+<script src="logic.js?v=83"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -24,6 +24,9 @@
 
 let pass = 0, fail = 0;
 const out = document.getElementById("results");
+// Hasard reproductible (graine fixe) pour les séries « bruitées » : un test ne peut plus échouer une fois sur N au gré du tirage.
+let seedAlea = 20261006;
+const alea = () => { seedAlea = (seedAlea * 16807) % 2147483647; return (seedAlea - 1) / 2147483646; };
 (async function(){
 
 function assertEqual(name, actual, expected){
@@ -115,7 +118,7 @@ function assertClose(name, actual, expected, tolerance){
     const pts=[];
     for(let t=0;t<=totalDur;t+=15){
       let hr = t<480 ? 100+(145-100)*(t/480) : 145+Math.sin(t/180)*6;
-      hr += (Math.random()*6-3);
+      hr += (alea()*6-3);
       pts.push({t, hr: Math.round(hr)});
     }
     return pts;
@@ -149,9 +152,9 @@ function assertClose(name, actual, expected, tolerance){
     const pts=[];
     let t=0;
     for(let i=0;i<cycles;i++){
-      for(let s=0;s<60;s+=5) pts.push({t:t+s, pace: Math.round(260+Math.random()*20)});
+      for(let s=0;s<60;s+=5) pts.push({t:t+s, pace: Math.round(260+alea()*20)});
       t+=60;
-      for(let s=0;s<60;s+=5) pts.push({t:t+s, pace: Math.round(535+Math.random()*50)});
+      for(let s=0;s<60;s+=5) pts.push({t:t+s, pace: Math.round(535+alea()*50)});
       t+=60;
     }
     if(cooldownPace){
@@ -191,9 +194,9 @@ function assertClose(name, actual, expected, tolerance){
     const pace=[], hr=[];
     let t=0;
     for(let i=0;i<cycles;i++){
-      for(let s=0;s<60;s+=5){ pace.push({t:t+s, pace: Math.round(260+Math.random()*20)}); hr.push({t:t+s, hr: Math.round(165+Math.random()*4)}); }
+      for(let s=0;s<60;s+=5){ pace.push({t:t+s, pace: Math.round(260+alea()*20)}); hr.push({t:t+s, hr: Math.round(165+alea()*4)}); }
       t+=60;
-      for(let s=0;s<60;s+=5){ pace.push({t:t+s, pace: Math.round(535+Math.random()*50)}); hr.push({t:t+s, hr: Math.round(140+Math.random()*4)}); }
+      for(let s=0;s<60;s+=5){ pace.push({t:t+s, pace: Math.round(535+alea()*50)}); hr.push({t:t+s, hr: Math.round(140+alea()*4)}); }
       t+=60;
     }
     return {pace, hr};
@@ -1285,7 +1288,7 @@ try {
   const seg=[{type:"marche",sec:300},{type:"course",sec:60},{type:"marche",sec:90},{type:"course",sec:60},{type:"marche",sec:300}];
   assertEqual("chiffres : durée seule + temps course/marche", sessionHeadline({target_duration_min:29}, seg), {big:{value:"29", unit:"min", note:"environ"}, tiles:[], structure:[{type:"course", minutes:2},{type:"marche", minutes:12}]});
   assertEqual("chiffres : séance sans distance ni durée (yoga) = pas de grand chiffre", sessionHeadline({type:"Yoga"}, null).big, null);
-  assertEqual("titre : séance EF ordinaire = EF + endurance, à allure facile", sessionDisplayTitle({type:"EF", title:"Sortie easy", pace_zone:"easy"}), {title:"EF", subtitle:"endurance, à allure facile"});
+  assertEqual("titre : séance EF ordinaire = EF + Endurance Fondamentale, à allure facile", sessionDisplayTitle({type:"EF", title:"Sortie easy", pace_zone:"easy"}), {title:"EF", subtitle:"Endurance Fondamentale, à allure facile"});
   assertEqual("titre : marche/course garde son titre", sessionDisplayTitle({type:"EF", title:"Marche/course — semaine 2, séance 3", generation_reason:"beginner_plan"}), {title:"Marche/course — semaine 2, séance 3", subtitle:""});
   assertEqual("titre : test guidé garde son titre", sessionDisplayTitle({type:"EF", title:"Test de 20 minutes", generation_reason:"guided_test"}).subtitle, "");
   assertEqual("titre : renfo", sessionDisplayTitle({type:"Renfo", title:"Renfo"}), {title:"Renfo", subtitle:""});
@@ -1535,9 +1538,9 @@ try {
   assertEqual("depuis : année ajoutée quand c'est loin", sinceLabel(new Date(2025,5,10).getTime(), todayTs), "depuis juin 2025");
   const prog = windowProgress(pts, pts[0].ts, pts[11].ts);
   assertEqual("progression : 4 premières semaines (374) → 4 dernières (342)", [prog.status, prog.firstAvg, prog.lastAvg], ["ok", 374, 342]);
-  assertEqual("progression d'allure : −32 s/km, en citron", paceProgressText(prog), {text:"−32 s/km", tone:"good"});
-  assertEqual("progression d'allure : une allure qui ralentit reste grise", paceProgressText({status:"ok", firstAvg:340, lastAvg:345}), {text:"+5 s/km", tone:"muted"});
-  assertEqual("progression d'allure : inchangée", paceProgressText({status:"ok", firstAvg:340, lastAvg:340.2}), {text:"0 s/km", tone:"muted"});
+  assertEqual("progression d'allure : −32 s = −0'32\"/km, en citron", paceProgressText(prog), {text:"−0'32\"/km", tone:"good"});
+  assertEqual("progression d'allure : une allure qui ralentit reste grise (+0'05\"/km)", paceProgressText({status:"ok", firstAvg:340, lastAvg:345}), {text:"+0'05\"/km", tone:"muted"});
+  assertEqual("progression d'allure : inchangée", paceProgressText({status:"ok", firstAvg:340, lastAvg:340.2}), {text:"0'00\"/km", tone:"muted"});
   assertEqual("progression d'allure : pas assez de recul", paceProgressText({status:"insuffisant"}), null);
   assertEqual("progression : moins de 2 semaines de recul", windowProgress([wk(0,380), {ts:wk(0,0).ts+10*86400000, value:370}], wk(0,0).ts, wk(0,0).ts+10*86400000).status, "insuffisant");
   assertEqual("progression : un seul point", windowProgress([wk(0,380)], wk(0,0).ts, wk(5,0).ts).status, "insuffisant");
@@ -1558,13 +1561,13 @@ try {
 
   const run = (y,m,d,o) => ({ ts:new Date(y,m,d,8).getTime(), type:"EF", distKm:0, durationSec:0, paceSecKm:0, cleanEf:false, ...o });
   const kf = keyFigures([
-    run(2026,1,15,{distKm:10, durationSec:3600, paceSecKm:360, cleanEf:true}),
-    run(2026,9,2,{distKm:8.1, durationSec:2760, paceSecKm:341, cleanEf:true}),
+    run(2026,1,15,{id:"r1", distKm:10, durationSec:3600, paceSecKm:360, cleanEf:true}),
+    run(2026,9,2,{id:"r2", distKm:8.1, durationSec:2760, paceSecKm:341, cleanEf:true}),
     run(2026,8,20,{type:"Long", distKm:15, durationSec:5400, paceSecKm:360}),
     run(2026,9,4,{distKm:5, durationSec:1800, paceSecKm:360}),
   ], todayTs);
-  assertEqual("chiffres clés : année, plus longue du mois, temps du mois, meilleure allure EF propre", kf, {yearKm:38.1, longestMonthKm:8.1, monthTimeSec:4560, bestEfPaceSecKm:341});
-  assertEqual("chiffres clés : rien de couru", keyFigures([], todayTs), {yearKm:0, longestMonthKm:null, monthTimeSec:0, bestEfPaceSecKm:null});
+  assertEqual("chiffres clés : année, plus longue du mois, temps du mois, meilleure allure EF propre", kf, {yearKm:38.1, longestMonthKm:8.1, longestMonthRunId:"r2", monthTimeSec:4560, bestEfPaceSecKm:341, bestEfRunId:"r2"});
+  assertEqual("chiffres clés : rien de couru", keyFigures([], todayTs), {yearKm:0, longestMonthKm:null, longestMonthRunId:null, monthTimeSec:0, bestEfPaceSecKm:null, bestEfRunId:null});
   assertEqual("date courte : 12 sept.", shortDateFr(new Date(2026,8,12).getTime()), "12 sept.");
   assertEqual("date courte : 1er oct.", shortDateFr(new Date(2026,9,1).getTime()), "1er oct.");
   const rl = recordsListModel(recordHolders([ run(2026,8,12,{distKm:5.1, durationSec:1500, paceSecKm:294}) ]));
@@ -1803,6 +1806,43 @@ try {
   const ancien = levelResumeInfo({ principal:{ objectifPrincipal:"Améliorer mon allure" }, secondaire:{ objectifPrincipal:"Courir plus régulièrement" }, niveau:"Intermédiaire" }, { refDistanceKm:10, refTimeSec:3600 }, {});
   assertEqual("compte d'avant : la question de reprise existe, et le message l'annonce", [ancien.kind, newsMessage(ancien).text.includes("On te pose une question")], ["undated", true]);
   assertEqual("compte d'avant avec un chrono déjà daté : pas de question, message court", newsMessage(levelResumeInfo({ principal:{ objectifPrincipal:"Améliorer mon allure" } }, { refDistanceKm:10, refTimeSec:3600, refDate:"2026-08-01" }, {})).text, "Tes séances et ton programme sont toujours là.");
+}
+
+// --- S14.1 : retours d'Omar du 05/10/2026 (A, B, C) ---
+{
+  const T0 = "2026-10-05";
+  const miss = (id, d) => ({ id, status:"missed", planned_date:d });
+  const sess = [miss("a","2026-09-21"), miss("b","2026-09-27"), miss("c","2026-10-01"), miss("d","2026-10-04"), miss("f","2026-09-20"), { id:"p", status:"planned", planned_date:"2026-10-05" }];
+  assertEqual("bannière ratées : les plus récentes d'abord, 14 jours au plus, jamais une séance prévue", missedBannerSessions(sess, [], T0).map(p=>p.id), ["d","c","b","a"]);
+  assertEqual("bannière ratées : une séance écartée ne revient pas", missedBannerSessions(sess, ["c"], T0).map(p=>p.id), ["d","b","a"]);
+  assertEqual("bannière ratées : rien à signaler", missedBannerSessions([], [], T0), []);
+  assertEqual("titre de la bannière : hier = le jour seul", missedBannerTitle(miss("d","2026-10-04"), T0), "Ta séance de dimanche n'a pas pu se faire.");
+  assertEqual("titre de la bannière : 6 jours = le jour seul, 7 jours = avec la date", [missedBannerTitle(miss("x","2026-09-29"), T0), missedBannerTitle(miss("y","2026-09-28"), T0)], ["Ta séance de mardi n'a pas pu se faire.", "Ta séance du lundi 28 septembre n'a pas pu se faire."]);
+  assertEqual("titre de la bannière : le lundi 21 sept. ne se confond plus avec un lundi d'aujourd'hui", missedBannerTitle(miss("a","2026-09-21"), T0), "Ta séance du lundi 21 septembre n'a pas pu se faire.");
+
+  const D10 = RECORD_DISTANCES.find(d=>d.key==="10k"), D5 = RECORD_DISTANCES.find(d=>d.key==="5k");
+  assertEqual("record 10 km : 9,99 km en 59:06 compte (tolérance 1 %), temps ramené à 10 km = 59:10", distanceRecordTime({type:"Course", distKm:9.99, durationSec:3546}, D10), 3550);
+  assertEqual("record 10 km : 9,85 km ne compte pas, 9,95 km compte", [distanceRecordTime({type:"Course", distKm:9.85, durationSec:3500}, D10), distanceRecordTime({type:"Course", distKm:9.95, durationSec:3500}, D10)], [null, 3518]);
+  assertEqual("record 5 km : 4,96 km compte, 4,9 km ne compte pas", [distanceRecordTime({type:"EF", distKm:4.96, durationSec:1500}, D5) !== null, distanceRecordTime({type:"EF", distKm:4.9, durationSec:1500}, D5)], [true, null]);
+
+  assertEqual("allure : −79 s = −1'19\"/km (et non −0'79)", paceProgressText({status:"ok", firstAvg:420, lastAvg:341}), {text:"−1'19\"/km", tone:"good"});
+  assertEqual("allure : −16 s = −0'16\"/km, +60 s = +1'00\"/km", [paceProgressText({status:"ok", firstAvg:350, lastAvg:334}).text, paceProgressText({status:"ok", firstAvg:300, lastAvg:360}).text], ["−0'16\"/km", "+1'00\"/km"]);
+
+  const runsY = [{ts:new Date(2025,2,10).getTime(), distKm:10}, {ts:new Date(2025,10,12).getTime(), distKm:20}, {ts:new Date(2026,1,3).getTime(), distKm:5}];
+  const todayT = new Date(2026,9,5,12).getTime();
+  assertEqual("années des graphiques : deux années -> un menu, la plus récente d'abord", chartYears(runsY), [2026, 2025]);
+  assertEqual("années des graphiques : une seule année -> pas de menu", chartYears([{ts:new Date(2026,1,3).getTime(), distKm:5}]), []);
+  const v25 = monthlyVolumeBars(runsY, 0, todayT, 12, 2025);
+  assertEqual("volume, année 2025 : de mars (premier mois couru) à décembre, total 30 km, aucun mois « en cours »", [v25.bars.length, v25.bars[0].label, v25.bars[v25.bars.length-1].label, v25.totalKm, v25.bars.some(b=>b.current)], [10, "mars", "déc.", 30, false]);
+  const v26 = monthlyVolumeBars(runsY, 0, todayT, 12, 2026);
+  assertEqual("volume, année 2026 : de janvier au mois en cours, qui reste marqué", [v26.bars.length, v26.bars[0].label, v26.bars[v26.bars.length-1].label, v26.bars[v26.bars.length-1].current], [10, "janv.", "oct.", true]);
+  assertEqual("volume, 12 derniers mois : de nov. 2025 à oct. 2026 (comme avant)", [monthlyVolumeBars(runsY, 0, todayT, 12).bars[0].label, monthlyVolumeBars(runsY, 0, todayT, 12).bars.length], ["nov.", 12]);
+
+  const dayMs = 86400000;
+  assertEqual("charge vide : sorties récentes sans ressenti -> « unrated »", chargeEmptyReason([{ts:todayT-3*dayMs, rpe:null},{ts:todayT-9*dayMs}], todayT), "unrated");
+  assertEqual("charge vide : aucune sortie depuis 4 semaines -> « norun »", chargeEmptyReason([{ts:todayT-40*dayMs, rpe:5}], todayT), "norun");
+  assertEqual("charge vide : un ressenti noté dans les 28 jours -> la charge se calcule", chargeEmptyReason([{ts:todayT-3*dayMs, rpe:6}], todayT), null);
+  assertEqual("charge vide : textes validés par Omar", [CHARGE_EMPTY_TEXTS.unrated.tile, CHARGE_EMPTY_TEXTS.norun.tile, CHARGE_EMPTY_TEXTS.norun.sheet], ["Note ton ressenti après tes séances pour la voir.", "Pas de course ces 4 dernières semaines.", "Dès que tu auras repris et noté ta difficulté, ta charge apparaîtra."]);
 }
 
 document.getElementById("summary").innerHTML =
