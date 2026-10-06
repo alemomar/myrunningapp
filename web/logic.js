@@ -2694,6 +2694,26 @@ function syncReceivedText(received, runs){
   if(runs===received) return n(received, "course reçue", "courses reçues");
   return `${n(received, "séance reçue", "séances reçues")}, dont ${n(runs, "course", "courses")}`;
 }
+/* ---------- Visite guidée après le parcours de démarrage (lot 3, D105) ----------
+   Une bulle par onglet, sur le vrai écran, l'onglet éclairé dans le menu du bas. Remplace les 4 anciennes bulles « Compris »
+   retirées le 05/10/2026 (D91, textes périmés). La dernière invite à compléter ses objectifs dans Profil. */
+const TOUR_STEPS = [
+  { tab:"aujourdhui", title:"Aujourd'hui", text:"Ta séance du jour, ta semaine et tes dernières sorties. Après une course, c'est ici que tu notes ton ressenti : ton programme s'adapte." },
+  { tab:"programme", title:"Programme", text:"Ton programme, semaine par semaine. Touche une séance pour la voir en détail, la déplacer ou la remplacer." },
+  { tab:"progression", title:"Progression", text:"Tes records, ton allure en endurance et ton volume. Tout se met à jour tout seul, course après course." },
+  { tab:"profil", title:"Profil", text:"Ton objectif, ton niveau et tes réglages. Complète tes objectifs : ton programme sera encore plus juste." },
+];
+
+/* ---------- Parcours de démarrage marqué fait d'office (lot 3, D106) ----------
+   Un compte qui avait déjà des données AVANT l'arrivée du parcours (05/10/2026) est marqué « parcours fait » d'office : sans ça,
+   il le verrait à sa prochaine ouverture. Un compte créé depuis fait toujours le parcours, même si ses séances sont arrivées
+   avant (RunSync connecté en premier). Date de création inconnue : on garde l'ancien comportement. */
+const ONBOARDING_RELEASE_ISO = "2026-10-05T00:00:00Z";
+function shouldAutoMarkOnboarding(hasData, createdAtIso){
+  if(!hasData) return false;
+  const t = Date.parse(createdAtIso || "");
+  return !isFinite(t) || t < Date.parse(ONBOARDING_RELEASE_ISO);
+}
 // Lien qui ouvre RunSync avec l'e-mail du compte déjà rempli (RunSync version 3 ; les versions 1 et 2 ignorent la suite
 // du lien et s'ouvrent simplement). Sans adresse valable, RunSync s'ouvre sans rien de rempli.
 function runSyncOpenUrl(email){

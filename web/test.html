@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=87"></script>
+<script src="logic.js?v=88"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1788,6 +1788,9 @@ try {
   assertEqual("guide : séances et courses comptées à part (234 séances, dont 77 courses : test d'Omar du 06/10)", syncGuideModel([true,true], 234, 0, 77).summary, "C'est connecté · 234 séances reçues, dont 77 courses");
   assertEqual("guide : singuliers, que des courses, aucune course", [syncReceivedText(1, null), syncReceivedText(1, 1), syncReceivedText(12, 12), syncReceivedText(5, 0), syncReceivedText(3, 1)], ["1 séance reçue", "1 course reçue", "12 courses reçues", "5 séances reçues", "3 séances reçues, dont 1 course"]);
   assertEqual("guide : un état gardé par l'ancien guide en 4 étapes (3 cases) reste lisible", syncGuideModel([true,true,false], 0, 10).steps.map(x=>x.state), ["done","done","active"]);
+  assertEqual("visite guidée : une bulle par onglet, dans l'ordre du menu, la dernière sur Profil (D105)", TOUR_STEPS.map(s=>s.tab), ["aujourdhui","programme","progression","profil"]);
+  assertEqual("visite guidée : chaque bulle a un titre et un texte", TOUR_STEPS.every(s=>s.title && s.text && s.text.length<170), true);
+  assertEqual("parcours d'office seulement pour un compte d'avant le 05/10/2026 (D106)", [shouldAutoMarkOnboarding(true, "2026-09-28T10:00:00Z"), shouldAutoMarkOnboarding(true, "2026-10-06T19:27:00Z"), shouldAutoMarkOnboarding(false, "2026-09-28T10:00:00Z"), shouldAutoMarkOnboarding(true, null), shouldAutoMarkOnboarding(true, "pas une date")], [true, false, false, true, true]);
   assertEqual("lien RunSync : e-mail rempli, + et @ encodés", [runSyncOpenUrl("camille@exemple.fr"), runSyncOpenUrl(" omaralempro+lot1a@gmail.com ")], ["myrunningapp://connexion?email=camille%40exemple.fr", "myrunningapp://connexion?email=omaralempro%2Blot1a%40gmail.com"]);
   assertEqual("lien RunSync : sans adresse valable, RunSync s'ouvre simplement", [runSyncOpenUrl(""), runSyncOpenUrl(null), runSyncOpenUrl("pas-une-adresse")], ["myrunningapp://", "myrunningapp://", "myrunningapp://"]);
 }

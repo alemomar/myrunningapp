@@ -258,34 +258,6 @@ private struct FlowItem<Icon: View>: View {
     }
 }
 
-// Le petit retour « ◀ MyRunningApp » qu'iOS affiche en haut à gauche quand une app en a ouvert une autre.
-struct BackLinkIllustration: View {
-    var body: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 5) {
-                Image(systemName: "arrowtriangle.left.fill")
-                    .font(.system(size: 8))
-                Text("MyRunningApp")
-                    .font(.system(size: 13, weight: .semibold))
-            }
-            .foregroundStyle(Theme.text)
-            .padding(.leading, 9)
-            .padding(.trailing, 10)
-            .padding(.vertical, 5)
-            .overlay(Capsule().strokeBorder(Theme.accent, lineWidth: 2))
-            Text("tout en haut à gauche de ton écran")
-                .font(.system(size: 12.5))
-                .foregroundStyle(Theme.muted)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Theme.sunken, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .accessibilityHidden(true)
-    }
-}
-
 struct CloseButton: View {
     let action: () -> Void
 

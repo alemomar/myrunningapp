@@ -445,8 +445,27 @@ struct DoneView: View {
             + Text(".")
     }
 
+    @State private var pointerUp = false
+
     var body: some View {
         ScreenScaffold {
+            if cameFromMyRunningApp {
+                // Juste sous le petit retour d'iOS (en haut à gauche, il porte le nom donné à l'icône de MyRunningApp) :
+                // une flèche qui le désigne, car la consigne au milieu de l'écran passait inaperçue (test d'Omar, 06/10/2026).
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.up.left")
+                        .font(.system(size: 20, weight: .bold))
+                        .offset(x: pointerUp ? -3 : 0, y: pointerUp ? -3 : 0)
+                    Text("Touche ici pour revenir dans MyRunningApp")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+                .foregroundStyle(Theme.accent)
+                .padding(.top, 2)
+                .onAppear {
+                    guard !UIAccessibility.isReduceMotionEnabled else { return }
+                    withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) { pointerUp = true }
+                }
+            }
             VStack(spacing: 14) {
                 Image(systemName: "checkmark")
                     .font(.system(size: 36, weight: .bold))
@@ -470,11 +489,8 @@ struct DoneView: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Theme.text)
                 }
-                if cameFromMyRunningApp {
-                    BackLinkIllustration()
-                }
                 Text(cameFromMyRunningApp
-                     ? "Touche ce petit retour. Tu ne le vois pas ? Ouvre MyRunningApp depuis ton écran d'accueil."
+                     ? "Touche le petit retour tout en haut à gauche, là où pointe la flèche. Tu ne le vois pas ? Ouvre MyRunningApp depuis ton écran d'accueil."
                      : "Ouvre MyRunningApp depuis ton écran d'accueil : tes séances y sont déjà.")
                     .font(.system(size: 14.5))
                     .foregroundStyle(Theme.text2)

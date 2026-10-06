@@ -137,7 +137,14 @@ struct ContentView: View {
         stage = .importing
         Task {
             guard let summary = await coordinator.firstImport() else { return }   // erreur : affichée sur l'écran d'import
-            stage = summary.sessions == 0 ? .noWorkouts(since: summary.since) : .done(summary)
+            if summary.sessions == 0 {
+                stage = .noWorkouts(since: summary.since)
+            } else {
+                // Import réussi = premier lancement terminé, sans attendre « Terminé » : on quitte souvent RunSync par le
+                // petit retour d'iOS, et sinon les synchros automatiques ne démarraient jamais (vidéo d'Omar, 06/10/2026).
+                if let session = AuthService.currentSession { FirstImport.markDone(session.userId) }
+                stage = .done(summary)
+            }
         }
     }
 

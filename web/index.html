@@ -961,6 +961,18 @@ button.pg-rec-row{cursor:pointer}
 .sg-tips{margin:0;padding-left:18px;font-size:13.5px;line-height:1.5;color:var(--text-2)}
 .sg-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .sg-skip{border:none;background:none;color:var(--text-3);font:inherit;font-size:13.5px;padding:4px 0;cursor:pointer;align-self:flex-start;text-decoration:underline}
+/* Visite guidée (lot 3, D105) : l'onglet présenté est éclairé dans le menu du bas, une bulle juste au-dessus l'explique. */
+.tour-catch{position:fixed;inset:0;z-index:360}
+.tour-spot{position:fixed;z-index:361;border-radius:999px;box-shadow:0 0 0 9999px rgba(0,0,0,.62);outline:2px solid var(--accent);outline-offset:2px;pointer-events:none}
+.tour-bubble{position:fixed;z-index:362;left:16px;right:16px;max-width:440px;margin:0 auto;background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow-lift);display:flex;flex-direction:column;gap:8px}
+.tour-bubble::after{content:"";position:absolute;bottom:-8px;left:var(--tour-arrow,50%);width:14px;height:14px;background:var(--surface-raised);border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:translateX(-50%) rotate(45deg)}
+.tour-step{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+.tour-title{font-family:var(--font-display);font-weight:700;font-size:22px;line-height:1.1;text-transform:uppercase}
+.tour-text{font-size:14.5px;line-height:1.45;color:var(--text-2)}
+.tour-btns{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:6px}
+.tour-skip{border:none;background:none;color:var(--text-3);font:inherit;font-size:14px;min-height:44px;padding:0 4px;cursor:pointer}
+.tour-next{min-height:44px;padding:0 20px;border:none;border-radius:22px;background:var(--accent);color:var(--on-accent);font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+@media (prefers-reduced-motion: no-preference){ .tour-bubble{animation:sheetUp var(--t-step,280ms) var(--ease)} }
 /* Historique (S7, design 7g) */
 .page-back{width:36px;height:36px;margin:-4px 4px -4px -8px;border:none;border-radius:50%;background:none;color:var(--text);display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;cursor:pointer}
 .page-action.outline{background:none;box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent);font-size:13px}
@@ -1114,6 +1126,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
   <div id="content"></div>
   <div id="sheetRoot"></div>
+  <div id="tourRoot"></div>
   <div id="confirmRoot"></div>
   <div id="celebrationRoot"></div>
   <div id="toastRoot" aria-live="polite"></div>
@@ -1123,7 +1136,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=87"></script>
+<script src="logic.js?v=88"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1555,7 +1568,7 @@ function persistActiveTab(){
   try{ localStorage.setItem("mra_activeTab", activeTab); }catch(e){}
 }
 let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=initialActiveTab(), activeGoalSlot="principal";
-let syncSinceDate = null, userEmail = "", goals = {}, maxHr = null, restingHr = null, restingHrUpdatedAt = null, restingHrIsManual = false, avatarUrl = null;
+let syncSinceDate = null, userEmail = "", userId = "", userCreatedAt = null, goals = {}, maxHr = null, restingHr = null, restingHrUpdatedAt = null, restingHrIsManual = false, avatarUrl = null;
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let onboardingCompletedAt = null;
 let onboardingAutoMarked = false;   // ancien compte marqué « parcours fait » pendant cette ouverture (message de nouveauté, D91)
@@ -1651,6 +1664,7 @@ async function loadData() {
 
   const { data: { user } } = await supa.auth.getUser();
   userEmail = user?.email || "";
+  userId = user?.id || ""; userCreatedAt = user?.created_at || null;   // visite guidée et parcours d'office (D105, D106)
 
   // .maybeSingle() échoue (silencieusement si on ne vérifie pas l'erreur) dès
   // que la requête matche PLUS d'une ligne — ex: un doublon de profil pour ce
@@ -3908,7 +3922,7 @@ function profilCompteHTML(){
       <div class="pf-hint">Ouvre l'app iOS et lance la synchronisation : fonctionne uniquement depuis Safari sur ton iPhone.</div>
       <div class="pf-group"><label class="pf-lbl" for="syncSince">Importer depuis</label><div class="pf-row stack"><input type="date" id="syncSince" value="${syncSinceDate||""}" onchange="saveSyncSinceDate(this.value); flashFieldSaved(this)"></div><div class="pf-slot"></div></div>
     </div>
-    <div class="pf-card sm"><div class="pf-title">Parcours de démarrage</div><div class="pf-hint" style="margin-top:-4px">Refais les questions de départ (objectif, niveau, disponibilités). Tes réponses actuelles sont préremplies.</div><button type="button" class="pf-btn" onclick="restartOnboarding()">Refaire le parcours</button></div>
+    <div class="pf-card sm"><div class="pf-title">Parcours de démarrage</div><div class="pf-hint" style="margin-top:-4px">Refais les questions de départ (objectif, niveau, disponibilités). Tes réponses actuelles sont préremplies.</div><button type="button" class="pf-btn" onclick="restartOnboarding()">Refaire le parcours</button><button type="button" class="pf-btn" onclick="startTour()">Revoir la visite guidée</button></div>
     <div class="pf-card sm"><div class="pf-title">Export</div><div class="pf-hint" style="margin-top:-4px">Un backup perso de toutes tes séances, en dehors de Supabase.</div><div class="pf-two"><button type="button" class="pf-btn" onclick="exportData('json')">Exporter en JSON</button><button type="button" class="pf-btn" onclick="exportData('csv')">Exporter en CSV</button></div></div>
     <button type="button" class="pf-logout" onclick="logout()">Déconnexion</button>`;
 }
@@ -5856,7 +5870,7 @@ function refreshSheet(){
   else if(typeof renderNewPacesSheet==="function" && renderNewPacesSheet()) { /* nouvelles allures */ }
   else if(typeof renderUpdateSheet==="function" && renderUpdateSheet()) { /* mettre à jour ton programme */ }
   else if(sessionSheetId) renderSessionSheet();
-  else root.innerHTML = "";
+  else { root.innerHTML = ""; maybeStartTour(); }   // fenêtre refermée : la visite guidée en attente peut commencer
 }
 
 // ---------- Feuilles « Ajouter » et « Modifier la séance » (design 8, D47) ----------
@@ -6139,7 +6153,7 @@ function renderApp(){
     document.getElementById("content").innerHTML = loadErrorHTML();
     return;
   }
-  if(!onboardingCompletedAt && !onbRestarting && accountHasData()){
+  if(!onboardingCompletedAt && !onbRestarting && shouldAutoMarkOnboarding(accountHasData(), userCreatedAt)){
     onboardingCompletedAt = new Date().toISOString(); onboardingAutoMarked = true;
     upsertProfile({ onboarding_completed_at: onboardingCompletedAt });
   }
@@ -6154,6 +6168,7 @@ function renderApp(){
   document.querySelector(".topbar").style.display = "";
   renderTabs();
   renderContent();
+  maybeStartTour();
 }
 
 // ---------- Test guidé de 20 minutes (4.1.e) ----------
@@ -6474,6 +6489,7 @@ function onboardingHTML(){
 // de connecter les courses (étape 5), sauf si des courses sont déjà arrivées d'Apple Santé.
 window.onbFinish = async function(){
   if(!onbCanContinue()) return;
+  const firstTime = !onbRestarting;   // « Refaire le parcours » ne relance pas la visite guidée
   onb.saving = true; onb.prepDone = 0; renderApp();
   const pause = () => new Promise(r=>setTimeout(r, 420));
   const tick = async (n) => { onb.prepDone = n; renderApp(); await pause(); };
@@ -6482,6 +6498,7 @@ window.onbFinish = async function(){
   const ok = await upsertProfile({ goals: patch.goals, program_settings: patch.programSettings, onboarding_completed_at: completedAt });
   if(!ok){ onb.saving = false; onb.prepDone = null; renderApp(); return; }
   goals = patch.goals; programSettings = patch.programSettings; onboardingCompletedAt = completedAt;
+  if(firstTime) setTourState("pending");          // la visite guidée suivra le parcours et le guide RunSync (D105)
   markNewsSeen();                                // un compte neuf n'a pas à apprendre que l'app a changé (D91)
   onbRestarting = false; onbConnect = true;      // l'écran du parcours reste affiché pendant la génération
   await tick(1);                                  // objectif et niveau enregistrés
@@ -6621,6 +6638,59 @@ function renderSyncGuide(){
   </div></div>`;
   return true;
 }
+
+// ---------- Visite guidée après le parcours de démarrage (lot 3, D105) ----------
+// Une bulle par onglet (TOUR_STEPS, logic.js), sur le vrai écran : on passe d'onglet en onglet, celui présenté est éclairé dans
+// le menu du bas. En attente sur l'appareil (« pending ») depuis la fin du parcours ; démarre dès que l'app est affichée sans
+// fenêtre ouverte (après le guide RunSync), et reprend si l'app est rechargée avant. « Revoir » depuis Profil › Mon compte.
+let tour = null;   // { step }
+const tourKey = () => "mra_tour_" + (userId || userEmail);
+function tourPending(){ try{ return localStorage.getItem(tourKey())==="pending"; }catch(e){ return false; } }
+function setTourState(v){ try{ if(v) localStorage.setItem(tourKey(), v); else localStorage.removeItem(tourKey()); }catch(e){} }
+function maybeStartTour(){
+  if(tour || !tourPending() || !onboardingCompletedAt || onbConnect || syncGuide) return;
+  if(document.querySelector("#sheetRoot .sheet-back")) return;   // une fenêtre du bas est ouverte (ressenti, nouveautés…)
+  startTour();
+}
+window.startTour = () => { tour = { step:0 }; tourShowStep(); };
+function tourShowStep(){
+  const tab = TOUR_STEPS[tour.step].tab;
+  setTab(tab==="profil" ? "objectifs" : tab);   // Profil s'ouvre sur ses objectifs
+  renderTour();
+}
+window.tourNext = () => { if(!tour) return; tour.step = Math.min(tour.step+1, TOUR_STEPS.length-1); tourShowStep(); };
+window.tourEnd = () => { tour = null; setTourState("done"); renderTour(); };
+window.tourGoals = () => { tourEnd(); setTab("objectifs"); };
+function renderTour(){
+  const root = document.getElementById("tourRoot");
+  if(!root) return;
+  if(!tour){ root.innerHTML = ""; return; }
+  const s = TOUR_STEPS[tour.step], last = tour.step===TOUR_STEPS.length-1;
+  root.innerHTML = `<div class="tour-catch" aria-hidden="true"></div><div class="tour-spot" id="tourSpot"></div>
+    <div class="tour-bubble" id="tourBubble" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+      <div class="tour-step">${tour.step+1} sur ${TOUR_STEPS.length}</div>
+      <div class="tour-title" id="tourTitle">${escHtml(s.title)}</div>
+      <div class="tour-text">${escHtml(s.text)}</div>
+      <div class="tour-btns"><button type="button" class="tour-skip" onclick="tourEnd()">${last ? "Plus tard" : "Passer la visite"}</button><button type="button" class="tour-next" onclick="${last ? "tourGoals()" : "tourNext()"}">${last ? "Compléter mes objectifs" : "Suivant"}</button></div>
+    </div>`;
+  placeTour();
+  const next = root.querySelector(".tour-next");
+  if(next) next.focus({ preventScroll:true });
+}
+// L'onglet est éclairé là où il est, et la bulle se pose juste au-dessus du menu du bas, sa pointe vers l'onglet.
+function placeTour(){
+  if(!tour) return;
+  const btn = document.querySelector(`#tabs .tab-btn[data-tab="${TOUR_STEPS[tour.step].tab}"]`), bar = document.querySelector("#tabs .tabs-bar");
+  const spot = document.getElementById("tourSpot"), bubble = document.getElementById("tourBubble");
+  if(!btn || !bar || !spot || !bubble) return;
+  const r = btn.getBoundingClientRect(), br = bar.getBoundingClientRect();
+  Object.assign(spot.style, { left:(r.left-4)+"px", top:(r.top-4)+"px", width:(r.width+8)+"px", height:(r.height+8)+"px" });
+  bubble.style.bottom = (window.innerHeight - br.top + 16) + "px";
+  const b = bubble.getBoundingClientRect();
+  bubble.style.setProperty("--tour-arrow", Math.min(b.width-24, Math.max(24, r.left + r.width/2 - b.left)) + "px");
+}
+window.addEventListener("resize", placeTour);
+document.addEventListener("keydown", (e) => { if(e.key==="Escape" && tour) tourEnd(); });
 
 supa.auth.getSession().then(({ data }) => {
   if (data.session) boot(); else showAuthEntry();
