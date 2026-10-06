@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=83"></script>
+<script src="logic.js?v=84"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1843,6 +1843,63 @@ try {
   assertEqual("charge vide : aucune sortie depuis 4 semaines -> « norun »", chargeEmptyReason([{ts:todayT-40*dayMs, rpe:5}], todayT), "norun");
   assertEqual("charge vide : un ressenti noté dans les 28 jours -> la charge se calcule", chargeEmptyReason([{ts:todayT-3*dayMs, rpe:6}], todayT), null);
   assertEqual("charge vide : textes validés par Omar", [CHARGE_EMPTY_TEXTS.unrated.tile, CHARGE_EMPTY_TEXTS.norun.tile, CHARGE_EMPTY_TEXTS.norun.sheet], ["Note ton ressenti après tes séances pour la voir.", "Pas de course ces 4 dernières semaines.", "Dès que tu auras repris et noté ta difficulté, ta charge apparaîtra."]);
+}
+
+// --- S15.1 : première connexion, lot 1 (D99 à D101) ---
+{
+  const UA = {
+    safari:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+    chrome:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/126.0.6478.153 Mobile/15E148 Safari/604.1",
+    firefox:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/127.0 Mobile/15E148 Safari/605.1.15",
+    edge:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 EdgiOS/126.2592.87 Mobile/15E148 Safari/605.1.15",
+    instagram:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/21F90 Instagram 330.0.0.9.84 (iPhone14,5; iOS 17_5; fr_FR; fr; scale=3.00; 1170x2532; 570124516)",
+    mac:"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+    chromeMac:"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    android:"Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",
+  };
+  assertEqual("installation : Safari sur iPhone", detectInstallContext(UA.safari, false, 5), { ios:true, inApp:false, browser:"safari", standalone:false });
+  assertEqual("installation : Chrome sur iPhone", detectInstallContext(UA.chrome, false, 5).browser, "chrome");
+  assertEqual("installation : Firefox sur iPhone", detectInstallContext(UA.firefox, false, 5).browser, "firefox");
+  assertEqual("installation : Edge sur iPhone", detectInstallContext(UA.edge, false, 5).browser, "edge");
+  assertEqual("installation : navigateur intégré d'Instagram", detectInstallContext(UA.instagram, false, 5).inApp, true);
+  assertEqual("installation : Safari normal, pas un navigateur intégré", detectInstallContext(UA.safari, false, 5).inApp, false);
+  assertEqual("installation : Mac sans écran tactile = pas iOS", detectInstallContext(UA.mac, false, 0).ios, false);
+  assertEqual("installation : iPad récent (se présente comme un Mac, écran tactile) = iOS", detectInstallContext(UA.mac, false, 5).ios, true);
+  assertEqual("installation : Chrome sur Mac = pas iOS", detectInstallContext(UA.chromeMac, false, 0).ios, false);
+  assertEqual("installation : Android = pas iOS", detectInstallContext(UA.android, false, 5).ios, false);
+  assertEqual("installation : app ouverte depuis l'écran d'accueil", detectInstallContext(UA.safari, true, 5).standalone, true);
+  assertEqual("installation : écran affiché sur iPhone dans le navigateur", shouldShowInstall(detectInstallContext(UA.safari, false, 5), false), true);
+  assertEqual("installation : pas d'écran une fois écarté", shouldShowInstall(detectInstallContext(UA.safari, false, 5), true), false);
+  assertEqual("installation : pas d'écran dans l'app installée", shouldShowInstall(detectInstallContext(UA.safari, true, 5), false), false);
+  assertEqual("installation : pas d'écran sur ordinateur", shouldShowInstall(detectInstallContext(UA.mac, false, 0), false), false);
+  assertEqual("installation : 3 gestes, le dernier ouvre l'app depuis l'écran d'accueil", installGuide(detectInstallContext(UA.safari, false, 5)).steps.map(s=>s.icon), ["share","squarePlus","phone"]);
+  assertEqual("installation : Safari et Chrome = bouton Partager", [installGuide(detectInstallContext(UA.safari,false,5)).steps[0].title, installGuide(detectInstallContext(UA.chrome,false,5)).steps[0].title], ["Touche Partager","Touche Partager"]);
+  assertEqual("installation : Firefox et Edge = menu puis Partager", [installGuide(detectInstallContext(UA.firefox,false,5)).steps[0].title, installGuide(detectInstallContext(UA.edge,false,5)).steps[0].title], ["Touche le menu, puis Partager","Touche le menu, puis Partager"]);
+  assertEqual("installation : « Sur l'écran d'accueil » pour tous", installGuide(detectInstallContext(UA.chrome, false, 5)).steps[1].title, "Touche «\u00a0Sur l'écran d'accueil\u00a0»");
+  assertEqual("installation : navigateur intégré signalé dans le guide", installGuide(detectInstallContext(UA.instagram, false, 5)).inApp, true);
+
+  assertEqual("adresse e-mail valide", [validEmail("a@b.fr"), validEmail("  prenom.nom+test@gmail.com "), validEmail("a@b"), validEmail("a b@c.fr"), validEmail("")], [true, true, false, false, false]);
+  assertEqual("code : ne garde que les chiffres, 6 au plus", [cleanOtp("12 34-56"), cleanOtp("1234567"), cleanOtp("ab"), cleanOtp(null)], ["123456", "123456", "", ""]);
+  assertEqual("code : complet à 6 chiffres seulement", [otpComplete("123456"), otpComplete("12345"), otpComplete("12345a"), otpComplete("")], [true, false, false, false]);
+  const t0 = 1000000;
+  assertEqual("renvoi du code : attente de 60 s", [resendWait(0, t0), resendWait(t0, t0+500), resendWait(t0, t0+20000), resendWait(t0, t0+59500), resendWait(t0, t0+61000)], [0, 60, 40, 1, 0]);
+  assertEqual("inscription : confirmation par e-mail désactivée = session tout de suite", signUpOutcome({ session:{}, user:{ identities:[{}] } }, null), "session");
+  assertEqual("inscription : un code a été envoyé", signUpOutcome({ session:null, user:{ identities:[{}] } }, null), "confirm");
+  assertEqual("inscription : adresse déjà inscrite (utilisateur sans identités)", signUpOutcome({ session:null, user:{ identities:[] } }, null), "exists");
+  assertEqual("inscription : erreur", signUpOutcome(null, { message:"x" }), "error");
+  assertEqual("inscription : réponse vide = on attend le code", signUpOutcome(null, null), "confirm");
+  const ei = (e) => authErrorInfo(e);
+  assertEqual("erreur : mot de passe faux", ei({ code:"invalid_credentials", message:"Invalid login credentials" }), { kind:"credentials", text:"E-mail ou mot de passe incorrect." });
+  assertEqual("erreur : adresse non confirmée", ei({ code:"email_not_confirmed", message:"Email not confirmed" }).kind, "not_confirmed");
+  assertEqual("erreur : e-mails en trop (envoi intégré limité)", ei({ code:"over_email_send_rate_limit", message:"email rate limit exceeded" }), { kind:"rate", text:"Trop d'e-mails envoyés pour le moment. Réessaie dans une heure." });
+  assertEqual("erreur : nouveau code trop tôt, avec les secondes", ei({ message:"For security purposes, you can only request this after 43 seconds." }), { kind:"wait", wait:43, text:"Patiente 43 secondes avant de redemander un code." });
+  assertEqual("erreur : code faux ou expiré", ei({ code:"otp_expired", message:"Token has expired or is invalid" }), { kind:"code", text:"Code incorrect ou expiré. Vérifie les 6 chiffres, ou demande un nouveau code." });
+  assertEqual("erreur : mot de passe trop court", ei({ code:"weak_password", message:"Password should be at least 6 characters." }).kind, "password");
+  assertEqual("erreur : même mot de passe", ei({ code:"same_password", message:"New password should be different from the old password." }).kind, "same_password");
+  assertEqual("erreur : adresse invalide", ei({ code:"validation_failed", message:"Unable to validate email address: invalid format" }).kind, "email");
+  assertEqual("erreur : pas de réseau", ei(new TypeError("Failed to fetch")).kind, "network");
+  assertEqual("erreur : inscriptions fermées", ei({ code:"signup_disabled", message:"Signups not allowed for this instance" }).kind, "closed");
+  assertEqual("erreur : inconnue = message neutre en français, jamais l'anglais de Supabase", ei({ message:"Something went wrong in GoTrue" }), { kind:"other", text:"Quelque chose n'a pas marché. Réessaie dans un instant." });
 }
 
 document.getElementById("summary").innerHTML =

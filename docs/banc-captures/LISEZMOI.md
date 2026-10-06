@@ -42,6 +42,7 @@ Programme : `programme_semaine`, `programme_mois`, `programme_ajout`.
 Progression et Profil : `progression`, `profil_objectifs`, `profil_compte`.
 États vides : `vide_aujourdhui`, `vide_programme`, `vide_progression`.
 Démarrage : `onboarding_bienvenue`, `onboarding`, `onboarding_niveau`, `onboarding_dispos`, `onboarding_recap`.
+Première connexion (S15) : `install_safari`, `install_chrome`, `install_dansapp`, `auth_connexion`, `auth_creation`, `auth_code`, `auth_code_erreur`, `auth_non_confirme`, `auth_oublie`, `auth_nouveau_mdp`. `mr.html#auth_flux` n'est pas un écran : il rejoue les enchaînements de la connexion avec un faux Supabase, et le titre de la page indique « AUTH OK n/n » (détail dans `window.__auth`).
 
 Quand une tranche ajoute un écran (feuille « Tes nouvelles allures », carte « Ton objectif a changé », historique en écran à part, etc.), ajouter son scénario à `mr-harness.js` et à la liste `SCENARIOS` de `planche.html`.
 

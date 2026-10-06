@@ -3126,3 +3126,69 @@ const CHARGE_EMPTY_TEXTS = {
   norun:{ tile:"Pas de course ces 4 dernières semaines.",
           sheet:"Dès que tu auras repris et noté ta difficulté, ta charge apparaîtra." },
 };
+
+/* ---------- Première connexion (S15, lot 1 : D99 à D101) ----------
+   Test d'Omar du 06/10/2026 : on ne sait pas qu'il faut installer l'app, un lien reçu par e-mail s'ouvre dans le navigateur par
+   défaut (jamais dans l'app installée, dont la connexion est séparée), et les erreurs de Supabase s'affichaient en anglais. */
+// Où l'utilisateur ouvre l'app. `ua` = navigator.userAgent, `standalone` = ouverte depuis l'icône de l'écran d'accueil,
+// `touchPoints` = navigator.maxTouchPoints (un iPad récent se présente comme un Mac : seul l'écran tactile le trahit).
+function detectInstallContext(ua, standalone, touchPoints){
+  const u = String(ua||"");
+  const ios = /iPhone|iPad|iPod/.test(u) || (/Macintosh/.test(u) && (touchPoints||0)>1);
+  const inApp = /FBAN|FBAV|Instagram|Snapchat|TikTok|musical_ly|Line\/|MicroMessenger|Twitter|LinkedInApp|GSA\//.test(u);
+  const browser = /CriOS/.test(u) ? "chrome" : /FxiOS/.test(u) ? "firefox" : /EdgiOS/.test(u) ? "edge" : /OPiOS|DuckDuckGo/.test(u) ? "other" : "safari";
+  return { ios, inApp, browser, standalone:!!standalone };
+}
+// Écran « Installe l'app » : iPhone ou iPad, hors de l'app installée, tant que l'utilisateur ne l'a pas écarté.
+function shouldShowInstall(ctx, skipped){ return !!(ctx && ctx.ios && !ctx.standalone && !skipped); }
+// Les trois gestes pour ajouter l'app à l'écran d'accueil ; seul le premier change selon le navigateur
+// (Chrome, Firefox et Edge savent le faire depuis iOS 16.4).
+const INSTALL_STEP_FIRST = {
+  safari:{ icon:"share", title:"Touche Partager", hint:"Le carré avec une flèche vers le haut, en bas de l'écran." },
+  chrome:{ icon:"share", title:"Touche Partager", hint:"L'icône à droite de la barre d'adresse, en haut de l'écran." },
+  firefox:{ icon:"more", title:"Touche le menu, puis Partager", hint:"Le menu est en bas à droite de l'écran." },
+  edge:{ icon:"more", title:"Touche le menu, puis Partager", hint:"Le menu est en bas de l'écran." },
+  other:{ icon:"share", title:"Touche Partager", hint:"Cherche le bouton Partager, ou le menu de ton navigateur." },
+};
+function installGuide(ctx){
+  const first = INSTALL_STEP_FIRST[ctx && ctx.browser] || INSTALL_STEP_FIRST.other;
+  return { inApp:!!(ctx && ctx.inApp), browser:(ctx && ctx.browser) || "other", steps:[
+    first,
+    { icon:"squarePlus", title:"Touche «\u00a0Sur l'écran d'accueil\u00a0»", hint:"Fais défiler le menu si tu ne le vois pas. Laisse «\u00a0Ouvrir comme app web\u00a0» activé." },
+    { icon:"phone", title:"Ouvre MyRunningApp depuis ton écran d'accueil", hint:"C'est là que tu crées ton compte : tu y resteras connecté." },
+  ] };
+}
+// Inscription par code à 6 chiffres recopié dans l'app (D100).
+function validEmail(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s||"").trim()); }
+function cleanOtp(s){ return String(s||"").replace(/\D/g,"").slice(0,6); }
+function otpComplete(s){ return /^\d{6}$/.test(String(s||"")); }
+const RESEND_COOLDOWN_SEC = 60;
+// Secondes à attendre avant de pouvoir redemander un code (0 = tout de suite).
+function resendWait(sentAt, now){ return sentAt ? Math.max(0, Math.ceil(RESEND_COOLDOWN_SEC - (now - sentAt)/1000)) : 0; }
+// Ce que répond Supabase à une inscription : « session » (confirmation par e-mail désactivée), « exists » (adresse déjà inscrite et
+// confirmée : Supabase renvoie alors un utilisateur sans identités, sans erreur), « confirm » (un code vient d'être envoyé), « error ».
+function signUpOutcome(data, error){
+  if(error) return "error";
+  if(data && data.session) return "session";
+  const ids = data && data.user && data.user.identities;
+  if(Array.isArray(ids) && ids.length===0) return "exists";
+  return "confirm";
+}
+// Messages de Supabase traduits et tutoyés. `kind` sert à choisir la suite (adresse non confirmée, attente avant un nouveau code…).
+function authErrorInfo(error){
+  const msg = String((error && error.message) || error || ""), code = String((error && error.code) || "");
+  const has = (re) => re.test(msg) || re.test(code);
+  const sec = msg.match(/after (\d+) seconds?/i);
+  if(has(/email_not_confirmed|Email not confirmed/i)) return { kind:"not_confirmed", text:"Ton adresse n'est pas encore confirmée." };
+  if(has(/invalid_credentials|Invalid login credentials/i)) return { kind:"credentials", text:"E-mail ou mot de passe incorrect." };
+  if(has(/user_already_exists|already registered|already been registered/i)) return { kind:"exists", text:"Un compte existe déjà avec cette adresse : connecte-toi." };
+  if(has(/same_password|different from the old/i)) return { kind:"same_password", text:"Choisis un mot de passe différent de l'ancien." };
+  if(has(/weak_password|at least \d+ characters|Password should be/i)) return { kind:"password", text:"Choisis un mot de passe d'au moins 6 caractères." };
+  if(sec || has(/over_request_rate_limit/i)){ const wait = sec ? Number(sec[1]) : RESEND_COOLDOWN_SEC; return { kind:"wait", wait, text:`Patiente ${wait} secondes avant de redemander un code.` }; }
+  if(has(/over_email_send_rate_limit|email rate limit exceeded/i)) return { kind:"rate", text:"Trop d'e-mails envoyés pour le moment. Réessaie dans une heure." };
+  if(has(/otp_expired|Token has expired|invalid.*(token|otp)|otp.*invalid/i)) return { kind:"code", text:"Code incorrect ou expiré. Vérifie les 6 chiffres, ou demande un nouveau code." };
+  if(has(/signup_disabled|Signups not allowed/i)) return { kind:"closed", text:"Les inscriptions sont fermées pour le moment." };
+  if(has(/validation_failed|Unable to validate email|invalid format|email_address_invalid|is invalid/i)) return { kind:"email", text:"Cette adresse e-mail ne semble pas valide." };
+  if(has(/Failed to fetch|NetworkError|Load failed|network/i)) return { kind:"network", text:"Pas de connexion : vérifie ton réseau et réessaie." };
+  return { kind:"other", text:"Quelque chose n'a pas marché. Réessaie dans un instant." };
+}

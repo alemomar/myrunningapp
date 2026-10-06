@@ -195,8 +195,26 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 @keyframes chipPop{0%{transform:scale(.88)}60%{transform:scale(1.08)}100%{transform:scale(1)}}
 @keyframes todayPulse{0%,100%{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--text)}50%{box-shadow:0 0 0 3px var(--bg),0 0 0 7px rgba(245,245,247,.3)}}
 @keyframes checkDraw{to{stroke-dashoffset:0}}
+/* ---------- Première connexion (D99 à D101) : étapes de l'inscription et écran « Installe l'app » ---------- */
 #authError{color:var(--text-2);font-size:13px;margin-top:12px;text-align:center;min-height:16px;line-height:1.4}
-#authSwitch{margin-top:22px;font-size:13px;color:var(--accent);text-align:center;cursor:pointer;font-weight:500}
+#authNotice{color:var(--accent);font-size:13px;margin-top:12px;text-align:center;line-height:1.4}
+#authNotice:empty{display:none}
+#authBody .auth-h{font:700 28px/1.05 var(--font-display);text-transform:uppercase;text-align:center;margin:0 0 10px;text-wrap:balance}
+#authBody .auth-p{font-size:14px;line-height:1.45;color:var(--text-3);text-align:center;margin:0 0 20px;text-wrap:pretty}
+#authBody .auth-p b{color:var(--text);font-weight:600;overflow-wrap:anywhere}
+.auth-hint{font-size:12.5px;color:var(--text-muted);margin:-4px 0 6px 4px}
+.field.otp input{text-align:center;font:700 30px var(--font-display);letter-spacing:.32em;padding-left:.32em;min-width:0}
+.auth-link{display:block;margin:16px auto 0;padding:6px 10px;border:none;background:none;color:var(--accent);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;text-align:center}
+.auth-link.quiet{color:var(--text-3);font-weight:500;margin-top:8px}
+.auth-link:disabled{color:var(--text-faint);cursor:default}
+#installView .on-screen{padding-left:24px;padding-right:24px}
+#installView .on-logo{padding-top:24px}
+.in-steps{display:flex;flex-direction:column;gap:10px}
+.in-step{display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--line-field)}
+.in-step .ic{width:44px;height:44px;border-radius:var(--r-sm);flex:none;display:flex;align-items:center;justify-content:center;background:var(--surface-sunken);color:var(--text)}
+.in-step .k{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px}
+.in-step b{display:block;font-size:15.5px;font-weight:600;line-height:1.25}
+.in-step small{display:block;margin-top:3px;font-size:13px;line-height:1.4;color:var(--text-3)}
 
 /* ---------- App shell ---------- */
 #appView{display:none;max-width:640px;margin:0 auto}
@@ -1084,22 +1102,11 @@ button.pg-rec-row{cursor:pointer}
 <body>
 <div id="offlineBar"></div>
 
-<div id="authView">
+<div id="installView" style="display:none"></div>
+
+<div id="authView" style="display:none">
   <img class="auth-logo" src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="220" height="136">
-  <div class="tagline">Suis tes courses, simplement.</div>
-
-  <div class="field">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-    <input id="authEmail" type="email" placeholder="Email" autocomplete="username">
-  </div>
-  <div class="field">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-    <input id="authPassword" type="password" placeholder="Mot de passe" autocomplete="current-password">
-  </div>
-
-  <button class="btn-primary" id="authSubmit">Se connecter</button>
-  <div id="authError"></div>
-  <div id="authSwitch">Pas de compte ? Créer un compte</div>
+  <div id="authBody"></div>
 </div>
 
 <div id="appView">
@@ -1119,7 +1126,7 @@ button.pg-rec-row{cursor:pointer}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=83"></script>
+<script src="logic.js?v=84"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1202,6 +1209,9 @@ const ICONS = {
   calendarPlus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><path d="M21 13V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"/><path d="M3 10h18"/><path d="M16 19h6"/><path d="M19 16v6"/></svg>`,
   heartPulse: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>`,
   help: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>`,
+  share: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`,
+  squarePlus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>`,
+  phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>`,
 };
 function icon(name,size=18){ return ICONS[name].replace("<svg ",`<svg width="${size}" height="${size}" `); }
 // En-tête commun des feuilles : sur-titre facultatif, titre Condensed, bouton × de 36 px
@@ -1263,28 +1273,219 @@ function mapRow(r){
 }
 
 /* ---------- Auth ---------- */
-let authMode="signin";
-document.getElementById("authSwitch").onclick=()=>{
-  authMode = authMode==="signin" ? "signup" : "signin";
-  document.getElementById("authSubmit").textContent = authMode==="signin" ? "Se connecter" : "Créer le compte";
-  document.getElementById("authSwitch").textContent = authMode==="signin" ? "Pas de compte ? Créer un compte" : "Déjà un compte ? Se connecter";
-  document.getElementById("authError").textContent = "";
+// Étapes : connexion, création de compte, code reçu par e-mail (confirmation d'adresse, D100), « mot de passe oublié » puis
+// nouveau mot de passe (D101). Tout se passe dans l'app : le code se recopie ici, aucun lien à ouvrir dans un navigateur
+// (iOS ouvre les liens dans le navigateur par défaut, jamais dans l'app installée, dont la connexion est séparée). Le mot de
+// passe tapé reste en mémoire (jamais écrit sur l'appareil) le temps de l'étape « code » : si l'adresse a été confirmée par le
+// lien resté dans l'e-mail, l'app se connecte toute seule au retour.
+const auth = { step:"signin", email:"", password:"", code:"", notice:"", error:"", busy:false, sentAt:0, verified:false };
+const AUTH_ICON_MAIL = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`;
+const AUTH_ICON_LOCK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+let authTimer = null;
+const authAttr = (t) => escHtml(t).replace(/"/g, "&quot;");     // pour value="…" : escHtml ne protège pas les guillemets
+function isStandalone(){
+  try{ return window.navigator.standalone===true || window.matchMedia("(display-mode: standalone)").matches; }catch(e){ return false; }
+}
+// Premier écran quand personne n'est connecté : « Installe l'app » (iPhone ou iPad, hors de l'app installée, tant qu'on ne l'a
+// pas écarté), sinon la connexion (D99).
+function showAuthEntry(){
+  document.getElementById("appView").style.display = "none";
+  let skipped = false; try{ skipped = localStorage.getItem("mra_installSkipped")==="1"; }catch(e){}
+  const ctx = detectInstallContext(navigator.userAgent, isStandalone(), navigator.maxTouchPoints);
+  if(shouldShowInstall(ctx, skipped)) showInstall(ctx); else showAuth();
+}
+function installHTML(g){
+  const steps = g.steps.map((st,i)=>`<div class="in-step"><span class="ic">${icon(st.icon,22)}</span><div><span class="k">Étape ${i+1}</span><b>${escHtml(st.title)}</b><small>${escHtml(st.hint)}</small></div></div>`).join("");
+  const warn = g.inApp ? `<div class="on-warn" role="status"><div class="hd">${icon("alert",18)}<b>Tu es dans le navigateur d'une autre app</b></div><div class="tx">Instagram, Facebook et les autres ne permettent pas d'installer MyRunningApp. Ouvre ce lien dans Safari ou Chrome.</div><div class="pf-chips"><button type="button" class="pf-chip" id="installCopy" onclick="installCopyLink()">Copier le lien</button></div></div>` : "";
+  return `<div class="on-screen">
+    <div class="on-logo"><img class="auth-logo" src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="220" height="136" style="margin-bottom:0"></div>
+    <div class="on-head"><div class="on-title">Installe l'app sur ton écran d'accueil</div><div class="on-sub">Elle s'ouvre alors comme une vraie app, en plein écran, et tu y restes connecté.</div></div>
+    <div class="on-body">${warn}${g.inApp ? "" : `<div class="in-steps">${steps}</div>`}</div>
+    <div class="on-foot">${g.inApp ? "" : `<div class="on-hint">Une fois l'app ajoutée, ouvre-la depuis ton écran d'accueil : c'est là que tu crées ton compte.</div>`}
+      <button type="button" class="btn-secondary on-second" onclick="installSkip()">Continuer dans le navigateur</button></div></div>`;
+}
+function showInstall(ctx){
+  document.getElementById("installView").innerHTML = installHTML(installGuide(ctx));
+  document.getElementById("installView").style.display = "block";
+  document.getElementById("authView").style.display = "none";
+}
+window.installSkip = () => { try{ localStorage.setItem("mra_installSkipped","1"); }catch(e){} showAuth(); };
+window.installCopyLink = async () => {
+  const b = document.getElementById("installCopy");
+  try{ await navigator.clipboard.writeText(location.href.split("#")[0].split("?")[0]); if(b) b.textContent = "Lien copié"; }
+  catch(e){ if(b) b.textContent = "Copie l'adresse dans la barre du navigateur"; }
 };
-document.getElementById("authSubmit").onclick = async () => {
-  const email = document.getElementById("authEmail").value.trim();
-  const password = document.getElementById("authPassword").value;
-  const btn = document.getElementById("authSubmit");
-  const errEl = document.getElementById("authError");
-  errEl.textContent = "";
-  btn.disabled = true;
-  const { error } = authMode==="signin"
-    ? await supa.auth.signInWithPassword({ email, password })
-    : await supa.auth.signUp({ email, password });
-  btn.disabled = false;
-  if (error) { errEl.textContent = error.message; return; }
-  if (authMode==="signup") { errEl.style.color="var(--accent)"; errEl.textContent = "Compte créé — vérifie tes emails si une confirmation est demandée, puis connecte-toi."; return; }
+function showAuth(){
+  document.getElementById("installView").style.display = "none";
+  document.getElementById("authView").style.display = "flex";
+  renderAuth();
+}
+function authEmailField(ac){
+  return `<div class="field">${AUTH_ICON_MAIL}<input id="authEmail" type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Email" aria-label="Adresse e-mail" autocomplete="${ac}" value="${authAttr(auth.email)}" oninput="authSet('email', this.value)" onkeydown="authKey(event)"></div>`;
+}
+function authPasswordField(ac, ph){
+  return `<div class="field">${AUTH_ICON_LOCK}<input id="authPassword" type="password" placeholder="${ph}" aria-label="${ph}" autocomplete="${ac}" value="${authAttr(auth.password)}" oninput="authSet('password', this.value)" onkeydown="authKey(event)"></div>`;
+}
+function authOtpField(){
+  return `<div class="field otp"><input id="authOtp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="······" aria-label="Code à 6 chiffres" value="${authAttr(auth.code)}" oninput="authOtpInput(this)" onkeydown="authKey(event)"></div>`;
+}
+function renderAuth(){
+  const body = document.getElementById("authBody"); if(!body) return;
+  const st = auth.step, dis = auth.busy ? " disabled" : "";
+  const msgs = `<div id="authNotice" role="status">${escHtml(auth.notice)}</div><div id="authError" role="alert">${escHtml(auth.error)}</div>`;
+  const btn = (label) => `<button type="button" class="btn-primary" id="authBtn" onclick="authSubmit()"${dis}>${label}</button>`;
+  let html;
+  if(st==="signin" || st==="signup"){
+    const up = st==="signup";
+    html = `<div class="tagline">Suis tes courses, simplement.</div>
+      ${authEmailField(up?"email":"username")}${authPasswordField(up?"new-password":"current-password", "Mot de passe")}
+      ${up ? `<div class="auth-hint">6 caractères minimum.</div>` : ""}
+      ${btn(up?"Créer le compte":"Se connecter")}${msgs}
+      ${up ? "" : `<button type="button" class="auth-link quiet" onclick="authGo('forgot')">Mot de passe oublié ?</button>`}
+      <button type="button" class="auth-link" onclick="authGo('${up?"signin":"signup"}')">${up?"Déjà un compte ? Se connecter":"Pas de compte ? Créer un compte"}</button>`;
+  } else if(st==="code"){
+    const sent = auth.sentAt>0;
+    html = `<div class="auth-h">Vérifie ta boîte mail</div>
+      <div class="auth-p">${sent ? `On a envoyé un code à 6 chiffres à <b>${escHtml(auth.email)}</b>. Recopie-le ici, et pense à regarder tes courriers indésirables.` : `L'adresse <b>${escHtml(auth.email)}</b> n'est pas encore confirmée. Entre le code reçu par e-mail, ou demande-en un nouveau.`}</div>
+      ${authOtpField()}${btn("Valider")}${msgs}
+      <button type="button" class="auth-link" id="authResendBtn" onclick="authResend()"${dis}></button>
+      <button type="button" class="auth-link quiet" onclick="authGo('signup')">Changer d'adresse</button>`;
+  } else if(st==="forgot"){
+    html = `<div class="auth-h">Mot de passe oublié</div>
+      <div class="auth-p">Entre ton adresse e-mail : on t'envoie un code à 6 chiffres pour choisir un nouveau mot de passe.</div>
+      ${authEmailField("username")}${btn("Recevoir le code")}${msgs}
+      <button type="button" class="auth-link" onclick="authGo('signin')">Retour à la connexion</button>`;
+  } else {
+    html = `<div class="auth-h">Nouveau mot de passe</div>
+      <div class="auth-p">${auth.verified ? "Code accepté. Choisis ton nouveau mot de passe." : `Si un compte existe avec <b>${escHtml(auth.email)}</b>, un code à 6 chiffres vient d'être envoyé. Recopie-le, puis choisis ton nouveau mot de passe.`}</div>
+      ${auth.verified ? "" : authOtpField()}${authPasswordField("new-password", "Nouveau mot de passe")}
+      <div class="auth-hint">6 caractères minimum.</div>
+      ${btn("Changer le mot de passe")}${msgs}
+      ${auth.verified ? "" : `<button type="button" class="auth-link" id="authResendBtn" onclick="authResend()"${dis}></button>`}
+      <button type="button" class="auth-link quiet" onclick="authGo('signin')">Retour à la connexion</button>`;
+  }
+  body.innerHTML = html;
+  updateResendLabel(); manageAuthTimer();
+  // Le clavier numérique s'ouvre tout de suite sur l'étape « code » ; sinon on ne force rien (pas de clavier au chargement).
+  const focusId = (st==="code" || st==="reset") ? (auth.verified ? "authPassword" : "authOtp") : (st==="forgot" && !auth.email ? "authEmail" : "");
+  const f = focusId && document.getElementById(focusId);
+  if(f && !auth.busy) f.focus();
+}
+function updateResendLabel(){
+  const b = document.getElementById("authResendBtn"); if(!b) return;
+  const wait = resendWait(auth.sentAt, Date.now());
+  b.textContent = wait>0 ? `Renvoyer le code (dans ${wait} s)` : (auth.sentAt>0 || auth.step==="reset" ? "Renvoyer le code" : "Envoyer un nouveau code");
+  b.disabled = auth.busy || wait>0;
+}
+function manageAuthTimer(){
+  const need = (auth.step==="code" || auth.step==="reset") && resendWait(auth.sentAt, Date.now())>0;
+  if(need && !authTimer) authTimer = setInterval(()=>{ updateResendLabel(); if(resendWait(auth.sentAt, Date.now())===0){ clearInterval(authTimer); authTimer = null; } }, 1000);
+  if(!need && authTimer){ clearInterval(authTimer); authTimer = null; }
+}
+const authClearError = () => { if(auth.error){ auth.error = ""; const e = document.getElementById("authError"); if(e) e.textContent = ""; } };
+window.authSet = (field, value) => { auth[field] = value; authClearError(); };
+window.authKey = (ev) => { if(ev.key==="Enter"){ ev.preventDefault(); authSubmit(); } };
+// Le code se valide tout seul au 6e chiffre (sauf sur « nouveau mot de passe », où il faut aussi le mot de passe).
+window.authOtpInput = (el) => {
+  auth.code = cleanOtp(el.value); el.value = auth.code; authClearError();
+  if(auth.step==="code" && otpComplete(auth.code) && !auth.busy) authSubmit();
+};
+window.authGo = (step) => {
+  Object.assign(auth, { step, error:"", notice:"", code:"", verified:false });
+  if(step!=="code" && step!=="reset") auth.sentAt = 0;
+  renderAuth();
+};
+async function authDone(){
+  Object.assign(auth, { step:"signin", password:"", code:"", error:"", notice:"", busy:false, verified:false, sentAt:0 });
+  manageAuthTimer();
   await boot();
+}
+window.authSubmit = async () => {
+  if(auth.busy) return;
+  const email = auth.email.trim(), st = auth.step;
+  auth.error = ""; auth.notice = "";
+  const stop = (text) => { auth.error = text; auth.busy = false; renderAuth(); };
+  if((st==="signin" || st==="signup" || st==="forgot") && !validEmail(email)) return stop("Entre une adresse e-mail valide.");
+  if(st==="signin"){
+    if(!auth.password) return stop("Entre ton mot de passe.");
+    auth.busy = true; renderAuth();
+    const { error } = await supa.auth.signInWithPassword({ email, password:auth.password });
+    auth.busy = false;
+    if(!error) return authDone();
+    const info = authErrorInfo(error);
+    if(info.kind==="not_confirmed"){ Object.assign(auth, { step:"code", code:"", sentAt:0 }); return renderAuth(); }
+    return stop(info.text);
+  }
+  if(st==="signup"){
+    if(auth.password.length<6) return stop("Choisis un mot de passe d'au moins 6 caractères.");
+    auth.busy = true; renderAuth();
+    const { data, error } = await supa.auth.signUp({ email, password:auth.password });
+    auth.busy = false;
+    const out = signUpOutcome(data, error);
+    if(out==="error") return stop(authErrorInfo(error).text);
+    if(out==="session") return authDone();          // confirmation par e-mail désactivée côté Supabase
+    if(out==="exists"){ Object.assign(auth, { step:"signin", notice:"Un compte existe déjà avec cette adresse : connecte-toi." }); return renderAuth(); }
+    Object.assign(auth, { step:"code", code:"", sentAt:Date.now() });
+    return renderAuth();
+  }
+  if(st==="code"){
+    if(!otpComplete(auth.code)) return stop("Entre les 6 chiffres du code.");
+    auth.busy = true; renderAuth();
+    let res = await supa.auth.verifyOtp({ email, token:auth.code, type:"email" });
+    if(res.error) res = await supa.auth.verifyOtp({ email, token:auth.code, type:"signup" });
+    if(res.error && auth.password){
+      // L'adresse a peut-être déjà été confirmée par le lien de l'e-mail : le mot de passe suffit alors.
+      const si = await supa.auth.signInWithPassword({ email, password:auth.password });
+      if(!si.error) res = si;
+    }
+    auth.busy = false;
+    if(res.error){ auth.code = ""; return stop(authErrorInfo(res.error).text); }
+    return authDone();
+  }
+  if(st==="forgot"){
+    auth.busy = true; renderAuth();
+    const { error } = await supa.auth.resetPasswordForEmail(email);
+    auth.busy = false;
+    if(error) return stop(authErrorInfo(error).text);
+    Object.assign(auth, { step:"reset", code:"", password:"", sentAt:Date.now(), verified:false });
+    return renderAuth();
+  }
+  if(st==="reset"){
+    if(!auth.verified && !otpComplete(auth.code)) return stop("Entre les 6 chiffres du code.");
+    if(auth.password.length<6) return stop("Choisis un mot de passe d'au moins 6 caractères.");
+    auth.busy = true; renderAuth();
+    if(!auth.verified){
+      const v = await supa.auth.verifyOtp({ email, token:auth.code, type:"recovery" });
+      if(v.error){ auth.code = ""; return stop(authErrorInfo(v.error).text); }
+      auth.verified = true;
+    }
+    const u = await supa.auth.updateUser({ password:auth.password });
+    auth.busy = false;
+    if(u.error) return stop(authErrorInfo(u.error).text);       // le code est déjà utilisé : on ne le redemande pas
+    await authDone(); toast("Mot de passe changé.");
+  }
 };
+window.authResend = async () => {
+  if(auth.busy) return;
+  const wait = resendWait(auth.sentAt, Date.now());
+  if(wait>0){ auth.error = `Patiente ${wait} secondes avant de redemander un code.`; return renderAuth(); }
+  const email = auth.email.trim();
+  auth.error = ""; auth.notice = ""; auth.busy = true; renderAuth();
+  const { error } = auth.step==="reset" ? await supa.auth.resetPasswordForEmail(email) : await supa.auth.resend({ type:"signup", email });
+  auth.busy = false;
+  if(error){
+    const info = authErrorInfo(error);
+    if(info.kind==="wait") auth.sentAt = Date.now() - (RESEND_COOLDOWN_SEC - info.wait)*1000;
+    auth.error = info.text; return renderAuth();
+  }
+  auth.sentAt = Date.now(); auth.notice = "Nouveau code envoyé."; renderAuth();
+};
+// Retour dans l'app pendant l'étape « code » : si l'adresse a été confirmée par le lien de l'e-mail, on entre sans retaper.
+document.addEventListener("visibilitychange", async () => {
+  if(document.visibilityState!=="visible" || auth.step!=="code" || !auth.password || auth.busy) return;
+  const { error } = await supa.auth.signInWithPassword({ email:auth.email.trim(), password:auth.password });
+  if(!error) authDone();
+});
 
 /* ---------- Dashboard ---------- */
 // Le dernier onglet consulté est mémorisé en local (par appareil) pour
@@ -2225,7 +2426,8 @@ function prefillRatings(existingRatings){
 window.logout = async () => {
   await supa.auth.signOut();
   document.getElementById("appView").style.display="none";
-  document.getElementById("authView").style.display="flex";
+  Object.assign(auth, { step:"signin", password:"", code:"", error:"", notice:"", busy:false, sentAt:0, verified:false });
+  showAuth();
 };
 
 function downloadBlob(blob, filename){
@@ -5882,6 +6084,7 @@ function skeletonHTML(tab){
 }
 async function boot(){
   document.getElementById("authView").style.display="none";
+  document.getElementById("installView").style.display="none";
   document.getElementById("appView").style.display="block";
   document.getElementById("content").innerHTML = skeletonHTML(activeTab);
   await loadData();
@@ -6389,8 +6592,8 @@ function renderSyncGuide(){
 }
 
 supa.auth.getSession().then(({ data }) => {
-  if (data.session) boot();
-});
+  if (data.session) boot(); else showAuthEntry();
+}).catch(() => showAuthEntry());
 </script>
 </body>
 </html>

@@ -16,6 +16,93 @@
   { const _from = supa.from; supa.from = (table)=>{ const t=_from(table); const _upd=t.update; t.update=(patch)=>{ const o=_upd(patch); o.in = async(col,vals)=>{ for(const v of vals) await o.eq(col,v); return {error:null}; }; return o; }; return t; }; }
   window.loadData = async()=>{ if(typeof rows!=="undefined"){ RUNS=[...rows,...inserted].sort((a,b)=>new Date(a.start_date)-new Date(b.start_date)).map(mapRow); runningRuns=RUNS.filter(r=>r.includeInStats); efRuns=runningRuns.filter(r=>r.type==="EF"); fracRuns=runningRuns.filter(r=>r.type==="Fractionné"); } };
 
+  // Première connexion (S15, D99 à D101) : écrans d'installation et de connexion, sans aucune donnée. `auth_flux` rejoue les
+  // enchaînements avec un faux Supabase et note les résultats dans window.__auth (document.title = « AUTH OK 19/19 »).
+  window.showAuthEntry = function(){};      // le démarrage de l'app n'a pas de session ici : il ne doit pas masquer le scénario
+  if(/^(install_|auth_)/.test(scen)){
+    document.getElementById("appView").style.display = "none";
+    const UA = {
+      safari:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+      chrome:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/126.0.6478.153 Mobile/15E148 Safari/604.1",
+      instagram:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/21F90 Instagram 330.0.0.9.84 (iPhone14,5; iOS 17_5; fr_FR; fr; scale=3.00; 1170x2532; 570124516)",
+    };
+    const set = (step, patch) => { Object.assign(auth, { email:"camille@exemple.fr", password:"", code:"", error:"", notice:"", busy:false, sentAt:0, verified:false }, patch||{}, { step }); showAuth(); };
+    if(scen==="install_safari") showInstall(detectInstallContext(UA.safari, false, 5));
+    else if(scen==="install_chrome") showInstall(detectInstallContext(UA.chrome, false, 5));
+    else if(scen==="install_dansapp") showInstall(detectInstallContext(UA.instagram, false, 5));
+    else if(scen==="auth_connexion") set("signin");
+    else if(scen==="auth_creation") set("signup", { password:"motdepasse" });
+    else if(scen==="auth_code") set("code", { sentAt:Date.now() });
+    else if(scen==="auth_code_erreur") set("code", { sentAt:Date.now()-20000, error:authErrorInfo({ code:"otp_expired", message:"Token has expired or is invalid" }).text });
+    else if(scen==="auth_non_confirme") set("code");
+    else if(scen==="auth_oublie") set("forgot");
+    else if(scen==="auth_nouveau_mdp") set("reset", { sentAt:Date.now() });
+    else if(scen==="auth_flux"){
+      const res = window.__auth = [], calls = window.__authCalls = [];
+      const sleep = (ms) => new Promise(r=>setTimeout(r, ms));
+      const ok = (data) => ({ data:data||{}, error:null }), ko = (message, code) => ({ data:{}, error:{ message, code } });
+      let sc = {}, booted = 0;
+      supa.auth.signInWithPassword = async () => { calls.push("signIn"); return sc.signIn ? sc.signIn() : ok({ session:{} }); };
+      supa.auth.signUp = async () => { calls.push("signUp"); return sc.signUp || ok({ session:null, user:{ identities:[{}] } }); };
+      supa.auth.verifyOtp = async (a) => { calls.push("verify:"+a.type); return sc.verify ? sc.verify(a) : ok({ session:{} }); };
+      supa.auth.resend = async () => { calls.push("resend"); return ok(); };
+      supa.auth.resetPasswordForEmail = async () => { calls.push("reset"); return ok(); };
+      supa.auth.updateUser = async () => { calls.push("update"); return sc.update ? sc.update() : ok({ user:{} }); };
+      window.boot = async () => { booted++; };
+      const go = (patch, script) => { calls.length = 0; booted = 0; sc = script || {}; Object.assign(auth, { step:"signin", email:"test@exemple.fr", password:"motdepasse", code:"", notice:"", error:"", busy:false, sentAt:0, verified:false }, patch); showAuth(); };
+      const check = (cas, cond, detail) => res.push({ cas, ok:!!cond, detail:detail||"" });
+      const bad = () => ko("Token has expired or is invalid", "otp_expired"), notConf = () => ko("Email not confirmed", "email_not_confirmed");
+
+      go({ step:"signin" }); await authSubmit();
+      check("connexion réussie", booted===1 && calls.join()==="signIn", calls.join());
+      go({ step:"signin" }, { signIn:() => ko("Invalid login credentials","invalid_credentials") }); await authSubmit();
+      check("connexion : mauvais mot de passe", booted===0 && auth.step==="signin" && auth.error==="E-mail ou mot de passe incorrect.", auth.error);
+      go({ step:"signin" }, { signIn:notConf }); await authSubmit();
+      check("connexion : adresse non confirmée -> étape code, sans envoi", booted===0 && auth.step==="code" && auth.sentAt===0 && calls.join()==="signIn", auth.step+" "+calls.join());
+      go({ step:"signin", email:"abc" }); await authSubmit();
+      check("connexion : adresse invalide, aucun appel", auth.error==="Entre une adresse e-mail valide." && calls.length===0, auth.error);
+      go({ step:"signup" }); await authSubmit();
+      check("inscription : un code est envoyé -> étape code", auth.step==="code" && auth.sentAt>0 && calls.join()==="signUp", auth.step+" "+calls.join());
+      go({ step:"signup", password:"abc" }); await authSubmit();
+      check("inscription : mot de passe trop court, aucun appel", auth.error==="Choisis un mot de passe d'au moins 6 caractères." && calls.length===0, auth.error);
+      go({ step:"signup" }, { signUp:ok({ session:null, user:{ identities:[] } }) }); await authSubmit();
+      check("inscription : adresse déjà inscrite -> on propose de se connecter", auth.step==="signin" && /existe déjà/.test(auth.notice), auth.step+" "+auth.notice);
+      go({ step:"signup" }, { signUp:ok({ session:{}, user:{ identities:[{}] } }) }); await authSubmit();
+      check("inscription : confirmation désactivée côté Supabase -> on entre tout de suite", booted===1, "booted="+booted);
+      go({ step:"code", code:"123456", sentAt:Date.now() }); await authSubmit();
+      check("code juste -> on entre", booted===1 && calls.join()==="verify:email", calls.join());
+      go({ step:"code", code:"000000", sentAt:Date.now() }, { verify:bad, signIn:notConf }); await authSubmit();
+      check("code faux -> message clair, rien d'autre", booted===0 && /Code incorrect ou expiré/.test(auth.error) && calls.join()==="verify:email,verify:signup,signIn" && auth.code==="", calls.join()+" | "+auth.error);
+      go({ step:"code", code:"000000", sentAt:Date.now() }, { verify:bad }); await authSubmit();
+      check("code faux mais adresse déjà confirmée par le lien -> on entre avec le mot de passe", booted===1 && calls.join()==="verify:email,verify:signup,signIn", calls.join());
+      go({ step:"code", code:"123", sentAt:Date.now() }); await authSubmit();
+      check("code incomplet, aucun appel", auth.error==="Entre les 6 chiffres du code." && calls.length===0, auth.error);
+      go({ step:"code", sentAt:Date.now() }); { const el = document.getElementById("authOtp"); el.value = "12-34 56"; authOtpInput(el); await sleep(80); }
+      check("le 6e chiffre valide tout seul (tirets et espaces ignorés)", booted===1 && auth.code==="" && calls.join()==="verify:email", calls.join());
+      go({ step:"code", sentAt:Date.now()-10000 }); await authResend();
+      check("renvoi trop tôt : on patiente, aucun appel", /^Patiente \d+ secondes/.test(auth.error) && calls.length===0, auth.error);
+      go({ step:"code", sentAt:Date.now()-61000 }); await authResend();
+      check("renvoi après 60 s : nouveau code", calls.join()==="resend" && auth.notice==="Nouveau code envoyé." && resendWait(auth.sentAt, Date.now())>55, calls.join()+" "+auth.notice);
+      go({ step:"forgot" }); await authSubmit();
+      check("mot de passe oublié -> étape code, mot de passe vidé", auth.step==="reset" && calls.join()==="reset" && auth.password==="" && auth.sentAt>0, auth.step+" "+calls.join());
+      go({ step:"reset", code:"123456", password:"nouveau1" }); await authSubmit();
+      check("nouveau mot de passe -> on entre", booted===1 && calls.join()==="verify:recovery,update", calls.join());
+      go({ step:"reset", code:"123456", password:"identique" }, { update:() => ko("New password should be different from the old password.","same_password") }); await authSubmit();
+      const refus = auth.verified===true && /différent/.test(auth.error) && booted===0;
+      sc = {}; calls.length = 0; auth.password = "autre123"; await authSubmit();
+      check("mot de passe refusé puis corrigé : le code déjà accepté n'est pas redemandé", refus && booted===1 && calls.join()==="update", calls.join());
+      go({ step:"code", sentAt:Date.now() });
+      Object.defineProperty(document, "visibilityState", { configurable:true, get:() => "visible" });      // le navigateur d'aperçu peut être masqué
+      document.dispatchEvent(new Event("visibilitychange")); await sleep(80); delete document.visibilityState;
+      check("retour dans l'app après confirmation par le lien -> on entre sans retaper", booted===1 && calls.join()==="signIn", calls.join()+" visible="+document.visibilityState);
+      go({ step:"signin" }); { const e = document.getElementById("authEmail"); e.value = '"><b>x'; authSet("email", e.value); renderAuth(); }
+      check("guillemets saisis dans l'adresse : aucun HTML injecté", document.querySelector("#authBody b")===null && document.getElementById("authEmail").value==='"><b>x', "");
+      go({ step:"signin" });
+      document.title = "AUTH " + (res.every(r=>r.ok) ? "OK " : "KO ") + res.filter(r=>r.ok).length + "/" + res.length;
+    }
+    return;
+  }
+
   // --- profil fictif
   maxHr = 191; restingHr = 58; vo2Max = 48; pseudo = "Camille"; age = 34; gender = "Femme"; cities = ["Rennes"]; userEmail = "camille@exemple.fr";
   restingHrIsManual = false; vo2MaxIsManual = false; suspendedZones = [];
