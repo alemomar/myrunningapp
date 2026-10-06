@@ -3158,10 +3158,11 @@ function installGuide(ctx){
     { icon:"phone", title:"Ouvre MyRunningApp depuis ton écran d'accueil", hint:"C'est là que tu crées ton compte : tu y resteras connecté." },
   ] };
 }
-// Inscription par code à 6 chiffres recopié dans l'app (D100).
+// Inscription par code recopié dans l'app (D100). Supabase envoie 6 chiffres, ou 8 pour les projets récents (réglable de 6 à 10) :
+// l'app accepte toute longueur de 6 à 10.
 function validEmail(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s||"").trim()); }
-function cleanOtp(s){ return String(s||"").replace(/\D/g,"").slice(0,6); }
-function otpComplete(s){ return /^\d{6}$/.test(String(s||"")); }
+function cleanOtp(s){ return String(s||"").replace(/\D/g,"").slice(0,10); }
+function otpComplete(s){ return /^\d{6,10}$/.test(String(s||"")); }
 const RESEND_COOLDOWN_SEC = 60;
 // Secondes à attendre avant de pouvoir redemander un code (0 = tout de suite).
 function resendWait(sentAt, now){ return sentAt ? Math.max(0, Math.ceil(RESEND_COOLDOWN_SEC - (now - sentAt)/1000)) : 0; }
@@ -3186,9 +3187,23 @@ function authErrorInfo(error){
   if(has(/weak_password|at least \d+ characters|Password should be/i)) return { kind:"password", text:"Choisis un mot de passe d'au moins 6 caractères." };
   if(sec || has(/over_request_rate_limit/i)){ const wait = sec ? Number(sec[1]) : RESEND_COOLDOWN_SEC; return { kind:"wait", wait, text:`Patiente ${wait} secondes avant de redemander un code.` }; }
   if(has(/over_email_send_rate_limit|email rate limit exceeded/i)) return { kind:"rate", text:"Trop d'e-mails envoyés pour le moment. Réessaie dans une heure." };
-  if(has(/otp_expired|Token has expired|invalid.*(token|otp)|otp.*invalid/i)) return { kind:"code", text:"Code incorrect ou expiré. Vérifie les 6 chiffres, ou demande un nouveau code." };
+  if(has(/otp_expired|Token has expired|invalid.*(token|otp)|otp.*invalid/i)) return { kind:"code", text:"Code incorrect ou expiré. Vérifie les chiffres, ou demande un nouveau code." };
   if(has(/signup_disabled|Signups not allowed/i)) return { kind:"closed", text:"Les inscriptions sont fermées pour le moment." };
   if(has(/validation_failed|Unable to validate email|invalid format|email_address_invalid|is invalid/i)) return { kind:"email", text:"Cette adresse e-mail ne semble pas valide." };
   if(has(/Failed to fetch|NetworkError|Load failed|network/i)) return { kind:"network", text:"Pas de connexion : vérifie ton réseau et réessaie." };
   return { kind:"other", text:"Quelque chose n'a pas marché. Réessaie dans un instant." };
+}
+// Premier écran pour quelqu'un qui n'est pas connecté : « Installe l'app », sauf s'il est en pleine inscription (étape « code » reprise
+// après un rechargement) ou s'il l'a déjà écarté.
+function authEntryView(ctx, skipped, hasPending){ return !hasPending && shouldShowInstall(ctx, skipped) ? "install" : "auth"; }
+// Étape « code » ou « mot de passe oublié » en cours quand l'app est rechargée (l'iPhone peut décharger l'app pendant qu'on lit son
+// e-mail) : seuls l'étape, l'adresse et l'heure d'envoi sont gardées, jamais le mot de passe ni le code. Valable une heure.
+const AUTH_PENDING_MAX_AGE_MS = 60*60*1000;
+function pendingAuthFrom(raw, now){
+  let p = null;
+  try{ p = typeof raw==="string" ? JSON.parse(raw) : raw; }catch(e){ return null; }
+  if(!p || (p.step!=="code" && p.step!=="reset") || !validEmail(p.email)) return null;
+  const sentAt = Number(p.sentAt) || 0;
+  if(!sentAt || now - sentAt > AUTH_PENDING_MAX_AGE_MS || sentAt - now > 60000) return null;
+  return { step:p.step, email:String(p.email).trim(), sentAt };
 }

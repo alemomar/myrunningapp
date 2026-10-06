@@ -1879,8 +1879,8 @@ try {
   assertEqual("installation : navigateur intégré signalé dans le guide", installGuide(detectInstallContext(UA.instagram, false, 5)).inApp, true);
 
   assertEqual("adresse e-mail valide", [validEmail("a@b.fr"), validEmail("  prenom.nom+test@gmail.com "), validEmail("a@b"), validEmail("a b@c.fr"), validEmail("")], [true, true, false, false, false]);
-  assertEqual("code : ne garde que les chiffres, 6 au plus", [cleanOtp("12 34-56"), cleanOtp("1234567"), cleanOtp("ab"), cleanOtp(null)], ["123456", "123456", "", ""]);
-  assertEqual("code : complet à 6 chiffres seulement", [otpComplete("123456"), otpComplete("12345"), otpComplete("12345a"), otpComplete("")], [true, false, false, false]);
+  assertEqual("code : ne garde que les chiffres, 10 au plus", [cleanOtp("12 34-56"), cleanOtp("93140242"), cleanOtp("123456789012"), cleanOtp("ab"), cleanOtp(null)], ["123456", "93140242", "1234567890", "", ""]);
+  assertEqual("code : complet de 6 à 10 chiffres (Supabase en envoie 6 ou 8)", [otpComplete("123456"), otpComplete("93140242"), otpComplete("12345"), otpComplete("12345678901"), otpComplete("12345a"), otpComplete("")], [true, true, false, false, false, false]);
   const t0 = 1000000;
   assertEqual("renvoi du code : attente de 60 s", [resendWait(0, t0), resendWait(t0, t0+500), resendWait(t0, t0+20000), resendWait(t0, t0+59500), resendWait(t0, t0+61000)], [0, 60, 40, 1, 0]);
   assertEqual("inscription : confirmation par e-mail désactivée = session tout de suite", signUpOutcome({ session:{}, user:{ identities:[{}] } }, null), "session");
@@ -1893,13 +1893,26 @@ try {
   assertEqual("erreur : adresse non confirmée", ei({ code:"email_not_confirmed", message:"Email not confirmed" }).kind, "not_confirmed");
   assertEqual("erreur : e-mails en trop (envoi intégré limité)", ei({ code:"over_email_send_rate_limit", message:"email rate limit exceeded" }), { kind:"rate", text:"Trop d'e-mails envoyés pour le moment. Réessaie dans une heure." });
   assertEqual("erreur : nouveau code trop tôt, avec les secondes", ei({ message:"For security purposes, you can only request this after 43 seconds." }), { kind:"wait", wait:43, text:"Patiente 43 secondes avant de redemander un code." });
-  assertEqual("erreur : code faux ou expiré", ei({ code:"otp_expired", message:"Token has expired or is invalid" }), { kind:"code", text:"Code incorrect ou expiré. Vérifie les 6 chiffres, ou demande un nouveau code." });
+  assertEqual("erreur : code faux ou expiré", ei({ code:"otp_expired", message:"Token has expired or is invalid" }), { kind:"code", text:"Code incorrect ou expiré. Vérifie les chiffres, ou demande un nouveau code." });
   assertEqual("erreur : mot de passe trop court", ei({ code:"weak_password", message:"Password should be at least 6 characters." }).kind, "password");
   assertEqual("erreur : même mot de passe", ei({ code:"same_password", message:"New password should be different from the old password." }).kind, "same_password");
   assertEqual("erreur : adresse invalide", ei({ code:"validation_failed", message:"Unable to validate email address: invalid format" }).kind, "email");
   assertEqual("erreur : pas de réseau", ei(new TypeError("Failed to fetch")).kind, "network");
   assertEqual("erreur : inscriptions fermées", ei({ code:"signup_disabled", message:"Signups not allowed for this instance" }).kind, "closed");
   assertEqual("erreur : inconnue = message neutre en français, jamais l'anglais de Supabase", ei({ message:"Something went wrong in GoTrue" }), { kind:"other", text:"Quelque chose n'a pas marché. Réessaie dans un instant." });
+
+  // Reprise de l'étape « code » après un rechargement de l'app (l'iPhone peut la décharger pendant qu'on lit son e-mail)
+  const nowT = 1700000000000, pend = (o) => JSON.stringify(Object.assign({ step:"code", email:"a@b.fr", sentAt:nowT-120000 }, o));
+  assertEqual("reprise : étape « code » récente reprise", pendingAuthFrom(pend(), nowT), { step:"code", email:"a@b.fr", sentAt:nowT-120000 });
+  assertEqual("reprise : étape « mot de passe oublié » reprise", pendingAuthFrom(pend({ step:"reset" }), nowT).step, "reset");
+  assertEqual("reprise : plus d'une heure -> ignorée", pendingAuthFrom(pend({ sentAt:nowT-3700000 }), nowT), null);
+  assertEqual("reprise : date dans le futur -> ignorée", pendingAuthFrom(pend({ sentAt:nowT+3600000 }), nowT), null);
+  assertEqual("reprise : étape inconnue ou adresse invalide -> ignorée", [pendingAuthFrom(pend({ step:"signin" }), nowT), pendingAuthFrom(pend({ email:"abc" }), nowT)], [null, null]);
+  assertEqual("reprise : texte abîmé ou vide -> ignoré", [pendingAuthFrom("{pas du json", nowT), pendingAuthFrom(null, nowT), pendingAuthFrom("null", nowT)], [null, null, null]);
+  assertEqual("reprise : le mot de passe et le code ne sont jamais gardés", Object.keys(pendingAuthFrom(pend({ password:"secret", code:"123456" }), nowT)).sort(), ["email", "sentAt", "step"]);
+  const ctxSafari = detectInstallContext(UA.safari, false, 5);
+  assertEqual("premier écran : installation, sauf en pleine inscription ou une fois écarté ou sur ordinateur",
+    [authEntryView(ctxSafari, false, false), authEntryView(ctxSafari, false, true), authEntryView(ctxSafari, true, false), authEntryView(detectInstallContext(UA.mac, false, 0), false, false)], ["install", "auth", "auth", "auth"]);
 }
 
 document.getElementById("summary").innerHTML =

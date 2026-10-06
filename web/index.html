@@ -1282,17 +1282,36 @@ const auth = { step:"signin", email:"", password:"", code:"", notice:"", error:"
 const AUTH_ICON_MAIL = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`;
 const AUTH_ICON_LOCK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
 let authTimer = null;
+// Adresse où mène un lien de Supabase : sans elle, Supabase renvoie vers le domaine seul (https://alemomar.github.io/), page 404.
+const authRedirectUrl = () => location.origin + location.pathname;
 const authAttr = (t) => escHtml(t).replace(/"/g, "&quot;");     // pour value="…" : escHtml ne protège pas les guillemets
 function isStandalone(){
   try{ return window.navigator.standalone===true || window.matchMedia("(display-mode: standalone)").matches; }catch(e){ return false; }
 }
 // Premier écran quand personne n'est connecté : « Installe l'app » (iPhone ou iPad, hors de l'app installée, tant qu'on ne l'a
 // pas écarté), sinon la connexion (D99).
+const AUTH_PENDING_KEY = "mra_authPending";
+function clearAuthPending(){ try{ localStorage.removeItem(AUTH_PENDING_KEY); }catch(e){} }
+// Étape « code » ou « mot de passe oublié » écrite à chaque affichage, pour être reprise si l'app est rechargée pendant qu'on lit son e-mail.
+function savePendingAuth(){
+  try{
+    if((auth.step==="code" || auth.step==="reset") && auth.sentAt>0 && validEmail(auth.email)) localStorage.setItem(AUTH_PENDING_KEY, JSON.stringify({ step:auth.step, email:auth.email.trim(), sentAt:auth.sentAt }));
+    else localStorage.removeItem(AUTH_PENDING_KEY);
+  }catch(e){}
+}
+function restoreAuthPending(){
+  let raw = null; try{ raw = localStorage.getItem(AUTH_PENDING_KEY); }catch(e){}
+  const p = pendingAuthFrom(raw, Date.now());
+  if(!p){ if(raw) clearAuthPending(); return false; }
+  Object.assign(auth, { step:p.step, email:p.email, sentAt:p.sentAt, code:"", password:"", error:"", notice:"", verified:false });
+  return true;
+}
 function showAuthEntry(){
   document.getElementById("appView").style.display = "none";
   let skipped = false; try{ skipped = localStorage.getItem("mra_installSkipped")==="1"; }catch(e){}
+  const pending = restoreAuthPending();
   const ctx = detectInstallContext(navigator.userAgent, isStandalone(), navigator.maxTouchPoints);
-  if(shouldShowInstall(ctx, skipped)) showInstall(ctx); else showAuth();
+  if(authEntryView(ctx, skipped, pending)==="install") showInstall(ctx); else showAuth();
 }
 function installHTML(g){
   const steps = g.steps.map((st,i)=>`<div class="in-step"><span class="ic">${icon(st.icon,22)}</span><div><span class="k">Étape ${i+1}</span><b>${escHtml(st.title)}</b><small>${escHtml(st.hint)}</small></div></div>`).join("");
@@ -1327,7 +1346,7 @@ function authPasswordField(ac, ph){
   return `<div class="field">${AUTH_ICON_LOCK}<input id="authPassword" type="password" placeholder="${ph}" aria-label="${ph}" autocomplete="${ac}" value="${authAttr(auth.password)}" oninput="authSet('password', this.value)" onkeydown="authKey(event)"></div>`;
 }
 function authOtpField(){
-  return `<div class="field otp"><input id="authOtp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="······" aria-label="Code à 6 chiffres" value="${authAttr(auth.code)}" oninput="authOtpInput(this)" onkeydown="authKey(event)"></div>`;
+  return `<div class="field otp"><input id="authOtp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10" autocomplete="one-time-code" placeholder="······" aria-label="Code reçu par e-mail" value="${authAttr(auth.code)}" oninput="authOtpInput(this)" onkeydown="authKey(event)"></div>`;
 }
 function renderAuth(){
   const body = document.getElementById("authBody"); if(!body) return;
@@ -1346,18 +1365,19 @@ function renderAuth(){
   } else if(st==="code"){
     const sent = auth.sentAt>0;
     html = `<div class="auth-h">Vérifie ta boîte mail</div>
-      <div class="auth-p">${sent ? `On a envoyé un code à 6 chiffres à <b>${escHtml(auth.email)}</b>. Recopie-le ici, et pense à regarder tes courriers indésirables.` : `L'adresse <b>${escHtml(auth.email)}</b> n'est pas encore confirmée. Entre le code reçu par e-mail, ou demande-en un nouveau.`}</div>
+      <div class="auth-p">${sent ? `On a envoyé un code à <b>${escHtml(auth.email)}</b>. Recopie-le ici, et pense à regarder tes courriers indésirables.` : `L'adresse <b>${escHtml(auth.email)}</b> n'est pas encore confirmée. Entre le code reçu par e-mail, ou demande-en un nouveau.`}</div>
       ${authOtpField()}${btn("Valider")}${msgs}
       <button type="button" class="auth-link" id="authResendBtn" onclick="authResend()"${dis}></button>
-      <button type="button" class="auth-link quiet" onclick="authGo('signup')">Changer d'adresse</button>`;
+      <button type="button" class="auth-link quiet" onclick="authGo('signup')">Changer d'adresse</button>
+      <button type="button" class="auth-link quiet" onclick="authGo('signin')">Mon adresse est déjà confirmée : me connecter</button>`;
   } else if(st==="forgot"){
     html = `<div class="auth-h">Mot de passe oublié</div>
-      <div class="auth-p">Entre ton adresse e-mail : on t'envoie un code à 6 chiffres pour choisir un nouveau mot de passe.</div>
+      <div class="auth-p">Entre ton adresse e-mail : on t'envoie un code pour choisir un nouveau mot de passe.</div>
       ${authEmailField("username")}${btn("Recevoir le code")}${msgs}
       <button type="button" class="auth-link" onclick="authGo('signin')">Retour à la connexion</button>`;
   } else {
     html = `<div class="auth-h">Nouveau mot de passe</div>
-      <div class="auth-p">${auth.verified ? "Code accepté. Choisis ton nouveau mot de passe." : `Si un compte existe avec <b>${escHtml(auth.email)}</b>, un code à 6 chiffres vient d'être envoyé. Recopie-le, puis choisis ton nouveau mot de passe.`}</div>
+      <div class="auth-p">${auth.verified ? "Code accepté. Choisis ton nouveau mot de passe." : `Si un compte existe avec <b>${escHtml(auth.email)}</b>, un code vient d'être envoyé. Recopie-le, puis choisis ton nouveau mot de passe.`}</div>
       ${auth.verified ? "" : authOtpField()}${authPasswordField("new-password", "Nouveau mot de passe")}
       <div class="auth-hint">6 caractères minimum.</div>
       ${btn("Changer le mot de passe")}${msgs}
@@ -1365,11 +1385,11 @@ function renderAuth(){
       <button type="button" class="auth-link quiet" onclick="authGo('signin')">Retour à la connexion</button>`;
   }
   body.innerHTML = html;
-  updateResendLabel(); manageAuthTimer();
+  updateResendLabel(); manageAuthTimer(); savePendingAuth();
   // Le clavier numérique s'ouvre tout de suite sur l'étape « code » ; sinon on ne force rien (pas de clavier au chargement).
   const focusId = (st==="code" || st==="reset") ? (auth.verified ? "authPassword" : "authOtp") : (st==="forgot" && !auth.email ? "authEmail" : "");
   const f = focusId && document.getElementById(focusId);
-  if(f && !auth.busy) f.focus();
+  if(f && !auth.busy){ f.focus(); if(auth.error && focusId==='authOtp' && f.select) f.select(); }      // après une erreur, taper remplace le code
 }
 function updateResendLabel(){
   const b = document.getElementById("authResendBtn"); if(!b) return;
@@ -1385,10 +1405,17 @@ function manageAuthTimer(){
 const authClearError = () => { if(auth.error){ auth.error = ""; const e = document.getElementById("authError"); if(e) e.textContent = ""; } };
 window.authSet = (field, value) => { auth[field] = value; authClearError(); };
 window.authKey = (ev) => { if(ev.key==="Enter"){ ev.preventDefault(); authSubmit(); } };
-// Le code se valide tout seul au 6e chiffre (sauf sur « nouveau mot de passe », où il faut aussi le mot de passe).
+// Le code se valide tout seul après une courte pause dès qu'il a au moins 6 chiffres (Supabase en envoie 6, ou 8 selon son réglage),
+// sauf sur « nouveau mot de passe », où il faut aussi le mot de passe.
+const OTP_AUTO_SUBMIT_MS = 450;
+let authOtpTimer = null;
 window.authOtpInput = (el) => {
   auth.code = cleanOtp(el.value); el.value = auth.code; authClearError();
-  if(auth.step==="code" && otpComplete(auth.code) && !auth.busy) authSubmit();
+  clearTimeout(authOtpTimer);
+  if(auth.step==="code" && otpComplete(auth.code) && !auth.busy){
+    const typed = auth.code;
+    authOtpTimer = setTimeout(()=>{ if(auth.step==="code" && auth.code===typed && !auth.busy) authSubmit(); }, OTP_AUTO_SUBMIT_MS);
+  }
 };
 window.authGo = (step) => {
   Object.assign(auth, { step, error:"", notice:"", code:"", verified:false });
@@ -1397,7 +1424,7 @@ window.authGo = (step) => {
 };
 async function authDone(){
   Object.assign(auth, { step:"signin", password:"", code:"", error:"", notice:"", busy:false, verified:false, sentAt:0 });
-  manageAuthTimer();
+  clearAuthPending(); manageAuthTimer();
   await boot();
 }
 window.authSubmit = async () => {
@@ -1419,7 +1446,7 @@ window.authSubmit = async () => {
   if(st==="signup"){
     if(auth.password.length<6) return stop("Choisis un mot de passe d'au moins 6 caractères.");
     auth.busy = true; renderAuth();
-    const { data, error } = await supa.auth.signUp({ email, password:auth.password });
+    const { data, error } = await supa.auth.signUp({ email, password:auth.password, options:{ emailRedirectTo:authRedirectUrl() } });
     auth.busy = false;
     const out = signUpOutcome(data, error);
     if(out==="error") return stop(authErrorInfo(error).text);
@@ -1429,7 +1456,7 @@ window.authSubmit = async () => {
     return renderAuth();
   }
   if(st==="code"){
-    if(!otpComplete(auth.code)) return stop("Entre les 6 chiffres du code.");
+    if(!otpComplete(auth.code)) return stop("Entre le code reçu par e-mail.");
     auth.busy = true; renderAuth();
     let res = await supa.auth.verifyOtp({ email, token:auth.code, type:"email" });
     if(res.error) res = await supa.auth.verifyOtp({ email, token:auth.code, type:"signup" });
@@ -1439,7 +1466,7 @@ window.authSubmit = async () => {
       if(!si.error) res = si;
     }
     auth.busy = false;
-    if(res.error){ auth.code = ""; return stop(authErrorInfo(res.error).text); }
+    if(res.error) return stop(authErrorInfo(res.error).text);
     return authDone();
   }
   if(st==="forgot"){
@@ -1451,12 +1478,12 @@ window.authSubmit = async () => {
     return renderAuth();
   }
   if(st==="reset"){
-    if(!auth.verified && !otpComplete(auth.code)) return stop("Entre les 6 chiffres du code.");
+    if(!auth.verified && !otpComplete(auth.code)) return stop("Entre le code reçu par e-mail.");
     if(auth.password.length<6) return stop("Choisis un mot de passe d'au moins 6 caractères.");
     auth.busy = true; renderAuth();
     if(!auth.verified){
       const v = await supa.auth.verifyOtp({ email, token:auth.code, type:"recovery" });
-      if(v.error){ auth.code = ""; return stop(authErrorInfo(v.error).text); }
+      if(v.error) return stop(authErrorInfo(v.error).text);
       auth.verified = true;
     }
     const u = await supa.auth.updateUser({ password:auth.password });
@@ -1471,7 +1498,7 @@ window.authResend = async () => {
   if(wait>0){ auth.error = `Patiente ${wait} secondes avant de redemander un code.`; return renderAuth(); }
   const email = auth.email.trim();
   auth.error = ""; auth.notice = ""; auth.busy = true; renderAuth();
-  const { error } = auth.step==="reset" ? await supa.auth.resetPasswordForEmail(email) : await supa.auth.resend({ type:"signup", email });
+  const { error } = auth.step==="reset" ? await supa.auth.resetPasswordForEmail(email) : await supa.auth.resend({ type:"signup", email, options:{ emailRedirectTo:authRedirectUrl() } });
   auth.busy = false;
   if(error){
     const info = authErrorInfo(error);

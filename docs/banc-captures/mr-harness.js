@@ -43,9 +43,9 @@
       const ok = (data) => ({ data:data||{}, error:null }), ko = (message, code) => ({ data:{}, error:{ message, code } });
       let sc = {}, booted = 0;
       supa.auth.signInWithPassword = async () => { calls.push("signIn"); return sc.signIn ? sc.signIn() : ok({ session:{} }); };
-      supa.auth.signUp = async () => { calls.push("signUp"); return sc.signUp || ok({ session:null, user:{ identities:[{}] } }); };
-      supa.auth.verifyOtp = async (a) => { calls.push("verify:"+a.type); return sc.verify ? sc.verify(a) : ok({ session:{} }); };
-      supa.auth.resend = async () => { calls.push("resend"); return ok(); };
+      supa.auth.signUp = async (a) => { calls.push("signUp"); window.__lastSignUp = a; return sc.signUp || ok({ session:null, user:{ identities:[{}] } }); };
+      supa.auth.verifyOtp = async (a) => { calls.push("verify:"+a.type); window.__lastToken = a.token; return sc.verify ? sc.verify(a) : ok({ session:{} }); };
+      supa.auth.resend = async (a) => { calls.push("resend"); window.__lastResend = a; return ok(); };
       supa.auth.resetPasswordForEmail = async () => { calls.push("reset"); return ok(); };
       supa.auth.updateUser = async () => { calls.push("update"); return sc.update ? sc.update() : ok({ user:{} }); };
       window.boot = async () => { booted++; };
@@ -62,7 +62,7 @@
       go({ step:"signin", email:"abc" }); await authSubmit();
       check("connexion : adresse invalide, aucun appel", auth.error==="Entre une adresse e-mail valide." && calls.length===0, auth.error);
       go({ step:"signup" }); await authSubmit();
-      check("inscription : un code est envoyé -> étape code", auth.step==="code" && auth.sentAt>0 && calls.join()==="signUp", auth.step+" "+calls.join());
+      check("inscription : un code est envoyé -> étape code, avec l'adresse de retour explicite", auth.step==="code" && auth.sentAt>0 && calls.join()==="signUp" && window.__lastSignUp.options.emailRedirectTo===location.origin+location.pathname, auth.step+" "+calls.join());
       go({ step:"signup", password:"abc" }); await authSubmit();
       check("inscription : mot de passe trop court, aucun appel", auth.error==="Choisis un mot de passe d'au moins 6 caractères." && calls.length===0, auth.error);
       go({ step:"signup" }, { signUp:ok({ session:null, user:{ identities:[] } }) }); await authSubmit();
@@ -72,17 +72,29 @@
       go({ step:"code", code:"123456", sentAt:Date.now() }); await authSubmit();
       check("code juste -> on entre", booted===1 && calls.join()==="verify:email", calls.join());
       go({ step:"code", code:"000000", sentAt:Date.now() }, { verify:bad, signIn:notConf }); await authSubmit();
-      check("code faux -> message clair, rien d'autre", booted===0 && /Code incorrect ou expiré/.test(auth.error) && calls.join()==="verify:email,verify:signup,signIn" && auth.code==="", calls.join()+" | "+auth.error);
+      check("code faux -> message clair, le code reste affiché pour être corrigé", booted===0 && /Code incorrect ou expiré/.test(auth.error) && calls.join()==="verify:email,verify:signup,signIn" && auth.code==="000000", calls.join()+" | "+auth.error);
       go({ step:"code", code:"000000", sentAt:Date.now() }, { verify:bad }); await authSubmit();
       check("code faux mais adresse déjà confirmée par le lien -> on entre avec le mot de passe", booted===1 && calls.join()==="verify:email,verify:signup,signIn", calls.join());
       go({ step:"code", code:"123", sentAt:Date.now() }); await authSubmit();
-      check("code incomplet, aucun appel", auth.error==="Entre les 6 chiffres du code." && calls.length===0, auth.error);
-      go({ step:"code", sentAt:Date.now() }); { const el = document.getElementById("authOtp"); el.value = "12-34 56"; authOtpInput(el); await sleep(80); }
-      check("le 6e chiffre valide tout seul (tirets et espaces ignorés)", booted===1 && auth.code==="" && calls.join()==="verify:email", calls.join());
+      check("code incomplet, aucun appel", auth.error==="Entre le code reçu par e-mail." && calls.length===0, auth.error);
+      go({ step:"code", sentAt:Date.now() }); { const el = document.getElementById("authOtp"); el.value = "12-34 56"; authOtpInput(el); await sleep(700); }
+      check("le code se valide tout seul après une courte pause (tirets et espaces ignorés)", booted===1 && calls.join()==="verify:email" && window.__lastToken==="123456", calls.join()+" "+window.__lastToken);
+      go({ step:"code", sentAt:Date.now() }); { const el = document.getElementById("authOtp"); for(const v of ["9314", "931402", "93140242"]){ el.value = v; authOtpInput(el); await sleep(120); } await sleep(700); }
+      check("code de 8 chiffres tapé chiffre après chiffre : une seule validation, avec les 8 chiffres", booted===1 && calls.join()==="verify:email" && window.__lastToken==="93140242", calls.join()+" "+window.__lastToken);
+      go({ step:"code", code:"123456", sentAt:Date.now() - 30000 });
+      { const saved = localStorage.getItem("mra_authPending");
+        Object.assign(auth, { step:"signin", email:"", password:"", code:"", sentAt:0, notice:"", error:"" });          // « rechargement » de l'app
+        const repris = restoreAuthPending(); showAuth();
+        check("rechargement en pleine inscription : l'étape « code » est reprise, sans mot de passe ni code gardés", repris && auth.step==="code" && auth.email==="test@exemple.fr" && !!saved && !/motdepasse|123456/.test(saved), String(saved)); }
+      localStorage.setItem("mra_authPending", JSON.stringify({ step:"code", email:"test@exemple.fr", sentAt:Date.now()-4000000 }));
+      Object.assign(auth, { step:"signin", email:"", sentAt:0 });
+      check("reprise ignorée au-delà d'une heure (et effacée)", restoreAuthPending()===false && auth.step==="signin" && localStorage.getItem("mra_authPending")===null, auth.step);
+      go({ step:"code", code:"123456", sentAt:Date.now() }); await authSubmit();
+      check("après une connexion réussie, plus rien n'est gardé dans le stockage", booted===1 && localStorage.getItem("mra_authPending")===null, String(localStorage.getItem("mra_authPending")));
       go({ step:"code", sentAt:Date.now()-10000 }); await authResend();
       check("renvoi trop tôt : on patiente, aucun appel", /^Patiente \d+ secondes/.test(auth.error) && calls.length===0, auth.error);
       go({ step:"code", sentAt:Date.now()-61000 }); await authResend();
-      check("renvoi après 60 s : nouveau code", calls.join()==="resend" && auth.notice==="Nouveau code envoyé." && resendWait(auth.sentAt, Date.now())>55, calls.join()+" "+auth.notice);
+      check("renvoi après 60 s : nouveau code, avec l'adresse de retour explicite", calls.join()==="resend" && auth.notice==="Nouveau code envoyé." && resendWait(auth.sentAt, Date.now())>55 && window.__lastResend.options.emailRedirectTo===location.origin+location.pathname, calls.join()+" "+auth.notice);
       go({ step:"forgot" }); await authSubmit();
       check("mot de passe oublié -> étape code, mot de passe vidé", auth.step==="reset" && calls.join()==="reset" && auth.password==="" && auth.sentAt>0, auth.step+" "+calls.join());
       go({ step:"reset", code:"123456", password:"nouveau1" }); await authSubmit();
