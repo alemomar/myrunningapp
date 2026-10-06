@@ -513,7 +513,8 @@
     refreshSheet();
   } else if(/^visite_[1-4]$/.test(scen)){
     // S17 (lot 3, D105) : visite guidée après le parcours, bulle N sur le vrai écran
-    celebrationOff(); plannedSessions=[...wkSessions, ...future];
+    // L'écran est dessiné avant, comme dans l'app (renderApp dessine puis lance la visite).
+    celebrationOff(); plannedSessions=[...wkSessions, ...future]; show("aujourdhui");
     startTour(); tour.step = Number(scen.slice(-1))-1; tourShowStep();
   } else if(scen.startsWith("onboarding")){
     RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbRestarting=false; onbConnect=false;
