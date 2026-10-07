@@ -795,6 +795,22 @@ function efQualitatif(hrSeries, maxHr, restingHr){
   const lowZone = secs[0]+secs[1];
   return lowZone/total > 0.7;
 }
+/* ---------- Suggestion du « Détail cardio » (C9, 07/10/2026) ----------
+   Rejouée sur les vraies séances d'Omar et de Leïla (291 avec FC) : l'ancienne règle proposait 63 reclassements, presque
+   tous faux : « Fractionné ? » sur 22 renfos, marches et autres activités, « Zone haute ? » sur 5 vrais fractionnés et sur
+   des EF tranquilles (les zones dépendent d'une FC max souvent estimée). On ne propose plus que « Fractionné », seulement
+   sur une course classée EF, Long ou Récup et jamais vérifiée par l'utilisateur, quand la FC oscille (looksLikeFractionne)
+   ET que l'allure confirme au moins 3 blocs rapides, 60 s/km ou plus plus rapides que la récupération (vrais fractionnés :
+   ~5 min/km d'écart ; sorties vallonnées : 25 à 80 s). Le « Seuil » est laissé à la carte « Vérifions N sorties » (D109),
+   fondée sur l'allure. `run` : { appleType, type, typeChecked, hrSeries, paceSeries }. */
+const CARDIO_SUGGEST_TYPES = ["EF","Long","Récup"], CARDIO_MIN_WORK = 3, CARDIO_MIN_GAP = 60;
+function cardioTypeSuggestion(run){
+  if(!run || run.appleType!=="Running" || run.typeChecked || !CARDIO_SUGGEST_TYPES.includes(run.type)) return null;
+  if(!looksLikeFractionne(run.hrSeries)) return null;
+  const ip = run.paceSeries && run.paceSeries.length ? computeIntervalPaces(run.paceSeries) : null;
+  if(!ip || !(ip.workCount>=CARDIO_MIN_WORK) || !(ip.recovery-ip.work>=CARDIO_MIN_GAP)) return null;
+  return "Fractionné";
+}
 function classifyRunType(distanceKm, hrSeries, maxHr, restingHr){
   if(looksLikeFractionne(hrSeries)) return {type:"Fractionné", qualitatif:true};
   if(looksLikeSeuil(hrSeries, maxHr, restingHr)) return {type:"Seuil", qualitatif:true};

@@ -1170,7 +1170,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=94"></script>
+<script src="logic.js?v=95"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -4274,8 +4274,7 @@ function cardioCardHTML(r, effMaxHr, effRestingHr){
   if(!effMaxHr) return `<div class="cd-note">Renseigne ta FC max (Profil › Mon compte) pour voir la répartition par zones.</div>`;
   const { secs, defs } = computeHrZoneSeconds(r.hrSeries, effMaxHr, effRestingHr);
   const total = secs.reduce((a,b)=>a+b,0)||1;
-  const flagFrac = r.type!=="Fractionné" && looksLikeFractionne(r.hrSeries);
-  const flagSeuil = !flagFrac && r.type!=="Seuil" && looksLikeSeuil(r.hrSeries, effMaxHr, effRestingHr);
+  const flagFrac = cardioTypeSuggestion(r)==="Fractionné";   // C9 : seule suggestion gardée, FC et allure qui alternent
   const ip = r.type==="Fractionné" ? getIntervalPaces(r) : null;
   const W = 320;
   const tiles = r.fc ? `<div class="sc-tiles2" style="margin:0">${scTile("FC moy.", Math.round(r.fc), "var(--data-coral)")}${r.peakHr?scTile("FC max", r.peakHr, "var(--data-coral)"):""}</div>` : "";
@@ -4285,8 +4284,7 @@ function cardioCardHTML(r, effMaxHr, effRestingHr){
     <div>${defs.map((d,i)=>`<div class="cd-zone"><span class="z"><i style="background:${d.color}"></i>Z${d.zone}</span><div class="bar"><i style="width:${Math.round(secs[i]/total*100)}%;background:${d.color}"></i></div><span class="t">${fmtDur(secs[i])}</span></div>`).join("")}</div>
     ${!effRestingHr ? `<div class="cd-note">Zones calculées avec ta FC max seulement. Renseigne ta FC de repos (Profil › Mon compte) pour coller à l'app Santé.</div>` : ""}
     ${ip && (ip.manual || ip.workCount>=2) ? `<div class="cd-pace"><div><div class="k">Allure travail ${ip.manual?"(manuel)":`(${ip.workCount})`}</div><div class="v" style="color:var(--accent)">${fmtA(ip.work)}/km</div></div>${ip.recovery?`<div><div class="k">Allure récup ${ip.manual?"(manuel)":`(${ip.recoveryCount})`}</div><div class="v" style="color:var(--text-3)">${fmtA(ip.recovery)}/km</div></div>`:""}</div>` : ""}
-    ${flagFrac ? `<div class="cd-flag">La FC oscille beaucoup sur cette séance : ça ressemble à un fractionné.<div><button type="button" class="btn-secondary" onclick="changeType('${r.id}','Fractionné')">Reclasser en Fractionné</button></div></div>` : ""}
-    ${flagSeuil ? `<div class="cd-flag">Plus de la moitié de cette séance est passée en zones 3 à 5 : ça ressemble à du Seuil.<div><button type="button" class="btn-secondary" onclick="changeType('${r.id}','Seuil')">Reclasser en Seuil</button></div></div>` : ""}
+    ${flagFrac ? `<div class="cd-flag">Ta FC et ton allure alternent des blocs rapides et des récupérations : ça ressemble à un fractionné.<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-secondary" onclick="changeType('${r.id}','Fractionné')">Reclasser en Fractionné</button><button type="button" class="btn-secondary" onclick="changeType('${r.id}','${r.type}')">Garder ${escHtml(r.type)}</button></div></div>` : ""}
   </div>`;
 }
 
@@ -4303,9 +4301,8 @@ function soonCard(iconName,title,sub){
 function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
   if(!r.hrSeries || r.hrSeries.length<2) return "";
   const open = openHrDetail.has(r.id);
-  const flagFrac = r.type!=="Fractionné" && looksLikeFractionne(r.hrSeries);
-  const flagSeuil = !flagFrac && r.type!=="Seuil" && looksLikeSeuil(r.hrSeries, effMaxHr, effRestingHr);
-  return `<button type="button" class="cd-row" aria-expanded="${open}" onclick="toggleHrDetail('${r.id}')"><span class="cd-label"><span class="cd-heart" aria-hidden="true">${icon("heart",16)}</span>Détail cardio</span>${flagFrac?`<span class="tag">Fractionné détecté ?</span>`:flagSeuil?`<span class="tag">Zone haute ?</span>`:""}<span class="chev">${icon(open?"chevronUp":"chevronDown",18)}</span></button>
+  const flagFrac = cardioTypeSuggestion(r)==="Fractionné";
+  return `<button type="button" class="cd-row" aria-expanded="${open}" onclick="toggleHrDetail('${r.id}')"><span class="cd-label"><span class="cd-heart" aria-hidden="true">${icon("heart",16)}</span>Détail cardio</span>${flagFrac?`<span class="tag">Fractionné détecté ?</span>`:""}<span class="chev">${icon(open?"chevronUp":"chevronDown",18)}</span></button>
     ${open?`<div class="${justOpenedKey==="hr_"+r.id?"expand-in":""}">${cardioCardHTML(r, effMaxHr, effRestingHr)}</div>`:""}`;
 }
 

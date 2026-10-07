@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=94"></script>
+<script src="logic.js?v=95"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -420,6 +420,25 @@ try {
   assertEqual("E8 : reprise après 2 semaines de pause -> charge basse (pas d'alerte)", acwrAt([14,16,18,21,23,25,0].map(n=>day(n)), target).acwr<0.8, true);
   assertEqual("E8 : moins de 4 jours notés sur 28 jours -> pas de charge", acwrAt([0,10,22].map(n=>day(n)), target).acwr, null);
   assertEqual("E8 : nombre de jours notés renvoyé", acwrAt([0,2,4,30].map(n=>day(n)), target).ratedDays28, 3);
+}
+
+// --- Suggestion du « Détail cardio » (C9, 07/10/2026) ---
+{
+  const hrOsc = []; for(let t=0;t<=2000;t+=15){ const ph=(t%250)/250; hrOsc.push({t, hr: Math.round(155 + Math.sin(ph*2*Math.PI-Math.PI/2)*25)}); }
+  const hrFlat = []; for(let t=0;t<=2000;t+=15) hrFlat.push({t, hr:145});
+  const paceInt = []; { let t=0; for(let c=0;c<7;c++){ for(let s=0;s<120;s+=5) paceInt.push({t:t+s, pace:270}); t+=120; for(let s=0;s<120;s+=5) paceInt.push({t:t+s, pace:560}); t+=120; } }
+  const paceHills = []; { let t=0; for(let c=0;c<7;c++){ for(let s=0;s<120;s+=5) paceHills.push({t:t+s, pace:390}); t+=120; for(let s=0;s<120;s+=5) paceHills.push({t:t+s, pace:420}); t+=120; } }
+  const run = (o) => ({ appleType:"Running", type:"EF", typeChecked:false, hrSeries:hrOsc, paceSeries:paceInt, ...o });
+  assertEqual("C9 : EF où FC et allure alternent nettement -> « Fractionné »", cardioTypeSuggestion(run({})), "Fractionné");
+  assertEqual("C9 : sortie longue aussi", cardioTypeSuggestion(run({ type:"Long" })), "Fractionné");
+  assertEqual("C9 : renfo (FC qui oscille) -> rien", cardioTypeSuggestion(run({ appleType:"TraditionalStrengthTraining", type:"Renfo", paceSeries:null })), null);
+  assertEqual("C9 : marche -> rien", cardioTypeSuggestion(run({ appleType:"Walking", type:"Marche" })), null);
+  assertEqual("C9 : déjà un fractionné -> rien (plus de « Zone haute »)", cardioTypeSuggestion(run({ type:"Fractionné" })), null);
+  assertEqual("C9 : course officielle -> rien", cardioTypeSuggestion(run({ type:"Course" })), null);
+  assertEqual("C9 : type vérifié par l'utilisateur -> rien", cardioTypeSuggestion(run({ typeChecked:true })), null);
+  assertEqual("C9 : FC régulière -> rien", cardioTypeSuggestion(run({ hrSeries:hrFlat })), null);
+  assertEqual("C9 : sortie vallonnée (30 s/km d'écart) -> rien", cardioTypeSuggestion(run({ paceSeries:paceHills })), null);
+  assertEqual("C9 : allure absente, impossible de confirmer -> rien", cardioTypeSuggestion(run({ paceSeries:null })), null);
 }
 
 // --- Données à jour sans fermer l'app (E1, 07/10/2026) ---
