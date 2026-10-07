@@ -703,6 +703,19 @@ button.pg-rec-row{cursor:pointer}
 .ac-head{display:flex;align-items:center;gap:10px}
 .ac-head .ic{width:32px;height:32px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center}
 .ac-title{font:700 23px/1.15 var(--font-display);text-transform:uppercase}
+/* Carte « Vérifions N sorties » (D109) : une ligne par sortie, les types en une touche, le type probable en citron. */
+.vf-sub{font-size:14px;line-height:1.45;color:var(--text-2)}
+.vf-list{display:flex;flex-direction:column;gap:10px}
+.vf-item{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:var(--r-md);background:var(--surface-sunken);transition:opacity .2s}
+.vf-item.busy{opacity:.45;pointer-events:none}
+.vf-hd{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.vf-hd .d{font-size:14.5px;font-weight:600;color:var(--text)}
+.vf-hd .m{font-size:13.5px;color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.vf-why{font-size:13px;line-height:1.4;color:var(--text-3)}
+.vf-chips{display:flex;flex-wrap:wrap;gap:6px}
+.vf-chip{min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line-field);background:var(--surface-control);color:var(--text);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+.vf-chip.sugg{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.vf-more{font-size:12.5px;color:var(--text-muted);text-align:center}
 .ac-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .ac-tile{background:var(--surface-sunken);border-radius:var(--r-md);padding:10px 12px;min-width:0}
 .ac-tile .k{font-size:11px;color:var(--text-muted);text-transform:uppercase}
@@ -1149,7 +1162,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=90"></script>
+<script src="logic.js?v=92"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1292,6 +1305,7 @@ function mapRow(r){
     lapMarkers: r.lap_markers || null,
     fracWorkManual: r.frac_work_manual || null,
     fracRecoveryManual: r.frac_recovery_manual || null,
+    typeChecked: r.type_checked === true,   // D109 : type choisi ou confirmé par l'utilisateur
   };
 }
 
@@ -1581,6 +1595,15 @@ function persistActiveTab(){
   try{ localStorage.setItem("mra_activeTab", activeTab); }catch(e){}
 }
 let RUNS = [], runningRuns=[], efRuns=[], fracRuns=[], activeTab=initialActiveTab(), activeGoalSlot="principal";
+// Carte « Vérifions N sorties » (D109) : courses au type douteux, pas encore vérifiées (doubtfulRuns, logic.js). Tant
+// qu'elles ne le sont pas, elles restent hors des records et de la courbe d'endurance.
+let doubtList = [], doubtIds = new Set();
+function refreshDoubts(){
+  doubtList = doubtfulRuns(RUNS.map(r => ({ id:r.id, ts:dateFromRun(r).getTime(), appleType:r.appleType, type:r.type, dist:r.dist,
+    durationSec:r.durationSec, blocks:Array.isArray(r.lapMarkers) ? r.lapMarkers.length : 0, typeChecked:r.typeChecked })));
+  doubtIds = new Set(doubtList.map(d => d.id));
+}
+const recordRuns = () => runningRuns.filter(r => !doubtIds.has(r.id));
 let syncSinceDate = null, userEmail = "", userId = "", userCreatedAt = null, goals = {}, maxHr = null, restingHr = null, restingHrUpdatedAt = null, restingHrIsManual = false, avatarUrl = null;
 let vo2Max = null, vo2MaxUpdatedAt = null, vo2MaxIsManual = false;
 let onboardingCompletedAt = null;
@@ -1672,7 +1695,8 @@ async function loadData() {
   loadError = ""; loadedOnce = true;
   RUNS = (data || []).map(mapRow);
   runningRuns = RUNS.filter(r=>r.includeInStats);
-  efRuns = runningRuns.filter(r=>r.type==="EF");
+  refreshDoubts();
+  efRuns = runningRuns.filter(r=>r.type==="EF" && !doubtIds.has(r.id));   // une sortie à vérifier reste hors de la courbe d'endurance (D109)
   fracRuns = runningRuns.filter(r=>r.type==="Fractionné");
 
   const { data: { user } } = await supa.auth.getUser();
@@ -2198,7 +2222,7 @@ window.changeType = async (id, newType) => {
   // D78 : quand le type passe de « course » à « non-course » (ou l'inverse), le défaut
   // « compter dans mes stats » suit ; entre deux types du même camp, le choix de l'utilisateur reste.
   const current = RUNS.find(r=>r.id===id);
-  const patch = { type: newType };
+  const patch = { type: newType, type_checked: true };   // type choisi = sortie vérifiée (D109)
   if(current && isRunningRunType(newType)!==isRunningRunType(current.type)) patch.include_in_stats = isRunningRunType(newType);
   if(!(await updateRun(id, patch))) return;
   await refreshAfterEdit();
@@ -2412,6 +2436,42 @@ function unlinkedRunDatesThisWeek(){
 // Rattachement (N2) : jusqu'à 3 séances proposées (±3 jours), la plus probable cochée d'avance.
 let attachChoice = {};   // id de la sortie → id de la séance cochée
 window.selectAttach = (runId, plannedId) => { attachChoice[runId] = plannedId; renderContent(); };
+// ---------- Carte « Vérifions N sorties » (lot 3, D109) ----------
+// Sur Aujourd'hui, après « Hier » : les courses au type douteux (doubtList), 5 à la fois, une touche par sortie. Toucher un
+// type, même celui déjà enregistré ou celui proposé, vérifie la sortie. La carte revient quand une synchro en apporte d'autres.
+const VERIFY_TYPES = ["EF","Long","Seuil","Course","Fractionné","Récup"];
+const VERIFY_BATCH = 5;
+function verifyCardHTML(){
+  if(!doubtList.length) return "";
+  const n = doubtList.length;
+  const items = doubtList.slice(0, VERIFY_BATCH).map(d => {
+    const r = RUNS.find(x=>x.id===d.id);
+    if(!r) return "";
+    const why = d.reason==="courte" ? "Très courte\u00a0: un échauffement, ou une sortie interrompue\u00a0?"
+      : `Plus rapide que d'habitude (${fmtA(Math.round(d.refPace))}/km)${d.race ? ", sur une distance de course" : ""}.`;
+    const chips = VERIFY_TYPES.map(t => `<button type="button" class="vf-chip${t===d.suggestion?" sugg":""}" aria-label="${escHtml(t)}${t===d.suggestion?" (proposé)":""}" onclick="verifyRun('${r.id}','${t}',this)">${escHtml(t)}</button>`).join("");
+    return `<div class="vf-item"><div class="vf-hd"><span class="d">${escHtml(dayLabelShort(dateFromRun(r)))}</span><span class="m">${fmtDec(r.dist,1)} km · ${fmtA(Math.round(d.pace))}/km</span></div>
+      <div class="vf-why">${escHtml(why)} Enregistrée en ${escHtml(r.type)}.</div><div class="vf-chips" role="group" aria-label="Type de la sortie">${chips}</div></div>`;
+  }).join("");
+  return `<div class="ac-card">
+    <div class="ac-head"><div class="ic">${icon("check",17)}</div><span class="pg-over">Tes données</span></div>
+    <div class="ac-title">Vérifions ${n} sortie${n>1?"s":""}</div>
+    <div class="vf-sub">L'app hésite sur leur type. Une touche par sortie&nbsp;: tes records et ta courbe d'endurance resteront justes.</div>
+    <div class="vf-list">${items}</div>
+    ${n>VERIFY_BATCH ? `<div class="vf-more">Encore ${n-VERIFY_BATCH} après celles-ci.</div>` : ""}
+  </div>`;
+}
+window.verifyRun = async (id, type, el) => {
+  const r = RUNS.find(x=>x.id===id);
+  if(!r) return;
+  const item = el && el.closest(".vf-item");
+  if(item) item.classList.add("busy");
+  const patch = { type, type_checked:true };
+  if(isRunningRunType(type)!==isRunningRunType(r.type)) patch.include_in_stats = isRunningRunType(type);   // comme changeType (D78)
+  if(!(await updateRun(id, patch))){ if(item) item.classList.remove("busy"); return; }
+  await refreshAfterEdit();
+  if(!doubtList.length) toast("Merci, toutes tes sorties sont vérifiées.");
+};
 function attachCardHTML(){
   const todayStr = localDateStr(new Date());
   const dismissed = new Set(lsJson("mra_notLinked", []));
@@ -2694,7 +2754,7 @@ function keyFiguresHTML(){
 }
 // « Tes records » : une ligne par distance (D26), les chronos déclarés à part en gris (jamais célébrés), meilleure allure fractionné dessous.
 function recordsCardHTML(){
-  const holders = recordHolders(runningRuns.map(runAsRecord));
+  const holders = recordHolders(recordRuns().map(runAsRecord));   // sans les sorties à vérifier (D109)
   const rows = recordsListModel(holders).map(r=>{
     const inner = `<span class="k">${escHtml(r.label)}</span><span class="d">${escHtml(r.dateText)}</span><span class="t${r.timeText?"":" none"}">${r.timeText||"—"}</span>`;
     return r.runId ? `<button type="button" class="pg-rec-row" onclick="openHistoryRun('${r.runId}')">${inner}</button>` : `<div class="pg-rec-row">${inner}</div>`;
@@ -3056,7 +3116,7 @@ function historyRowHTML(r, holders){
   </button>`;
 }
 function historyScreenHTML(){
-  const holders = recordHolders(runningRuns.map(runAsRecord));
+  const holders = recordHolders(recordRuns().map(runAsRecord));
   const byId = new Map(RUNS.map(r=>[r.id, r]));
   const list = RUNS.filter(r=>historyMatches(r, historyCat, historyType)).map(r=>({ id:r.id, ts:dateFromRun(r).getTime(), type:r.type, distKm:r.dist||0 }));
   const sp = historySplit(list, localDateStr(new Date()));
@@ -3109,7 +3169,7 @@ function renderRunSheet(){
   if(!r){ runSheet = null; return false; }
   const c = TC[r.type]||TC.Other, todayStr = localDateStr(new Date());
   const effMaxHr = maxHr || estimatedMaxHr();
-  const recs = r.includeInStats ? runRecordLabels(r.id, recordHolders(runningRuns.map(runAsRecord))) : [];
+  const recs = r.includeInStats ? runRecordLabels(r.id, recordHolders(recordRuns().map(runAsRecord))) : [];
   const linked = plannedSessions.filter(p=>p.linked_run_id===r.id && p.status==="done");
   const big = r.dist>0 ? { value:r.dist.toFixed(1).replace(".",","), unit:"km", note:"" } : { value:String(Math.round(r.durationSec/60)), unit:"min", note:"" };
   const tiles = [scTile("Durée", r.dur)];
@@ -5457,8 +5517,8 @@ function runAsRecord(r){
 function hierData(){
   const last = runningRuns[runningRuns.length-1];
   let records = [];
-  if(last && shouldCelebrateRun(dateFromRun(last).getTime(), Date.now(), last.id, celebratedRunIds())){
-    records = sortRecordsForHier(recordsForRun(runAsRecord(last), runningRuns.map(runAsRecord)));
+  if(last && !doubtIds.has(last.id) && shouldCelebrateRun(dateFromRun(last).getTime(), Date.now(), last.id, celebratedRunIds())){
+    records = sortRecordsForHier(recordsForRun(runAsRecord(last), recordRuns().map(runAsRecord)));   // pas de record fêté pour une sortie à vérifier (D109)
   }
   let lastEff = null; try{ lastEff = localStorage.getItem("mra_effCelebratedAt"); }catch(e){}
   const eff = efficiencyCelebration(efRuns.map(r=>({ date:localDateStr(dateFromRun(r)), allure:r.allure, fc:r.fc })), localDateStr(new Date()), lastEff);
@@ -5633,8 +5693,8 @@ function todayScreenHTML(){
   else body = restDayMessageHTML();
   // Une seule carte d'action sous la séance du jour (D11) ; le bandeau coach laisse la place aux
   // rappels de niveau quand la carte « Ton niveau » est déjà affichée (D53).
-  const cards = { merge_ask: mergeAskCardHTML(), attach: attachCardHTML(), hier: hierCardHTML(), objectif: objectiveChangedCardHTML(true), niveau: levelCardHTML() };
-  const picked = pickTodayActionCard({ merge_ask:!!cards.merge_ask, attach:!!cards.attach, hier:!!cards.hier, objectif:!!cards.objectif, niveau:!!cards.niveau });
+  const cards = { merge_ask: mergeAskCardHTML(), attach: attachCardHTML(), hier: hierCardHTML(), verifier: verifyCardHTML(), objectif: objectiveChangedCardHTML(true), niveau: levelCardHTML() };
+  const picked = pickTodayActionCard({ merge_ask:!!cards.merge_ask, attach:!!cards.attach, hier:!!cards.hier, verifier:!!cards.verifier, objectif:!!cards.objectif, niveau:!!cards.niveau });
   const need = levelNeed();
   const last = runningRuns[runningRuns.length-1];
   const reminder = coachReminder({

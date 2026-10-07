@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=90"></script>
+<script src="logic.js?v=92"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -761,6 +761,30 @@ try {
   ];
   assertEqual("« Tout est prêt » : prochaine séance prévue à partir d'aujourd'hui, la course avant le renfo le même jour (D108)", [nextPlannedSession(ps, "2026-10-07")?.id, nextPlannedSession(ps, "2026-10-06")?.id, nextPlannedSession(ps, "2026-10-11"), nextPlannedSession([], "2026-10-07"), nextPlannedSession(null, "2026-10-07")], ["c", "a", null, null, null]);
 }
+// ---------- Lot 3 : carte « Vérifions N sorties » (D109) ----------
+{
+  const day = (i) => Date.UTC(2026, 0, 1) + i*86400000;
+  const run = (i, dist, pace, extra) => ({ id:"r"+i, ts:day(i), appleType:"Running", type:"EF", dist, durationSec:dist*pace, blocks:0, typeChecked:false, ...(extra||{}) });
+  // un coureur qui progresse régulièrement (8'30 → 7'35) : rien de douteux, alors qu'une moyenne sur l'année marquerait la fin « rapide »
+  const prog = Array.from({ length:12 }, (_, i) => run(i, 7, 510 - i*5));
+  assertEqual("à vérifier : une progression régulière ne déclenche rien", doubtfulRuns(prog), []);
+  const base = Array.from({ length:8 }, (_, i) => run(i, 8, 420));   // 7'00 habituel
+  const race = run(10, 10.0, 355);                 // 10 km à 5'55
+  const tempo = run(11, 8, 370);                   // 6'10, 88 % de l'habitude
+  const short = run(12, 1.5, 450);
+  const mid = run(13, 8, 390);                     // 6'30 : 93 %, pas assez rapide pour être douteux
+  const out = doubtfulRuns([...base, race, tempo, short, mid]);
+  assertEqual("à vérifier : la plus récente d'abord ; course (distance de course), seuil, très courte", out.map(d => [d.id, d.reason, d.race, d.suggestion]), [["r12","courte",false,"Récup"],["r11","rapide",false,"Seuil"],["r10","rapide",true,"Course"]]);
+  assertEqual("à vérifier : allure habituelle = médiane des sorties précédentes", Math.round(out[2].refPace), 420);
+  assertEqual("à vérifier : une sortie déjà vérifiée n'est plus proposée", doubtfulRuns([...base, { ...race, typeChecked:true }]).length, 0);
+  assertEqual("à vérifier : un type choisi par l'utilisateur (Course, Seuil, Fractionné, Récup) n'est pas proposé", doubtfulRuns([...base, { ...race, type:"Course" }, { ...tempo, type:"Seuil" }, { ...short, type:"Récup" }]).length, 0);
+  assertEqual("à vérifier : une « Long » rapide l'est aussi (10 km de Leïla resté Long)", doubtfulRuns([...base, { ...race, type:"Long" }]).map(d => d.suggestion), ["Course"]);
+  assertEqual("à vérifier : séance à blocs de la montre jamais proposée comme rapide", doubtfulRuns([...base, { ...tempo, blocks:6 }]).length, 0);
+  assertEqual("à vérifier : moins de 4 sorties avant, pas de référence (sauf très courte)", doubtfulRuns([run(0, 8, 420), run(1, 8, 420), run(2, 10, 340), run(3, 1.2, 420)]).map(d => d.id), ["r3"]);
+  assertEqual("à vérifier : marche et séances saisies à la main ignorées", doubtfulRuns([...base, { ...race, appleType:"Walking" }, { ...short, appleType:"manual" }]).length, 0);
+  assertEqual("à vérifier : moins de 300 m (montre lancée par erreur) ignoré", doubtfulRuns([...base, run(14, 0.15, 400), run(15, 0.29, 400), run(16, 0.3, 400)]).map(d => d.id), ["r16"]);
+  assertEqual("à vérifier : distance ou durée manquante ignorée, liste vide sans erreur", [doubtfulRuns([...base, { ...race, dist:0 }, { ...tempo, durationSec:0 }]).length, doubtfulRuns(null).length], [0, 0]);
+}
 
 // --- Plan marche/course : génération (4.1.d) ---
 {
@@ -1274,6 +1298,7 @@ try {
   assertEqual("carte d'action : Hier avant objectif changé et Ton niveau", pickTodayActionCard({hier:true, objectif:true, niveau:true}), "hier");
   assertEqual("carte d'action : objectif changé avant Ton niveau", pickTodayActionCard({objectif:true, niveau:true}), "objectif");
   assertEqual("carte d'action : Ton niveau seule", pickTodayActionCard({niveau:true}), "niveau");
+  assertEqual("carte d'action : « Vérifions N sorties » après Hier, avant objectif changé et Ton niveau (D109)", [pickTodayActionCard({hier:true, verifier:true}), pickTodayActionCard({verifier:true, objectif:true, niveau:true})], ["hier","verifier"]);
   assertEqual("carte d'action : aucune", pickTodayActionCard({}), null);
   assertEqual("carte d'action : entrée absente", pickTodayActionCard(undefined), null);
   assertEqual("bandeau coach : fin du plan débutant d'abord", coachReminder({graduation:true, guidedTestPending:true, daysSinceRun:9}), {key:"graduation"});

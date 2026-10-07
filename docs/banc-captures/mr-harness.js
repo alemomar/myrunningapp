@@ -14,7 +14,7 @@
     delete(){ return {eq: async(col,val)=>{ window.__calls.push(["delete",table,val]); const i=inserted.findIndex(x=>x.id===val); if(i>=0) inserted.splice(i,1); const j=rows.findIndex(x=>x.id===val); if(j>=0) rows.splice(j,1); return {error:null}; }}; } });
   // .in("id", [...]) : mise de côté de plusieurs séances d'un coup (recalcul du programme)
   { const _from = supa.from; supa.from = (table)=>{ const t=_from(table); const _upd=t.update; t.update=(patch)=>{ const o=_upd(patch); o.in = async(col,vals)=>{ for(const v of vals) await o.eq(col,v); return {error:null}; }; return o; }; return t; }; }
-  window.loadData = async()=>{ if(typeof rows!=="undefined"){ RUNS=[...rows,...inserted].sort((a,b)=>new Date(a.start_date)-new Date(b.start_date)).map(mapRow); runningRuns=RUNS.filter(r=>r.includeInStats); efRuns=runningRuns.filter(r=>r.type==="EF"); fracRuns=runningRuns.filter(r=>r.type==="Fractionné"); } };
+  window.loadData = async()=>{ if(typeof rows!=="undefined"){ RUNS=[...rows,...inserted].sort((a,b)=>new Date(a.start_date)-new Date(b.start_date)).map(mapRow); runningRuns=RUNS.filter(r=>r.includeInStats); refreshDoubts(); efRuns=runningRuns.filter(r=>r.type==="EF" && !doubtIds.has(r.id)); fracRuns=runningRuns.filter(r=>r.type==="Fractionné"); } };
 
   // Première connexion (S15, D99 à D101) : écrans d'installation et de connexion, sans aucune donnée. `auth_flux` rejoue les
   // enchaînements avec un faux Supabase et note les résultats dans window.__auth (document.title = « AUTH OK 19/19 »).
@@ -193,9 +193,15 @@
   if(scen==='q1') push({start_date:new Date().toISOString(), type:'EF', distance_km:7.6, duration_sec:2700, avg_hr:148});
   let todayRunRow = null;
   if(scen==="seance_faite"){ const d=new Date(); d.setHours(7,33,0,0); todayRunRow = push({start_date:d.toISOString(), type:"EF", distance_km:8.1, duration_sec:2778, avg_hr:148, hr_series:genHr(2778,148,"ef"), calories:500}); todayRunRow.peak_hr=Math.max(...todayRunRow.hr_series.map(x=>x.hr)); todayRunRow.pain_ratings={rpe:5,note:4,gene:false,fatigue:3,mental:2,respiration:2}; }
+  if(scen==="verifier_sorties"){
+    push({start_date:startOf(12).toISOString(), type:"Long", distance_km:10.03, duration_sec:3010, avg_hr:176});   // 5'00/km : une course
+    push({start_date:startOf(19).toISOString(), type:"EF", distance_km:8.05, duration_sec:2500, avg_hr:166});     // 5'11/km
+    [4, 9, 16, 30].forEach((n,i)=>push({start_date:startOf(n).toISOString(), type:"EF", distance_km:[1.4,0.9,1.7,1.2][i], duration_sec:[560,400,650,520][i], avg_hr:140}));
+    if(yest) yest.pain_ratings = { rpe:5, note:4, gene:false, fatigue:3, mental:2, respiration:2 };   // pas de carte « Hier » avant
+  }
   rows.sort((a,b)=>new Date(a.start_date)-new Date(b.start_date));
   if(scen==="rappels"){ const cut=startOf(8).getTime(); for(let i=rows.length-1;i>=0;i--){ if(new Date(rows[i].start_date).getTime()>cut) rows.splice(i,1); } }
-  RUNS = rows.map(mapRow); runningRuns = RUNS.filter(r=>r.includeInStats); efRuns = runningRuns.filter(r=>r.type==="EF"); fracRuns = runningRuns.filter(r=>r.type==="Fractionné");
+  RUNS = rows.map(mapRow); runningRuns = RUNS.filter(r=>r.includeInStats); refreshDoubts(); efRuns = runningRuns.filter(r=>r.type==="EF" && !doubtIds.has(r.id)); fracRuns = runningRuns.filter(r=>r.type==="Fractionné");
   const lastRun = runningRuns[runningRuns.length-1];
 
   // --- séances prévues fictives
@@ -235,7 +241,10 @@
   document.getElementById("tabs").style.display="";
   const show = (tab)=>{ activeTab=tab; renderTabs(); renderContent(); };
 
-  if(scen==="aujourdhui_course"){
+  if(scen==="verifier_sorties"){
+    // D109 : carte « Vérifions N sorties » sur Aujourd'hui (pas de séance passée à rattacher)
+    celebrationOff(); plannedSessions=[...future]; show("aujourdhui");
+  } else if(scen==="aujourdhui_course"){
     plannedSessions=[...wkSessions, todayEasy, todayYoga, ...future]; show("aujourdhui");
   } else if(scen==="q1"){
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayEasy, ...future]; activeTab="aujourdhui";

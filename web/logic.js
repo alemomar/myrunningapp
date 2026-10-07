@@ -1436,11 +1436,43 @@ function programTabLabel(count){
 
 /* ---------- Aujourd'hui : carte « Hier », carte d'action unique, bandeau coach (D11, D12, D53, E1) ---------- */
 // Une seule carte d'action sous la séance du jour, par priorité (D11) : décision de rattachement
-// (« Est-ce la même séance ? », sortie non prévue), puis « Hier » (record et/ou ressenti), puis
-// « Ton objectif a changé » (chantier 6), puis « Ton niveau ». `available` : {clé: vrai si la carte existe}.
-const TODAY_ACTION_ORDER = ["merge_ask","attach","hier","objectif","niveau"];
+// (« Est-ce la même séance ? », sortie non prévue), puis « Hier » (record et/ou ressenti), puis « Vérifions N sorties »
+// (D109), puis « Ton objectif a changé » (chantier 6), puis « Ton niveau ». L'alerte douleur forte est affichée à part,
+// au-dessus. `available` : {clé: vrai si la carte existe}.
+const TODAY_ACTION_ORDER = ["merge_ask","attach","hier","verifier","objectif","niveau"];
 function pickTodayActionCard(available){
   return TODAY_ACTION_ORDER.find(k=>available && available[k]) || null;
+}
+/* ---------- Carte « Vérifions N sorties » (lot 3, D109) ----------
+   Courses reçues d'Apple Santé dont le type est douteux, à faire confirmer d'une touche ; pas encore vérifiées, elles ne
+   comptent ni dans les records ni dans la courbe d'endurance. Seules comptent les sorties dont le type est celui que RunSync
+   pose seul (EF ou Long) et jamais touché. Douteuse si très courte (< 2 km : échauffement, sortie interrompue) ou nettement
+   plus rapide que d'habitude : allure ≤ 90 % de la médiane des 10 sorties précédentes (≥ 3 km, hors séances à blocs de la
+   montre), course si c'est une distance de course. Référence récente plutôt qu'annuelle : un coureur qui progresse (Omar :
+   8'34 en janvier, 7'00 en juillet) verrait sinon toutes ses sorties récentes « rapides ». Fréquence cardiaque écartée :
+   trop variable (15 alertes sur 40 courses chez Leïla). Bilan du 07/10/2026 : 4 courses sur 65 chez Omar (dont sa course
+   du 7 juin), 6 sur 75 dans ses données brutes, 8 sur 40 chez Leïla (dont 4 très courtes). */
+const DOUBT_FAST_RATIO = 0.90, DOUBT_SHORT_KM = 2, DOUBT_MIN_KM = 3, DOUBT_HISTORY = 10, DOUBT_MIN_HISTORY = 4, DOUBT_BLOCKS = 4;
+const DOUBT_IGNORE_KM = 0.3;   // en dessous : montre lancée par erreur (80 à 150 m chez Omar et Leïla), rien à demander
+const DOUBT_RACE_KM = [5, 10, 21.0975, 42.195];
+// `runs` : [{ id, ts, appleType, type, dist (km), durationSec, blocks (repères de la montre), typeChecked }].
+// Renvoie les sorties douteuses, la plus récente d'abord : [{ id, reason:"rapide"|"courte", race, pace, refPace, suggestion }].
+function doubtfulRuns(runs){
+  const list = (runs||[]).filter(r => r && r.appleType==="Running" && r.dist>=DOUBT_IGNORE_KM && r.durationSec>0).slice().sort((a,b)=>a.ts-b.ts);
+  const hist = [], out = [];
+  for(const r of list){
+    const pace = r.durationSec / r.dist, blocks = r.blocks || 0;
+    const ref = hist.length >= DOUBT_MIN_HISTORY ? median(hist.slice(-DOUBT_HISTORY)) : null;
+    if((r.type==="EF" || r.type==="Long") && !r.typeChecked){
+      if(r.dist < DOUBT_SHORT_KM) out.push({ id:r.id, reason:"courte", race:false, pace, refPace:ref, suggestion:"Récup" });
+      else if(r.dist >= DOUBT_MIN_KM && blocks < DOUBT_BLOCKS && ref && pace <= ref*DOUBT_FAST_RATIO){
+        const race = DOUBT_RACE_KM.some(D => Math.abs(r.dist-D) <= Math.max(0.15, D*0.015));
+        out.push({ id:r.id, reason:"rapide", race, pace, refPace:ref, suggestion: race ? "Course" : "Seuil" });
+      }
+    }
+    if(r.dist >= DOUBT_MIN_KM && blocks < DOUBT_BLOCKS) hist.push(pace);
+  }
+  return out.reverse();
 }
 // Bandeau coach : une phrase choisie par priorité parmi les rappels (D53, journal 9) :
 // 1) fin du plan débutant, 2) test de niveau à planifier, 3) X jours sans courir. Quand la carte

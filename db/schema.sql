@@ -74,6 +74,7 @@ create table public.runs (
   frac_work_manual integer,         -- override manuel allure Work (sec/km) si pace_series trop épars
   frac_recovery_manual integer,     -- idem pour l'allure Récup
   lap_markers jsonb,                -- frontières d'intervalles posées par HealthKit (séance structurée)
+  type_checked boolean,             -- type choisi ou confirmé par l'utilisateur (carte « Vérifions N sorties », migration_024)
   unique (user_id, start_date)      -- empêche les doublons si on relance une sync
 );
 
