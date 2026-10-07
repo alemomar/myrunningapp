@@ -500,13 +500,17 @@
     else if(scen==="message_erreur"){ show("profil"); toast("Pas enregistré, vérifie ta connexion.", { actionLabel:"Réessayer", ms:600000 }); }
     else if(scen==="profil_synchro_muette"){ RUNS=RUNS.filter(r=>dateFromRun(r).getTime() < Date.now()-9*86400000); runningRuns=RUNS.filter(r=>r.includeInStats); setProfilSectionState("compte"); show("profil"); }
     else if(scen==="onboarding_preparation"){ RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbInit(); onb.step=4; onb.saving=true; onb.prepDone=2; renderApp(); }
-  } else if(/^guide_(etape[12]|attente|ok|vide)$/.test(scen)){
-    // S10 : guide « Voir comment » (connecter RunSync), depuis Mon compte › Synchronisation
+  } else if(/^guide_(etape[123]|attente|ok|vide|indice[23])$/.test(scen)){
+    // S10 : guide « Voir comment » (connecter RunSync), depuis Mon compte › Synchronisation ; 4 étapes depuis D107
+    // (guide_indice2 / guide_indice3 : TestFlight / RunSync ne s'est pas ouvert, un mot propose de l'installer)
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; setProfilSectionState("compte"); show("profil");
     RUNS=RUNS.filter(r=>r.appleType===MANUAL_RUN_MARKER); runningRuns=RUNS.filter(r=>r.includeInStats); try{ localStorage.removeItem("mra_syncGuide"); }catch(e){}
     openSyncGuide(); stopSyncPoll();
-    const done = scen==="guide_etape1" ? [false,false] : scen==="guide_etape2" ? [true,false] : [true,true];
+    const done = scen==="guide_etape1" ? [false,false,false] : (scen==="guide_etape2" || scen==="guide_indice2") ? [true,false,false]
+      : (scen==="guide_etape3" || scen==="guide_indice3") ? [true,true,false] : [true,true,true];
     syncGuide.done = done;
+    if(scen==="guide_indice2"){ syncGuide.pending = 2; syncGuide.hint = 2; }
+    if(scen==="guide_indice3"){ syncGuide.pending = 3; syncGuide.hint = 3; }
     if(scen==="guide_attente") syncGuide.waitStart = Date.now();
     if(scen==="guide_vide") syncGuide.waitStart = Date.now()-100000;
     if(scen==="guide_ok"){ syncGuide.received = 12; syncGuide.runs = 9; }

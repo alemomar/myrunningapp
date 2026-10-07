@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=88"></script>
+<script src="logic.js?v=89"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1779,15 +1779,27 @@ try {
     dateStepBlocked(extreme, null), dateStepBlocked(extreme, "other"), dateStepBlocked(extreme, "first"), dateStepBlocked(extreme, "none"),
     dateStepBlocked(null, null)], [false, true, false, true, true, false, false, false]);
 
-  assertEqual("guide : 3 étapes, titres alignés sur RunSync (D102)", SYNC_GUIDE_TITLES, ["Installe RunSync", "Ouvre RunSync et laisse-toi guider", "On reçoit tes courses"]);
-  assertEqual("guide : au départ, étape 1 active", syncGuideModel([false,false], 0, 0).steps.map(x=>x.state), ["active","todo","todo"]);
-  assertEqual("guide : étape 1 cochée au retour dans l'app, RunSync à ouvrir", syncGuideModel([true,false], 0, 0).steps.map(x=>x.state), ["done","active","todo"]);
-  assertEqual("guide : deux étapes faites, on attend les courses", [syncGuideModel([true,true], 0, 10).phase, syncGuideModel([true,true], 0, 10).active], ["wait", 3]);
-  assertEqual("guide : rien reçu au bout de 90 s", syncGuideModel([true,true], 0, 90).phase, "empty");
-  assertEqual("guide : connecté, les deux premières étapes sont cochées même si on n'a rien cliqué (RunSync déjà en place), la dernière reste ouverte", [syncGuideModel([false,false], 12, 0).steps.map(x=>x.state), syncGuideModel([false,false], 12, 0).summary], [["done","done","active"], "C'est connecté · 12 séances reçues"]);
-  assertEqual("guide : séances et courses comptées à part (234 séances, dont 77 courses : test d'Omar du 06/10)", syncGuideModel([true,true], 234, 0, 77).summary, "C'est connecté · 234 séances reçues, dont 77 courses");
+  assertEqual("guide : 4 étapes, TestFlight d'abord (D107)", SYNC_GUIDE_TITLES, ["Installe TestFlight", "Installe RunSync", "Ouvre RunSync et laisse-toi guider", "On reçoit tes courses"]);
+  assertEqual("guide : au départ, étape 1 active", syncGuideModel([false,false,false], 0, 0).steps.map(x=>x.state), ["active","todo","todo","todo"]);
+  assertEqual("guide : TestFlight coché au retour, RunSync à installer", syncGuideModel([true,false,false], 0, 0).steps.map(x=>x.state), ["done","active","todo","todo"]);
+  assertEqual("guide : RunSync installé, RunSync à ouvrir", syncGuideModel([true,true,false], 0, 0).steps.map(x=>x.state), ["done","done","active","todo"]);
+  assertEqual("guide : trois étapes faites, on attend les courses", [syncGuideModel([true,true,true], 0, 10).phase, syncGuideModel([true,true,true], 0, 10).active], ["wait", 4]);
+  assertEqual("guide : « Je l'ai déjà » sur TestFlight seulement, l'étape RunSync s'ouvre", syncGuideModel([true,false,false], 0, 0).active, 2);
+  assertEqual("guide : rien reçu au bout de 90 s", syncGuideModel([true,true,true], 0, 90).phase, "empty");
+  assertEqual("guide : connecté, les étapes d'avant sont cochées même si on n'a rien touché (RunSync déjà en place), la dernière reste ouverte", [syncGuideModel([false,false,false], 12, 0).steps.map(x=>x.state), syncGuideModel([false,false,false], 12, 0).summary], [["done","done","done","active"], "C'est connecté · 12 séances reçues"]);
+  assertEqual("guide : séances et courses comptées à part (234 séances, dont 77 courses : test d'Omar du 06/10)", syncGuideModel([true,true,true], 234, 0, 77).summary, "C'est connecté · 234 séances reçues, dont 77 courses");
   assertEqual("guide : singuliers, que des courses, aucune course", [syncReceivedText(1, null), syncReceivedText(1, 1), syncReceivedText(12, 12), syncReceivedText(5, 0), syncReceivedText(3, 1)], ["1 séance reçue", "1 course reçue", "12 courses reçues", "5 séances reçues", "3 séances reçues, dont 1 course"]);
-  assertEqual("guide : un état gardé par l'ancien guide en 4 étapes (3 cases) reste lisible", syncGuideModel([true,true,false], 0, 10).steps.map(x=>x.state), ["done","done","active"]);
+  assertEqual("guide : cases manquantes ou en trop sans effet", [syncGuideModel([true], 0, 0).active, syncGuideModel([true,true,true,true,true], 0, 10).active, syncGuideModel(null, 0, 0).active], [2, 4, 1]);
+  assertEqual("guide repris : version 2 telle quelle", syncGuideRestore({ v:2, open:true, done:[true,false,false], pending:2 }), { done:[true,false,false], pending:2 });
+  assertEqual("guide repris : version 2, étape en attente hors limites ignorée", [syncGuideRestore({ v:2, done:[], pending:7 }).pending, syncGuideRestore({ v:2, done:[], pending:-1 }).pending], [0, 0]);
+  assertEqual("guide repris : rien de gardé", [syncGuideRestore(null), syncGuideRestore(undefined)], [{ done:[false,false,false], pending:0 }, { done:[false,false,false], pending:0 }]);
+  assertEqual("guide repris : ancien guide, RunSync installé = TestFlight aussi", syncGuideRestore({ open:true, done:[true,false], pending:0 }), { done:[true,true,false], pending:0 });
+  assertEqual("guide repris : ancien guide, parti installer RunSync = TestFlight là, étape RunSync en attente", syncGuideRestore({ open:true, done:[false,false], pending:1 }), { done:[true,false,false], pending:2 });
+  assertEqual("guide repris : ancien guide, parti ouvrir RunSync", syncGuideRestore({ open:true, done:[true,false], pending:2 }), { done:[true,true,false], pending:3 });
+  assertEqual("guide repris : tout premier guide (3 cases, la 3e Apple Santé ignorée)", syncGuideRestore({ open:true, done:[true,true,true], pending:0 }), { done:[true,true,true], pending:0 });
+  assertEqual("liens directs sur iPhone : App Store et TestFlight sans mini-navigateur (D107)", syncInstallLinks(true, "https://testflight.apple.com/join/vYx5KKUw"), { testflight:"itms-apps://apps.apple.com/app/testflight/id899247664", runsync:"itms-beta://testflight.apple.com/join/vYx5KKUw" });
+  assertEqual("liens hors iPhone : les pages web d'Apple", syncInstallLinks(false, "https://testflight.apple.com/join/vYx5KKUw"), { testflight:"https://apps.apple.com/app/testflight/id899247664", runsync:"https://testflight.apple.com/join/vYx5KKUw" });
+  assertEqual("liens : sans lien TestFlight, pas de bouton RunSync possible", [syncInstallLinks(true, "").runsync, syncInstallLinks(true, null).runsync, syncInstallLinks(true, "https://exemple.fr/join/abc").runsync, syncInstallLinks(false, "").runsync], ["", "", "", ""]);
   assertEqual("visite guidée : une bulle par onglet, dans l'ordre du menu, la dernière sur Profil (D105)", TOUR_STEPS.map(s=>s.tab), ["aujourdhui","programme","progression","profil"]);
   assertEqual("visite guidée : chaque bulle a un titre et un texte", TOUR_STEPS.every(s=>s.title && s.text && s.text.length<170), true);
   assertEqual("parcours d'office seulement pour un compte d'avant le 05/10/2026 (D106)", [shouldAutoMarkOnboarding(true, "2026-09-28T10:00:00Z"), shouldAutoMarkOnboarding(true, "2026-10-06T19:27:00Z"), shouldAutoMarkOnboarding(false, "2026-09-28T10:00:00Z"), shouldAutoMarkOnboarding(true, null), shouldAutoMarkOnboarding(true, "pas une date")], [true, false, false, true, true]);

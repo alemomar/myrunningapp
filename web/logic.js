@@ -2662,18 +2662,20 @@ function dateStepBlocked(model, choice){
   return choice!=="none";
 }
 
-/* ---------- Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13 ; D60 ; lot 2, D102) ----------
-   3 étapes : installer RunSync, l'ouvrir et se laisser guider (connexion avec l'e-mail déjà rempli, date de départ,
-   Apple Santé et import se font dans RunSync version 3), recevoir les courses. Les deux premières se cochent toutes seules
-   quand on revient dans l'app après les avoir ouvertes ; la troisième attend l'arrivée des premières courses
-   (interrogation régulière), puis « C'est connecté » ; au bout de 90 s sans rien : « Rien reçu ». */
-const SYNC_GUIDE_TITLES = ["Installe RunSync", "Ouvre RunSync et laisse-toi guider", "On reçoit tes courses"];
+/* ---------- Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13 ; D60 ; lot 2, D102 ; D107) ----------
+   4 étapes : installer TestFlight, installer RunSync, l'ouvrir et se laisser guider (connexion avec l'e-mail déjà rempli,
+   date de départ, Apple Santé et import se font dans RunSync version 3), recevoir les courses. Les trois premières se
+   cochent toutes seules quand on revient dans l'app après les avoir ouvertes ; la dernière attend l'arrivée des premières
+   courses (interrogation régulière), puis « C'est connecté » ; au bout de 90 s sans rien : « Rien reçu ».
+   TestFlight a son étape (D107) : RunSync s'installe maintenant par le lien direct de TestFlight, qui ne marche que si
+   TestFlight est déjà là. */
+const SYNC_GUIDE_TITLES = ["Installe TestFlight", "Installe RunSync", "Ouvre RunSync et laisse-toi guider", "On reçoit tes courses"];
 const SYNC_WAIT_EMPTY_SEC = 90;
-// `done` : [bool, bool] pour les deux premières étapes (un état gardé par l'ancien guide en 4 étapes a 3 cases : la 3e
-// est ignorée) ; `received` : séances reçues d'Apple Santé (courses, marches, renfo…) ; `waitedSec` : attente à la
-// dernière étape ; `runs` : combien de ces séances sont des courses (inconnu tant que les séances ne sont pas chargées).
+// `done` : une case par étape à faire, toutes sauf la dernière (cases en trop ignorées) ; `received` : séances reçues
+// d'Apple Santé (courses, marches, renfo…) ; `waitedSec` : attente à la dernière étape ; `runs` : combien de ces séances
+// sont des courses (inconnu tant que les séances ne sont pas chargées).
 function syncGuideModel(done, received, waitedSec, runs){
-  const d = [!!(done&&done[0]), !!(done&&done[1])];
+  const d = SYNC_GUIDE_TITLES.slice(0, -1).map((_, i) => !!(done && done[i]));
   const last = SYNC_GUIDE_TITLES.length;
   const connected = (received||0)>0;
   const firstTodo = d.findIndex(x=>!x);
@@ -2681,10 +2683,31 @@ function syncGuideModel(done, received, waitedSec, runs){
   const phase = connected ? "ok" : (firstTodo<0 ? ((waitedSec||0)>=SYNC_WAIT_EMPTY_SEC ? "empty" : "wait") : null);
   return {
     active, phase, connected,
-    // Les courses sont arrivées : les deux premières étapes sont cochées d'office (RunSync était déjà en place) et la dernière reste ouverte (« C'est connecté »).
+    // Les courses sont arrivées : les étapes d'avant sont cochées d'office (RunSync était déjà en place) et la dernière reste ouverte (« C'est connecté »).
     steps: SYNC_GUIDE_TITLES.map((title,i)=>({ n:i+1, title, state: i<last-1 ? (d[i] || connected ? "done" : i+1===active ? "active" : "todo") : (active===last ? "active" : "todo") })),
     summary: connected ? `C'est connecté · ${syncReceivedText(received, runs)}` : "",
   };
+}
+// État du guide gardé sur l'appareil (l'app peut être rechargée pendant qu'on est dans l'App Store, TestFlight ou RunSync).
+// Version 2 (4 étapes, D107) : 3 cases, `pending` = étape dont on est parti ouvrir l'app (1 à 3). Avant : 2 cases (RunSync
+// installé, RunSync ouvert), voire une 3e (Apple Santé) ignorée ; RunSync installé veut dire TestFlight installé aussi.
+function syncGuideRestore(saved){
+  const d = saved && Array.isArray(saved.done) ? saved.done : [];
+  const p = saved ? Number(saved.pending) || 0 : 0;
+  if(saved && saved.v===2) return { done:[!!d[0], !!d[1], !!d[2]], pending: p>=1 && p<=3 ? p : 0 };
+  // ancien guide : 1 = parti installer RunSync (page TestFlight), 2 = parti ouvrir RunSync
+  return { done:[!!d[0] || p===1, !!d[0], !!d[1]], pending: p===1 ? 2 : p===2 ? 3 : 0 };
+}
+// Liens des étapes « Installe TestFlight » et « Installe RunSync ». Sur iPhone, liens directs vers l'App Store et TestFlight
+// (comme myrunningapp:// pour RunSync) : l'app s'ouvre sans passer par le mini-navigateur que l'iPhone ouvre dans une app
+// de l'écran d'accueil pour un lien web, et qui restait ouvert, vide, au retour (test d'Omar du 07/10/2026). Ailleurs, les
+// pages web d'Apple. `joinUrl` : lien public TestFlight (https://testflight.apple.com/join/…), vide tant qu'il n'existe pas.
+const TESTFLIGHT_APP_ID = "899247664";
+function syncInstallLinks(ios, joinUrl){
+  const join = String(joinUrl||"").trim();
+  const code = (join.match(/testflight\.apple\.com\/join\/([A-Za-z0-9]+)/) || [])[1] || "";
+  if(!ios) return { testflight:`https://apps.apple.com/app/testflight/id${TESTFLIGHT_APP_ID}`, runsync:join };
+  return { testflight:`itms-apps://apps.apple.com/app/testflight/id${TESTFLIGHT_APP_ID}`, runsync: code ? `itms-beta://testflight.apple.com/join/${code}` : "" };
 }
 // « 234 séances reçues, dont 77 courses » : RunSync envoie toutes les séances, pas seulement les courses (retour d'Omar,
 // 06/10/2026 : « 234 courses reçues » était faux).

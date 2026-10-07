@@ -961,6 +961,9 @@ button.pg-rec-row{cursor:pointer}
 .sg-tips{margin:0;padding-left:18px;font-size:13.5px;line-height:1.5;color:var(--text-2)}
 .sg-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .sg-skip{border:none;background:none;color:var(--text-3);font:inherit;font-size:13.5px;padding:4px 0;cursor:pointer;align-self:flex-start;text-decoration:underline}
+.sg-hint{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r-md);background:var(--attention-bg);box-shadow:inset 0 0 0 1px var(--attention-line);font-size:13.5px;line-height:1.4;color:var(--text-2)}
+.sg-hint > svg{color:var(--attention);flex:none;margin-top:1px}
+.sg-hint > div{display:flex;flex-direction:column;gap:10px;min-width:0;flex:1}
 /* Visite guidée (lot 3, D105) : l'onglet présenté est éclairé dans le menu du bas, une bulle juste au-dessus l'explique. */
 .tour-catch{position:fixed;inset:0;z-index:360}
 .tour-spot{position:fixed;z-index:361;border-radius:999px;box-shadow:0 0 0 9999px rgba(0,0,0,.62);outline:2px solid var(--accent);outline-offset:2px;pointer-events:none}
@@ -1136,7 +1139,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=88"></script>
+<script src="logic.js?v=89"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -6521,26 +6524,26 @@ window.onbLeave = () => {
 // Courses arrivées d'Apple Santé (pas celles saisies à la main) : le guide de connexion s'appuie dessus.
 function receivedRuns(){ return RUNS.filter(r=>r.appleType && r.appleType!==MANUAL_RUN_MARKER); }
 
-// ---------- Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13 ; D60 ; lot 2, D102) ----------
-// 3 étapes dans une feuille, une seule ouverte : installer RunSync, l'ouvrir et se laisser guider (connexion, date de départ,
-// Apple Santé et import se font dans RunSync), recevoir les courses. Les deux premières se cochent toutes seules quand on
-// revient dans l'app après les avoir ouvertes. L'arrivée des premières séances est vérifiée à TOUTES les étapes : un
-// nouveau ouvre souvent RunSync directement depuis TestFlight et fait tout là-bas avant de revenir. Ouvert
-// depuis la fin du parcours (étape 5) et depuis
-// Mon compte › Synchronisation. L'état est gardé sur l'appareil : si l'app est rechargée pendant qu'on est dans TestFlight ou
-// RunSync, le guide se rouvre où on l'avait laissé.
+// ---------- Guide « Voir comment » : connecter RunSync (S10, journal 11, élément 13 ; D60 ; lot 2, D102 ; D107) ----------
+// 4 étapes dans une feuille, une seule ouverte : installer TestFlight, installer RunSync, l'ouvrir et se laisser guider
+// (connexion, date de départ, Apple Santé et import se font dans RunSync), recevoir les courses. Les trois premières se
+// cochent toutes seules quand on revient dans l'app après avoir ouvert l'App Store, TestFlight ou RunSync, chacun par son
+// lien direct (pas de mini-navigateur resté ouvert au retour, D107). L'arrivée des premières séances est vérifiée à TOUTES
+// les étapes : un nouveau ouvre souvent RunSync directement depuis TestFlight et fait tout là-bas avant de revenir. Ouvert
+// depuis la fin du parcours (étape 5) et depuis Mon compte › Synchronisation. L'état est gardé sur l'appareil : si l'app est
+// rechargée pendant qu'on est dans l'App Store, TestFlight ou RunSync, le guide se rouvre où on l'avait laissé.
 const RUNSYNC_INSTALL_URL = "https://testflight.apple.com/join/vYx5KKUw";   // lien public TestFlight fourni par Omar (groupe « Amis_Testeurs », limite de testeurs fixée dans App Store Connect) ; builds valables jusqu'au 25/12/2026 environ ; à remplacer par le lien App Store à la sortie ; s'il est vide, le bouton l'explique
 const SYNC_GUIDE_KEY = "mra_syncGuide";
-let syncGuide = null;      // { done:[b,b], pending:0|1|2, waitStart, received, runs, fromOnb }
+let syncGuide = null;      // { done:[b,b,b], pending:0 à 3, hint:0 à 3 (app qui ne s'est pas ouverte), waitStart, received, runs, fromOnb }
 let syncPollTimer = null;
 function saveSyncGuide(){
-  try{ if(syncGuide) localStorage.setItem(SYNC_GUIDE_KEY, JSON.stringify({ open:true, done:syncGuide.done, pending:syncGuide.pending })); else localStorage.removeItem(SYNC_GUIDE_KEY); }catch(e){}
+  try{ if(syncGuide) localStorage.setItem(SYNC_GUIDE_KEY, JSON.stringify({ v:2, open:true, done:syncGuide.done, pending:syncGuide.pending })); else localStorage.removeItem(SYNC_GUIDE_KEY); }catch(e){}
 }
 const syncWaited = () => syncGuide && syncGuide.waitStart ? (Date.now()-syncGuide.waitStart)/1000 : 0;
-// Retour dans l'app après avoir ouvert TestFlight ou RunSync : l'étape correspondante se coche toute seule.
+// Retour dans l'app après avoir ouvert l'App Store, TestFlight ou RunSync : l'étape correspondante se coche toute seule.
 function settleSyncGuide(){
   if(!syncGuide || !syncGuide.pending) return;
-  syncGuide.done[syncGuide.pending-1] = true; syncGuide.pending = 0; saveSyncGuide();
+  syncGuide.done[syncGuide.pending-1] = true; syncGuide.pending = 0; syncGuide.hint = 0; saveSyncGuide();
 }
 function syncGuideModelNow(){
   const m = syncGuideModel(syncGuide.done, syncGuide.received, syncWaited(), syncGuide.runs);
@@ -6550,9 +6553,8 @@ function syncGuideModelNow(){
 window.openSyncGuide = () => {
   let saved = null;
   try{ saved = JSON.parse(localStorage.getItem(SYNC_GUIDE_KEY)||"null"); }catch(e){}
-  // Un état gardé par l'ancien guide en 4 étapes (3 cases, étape 3 = Apple Santé, qui se fait maintenant dans RunSync) se ramène à 2 cases.
-  const savedDone = (saved && saved.done) || [];
-  syncGuide = { done:[!!savedDone[0], !!savedDone[1]], pending:Math.min((saved && saved.pending) || 0, 2), waitStart:null, received:receivedRuns().length, runs:receivedRunCount(), fromOnb:onbConnect };
+  const st = syncGuideRestore(saved);   // un guide commencé avec une version précédente reprend au bon endroit
+  syncGuide = { done:st.done, pending:st.pending, hint:0, waitStart:null, received:receivedRuns().length, runs:receivedRunCount(), fromOnb:onbConnect };
   settleSyncGuide(); saveSyncGuide();
   refreshSheet(); startSyncPoll();
 };
@@ -6574,7 +6576,7 @@ function startSyncPoll(){ stopSyncPoll(); syncPollTimer = setInterval(syncPollOn
 const receivedRunCount = () => receivedRuns().filter(r=>r.appleType==="Running").length;
 // Ce que montre le guide : on ne le redessine que si ça change. Le redessiner rejouait l'animation d'ouverture de la
 // fenêtre toutes les 4 s, et on voyait l'écran du dessous (clignotement filmé par Omar le 06/10/2026).
-const syncGuideView = () => { const m = syncGuideModelNow(); return JSON.stringify([m.active, m.phase, syncGuide.done, syncGuide.received, syncGuide.runs]); };
+const syncGuideView = () => { const m = syncGuideModelNow(); return JSON.stringify([m.active, m.phase, syncGuide.done, syncGuide.received, syncGuide.runs, syncGuide.hint]); };
 // Toutes les 4 s, à n'importe quelle étape : combien de séances sont arrivées d'Apple Santé ? (requête légère)
 async function syncPollOnce(){
   if(!syncGuide){ stopSyncPoll(); return; }
@@ -6589,31 +6591,73 @@ async function syncPollOnce(){
 document.addEventListener("visibilitychange", () => {
   if(document.visibilityState==="visible" && syncGuide){ settleSyncGuide(); refreshSheet(); syncPollOnce(); }
 });
-window.syncInstall = () => {
-  if(!RUNSYNC_INSTALL_URL){ toast("Le lien d'installation de RunSync arrive bientôt."); return; }
-  syncGuide.pending = 1; saveSyncGuide(); window.open(RUNSYNC_INSTALL_URL, "_blank");
+// Étapes 1 à 3 : l'App Store (page de TestFlight), TestFlight (invitation RunSync) ou RunSync, par leur lien direct sur
+// iPhone (D107) ; RunSync s'ouvre avec l'e-mail du compte déjà rempli.
+const syncLinks = () => syncInstallLinks(detectInstallContext(navigator.userAgent, isStandalone(), navigator.maxTouchPoints).ios, RUNSYNC_INSTALL_URL);
+window.syncLaunch = (step) => {
+  const links = syncLinks();
+  const url = step===1 ? links.testflight : step===2 ? links.runsync : runSyncOpenUrl(userEmail);
+  if(!url){ toast("Le lien d'installation de RunSync arrive bientôt."); return; }
+  syncGuide.pending = step; syncGuide.hint = 0; saveSyncGuide(); refreshSheet();
+  watchAppOpen(step);
+  if(/^https?:/.test(url)) window.open(url, "_blank"); else window.location.href = url;
 };
-window.syncOpenRunSync = (step) => {
-  syncGuide.pending = step; saveSyncGuide();
-  window.location.href = runSyncOpenUrl(userEmail);   // RunSync s'ouvre avec l'e-mail du compte déjà rempli
-  setTimeout(()=>{ if(document.visibilityState==="visible" && syncGuide && syncGuide.pending===step) toast("RunSync ne s'ouvre pas ? Ouvre-le depuis ton écran d'accueil."); }, 1800);
-};
-window.syncMarkDone = (step) => { syncGuide.done[step-1] = true; syncGuide.pending = 0; saveSyncGuide(); refreshSheet(); };
+// L'app visée s'est-elle ouverte ? Si oui, MyRunningApp passe en arrière-plan. Sinon (app pas encore installée, ou fenêtre
+// « Ouvrir dans … ? » refusée), MyRunningApp est toujours là 2,5 s plus tard, ou revient au premier plan sans être passée
+// derrière : un mot dans l'étape ouverte, avec le bouton pour installer l'app qui manque. Rien n'est décoché : si l'app
+// s'ouvre finalement, le retour coche l'étape comme d'habitude.
+function watchAppOpen(step){
+  let left = false, blurred = false, over = false;
+  const onVis = () => { if(document.visibilityState==="hidden") left = true; };
+  const onHide = () => { left = true; };
+  const onBlur = () => { blurred = true; };
+  const onFocus = () => setTimeout(finish, 600);
+  function cleanup(){
+    document.removeEventListener("visibilitychange", onVis); window.removeEventListener("pagehide", onHide);
+    window.removeEventListener("blur", onBlur); window.removeEventListener("focus", onFocus);
+  }
+  function finish(){
+    if(over) return;
+    over = true; cleanup();
+    if(!left && syncGuide && syncGuide.pending===step){ syncGuide.hint = step; refreshSheet(); }
+  }
+  document.addEventListener("visibilitychange", onVis); window.addEventListener("pagehide", onHide); window.addEventListener("blur", onBlur);
+  setTimeout(() => {
+    if(over) return;
+    if(left){ over = true; cleanup(); return; }
+    if(blurred) window.addEventListener("focus", onFocus);   // une fenêtre de l'iPhone est passée devant : on attend sa fermeture
+    else finish();
+  }, 2500);
+}
+window.syncMarkDone = (step) => { syncGuide.done[step-1] = true; syncGuide.pending = 0; syncGuide.hint = 0; saveSyncGuide(); refreshSheet(); };
+// L'app qu'on vient d'essayer d'ouvrir ne s'est pas ouverte : ce qui manque sans doute, et de quoi l'installer.
+function syncHintHTML(){
+  const h = syncGuide && syncGuide.hint;
+  if(!h) return "";
+  const btn = (label, call) => `<button type="button" class="btn-secondary" style="min-height:44px" onclick="${call}">${label}</button>`;
+  const box = (text, extra) => `<div class="sg-hint" role="status">${icon("alert",16)}<div><div>${text}</div>${extra||""}</div></div>`;
+  if(h===2) return box("TestFlight ne s'est pas ouvert : il n'est sans doute pas encore installé.", btn(`Installer TestFlight ${icon("arrowUpRight",16)}`, "syncLaunch(1)"));
+  if(h===3) return box("RunSync ne s'est pas ouvert : il n'est sans doute pas encore installé.", btn(`Installer RunSync ${icon("arrowUpRight",16)}`, "syncLaunch(2)"));
+  return box("L'App Store ne s'est pas ouvert. Réessaie, ou cherche « TestFlight » dans l'App Store.");
+}
 window.syncCopyEmail = async () => {
   try{ await navigator.clipboard.writeText(userEmail||""); toast("Email copié."); }catch(e){ toast("Sélectionne l'email pour le copier."); }
 };
 window.syncRetry = () => { syncGuide.waitStart = Date.now(); refreshSheet(); startSyncPoll(); syncPollOnce(); };
 function syncStepBodyHTML(m, n){
   const next = (label, call) => `<button type="button" class="btn-primary" style="min-height:48px" onclick="${call}">${label}</button>`;
-  const skip = (step) => `<button type="button" class="sg-skip" onclick="syncMarkDone(${step})">C'est déjà fait</button>`;
-  if(n===1) return `<div class="sg-tx">RunSync est une petite app relais : elle récupère tes courses dans Apple Santé et les envoie ici, toute seule.</div>
+  const skip = (step, label) => `<button type="button" class="sg-skip" onclick="syncMarkDone(${step})">${label}</button>`;
+  // D107 : une phrase et un bouton par étape ; chaque bouton ouvre directement l'app, sans mini-navigateur.
+  if(n===1) return `<div class="sg-tx">RunSync est encore en test : elle s'installe avec <b>TestFlight</b>, l'app d'Apple pour les apps en test. Installe TestFlight, puis reviens ici.</div>
+    ${syncHintHTML()}${next(`Installer TestFlight ${icon("arrowUpRight",16)}`, "syncLaunch(1)")}${skip(1, "Je l'ai déjà")}`;
+  if(n===2) return `<div class="sg-tx">RunSync est une petite app relais : elle récupère tes courses dans Apple Santé et les envoie ici, toute seule.</div>
     <div class="sg-flow"><div class="c">${icon("heart",20)}<span>Apple Santé</span></div><span class="ar">${icon("arrowRight",16)}</span><div class="c">${icon("refresh",20)}<span>RunSync</span></div><span class="ar">${icon("arrowRight",16)}</span><div class="c me">${icon("runner",20)}<span>MyRunningApp</span></div></div>
-    <div class="sg-note">${icon("info",16)}<span>RunSync est encore en test : Apple te fait d'abord installer <b>TestFlight</b>, son app pour les apps en test. Dans TestFlight, touche <b>Installer</b> puis <b>Ouvrir</b> : RunSync te guide jusqu'au bout. Reviens ensuite ici.</span></div>
-    ${next(`Installer RunSync ${icon("arrowUpRight",16)}`, "syncInstall()")}${skip(1)}`;
-  if(n===2) return `<div class="sg-tx">Connecte-toi dans RunSync avec <b>le même e-mail et le même mot de passe</b> que dans MyRunningApp, puis suis ses écrans jusqu'à « C'est fait ». Ouvert d'ici, RunSync a ton e-mail déjà rempli.</div>
+    <div class="sg-tx">Dans TestFlight, touche <b>Accepter</b>, puis <b>Installer</b>. Reviens ensuite ici.</div>
+    ${syncHintHTML()}${next(`Installer RunSync ${icon("arrowUpRight",16)}`, "syncLaunch(2)")}${skip(2, "Je l'ai déjà")}`;
+  if(n===3) return `<div class="sg-tx">Connecte-toi dans RunSync avec <b>le même e-mail et le même mot de passe</b> que dans MyRunningApp, puis suis ses écrans jusqu'à « C'est fait ». Ouvert d'ici, RunSync a ton e-mail déjà rempli.</div>
     <div class="sg-mail"><span>${escHtml(userEmail||"")}</span><button type="button" onclick="syncCopyEmail()">Copier</button></div>
     <div class="sg-note">${icon("info",16)}<span>À la fin, reviens ici avec le petit retour tout en haut à gauche, ou depuis ton écran d'accueil.</span></div>
-    ${next("Ouvrir RunSync", "syncOpenRunSync(2)")}${skip(2)}`;
+    ${syncHintHTML()}${next("Ouvrir RunSync", "syncLaunch(3)")}${skip(3, "C'est déjà fait")}`;
   if(m.phase==="ok") return `<div class="sg-tx"><b>${escHtml(m.summary.replace("C'est connecté · ",""))}.</b> Les prochaines arriveront toutes seules.</div>${next("Continuer", "closeSyncGuide(true)")}`;
   if(m.phase==="empty") return `<div class="sg-tx">Rien reçu pour l'instant. Pas grave si tu n'as encore jamais couru avec ta montre ou ton téléphone : ta prochaine course arrivera toute seule.</div>
     <ul class="sg-tips"><li>Ouvre RunSync et touche « Synchroniser maintenant »</li><li>Vérifie l'accès : Réglages › Confidentialité et sécurité › Santé › RunSync</li></ul>
@@ -6632,7 +6676,7 @@ function renderSyncGuide(){
   const still = document.querySelector('#sheetRoot .sheet[data-sheet="sync"]') ? ' style="animation:none"' : "";
   document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back"${still} onclick="if(event.target===this)closeSyncGuide()"><div class="sheet" data-sheet="sync"${still} role="dialog" aria-modal="true" aria-label="Connecter Apple Santé">
     ${sheetHeadHTML("Connecter Apple Santé", "closeSyncGuide()")}
-    <div class="np-intro">3 étapes, environ 3 minutes. On coche chaque étape tout seul quand tu reviens.</div>
+    <div class="np-intro">4 étapes, environ 4 minutes. On coche chaque étape tout seul quand tu reviens.</div>
     <div class="sg-list">${items}</div>
     ${m.connected ? "" : `<button type="button" class="btn-ghost" onclick="closeSyncGuide(false)">Je le ferai plus tard</button>`}
   </div></div>`;
