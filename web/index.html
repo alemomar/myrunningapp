@@ -1111,6 +1111,12 @@ button.pg-rec-row{cursor:pointer}
   .sheet-back{animation:sheetFade var(--t-step,280ms) ease-out}
 }
 .sheet.still,.sheet-back.still{animation:none}
+/* Tirer pour actualiser (E1) : pilule en haut qui suit le doigt, puis tourne pendant le rechargement */
+.ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top, 0px) + 12px);z-index:250;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:var(--r-pill);background:var(--surface-raised);box-shadow:var(--shadow-sheet);font-size:13px;color:var(--text-2);transform:translate(-50%,-60px);opacity:0;pointer-events:none;transition:transform .2s ease,opacity .2s ease}
+.ptr.live{transition:none}
+.ptr i{display:flex;color:var(--accent)}
+.ptr i.spin{animation:spin .9s linear infinite}
+@media (prefers-reduced-motion: reduce){.ptr{transition:none}.ptr i.spin{animation:none}}
 @keyframes sheetUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 @keyframes sheetFade{from{opacity:0}to{opacity:1}}
 /* Bande de l'heure de l'app installée (barre « black-translucent ») : le contenu qui défile ne passe plus sous l'heure
@@ -1164,7 +1170,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=93"></script>
+<script src="logic.js?v=94"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1673,6 +1679,7 @@ const TABS=[
 // Erreurs sans fenêtre du navigateur (S12, journal 13 ; D70) : un message en bas avec « Réessayer » (jamais de rouge ni de
 // violet) ; un chargement impossible laisse un bloc gris à la place du contenu, ou, si on a déjà des données, les garde.
 let loadError = "", loadedOnce = false;
+let lastLoadAt = 0, refreshing = false, pendingRefresh = false;   // données à jour sans fermer l'app (E1)
 const toastRetry = (message, retry, ms) => toast(message, { actionLabel:"Réessayer", onAction:retry, ms:ms||8000 });
 window.retryLoad = async () => {
   const ok = await loadData();
@@ -1694,7 +1701,7 @@ async function loadData() {
     if(loadedOnce) toastRetry("Pas pu actualiser tes séances. On garde ce qui est affiché.", retryLoad);
     return false;
   }
-  loadError = ""; loadedOnce = true;
+  loadError = ""; loadedOnce = true; lastLoadAt = Date.now();
   RUNS = (data || []).map(mapRow);
   runningRuns = RUNS.filter(r=>r.includeInStats);
   refreshDoubts();
@@ -5965,7 +5972,10 @@ function renderSheetContent(root){
   else if(typeof renderNewPacesSheet==="function" && renderNewPacesSheet()) { /* nouvelles allures */ }
   else if(typeof renderUpdateSheet==="function" && renderUpdateSheet()) { /* mettre à jour ton programme */ }
   else if(sessionSheetId) renderSessionSheet();
-  else { root.innerHTML = ""; maybeStartTour(); }   // fenêtre refermée : la visite guidée en attente peut commencer
+  else {   // fenêtre refermée : la visite guidée en attente peut commencer, un rechargement en attente (E1) se fait
+    root.innerHTML = ""; maybeStartTour();
+    if(pendingRefresh){ pendingRefresh = false; setTimeout(autoRefresh, 0); }
+  }
 }
 
 // ---------- Feuilles « Ajouter » et « Modifier la séance » (design 8, D47) ----------
@@ -6227,6 +6237,78 @@ async function boot(){
   resumeSyncGuide();
   runProgramMaintenance();
 }
+
+// ---------- Données à jour sans fermer l'app (E1, retour d'Omar du 07/10/2026) ----------
+// Une app installée sur l'écran d'accueil reste en mémoire : les courses arrivées entre-temps n'apparaissaient qu'après l'avoir
+// fermée. On recharge au retour dans l'app (dernier chargement d'il y a 30 s ou plus, voir shouldAutoRefresh) et quand on tire
+// l'écran vers le bas (app installée seulement : Safari a déjà son propre geste). Jamais pendant une saisie (fenêtre ouverte :
+// le rechargement attend sa fermeture), la visite guidée ou le parcours de démarrage.
+function refreshBlocked(){
+  return !loadedOnce || !onboardingCompletedAt || !!onbConnect || !!tour || !!document.querySelector("#sheetRoot .sheet");
+}
+async function refreshFromServer(manual){
+  if(refreshing) return;
+  refreshing = true;
+  const before = RUNS.length;
+  const ok = await loadData();
+  refreshing = false;
+  if(!ok) return;   // loadData a déjà prévenu : « Pas pu actualiser tes séances. On garde ce qui est affiché. »
+  renderTabs(); renderContent();
+  const msg = newRunsMessage(before, RUNS.length);
+  if(msg) toast(msg); else if(manual) toast("Tout est à jour.");
+  if(RUNS.length>before){ maybeCelebrate(); runProgramMaintenance(); }
+}
+function autoRefresh(){
+  if(!loadedOnce || document.visibilityState==="hidden" || Date.now()-lastLoadAt < AUTO_REFRESH_MS) return;
+  if(document.querySelector("#sheetRoot .sheet")){ pendingRefresh = true; return; }
+  if(shouldAutoRefresh(lastLoadAt, Date.now(), refreshBlocked())) refreshFromServer(false);
+}
+document.addEventListener("visibilitychange", autoRefresh);
+window.addEventListener("pageshow", (e) => { if(e.persisted) autoRefresh(); });
+
+const ptrStandalone = () => navigator.standalone===true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || window.__ptrForce===true;
+let ptr = null;
+function ptrPaint(offset, label, spinning){
+  let el = document.getElementById("ptr");
+  if(!el){ el = document.createElement("div"); el.id = "ptr"; el.className = "ptr"; el.setAttribute("role","status"); document.body.appendChild(el); }
+  el.classList.toggle("live", !spinning);
+  el.innerHTML = `<i class="${spinning?"spin":""}" aria-hidden="true">${icon("refresh",16)}</i><span>${label}</span>`;
+  el.style.transform = `translate(-50%, ${Math.round(offset-56)}px)`;
+  el.style.opacity = String(Math.min(1, offset/40));
+}
+function ptrHide(){
+  const el = document.getElementById("ptr");
+  if(el){ el.classList.remove("live"); el.style.transform = "translate(-50%,-60px)"; el.style.opacity = "0"; }
+}
+document.addEventListener("touchstart", (e) => {
+  ptr = null;
+  if(e.touches.length!==1 || window.scrollY>2 || refreshing || !ptrStandalone() || refreshBlocked()) return;
+  const t = e.target;
+  if(!t.closest || !t.closest("#content, .topbar") || t.closest("[onpointerdown], .draggable, .pc-slider, input, textarea, select")) return;
+  ptr = { x0:e.touches[0].clientX, y0:e.touches[0].clientY, dy:0, on:false };
+}, { passive:true });
+document.addEventListener("touchmove", (e) => {
+  if(!ptr) return;
+  const dx = e.touches[0].clientX-ptr.x0, dy = e.touches[0].clientY-ptr.y0;
+  if(!ptr.on){
+    if(Math.abs(dx)>Math.abs(dy) || dy<0 || window.scrollY>2){ ptr = null; return; }
+    if(dy<8) return;
+    ptr.on = true;
+  }
+  ptr.dy = dy;
+  const st = pullRefreshState(dy);
+  ptrPaint(st.offset, st.armed ? "Relâche pour actualiser" : "Tire pour actualiser", false);
+}, { passive:true });
+document.addEventListener("touchend", async () => {
+  if(!ptr) return;
+  const go = ptr.on && pullRefreshState(ptr.dy).armed;
+  ptr = null;
+  if(!go){ ptrHide(); return; }
+  ptrPaint(PULL_TRIGGER, "Actualisation…", true);
+  await refreshFromServer(true);
+  ptrHide();
+});
+document.addEventListener("touchcancel", () => { ptr = null; ptrHide(); });
 
 // Point d'entrée unique pour dessiner l'app après chargement des données :
 // tant que l'onboarding n'est pas terminé, on affiche le parcours guidé à la

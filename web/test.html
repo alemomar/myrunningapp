@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=93"></script>
+<script src="logic.js?v=94"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -420,6 +420,22 @@ try {
   assertEqual("E8 : reprise après 2 semaines de pause -> charge basse (pas d'alerte)", acwrAt([14,16,18,21,23,25,0].map(n=>day(n)), target).acwr<0.8, true);
   assertEqual("E8 : moins de 4 jours notés sur 28 jours -> pas de charge", acwrAt([0,10,22].map(n=>day(n)), target).acwr, null);
   assertEqual("E8 : nombre de jours notés renvoyé", acwrAt([0,2,4,30].map(n=>day(n)), target).ratedDays28, 3);
+}
+
+// --- Données à jour sans fermer l'app (E1, 07/10/2026) ---
+{
+  const t0 = 1_000_000_000_000;
+  assertEqual("E1 : retour après 31 s -> on recharge", shouldAutoRefresh(t0, t0+31000, false), true);
+  assertEqual("E1 : retour après 10 s -> rien", shouldAutoRefresh(t0, t0+10000, false), false);
+  assertEqual("E1 : fenêtre ouverte (saisie) -> rien", shouldAutoRefresh(t0, t0+600000, true), false);
+  assertEqual("E1 : jamais chargé -> rien (le démarrage s'en charge)", shouldAutoRefresh(0, t0, false), false);
+  assertEqual("E1 : tirer de 60 px -> 30 px affichés, pas encore armé", pullRefreshState(60), { offset:30, armed:false });
+  assertEqual("E1 : tirer de 140 px -> armé", pullRefreshState(140).armed, true);
+  assertEqual("E1 : tirer très loin -> plafonné", pullRefreshState(1000).offset, 96);
+  assertEqual("E1 : remonter le doigt -> rien d'affiché", pullRefreshState(-40), { offset:0, armed:false });
+  assertEqual("E1 : message, 1 séance", newRunsMessage(10, 11), "1 nouvelle séance reçue.");
+  assertEqual("E1 : message, 3 séances", newRunsMessage(10, 13), "3 nouvelles séances reçues.");
+  assertEqual("E1 : message, rien de nouveau", newRunsMessage(10, 10), "");
 }
 
 // --- chargeEntrainementGauge (4.4) ---

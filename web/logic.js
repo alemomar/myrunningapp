@@ -3260,6 +3260,24 @@ const CHARGE_EMPTY_TEXTS = {
           sheet:"Dès que tu auras repris et noté ta difficulté, ta charge apparaîtra." },
 };
 
+/* ---------- Données à jour sans fermer l'app (E1, retour d'Omar du 07/10/2026) ----------
+   Au retour dans l'app, on recharge si le dernier chargement date d'au moins 30 s (sauf pendant une saisie : `busy`).
+   Tirer pour actualiser : l'indicateur suit le doigt avec une résistance de moitié, plafonné ; au-delà du seuil, relâcher
+   actualise. Après coup, un message dit combien de séances sont arrivées. */
+const AUTO_REFRESH_MS = 30000, PULL_RESIST = 0.5, PULL_TRIGGER = 64, PULL_MAX = 96;
+function shouldAutoRefresh(lastLoadAt, now, busy){
+  return !busy && lastLoadAt>0 && now-lastLoadAt>=AUTO_REFRESH_MS;
+}
+function pullRefreshState(dy){
+  const offset = Math.max(0, Math.min(PULL_MAX, (Number(dy)||0)*PULL_RESIST));
+  return { offset, armed: offset>=PULL_TRIGGER };
+}
+function newRunsMessage(before, after){
+  const n = (after||0)-(before||0);
+  if(n<=0) return "";
+  return n===1 ? "1 nouvelle séance reçue." : n+" nouvelles séances reçues.";
+}
+
 /* ---------- Première connexion (S15, lot 1 : D99 à D101) ----------
    Test d'Omar du 06/10/2026 : on ne sait pas qu'il faut installer l'app, un lien reçu par e-mail s'ouvre dans le navigateur par
    défaut (jamais dans l'app installée, dont la connexion est séparée), et les erreurs de Supabase s'affichaient en anglais. */
