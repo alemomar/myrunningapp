@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=89"></script>
+<script src="logic.js?v=90"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -741,6 +741,25 @@ try {
   assertEqual("patch : un plan débutant déjà en cours garde sa date de départ", again.programSettings.beginnerPlan, {startMonday:"2026-09-21"});
   const nochrono = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {}, {refDistanceKm:10, refTimeSec:3000}, race, "2026-10-05");
   assertEqual("patch : sans nouveau chrono, l'ancien temps de référence est conservé", [nochrono.programSettings.refDistanceKm, nochrono.programSettings.refTimeSec], [10,3000]);
+  // D108 : écran « Ton profil coureur »
+  const prof = onboardingProfilePatch({ ...base, frequenceAutre:2, terrain:"Trail", equipement:["Apple Watch","Strava"] }, {}, {}, race, "2026-10-05");
+  assertEqual("patch : renfo/mobilité, terrain et équipement écrits dans le profil (D108)", [prof.goals.frequenceAutre, prof.goals.terrain, prof.goals.equipement], ["2","Trail","Apple Watch,Strava"]);
+  assertEqual("patch : le renfo choisi fait partie des réglages du programme créé (plus de « Tes réglages ont changé » juste après)", prof.programSettings.programSignature.frequenceAutre, 2);
+  const prof0 = onboardingProfilePatch({ ...base, frequenceAutre:0, terrain:"Route", equipement:["Aucun"] }, {frequenceAutre:"3"}, {}, race, "2026-10-05");
+  assertEqual("patch : zéro renfo est bien enregistré", [prof0.goals.frequenceAutre, prof0.goals.equipement], ["0","Aucun"]);
+  const keep = onboardingProfilePatch(base, {frequenceAutre:"3", terrain:"Tapis", equipement:"Garmin"}, {}, race, "2026-10-05");
+  assertEqual("patch : sans réponses de cet écran, les réglages du profil sont gardés", [keep.goals.frequenceAutre, keep.goals.terrain, keep.goals.equipement], ["3","Tapis","Garmin"]);
+  assertEqual("équipement : plusieurs choix", toggleEquipement(["Apple Watch"], "Strava"), ["Apple Watch","Strava"]);
+  assertEqual("équipement : « Aucun » retire les appareils, un appareil retire « Aucun », re-toucher retire", [toggleEquipement(["Apple Watch","Strava"], "Aucun"), toggleEquipement(["Aucun"], "Garmin"), toggleEquipement(["Garmin","Whoop"], "Garmin"), toggleEquipement(null, "Whoop")], [["Aucun"], ["Garmin"], ["Whoop"], ["Whoop"]]);
+  assertEqual("renfo : phrase sous le chiffre", [renfoHint(0), renfoHint(1), renfoHint("3")], ["Que de la course : pas de renfo ni de mobilité.", "1 séance de gainage, musculation ou étirements en plus de la course.", "3 séances de gainage, musculation ou étirements en plus de la course."]);
+  const ps = [
+    { id:"a", planned_date:"2026-10-06", type:"EF", status:"planned" },
+    { id:"b", planned_date:"2026-10-08", type:"Renfo", status:"planned" },
+    { id:"c", planned_date:"2026-10-08", type:"EF", status:"planned" },
+    { id:"d", planned_date:"2026-10-07", type:"Fractionné", status:"done" },
+    { id:"e", planned_date:"2026-10-10", type:"Long", status:"planned" },
+  ];
+  assertEqual("« Tout est prêt » : prochaine séance prévue à partir d'aujourd'hui, la course avant le renfo le même jour (D108)", [nextPlannedSession(ps, "2026-10-07")?.id, nextPlannedSession(ps, "2026-10-06")?.id, nextPlannedSession(ps, "2026-10-11"), nextPlannedSession([], "2026-10-07"), nextPlannedSession(null, "2026-10-07")], ["c", "a", null, null, null]);
 }
 
 // --- Plan marche/course : génération (4.1.d) ---

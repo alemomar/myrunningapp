@@ -974,7 +974,17 @@ button.pg-rec-row{cursor:pointer}
 .tour-text{font-size:14.5px;line-height:1.45;color:var(--text-2)}
 .tour-btns{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:6px}
 .tour-skip{border:none;background:none;color:var(--text-3);font:inherit;font-size:14px;min-height:44px;padding:0 4px;cursor:pointer}
-.tour-next{min-height:44px;padding:0 20px;border:none;border-radius:22px;background:var(--accent);color:var(--on-accent);font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.tour-next{min-height:44px;padding:0 20px;border:none;border-radius:22px;background:var(--accent);color:var(--on-accent);font:inherit;font-weight:700;font-size:15px;cursor:pointer;margin-left:auto}
+/* « Tout est prêt » : fin de la première visite guidée, donc de l'onboarding (D108). Même cadre que « Bienvenue ». */
+.ready{position:fixed;inset:0;z-index:363;background:var(--bg);overflow-y:auto;padding:0 20px}
+.ready-hero{margin-top:auto;width:72px;height:72px;border-radius:50%;flex:none;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center}
+.ready-card{display:flex;flex-direction:column;gap:4px;padding:16px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--line)}
+.ready-card .k{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+.ready-card .t{font:700 24px/1.1 var(--font-display);text-transform:uppercase}
+.ready-card .d{font-size:14px;color:var(--text-2)}
+.ready-tip{display:flex;gap:10px;font-size:14px;line-height:1.45;color:var(--text-2)}
+.ready-tip svg{color:var(--text-muted);flex:none;margin-top:2px}
+@media (prefers-reduced-motion: no-preference){ .ready{animation:readyIn .3s ease} @keyframes readyIn{from{opacity:0}to{opacity:1}} }
 @media (prefers-reduced-motion: no-preference){ .tour-bubble{animation:sheetUp var(--t-step,280ms) var(--ease)} }
 /* Historique (S7, design 7g) */
 .page-back{width:36px;height:36px;margin:-4px 4px -4px -8px;border:none;border-radius:50%;background:none;color:var(--text);display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;cursor:pointer}
@@ -1139,7 +1149,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=89"></script>
+<script src="logic.js?v=90"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -6227,12 +6237,14 @@ window.dismissGuidedTestSeen = () => {
   renderContent();
 };
 
-// ---------- Parcours de démarrage (S10, journal 11b ; D58, D59, D61) ----------
-// Plein écran : retour en chevron, barre en 5 segments, un seul bouton citron en bas. 0 Bienvenue, 1 Objectif, 2 Niveau
-// (l'écran « Ton niveau »), 3 Disponibilités, 4 Récapitulatif ; une fois le programme créé, 5 Connecte tes courses.
+// ---------- Parcours de démarrage (S10, journal 11b ; D58, D59, D61 ; D108) ----------
+// Plein écran : retour en chevron, barre en 6 segments, un seul bouton citron en bas. 0 Bienvenue, 1 Objectif, 2 Niveau
+// (l'écran « Ton niveau »), 3 Disponibilités, 4 Ton profil coureur (D108 : renfo/mobilité, terrain, équipement),
+// 5 Récapitulatif ; une fois le programme créé, 6 Connecte tes courses.
+const ONB_STEPS = 6;
 // [libellé affiché, clé utilisée dans les données] — même ordre que ONBOARDING_DUREE_OPTIONS ([libellé, valeur]).
 const ONB_RACES = [["5 km","5km"],["10 km","10km"],["15 km","15km"],["Semi-marathon","Semi"],["Marathon","Marathon"]];
-let onbConnect = false;   // étape 5 : le programme est créé, le parcours est enregistré, on propose de connecter les courses
+let onbConnect = false;   // étape 6 : le programme est créé, le parcours est enregistré, on propose de connecter les courses
 const onbToday = () => localDateStr(new Date());
 function onbInit(){
   const principal = goals?.principal || {};
@@ -6259,6 +6271,10 @@ function onbInit(){
     chronoS: refSec ? String(refSec%60) : "",
     frequence: Number(goals?.frequence) || 3,
     joursIndisponibles: (goals?.joursIndisponibles ? goals.joursIndisponibles.split(",").map(Number) : []),
+    // « Ton profil coureur » (D108) : réglages du profil s'il y en a ; sinon une séance de renfo/mobilité proposée
+    frequenceAutre: goals?.frequenceAutre!=null && goals.frequenceAutre!=="" ? Number(goals.frequenceAutre) : 1,
+    terrain: goals?.terrain || "",
+    equipement: goals?.equipement ? goals.equipement.split(",").filter(Boolean) : [],
     reality: levelReality(),
     saving: false, _anim: null,
   };
@@ -6278,6 +6294,7 @@ function onbPatch(){
   return onboardingProfilePatch({
     objectif:onb.objectif, distanceCourse:onb.distanceCourse, dateCible:onb.dateCible, niveau:onb.niveau,
     frequenceHistorique:onb.frequenceHistorique, dureeMax:onb.dureeMax, frequence:onb.frequence, joursIndisponibles:onb.joursIndisponibles,
+    frequenceAutre:onb.frequenceAutre, terrain:onb.terrain, equipement:onb.equipement,
     chronoDistance:known ? onb.chronoDistance : "", chronoSec:known ? onbChronoSec() : 0,
   }, goals, programSettings, RACE_DISTANCES_KM, beginnerPlanStartMonday(onbToday()), onbToday());
 }
@@ -6304,7 +6321,8 @@ function onbCanContinue(){
     if(!onb.detected && (!onb.frequenceHistorique || onb.dureeMax==null)) return false;
     return !onbChronoKnown() || onbChronoCheck().ok;
   }
-  if(onb.step===4) return !dateStepBlocked(onbDateModel(), onb.dateChoice);
+  if(onb.step===4) return !!onb.terrain && onb.equipement.length>0;
+  if(onb.step===5) return !dateStepBlocked(onbDateModel(), onb.dateChoice);
   return true;
 }
 window.onbSet = (key, value) => {
@@ -6334,10 +6352,11 @@ window.onbToggleDay = (i) => {
   onb.joursIndisponibles = onb.joursIndisponibles.includes(i) ? onb.joursIndisponibles.filter(d=>d!==i) : [...onb.joursIndisponibles, i];
   renderApp();
 };
+window.onbToggleEquip = (value) => { onb.equipement = toggleEquipement(onb.equipement, value); renderApp(); };
 window.onbGo = (delta) => {
   if(delta>0 && !onbCanContinue()) return;
   onb._anim = delta>0 ? "fwd" : "back";
-  onb.step = Math.max(0, Math.min(4, onb.step+delta));
+  onb.step = Math.max(0, Math.min(ONB_STEPS-1, onb.step+delta));   // la dernière étape (Connecte tes courses) vient après la création du programme
   renderApp();
 };
 // « Garder cette date », « Prendre le … », « Sans date » : réponses aux états « Date un peu serrée » et « Date trop proche ».
@@ -6367,19 +6386,20 @@ const onbChipsHTML = (options, current, handler) => `<div class="pf-chips">${opt
 }).join("")}</div>`;
 const onbLevelBoxesHTML = () => `<div class="lv-levels" role="group" aria-label="Niveau">${NIVEAUX.map(([lbl,sub])=>`<button type="button" aria-pressed="${onb.niveau===lbl}" onclick="onbSet('niveau','${lbl}')"><div class="n">${lbl}</div><div class="s">${escHtml(sub)}</div></button>`).join("")}</div>`;
 const onbInfoHTML = (html) => `<div class="lv-info" style="margin-top:0">${icon("info",16)}<span>${html}</span></div>`;
-// Cadre d'un écran : barre du haut (retour, 5 segments, « N / 5 »), titre, corps, un seul bouton citron en bas.
+// Cadre d'un écran : barre du haut (retour, 6 segments, « N / 6 »), titre, corps, un seul bouton citron en bas.
 // `o` : { step, title, sub, body, next:{label, call, off, hint}, secondary:{label, call}, back }
 function onbScreenHTML(o){
   const anim = onb._anim ? ` anim-${onb._anim}` : ""; onb._anim = null;
+  const segs = Array.from({ length:ONB_STEPS }, (_, k) => k+1);
   const top = o.step>=1 ? `<div class="on-top">
       ${o.back===false ? `<span class="on-back"></span>` : `<button type="button" class="on-back" aria-label="Retour" onclick="onbGo(-1)">${icon("chevronLeft",22)}</button>`}
-      <div class="on-bar" role="progressbar" aria-valuemin="1" aria-valuemax="5" aria-valuenow="${o.step}">${[1,2,3,4,5].map(i=>`<i class="${i<=o.step?"on":""}${i===o.step?" now":""}"></i>`).join("")}</div>
-      <span class="on-count">${o.step} / 5</span></div>` : "";
+      <div class="on-bar" role="progressbar" aria-valuemin="1" aria-valuemax="${ONB_STEPS}" aria-valuenow="${o.step}">${segs.map(i=>`<i class="${i<=o.step?"on":""}${i===o.step?" now":""}"></i>`).join("")}</div>
+      <span class="on-count">${o.step} / ${ONB_STEPS}</span></div>` : "";
   const foot = `<div class="on-foot">
       <button type="button" class="btn-primary on-next${o.next.off?" off":""}" id="onbNext" onclick="${o.next.call}">${o.next.label}</button>
       ${o.next.hint ? `<div class="on-hint">${o.next.hint}</div>` : ""}
       ${o.secondary ? `<button type="button" class="btn-secondary on-second" onclick="${o.secondary.call}">${o.secondary.label}</button>` : ""}
-      ${onbRestarting && o.step<5 ? `<button type="button" class="on-cancel" onclick="cancelOnboarding()">Annuler et revenir à l'app</button>` : ""}
+      ${onbRestarting && o.step<ONB_STEPS ? `<button type="button" class="on-cancel" onclick="cancelOnboarding()">Annuler et revenir à l'app</button>` : ""}
     </div>`;
   return `<div class="on-screen${anim}${o.step===0?" welcome":""}">${top}
     ${o.hero||""}
@@ -6449,6 +6469,18 @@ function onbStepDispos(){
     <div class="on-group"><div class="on-lbl">Des jours où tu ne peux jamais courir ?</div><div class="pf-chips">${JOURS_OPTIONS.map((d,i)=>`<button type="button" class="pf-chip${onb.joursIndisponibles.includes(i)?" active":""}" aria-pressed="${onb.joursIndisponibles.includes(i)}" onclick="onbToggleDay(${i})">${d}</button>`).join("")}</div></div>`;
   return onbScreenHTML({ step:3, title:"Tes disponibilités", sub:"On placera tes séances sur les autres jours.", body, next:{ label:"Continuer", call:"onbGo(1)" } });
 }
+// D108 : les réglages du profil qui manquaient au parcours, une touche chacun. Le renfo entre dans le programme dès sa
+// création (plus de « Tes réglages ont changé » juste après) ; terrain et équipement complètent le profil.
+function onbStepProfil(){
+  const n = String(onb.frequenceAutre);
+  const nums = ["0","1","2","3","4","5","6","7"].map(o=>`<button type="button" class="${n===o?"active":""}" aria-pressed="${n===o}" onclick="onbSet('frequenceAutre',${o})">${o}</button>`).join("");
+  const equip = EQUIPEMENT_OPTIONS.map(o=>{ const on = onb.equipement.includes(o); return `<button type="button" class="pf-chip${on?" active":""}" aria-pressed="${on}" onclick="onbToggleEquip('${o}')">${o}</button>`; }).join("");
+  const body = `<div class="on-group"><div class="on-lbl">Combien de séances de renfo ou de mobilité par semaine&nbsp;?</div><div class="pf-nums on-nums n8">${nums}</div>
+      <div class="on-hint" style="text-align:left">${escHtml(renfoHint(onb.frequenceAutre))}</div></div>
+    <div class="on-group"><div class="on-lbl">Où cours-tu le plus souvent&nbsp;?</div>${onbChipsHTML(TERRAIN_OPTIONS, onb.terrain, "onbSet.bind(null,'terrain')")}</div>
+    <div class="on-group"><div class="on-lbl">Avec quoi enregistres-tu tes courses&nbsp;? Plusieurs choix possibles.</div><div class="pf-chips">${equip}</div></div>`;
+  return onbScreenHTML({ step:4, title:"Ton profil coureur", sub:"Trois dernières questions pour un programme complet.", body, next:{ label:"Continuer", call:"onbGo(1)", off:!onbCanContinue() } });
+}
 function onbStepRecap(){
   const raceLabel = (ONB_RACES.find(r=>r[1]===onb.distanceCourse)||[])[0];
   const jours = onb.joursIndisponibles.length ? onb.joursIndisponibles.slice().sort((a,b)=>a-b).map(i=>JOURS_OPTIONS[i]).join(", ") : "aucun";
@@ -6456,14 +6488,15 @@ function onbStepRecap(){
   const needsTest = onbPatch().needsGuidedTest;
   const programme = onbBeginner() ? "Marche/course sur 9 semaines (NHS)" : (needsTest ? "Test de 20 minutes, puis programme personnalisé" : "Programme personnalisé");
   const objectif = onb.objectif + (onb.objectif==="Préparer une course" ? ` · ${raceLabel||""}${onb.dateCible?" · le "+isoToFr(onb.dateCible):""}` : "");
-  const body = `<div class="on-rows">${row("Objectif", objectif)}${row("Niveau", onb.niveau)}${row("Séances de course", onb.frequence+" par semaine")}${row("Jours indisponibles", jours)}${row("Programme", programme)}</div>
+  const renfo = Number(onb.frequenceAutre)>0 ? onb.frequenceAutre+" par semaine" : "aucune";
+  const body = `<div class="on-rows">${row("Objectif", objectif)}${row("Niveau", onb.niveau)}${row("Séances de course", onb.frequence+" par semaine")}${row("Renfo / mobilité", renfo)}${row("Jours indisponibles", jours)}${row("Terrain", onb.terrain||"—")}${row("Équipement", onb.equipement.join(", ")||"—")}${row("Programme", programme)}</div>
     ${needsTest ? onbInfoHTML("Comme tu n'as pas de chrono, ta première séance sera un <strong>test de 20 minutes</strong> : la distance que tu parcours nous sert à calculer tes allures. Tu pourras aussi donner un chrono plus tard, dans « Ton niveau ».") : ""}`;
-  return onbScreenHTML({ step:4, title:"Voilà ce qu'on a compris", sub:"Tout pourra être modifié dans Profil.", body,
+  return onbScreenHTML({ step:5, title:"Voilà ce qu'on a compris", sub:"Tout pourra être modifié dans Profil.", body,
     next:{ label:onb.saving ? "Création de ton programme…" : "Créer mon programme", call:"onbFinish()", off:!onbCanContinue() } });
 }
 function onbStepConnect(){
   const body = `<div class="on-text">Sans montre, tu pourras aussi les saisir à la main.</div>`;
-  return onbScreenHTML({ step:5, back:false, title:"Connecte tes courses", sub:"L'app iOS RunSync envoie tes courses depuis Apple Santé. Elles arrivent ici toutes seules, avec ta fréquence cardiaque.", body,
+  return onbScreenHTML({ step:6, back:false, title:"Connecte tes courses", sub:"L'app iOS RunSync envoie tes courses depuis Apple Santé. Elles arrivent ici toutes seules, avec ta fréquence cardiaque.", body,
     next:{ label:"Voir comment", call:"openSyncGuide()" }, secondary:{ label:"Plus tard", call:"onbLeave()" } });
 }
 // « On prépare ton programme… » (13c) : 4 étapes qui se cochent au fil du vrai travail, avec une courte pause entre deux pour que
@@ -6485,7 +6518,8 @@ function onboardingHTML(){
   if(onb.step===1) return onbStepObjectif();
   if(onb.step===2) return onbStepNiveau();
   if(onb.step===3) return onbStepDispos();
-  if(onb.step===4) return onbStepRecap();
+  if(onb.step===4) return onbStepProfil();
+  if(onb.step===5) return onbStepRecap();
   return onbStepConnect();
 }
 // Crée le programme : enregistre les réponses, génère la première semaine (ou planifie le test de 20 minutes), puis propose
@@ -6513,7 +6547,7 @@ window.onbFinish = async function(){
     await tick(4);
   }catch(e){ console.error("Génération initiale :", e); }
   if(receivedRuns().length>0){ onbLeave(); return; }
-  onb.saving = false; onb.prepDone = null; onb.step = 5; onb._anim = "fwd";
+  onb.saving = false; onb.prepDone = null; onb.step = ONB_STEPS; onb._anim = "fwd";
   renderApp();
 };
 window.onbLeave = () => {
@@ -6683,43 +6717,71 @@ function renderSyncGuide(){
   return true;
 }
 
-// ---------- Visite guidée après le parcours de démarrage (lot 3, D105) ----------
+// ---------- Visite guidée après le parcours de démarrage (lot 3, D105 ; D108) ----------
 // Une bulle par onglet (TOUR_STEPS, logic.js), sur le vrai écran : on passe d'onglet en onglet, celui présenté est éclairé dans
 // le menu du bas. En attente sur l'appareil (« pending ») depuis la fin du parcours ; démarre dès que l'app est affichée sans
-// fenêtre ouverte (après le guide RunSync), et reprend si l'app est rechargée avant. « Revoir » depuis Profil › Mon compte.
-let tour = null;   // { step }
+// fenêtre ouverte (après le guide RunSync), et reprend si l'app est rechargée avant. La première fois, l'écran « Tout est
+// prêt » la termine, même si on la passe (D108). « Revoir » depuis Profil › Mon compte, sans l'écran final.
+let tour = null;   // { step, first }
+let tourReady = false;   // écran « Tout est prêt » affiché
 const tourKey = () => "mra_tour_" + (userId || userEmail);
 function tourPending(){ try{ return localStorage.getItem(tourKey())==="pending"; }catch(e){ return false; } }
 function setTourState(v){ try{ if(v) localStorage.setItem(tourKey(), v); else localStorage.removeItem(tourKey()); }catch(e){} }
 function maybeStartTour(){
   if(tour || !tourPending() || !onboardingCompletedAt || onbConnect || syncGuide) return;
   if(document.querySelector("#sheetRoot .sheet-back")) return;   // une fenêtre du bas est ouverte (ressenti, nouveautés…)
-  startTour();
+  startTour(true);
 }
-window.startTour = () => { tour = { step:0 }; tourShowStep(); };
+window.startTour = (first) => { tourReady = false; tour = { step:0, first:!!first }; tourShowStep(); };
 function tourShowStep(){
   const tab = TOUR_STEPS[tour.step].tab;
   setTab(tab==="profil" ? "objectifs" : tab);   // Profil s'ouvre sur ses objectifs
   renderTour();
 }
 window.tourNext = () => { if(!tour) return; tour.step = Math.min(tour.step+1, TOUR_STEPS.length-1); tourShowStep(); };
-window.tourEnd = () => { tour = null; setTourState("done"); renderTour(); };
-window.tourGoals = () => { tourEnd(); setTab("objectifs"); };
+window.tourEnd = () => { const first = !!(tour && tour.first); tour = null; setTourState("done"); tourReady = first; renderTour(); };
+window.readyStart = () => { tourReady = false; renderTour(); setTab("aujourdhui"); };
 function renderTour(){
   const root = document.getElementById("tourRoot");
   if(!root) return;
-  if(!tour){ root.innerHTML = ""; return; }
+  if(!tour){
+    root.innerHTML = tourReady ? readyHTML() : "";
+    const go = document.getElementById("readyGo");
+    if(go) go.focus({ preventScroll:true });
+    return;
+  }
   const s = TOUR_STEPS[tour.step], last = tour.step===TOUR_STEPS.length-1;
+  const skip = last ? "" : `<button type="button" class="tour-skip" onclick="tourEnd()">Passer la visite</button>`;
   root.innerHTML = `<div class="tour-catch" aria-hidden="true"></div><div class="tour-spot" id="tourSpot"></div>
     <div class="tour-bubble" id="tourBubble" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
       <div class="tour-step">${tour.step+1} sur ${TOUR_STEPS.length}</div>
       <div class="tour-title" id="tourTitle">${escHtml(s.title)}</div>
       <div class="tour-text">${escHtml(s.text)}</div>
-      <div class="tour-btns"><button type="button" class="tour-skip" onclick="tourEnd()">${last ? "Plus tard" : "Passer la visite"}</button><button type="button" class="tour-next" onclick="${last ? "tourGoals()" : "tourNext()"}">${last ? "Compléter mes objectifs" : "Suivant"}</button></div>
+      <div class="tour-btns">${skip}<button type="button" class="tour-next" onclick="${last ? "tourEnd()" : "tourNext()"}">${last && !tour.first ? "Terminer" : "Suivant"}</button></div>
     </div>`;
   placeTour();
   const next = root.querySelector(".tour-next");
   if(next) next.focus({ preventScroll:true });
+}
+// « Tout est prêt » (D108) : la fin de l'onboarding, avec la prochaine séance prévue ; « Commencer » mène à Aujourd'hui.
+function readyDayLabel(dateStr){
+  const d = new Date(), tomorrow = new Date(); tomorrow.setDate(d.getDate()+1);
+  if(dateStr===localDateStr(d)) return "Aujourd'hui";
+  if(dateStr===localDateStr(tomorrow)) return "Demain";
+  const s = new Date(dateStr+"T00:00:00").toLocaleDateString("fr-FR", { weekday:"long", day:"numeric", month:"long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function readyHTML(){
+  const next = nextPlannedSession(plannedSessions, localDateStr(new Date()));
+  const sub = receivedRuns().length>0 ? "Ton programme est prêt, et tes courses arrivent toutes seules depuis Apple Santé."
+    : "Ton programme est prêt. Tu pourras connecter tes courses quand tu veux, depuis Profil › Mon compte.";
+  const card = next ? `<div class="ready-card"><div class="k">Ta prochaine séance</div><div class="t">${escHtml(sessionSmallTitle(next))}</div><div class="d">${escHtml(readyDayLabel(next.planned_date))}</div></div>` : "";
+  return `<div class="ready" role="dialog" aria-modal="true" aria-labelledby="readyTitle"><div class="on-screen">
+      <div class="ready-hero" aria-hidden="true">${icon("check",34)}</div>
+      <div class="on-head"><div class="on-title" id="readyTitle">Tout est prêt</div><div class="on-sub">${sub}</div></div>
+      <div class="on-body">${card}<div class="ready-tip">${icon("info",16)}<span>Après chaque course, note ton ressenti : ton programme s'adapte.</span></div></div>
+      <div class="on-foot"><button type="button" class="btn-primary on-next" id="readyGo" onclick="readyStart()">Commencer</button></div>
+    </div></div>`;
 }
 // L'onglet est éclairé là où il est, et la bulle se pose juste au-dessus du menu du bas, sa pointe vers l'onglet.
 function placeTour(){
@@ -6734,7 +6796,7 @@ function placeTour(){
   bubble.style.setProperty("--tour-arrow", Math.min(b.width-24, Math.max(24, r.left + r.width/2 - b.left)) + "px");
 }
 window.addEventListener("resize", placeTour);
-document.addEventListener("keydown", (e) => { if(e.key==="Escape" && tour) tourEnd(); });
+document.addEventListener("keydown", (e) => { if(e.key!=="Escape") return; if(tour) tourEnd(); else if(tourReady) readyStart(); });
 
 supa.auth.getSession().then(({ data }) => {
   if (data.session) boot(); else showAuthEntry();

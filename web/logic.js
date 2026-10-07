@@ -966,7 +966,9 @@ function beginnerPlanStartMonday(todayStr){
 /* Réponses du parcours -> données du profil. `state` : {objectif,
    distanceCourse, dateCible, niveau, frequenceHistorique, frequence,
    joursIndisponibles:[0-6], chronoDistance (clé de course), chronoSec,
-   chronoDate (AAAA-MM-JJ, facultatif)}.
+   chronoDate (AAAA-MM-JJ, facultatif), frequenceAutre, terrain,
+   equipement:[…] (écran « Ton profil coureur », D108 ; absents = réglages du
+   profil gardés)}.
    Un chrono saisi devient le temps de référence du moteur (« Ton niveau » :
    programSettings.refDistanceKm/refTimeSec/refDate/refSource), jamais un record
    (pbSec). Sans date précise (« chrono récent »), il est daté d'il y a 3 mois
@@ -987,6 +989,11 @@ function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, 
     frequence: String(state.frequence),
     joursIndisponibles: (state.joursIndisponibles||[]).slice().sort((a,b)=>a-b).join(","),
   };
+  // Renfo/mobilité compte dans le programme (programSignature) : demandé avant sa création, plus de « Tes réglages ont
+  // changé » juste après le parcours (tests d'Omar du 07/10/2026). Terrain et équipement complètent le profil.
+  if(state.frequenceAutre!=null && state.frequenceAutre!=="") newGoals.frequenceAutre = String(state.frequenceAutre);
+  if(state.terrain) newGoals.terrain = state.terrain;
+  if(Array.isArray(state.equipement)) newGoals.equipement = state.equipement.join(",");
   const ps = { ...(programSettings||{}) };
   const km = raceDistancesKm ? raceDistancesKm[state.chronoDistance] : null;
   if(km && state.chronoSec>0){
@@ -1006,6 +1013,26 @@ function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, 
   // Un compte qui a déjà un programme garde sa signature : un changement d'objectif fait avec le parcours sera signalé (D62).
   if(!ps.programSignature) ps.programSignature = programSignature(newGoals);
   return { goals:newGoals, programSettings:ps, beginner, needsGuidedTest };
+}
+// Écran « Ton profil coureur » du parcours (D108). Équipement : plusieurs choix possibles, « Aucun » exclut les autres
+// (et un appareil choisi retire « Aucun »).
+function toggleEquipement(list, value){
+  const cur = (list||[]).filter(Boolean);
+  if(cur.includes(value)) return cur.filter(v=>v!==value);
+  if(value==="Aucun") return ["Aucun"];
+  return [...cur.filter(v=>v!=="Aucun"), value];
+}
+function renfoHint(n){
+  const k = Number(n)||0;
+  if(k<=0) return "Que de la course : pas de renfo ni de mobilité.";
+  return `${k} séance${k>1?"s":""} de gainage, musculation ou étirements en plus de la course.`;
+}
+// Écran « Tout est prêt » (D108) : la prochaine séance prévue à partir d'aujourd'hui ; le même jour, la course avant
+// le renfo ou la mobilité.
+function nextPlannedSession(sessions, todayStr){
+  const later = (s) => NON_RUNNING_SESSION_TYPES.includes(normalizeSessionType(s.type)) ? 1 : 0;
+  return (sessions||[]).filter(s => s && s.status==="planned" && String(s.planned_date||"") >= todayStr)
+    .sort((a,b) => String(a.planned_date).localeCompare(String(b.planned_date)) || later(a)-later(b))[0] || null;
 }
 
 /* ---------- Génération du plan marche/course (4.1.d) ----------
@@ -2719,12 +2746,13 @@ function syncReceivedText(received, runs){
 }
 /* ---------- Visite guidée après le parcours de démarrage (lot 3, D105) ----------
    Une bulle par onglet, sur le vrai écran, l'onglet éclairé dans le menu du bas. Remplace les 4 anciennes bulles « Compris »
-   retirées le 05/10/2026 (D91, textes périmés). La dernière invite à compléter ses objectifs dans Profil. */
+   retirées le 05/10/2026 (D91, textes périmés). La dernière montre où tout se règle ; la première fois, l'écran
+   « Tout est prêt » suit (D108 : les réglages manquants sont maintenant demandés dans le parcours). */
 const TOUR_STEPS = [
   { tab:"aujourdhui", title:"Aujourd'hui", text:"Ta séance du jour, ta semaine et tes dernières sorties. Après une course, c'est ici que tu notes ton ressenti : ton programme s'adapte." },
   { tab:"programme", title:"Programme", text:"Ton programme, semaine par semaine. Touche une séance pour la voir en détail, la déplacer ou la remplacer." },
   { tab:"progression", title:"Progression", text:"Tes records, ton allure en endurance et ton volume. Tout se met à jour tout seul, course après course." },
-  { tab:"profil", title:"Profil", text:"Ton objectif, ton niveau et tes réglages. Complète tes objectifs : ton programme sera encore plus juste." },
+  { tab:"profil", title:"Profil", text:"Ton objectif, ton niveau et tous tes réglages. Tu peux tout modifier ici, quand tu veux." },
 ];
 
 /* ---------- Parcours de démarrage marqué fait d'office (lot 3, D106) ----------

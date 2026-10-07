@@ -499,7 +499,7 @@
     else if(scen==="hors_ligne"){ Object.defineProperty(navigator, "onLine", { get:()=>false, configurable:true }); show("aujourdhui"); renderOfflineBar(); }
     else if(scen==="message_erreur"){ show("profil"); toast("Pas enregistré, vérifie ta connexion.", { actionLabel:"Réessayer", ms:600000 }); }
     else if(scen==="profil_synchro_muette"){ RUNS=RUNS.filter(r=>dateFromRun(r).getTime() < Date.now()-9*86400000); runningRuns=RUNS.filter(r=>r.includeInStats); setProfilSectionState("compte"); show("profil"); }
-    else if(scen==="onboarding_preparation"){ RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbInit(); onb.step=4; onb.saving=true; onb.prepDone=2; renderApp(); }
+    else if(scen==="onboarding_preparation"){ RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbInit(); onb.step=5; onb.saving=true; onb.prepDone=2; renderApp(); }
   } else if(/^guide_(etape[123]|attente|ok|vide|indice[23])$/.test(scen)){
     // S10 : guide « Voir comment » (connecter RunSync), depuis Mon compte › Synchronisation ; 4 étapes depuis D107
     // (guide_indice2 / guide_indice3 : TestFlight / RunSync ne s'est pas ouvert, un mot propose de l'installer)
@@ -515,25 +515,29 @@
     if(scen==="guide_vide") syncGuide.waitStart = Date.now()-100000;
     if(scen==="guide_ok"){ syncGuide.received = 12; syncGuide.runs = 9; }
     refreshSheet();
-  } else if(/^visite_[1-4]$/.test(scen)){
-    // S17 (lot 3, D105) : visite guidée après le parcours, bulle N sur le vrai écran
+  } else if(/^visite_([1-4]|pret)$/.test(scen)){
+    // S17 (lot 3, D105) : visite guidée après le parcours, bulle N sur le vrai écran, telle qu'un nouveau la voit ;
+    // visite_pret : l'écran « Tout est prêt » qui la termine (D108).
     // L'écran est dessiné avant, comme dans l'app (renderApp dessine puis lance la visite).
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; show("aujourdhui");
-    startTour(); tour.step = Number(scen.slice(-1))-1; tourShowStep();
+    startTour(true);
+    if(scen==="visite_pret") tourEnd();
+    else { tour.step = Number(scen.slice(-1))-1; tourShowStep(); }
   } else if(scen.startsWith("onboarding")){
     RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbRestarting=false; onbConnect=false;
     renderApp();
     const inDays = (n)=>localDateStr(new Date(Date.now()+n*86400000));
     if(scen==="onboarding_bienvenue") { /* écran d'accueil du parcours */ } else if(scen==="onboarding_connexion"){
-      // étape 5 : programme créé, on propose de connecter les courses
-      onbInit(); onb.step=5; onbConnect=true; onboardingCompletedAt="2026-06-01T08:00:00Z"; renderApp();
+      // dernière étape (6 depuis D108) : programme créé, on propose de connecter les courses
+      onbInit(); onb.step=ONB_STEPS; onbConnect=true; onboardingCompletedAt="2026-06-01T08:00:00Z"; renderApp();
     } else {
     onbGo(1);
     onbSet("objectif","Préparer une course"); onbSet("distanceCourse", /date_/.test(scen) ? "Semi" : "10km");
     onbSet("dateCible", scen==="onboarding_date_serree" ? inDays(63) : scen==="onboarding_date_proche" ? inDays(28) : "2026-12-13");
-    if(scen==="onboarding_niveau"||scen==="onboarding_niveau_chrono"||scen==="onboarding_recap"){ onbGo(1); onbSet("frequenceHistorique","2 à 3 fois par semaine"); onbSet("dureeMax",40); if(scen!=="onboarding_niveau"){ onbSet("chronoMode","known"); onbSet("chronoDistance","10km"); onbSetField("chronoM","47"); } }
+    if(scen==="onboarding_niveau"||scen==="onboarding_niveau_chrono"||scen==="onboarding_recap"||scen==="onboarding_profil"){ onbGo(1); onbSet("frequenceHistorique","2 à 3 fois par semaine"); onbSet("dureeMax",40); if(scen!=="onboarding_niveau"){ onbSet("chronoMode","known"); onbSet("chronoDistance","10km"); onbSetField("chronoM","47"); } }
     if(scen==="onboarding_dispos"){ onbGo(1); onbSet("frequenceHistorique","2 à 3 fois par semaine"); onbSet("dureeMax",40); onbGo(1); onbToggleDay(6); onbToggleDay(2); }
-    if(scen==="onboarding_recap"){ onbGo(1); onbToggleDay(6); onbGo(1); }
+    if(scen==="onboarding_profil"){ onbGo(1); onbGo(1); }   // D108 : « Ton profil coureur », tel qu'il s'ouvre (renfo proposé, le reste à choisir)
+    if(scen==="onboarding_recap"){ onbGo(1); onbToggleDay(6); onbGo(1); onbSet("terrain","Route"); onbToggleEquip("Apple Watch"); onbGo(1); }
     }
   }
   setTimeout(()=>{ try{ const ds=(r)=>localDateStr(dateFromRun(r)); const rec=weekRecap(runningRuns.map(r=>({date:ds(r),distKm:r.dist,durationSec:r.durationSec})), plannedSessions, localDateStr(new Date())); document.title="DIAG "+JSON.stringify({n:runningRuns.length, sem:rec.thisWeek, derniers:runningRuns.slice(-5).map(r=>[ds(r),r.type,r.dist,Math.round(r.durationSec/60)])}); }catch(e){ document.title="DIAG ERR "+e; } const h=Math.ceil(document.getElementById("content").getBoundingClientRect().bottom + window.scrollY + 96); const tops=[...document.getElementById("content").children].map(c=>Math.round(c.getBoundingClientRect().top+window.scrollY)); parent.postMessage({h, tops}, "*"); }, 4500);
