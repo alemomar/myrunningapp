@@ -865,7 +865,7 @@ button.pg-rec-row{cursor:pointer}
 @keyframes onbFade{from{opacity:0}to{opacity:1}}
 .on-top{display:flex;align-items:center;gap:12px}
 .on-back{width:44px;height:44px;margin-left:-10px;flex:none;display:flex;align-items:center;justify-content:center;border:none;background:none;color:var(--text);cursor:pointer}
-.on-bar{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.on-bar{flex:1;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:5px}   /* une seule ligne, quel que soit le nombre d'étapes (6 depuis D108) */
 .on-bar i{height:4px;border-radius:2px;background:var(--line);display:block}
 .on-bar i.on{background:var(--accent)}
 .on-count{font-size:12px;letter-spacing:.1em;color:var(--text-muted);flex:none}
