@@ -1657,15 +1657,24 @@ function buildDailyLoadSeries(sessions){
    athletes be training smarter and harder?", British Journal of Sports
    Medicine 50(5). Cible 0.8-1.3, risque accru au-delà de 1.5. Méthode
    "coupled" : charge aiguë = somme des 7 derniers jours, charge chronique =
-   moyenne hebdomadaire sur les 28 derniers jours (somme/4). */
+   moyenne hebdomadaire sur les 28 derniers jours (somme/4).
+   Garde-fou (E8, 07/10/2026) : sans recul, le rapport ne veut rien dire. L'historique d'Apple Santé arrive sans
+   difficulté notée : à la 1re séance notée, l'aigu vaut 4 fois le chronique, d'où une fausse alerte « risque de
+   blessure élevé » pendant environ 3 semaines ; même chose au retour d'une pause sans séance notée. Le rapport
+   n'est donné que si : au moins CHARGE_MIN_RATED jours avec une séance notée dans les 28 derniers jours, une
+   1re séance notée il y a au moins CHARGE_MIN_SPAN_DAYS jours, et de la charge notée avant la dernière semaine
+   (J-27 à J-7). Sinon acwr = null (texte « few » de CHARGE_EMPTY_TEXTS). */
+const CHARGE_MIN_RATED = 4, CHARGE_MIN_SPAN_DAYS = 21;
 function acwrAt(dailySeries, targetDate){
-  const inWindow = (days) => {
-    const from = new Date(targetDate); from.setDate(from.getDate()-(days-1));
-    return dailySeries.filter(d=>d.date>=from && d.date<=targetDate).reduce((a,d)=>a+d.load,0);
-  };
-  const acute7j = inWindow(7);
-  const chronic28j = inWindow(28)/4;
-  return { acute7j, chronic28j, acwr: chronic28j>0 ? acute7j/chronic28j : null };
+  const back = (n) => { const d = new Date(targetDate); d.setDate(d.getDate()-n); return d; };
+  const sumBetween = (from, to) => dailySeries.filter(d=>d.date>=from && d.date<=to).reduce((a,d)=>a+d.load,0);
+  const acute7j = sumBetween(back(6), targetDate);
+  const chronic28j = sumBetween(back(27), targetDate)/4;
+  const rated = dailySeries.filter(d=>d.load>0 && d.date<=targetDate);
+  const ratedDays28 = rated.filter(d=>d.date>=back(27)).length;
+  const first = rated.reduce((m,d)=>(m==null || d.date<m) ? d.date : m, null);
+  const enough = ratedDays28>=CHARGE_MIN_RATED && first!=null && first<=back(CHARGE_MIN_SPAN_DAYS) && sumBetween(back(27), back(7))>0;
+  return { acute7j, chronic28j, ratedDays28, enough, acwr: enough && chronic28j>0 ? acute7j/chronic28j : null };
 }
 
 /* ---------- Charge d'entraînement affichée à l'utilisateur (4.4) ----------
@@ -1680,7 +1689,7 @@ function acwrAt(dailySeries, targetDate){
    d'historique). Renvoie {zone, color, phrase, severe} — `severe` sert à
    l'UI pour renforcer l'alerte au-delà de 1,5 sans changer de couleur. */
 function chargeEntrainementGauge(acwr){
-  if(acwr==null) return { zone:"inconnue", color:"#A3A7AD", phrase:"Pas encore assez d'historique pour calculer ta charge d'entraînement.", severe:false };
+  if(acwr==null) return { zone:"inconnue", color:"#A3A7AD", phrase:"Ta charge d'entraînement s'affichera après quelques séances notées.", severe:false };
   if(acwr<0.8) return { zone:"sous-charge", color:"#8B8F96", phrase:"Tu pourrais progresser un peu plus vite — ta charge est en dessous de la zone idéale.", severe:false };
   if(acwr<=1.3) return { zone:"idéale", color:"#C6F432", phrase:"Tu augmentes ta charge à un rythme sûr.", severe:false };
   const severe = acwr>1.5;
@@ -2031,7 +2040,7 @@ function weekMessage(recap, gauge, missedDates, unlinkedRunDates){
   return { kind:"summary", text:weekSummaryPhrase(recap, gauge) };
 }
 function chargeZoneLabel(zone){
-  return { "sous-charge":"En dessous de la zone idéale", "idéale":"Dans la zone idéale", "attention":"Au-dessus de la zone idéale", "inconnue":"Pas encore de repère" }[zone] || "";
+  return { "sous-charge":"En dessous de la zone idéale", "idéale":"Dans la zone idéale", "attention":"Au-dessus de la zone idéale", "inconnue":"Bientôt disponible" }[zone] || "";
 }
 // Ligne de charge de « Ta semaine » : « Charge d'entraînement · Dans la zone idéale · 1,08 › ».
 function chargeLineInfo(gauge, acwr){
@@ -2152,7 +2161,7 @@ function chargeCurve(series, width, height){
 }
 function chargeAriaLabel(gauge, acwr){
   const zone = { "sous-charge":"en dessous de la zone idéale", "idéale":"dans la zone idéale", "attention":"au-dessus de la zone idéale" }[gauge.zone];
-  return zone && acwr!=null ? `Charge d'entraînement : ${zone}, ${fmtDec(acwr,2)}` : "Charge d'entraînement : pas encore de repère";
+  return zone && acwr!=null ? `Charge d'entraînement : ${zone}, ${fmtDec(acwr,2)}` : "Charge d'entraînement : bientôt disponible";
 }
 
 // --- Périodes des courbes (6c) : 3 mois, 6 mois, 12 mois, Tout (par défaut) ---
@@ -3233,15 +3242,18 @@ function missedBannerTitle(session, todayStr){
   if(daysBetween(session.planned_date, todayStr)<=6) return `Ta séance de ${d.toLocaleDateString("fr-FR",{weekday:"long"})} n'a pas pu se faire.`;
   return `Ta séance du ${d.toLocaleDateString("fr-FR",{weekday:"long", day:"numeric", month:"long"})} n'a pas pu se faire.`;
 }
-// Charge d'entraînement vide : pourquoi ? « unrated » = des sorties ces 4 dernières semaines mais aucun ressenti noté ;
-// « norun » = aucune sortie ; null = un ressenti existe (la charge se calcule). `runs` : [{ ts, rpe }].
+// Charge d'entraînement vide : pourquoi ? Appelée seulement quand la charge ne se calcule pas (acwrAt -> null).
+// « few » = des ressentis notés, mais pas encore assez de recul (garde-fou E8 : 4 séances notées, sur 3 semaines) ;
+// « unrated » = des sorties ces 4 dernières semaines mais aucun ressenti noté ; « norun » = aucune sortie. `runs` : [{ ts, rpe }].
 function chargeEmptyReason(runs, todayTs){
   const from = todayTs - 28*DAY_MS;
   const recent = (runs||[]).filter(r=>r.ts>=from && r.ts<=todayTs+DAY_MS);
-  if(recent.some(r=>r.rpe!=null)) return null;
+  if(recent.some(r=>r.rpe!=null)) return "few";
   return recent.length ? "unrated" : "norun";
 }
 const CHARGE_EMPTY_TEXTS = {
+  few:{ tile:"Elle s'affiche après 4 séances notées, sur 3 semaines.",
+        sheet:"Ta charge compare ta dernière semaine à tes habitudes. Pour te donner un repère fiable, il lui faut au moins 4 séances notées, réparties sur 3 semaines. Continue de noter ton ressenti après chaque sortie : elle s'affichera toute seule." },
   unrated:{ tile:"Note ton ressenti après tes séances pour la voir.",
             sheet:"Ta charge se calcule avec la difficulté (0 à 10) que tu notes après chaque séance. Aucune de tes sorties des 4 dernières semaines n'en a." },
   norun:{ tile:"Pas de course ces 4 dernières semaines.",

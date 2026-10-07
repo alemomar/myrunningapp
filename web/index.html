@@ -665,6 +665,7 @@ button.pg-rec-row{cursor:pointer}
 .rt-top{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px}
 .rt-top b{font:700 17px var(--font-display);color:var(--text)}
 .rt-top b.none{color:var(--text-faint)}
+.rt-block.rt-need .rt-top label,.rt-block.rt-need .rt-top b{color:var(--attention)}
 .rt-ends{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--text-muted)}
 .rt-range{-webkit-appearance:none;appearance:none;width:100%;height:28px;margin:0;background:none;cursor:pointer;--p:0%}
 .rt-range::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(to right,var(--select) var(--p),var(--line-field) var(--p))}
@@ -774,8 +775,8 @@ button.pg-rec-row{cursor:pointer}
 .pf-chip.active{background:var(--select);border-color:var(--select);color:var(--on-accent);font-weight:600}
 /* Profil › Objectifs (D93) : une couleur par réglage, reprise des couleurs des types de séances */
 .pf-tiles .tgt .v{color:var(--accent)}
-.pf-group[style*="--dot"]>.pf-lbl::before{content:"";display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:9px;background:var(--dot);transform:translateY(-1px)}
-.pf-group[style*="--dot"] .active{background:var(--dot);border-color:var(--dot);color:var(--on-accent)}
+/* « Ton profil coureur » tout en blanc (retour d'Omar du 07/10/2026 : trop de couleurs) : sélections blanches comme
+   partout, plus de carré de couleur devant les titres (blanc, il ressemblait à une case à cocher). */
 .pf-hint{font-size:12.5px;color:var(--text-muted)}
 .pf-saved{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;background:var(--accent-soft);color:var(--accent);font-size:12.5px;font-weight:600}
 .pf-slot:empty{display:none}
@@ -1109,6 +1110,7 @@ button.pg-rec-row{cursor:pointer}
   .sheet{animation:sheetUp var(--t-step,280ms) var(--ease)}
   .sheet-back{animation:sheetFade var(--t-step,280ms) ease-out}
 }
+.sheet.still,.sheet-back.still{animation:none}
 @keyframes sheetUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 @keyframes sheetFade{from{opacity:0}to{opacity:1}}
 /* Bande de l'heure de l'app installée (barre « black-translucent ») : le contenu qui défile ne passe plus sous l'heure
@@ -1162,7 +1164,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=92"></script>
+<script src="logic.js?v=93"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -2720,7 +2722,7 @@ function indicatorTilesHTML(){
   const ci = chargeLineInfo(gauge, acwr), seg = chargeSegments(), pos = chargeGaugePosition(acwr);
   const chargeReason = pos==null ? chargeEmptyReason(chargeRunsForReason(), Date.now()) : null;
   const chargeFoot = chargeReason ? CHARGE_EMPTY_TEXTS[chargeReason].tile : "Touche pour la jauge complète";
-  const shortZone = { "sous-charge":"En dessous", "idéale":"Zone idéale", "attention":"Au-dessus", "inconnue":"Pas de repère" }[gauge.zone];
+  const shortZone = { "sous-charge":"En dessous", "idéale":"Zone idéale", "attention":"Au-dessus", "inconnue":"Bientôt" }[gauge.zone];
   const barColors = ["var(--text-faint)", "var(--accent)", "var(--attention)"];
   const mini = [seg.low, seg.ideal, seg.high].map((w,i)=>`<i style="flex:${w};background:${pos==null?"var(--line-field)":barColors[i]}"></i>`).join("");
   const chargeTile = `<button type="button" class="pg-tile" onclick="openChargeSheet()" aria-label="${escHtml(chargeAriaLabel(gauge, acwr))}. Ouvre la jauge complète.">
@@ -3235,7 +3237,7 @@ window.ratingSlide = (key, v) => {
   st.sliders[key] = Number(v);
   const val = document.getElementById("rt_v_"+key), inp = document.getElementById("rt_"+key);
   if(val){ val.textContent = v; val.classList.remove("none"); }
-  if(inp) inp.style.setProperty("--p", (Number(v)/10*100)+"%");
+  if(inp){ inp.style.setProperty("--p", (Number(v)/10*100)+"%"); const blk = inp.closest(".rt-block"); if(blk) blk.classList.remove("rt-need"); }
   ratingClearError();
 };
 window.ratingGene = (v) => { const st = curRating(); if(st){ st.gene = v; if(!v) st.sel = null; refreshSheet(); } };
@@ -3323,7 +3325,15 @@ window.saveRating = async () => {
   if(!st || st.saving) return;
   const r = RUNS.find(x=>x.id===st.id);
   const fail = (m) => { st.error = m; const el = document.getElementById("rtError"); if(el) el.textContent = m; };
-  if(st.sliders.rpe==null) return fail("Indique d'abord la difficulté perçue de cette séance.");
+  if(st.sliders.rpe==null){   // le curseur est tout en haut de la feuille : on y ramène l'utilisateur
+    const rpe = document.getElementById("rt_rpe");
+    if(rpe){
+      const blk = rpe.closest(".rt-block"), v = document.getElementById("rt_v_rpe");
+      blk.classList.add("rt-need"); if(v) v.textContent = "À choisir";
+      blk.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block:"center" }); rpe.focus({ preventScroll:true });
+    }
+    return fail("Indique d'abord la difficulté perçue de cette séance.");
+  }
   if(st.gene===null) return fail("Réponds à « Une gêne ou une douleur ? » : Oui ou Non.");
   st.saving = true;
   const ratings = buildPainRatings({ sliders:st.sliders, gene:st.gene, zones:st.zones }, r && r.painRatings);
@@ -4079,7 +4089,7 @@ function renderChargeSheet(){
         <div class="cg-ticks" aria-hidden="true">${tick(CHARGE_LOW)}${tick(CHARGE_HIGH)}</div>
         ${graph}
         <div class="cg-coach">${icon("sparkle",13)}<span>${escHtml(pos!=null ? gauge.phrase : (emptyReason ? CHARGE_EMPTY_TEXTS[emptyReason].sheet : gauge.phrase))}</span></div>
-        ${pos==null && emptyReason==="unrated" ? `<button type="button" class="btn-primary" style="margin-top:14px" onclick="rateLatestUnrated()">Noter mon ressenti</button>` : ""}
+        ${pos==null && (emptyReason==="unrated" || (emptyReason==="few" && chargeRunsForReason().some(x=>x.ts>=Date.now()-28*DAY_MS && x.rpe==null))) ? `<button type="button" class="btn-primary" style="margin-top:14px" onclick="rateLatestUnrated()">Noter mon ressenti</button>` : ""}
       </div>`;
   }
   root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeChargeSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Charge d'entraînement">${body}</div></div>`;
@@ -4187,7 +4197,7 @@ window.setTab=i=>{
 window.setProfilSection = (section) => { setProfilSectionState(section); renderContent(); playViewTransition(); window.scrollTo({top:0,behavior:"smooth"}); };
 function profilSwitchHTML(){
   const b = (key, label) => `<button type="button" aria-pressed="${profilSection===key}" onclick="setProfilSection('${key}')">${label}</button>`;
-  return `<div class="pf-seg" role="group" aria-label="Section du profil">${b("objectifs","Objectifs")}${b("compte","Mon compte")}</div>`;
+  return `<div class="pf-seg" role="group" aria-label="Section du profil">${b("compte","Mon compte")}${b("objectifs","Objectifs")}</div>`;
 }
 
 
@@ -5927,9 +5937,21 @@ function renderSessionSheet(){
   </div></div>`;
 }
 // Une seule feuille à l'écran, par priorité : saisie à la main, ressenti, exercice, ajout/modification, jauge, détail d'une séance, objectif, niveau, nouvelles allures, carte de séance.
+// Une même fenêtre redessinée (appui sur « Oui », sur une zone du corps…) garde sa position de défilement et ne rejoue pas
+// son animation d'ouverture : retour d'Omar du 07/10/2026, la feuille de ressenti repartait en haut à chaque appui.
 function refreshSheet(){
   const root = document.getElementById("sheetRoot");
   if(!root) return;
+  const prev = root.querySelector(".sheet"), prevKey = prev ? prev.getAttribute("aria-label") : null, prevTop = prev ? prev.scrollTop : 0;
+  renderSheetContent(root);
+  const next = root.querySelector(".sheet");
+  if(next && prev && next!==prev && prevKey && next.getAttribute("aria-label")===prevKey){
+    next.classList.add("still");
+    if(next.parentElement) next.parentElement.classList.add("still");
+    next.scrollTop = prevTop;
+  }
+}
+function renderSheetContent(root){
   if(typeof renderNewsSheet==="function" && renderNewsSheet()) { /* « L'app a changé de look » : passe avant le reste */ }
   else if(manualRunForm) renderManualRunSheet();
   else if(typeof renderRatingSheet==="function" && renderRatingSheet()) { /* feuille de ressenti */ }

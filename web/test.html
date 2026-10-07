@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=92"></script>
+<script src="logic.js?v=93"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -407,6 +407,19 @@ try {
   assertEqual("acwrAt : pic récent -> ACWR > 1.3 (zone à risque)", spike.acwr > 1.3, true);
 
   assertEqual("acwrAt : pas de charge chronique -> acwr null", acwrAt([], target).acwr, null);
+
+  // Garde-fou E8 (07/10/2026) : au moins 4 jours notés sur 28, 1re séance notée il y a 21 jours ou plus, charge notée avant la dernière semaine.
+  const day = (n, load) => ({ date:new Date(2026,0,28-n), load:load==null ? 300 : load });
+  assertEqual("E8 : nouveau testeur, 1re séance notée -> pas de charge (avant : 4, « risque de blessure »)", acwrAt([day(0)], target).acwr, null);
+  assertEqual("E8 : 3 séances par semaine depuis 2 semaines -> toujours pas de charge", acwrAt([0,2,4,7,9,11,14].map(n=>day(n)), target).acwr, null);
+  const threeWeeks = acwrAt([0,2,4,7,9,11,14,16,18,21].map(n=>day(n)), target);
+  assertEqual("E8 : régulier depuis 3 semaines -> la charge s'affiche", threeWeeks.acwr!=null, true);
+  assertEqual("E8 : régulier depuis 3 semaines -> zone idéale (≤ 1,3), pas d'alerte", threeWeeks.acwr<=1.3, true);
+  assertEqual("E8 : 4 séances notées en une semaine pour un nouveau -> pas de charge", acwrAt([0,1,2,3].map(n=>day(n)), target).acwr, null);
+  assertEqual("E8 : reprise après plus de 3 semaines sans séance notée -> pas de charge", acwrAt([40,42,44,0,1,3,5].map(n=>day(n)), target).acwr, null);
+  assertEqual("E8 : reprise après 2 semaines de pause -> charge basse (pas d'alerte)", acwrAt([14,16,18,21,23,25,0].map(n=>day(n)), target).acwr<0.8, true);
+  assertEqual("E8 : moins de 4 jours notés sur 28 jours -> pas de charge", acwrAt([0,10,22].map(n=>day(n)), target).acwr, null);
+  assertEqual("E8 : nombre de jours notés renvoyé", acwrAt([0,2,4,30].map(n=>day(n)), target).ratedDays28, 3);
 }
 
 // --- chargeEntrainementGauge (4.4) ---
@@ -1396,7 +1409,7 @@ try {
   assertEqual("message : sinon la phrase de synthèse", weekMessage(recapOk, null, [], []).kind, "summary");
   assertEqual("ligne de charge : zone idéale", chargeLineInfo({zone:"idéale", color:"#C6F432"}, 1.08), {label:"Dans la zone idéale", value:"1,08", color:"#C6F432"});
   assertEqual("ligne de charge : au-dessus", chargeLineInfo({zone:"attention", color:"x"}, 1.456).label, "Au-dessus de la zone idéale");
-  assertEqual("ligne de charge : pas d'historique, pas de chiffre", chargeLineInfo({zone:"inconnue", color:"#A3A7AD"}, null), {label:"Pas encore de repère", value:"", color:"#A3A7AD"});
+  assertEqual("ligne de charge : pas d'historique, pas de chiffre", chargeLineInfo({zone:"inconnue", color:"#A3A7AD"}, null), {label:"Bientôt disponible", value:"", color:"#A3A7AD"});
   assertEqual("charge sous la zone : gris lisible (le cyan est réservé aux données)", chargeEntrainementGauge(0.5).color, "#8B8F96");
 }
 
@@ -1570,7 +1583,7 @@ try {
   assertEqual("courbe de charge : dernier point", curve.last.acwr, 1.8);
   assertEqual("courbe de charge : rien à tracer", chargeCurve([{acwr:null}], 100, 80).last, null);
   assertEqual("charge : phrase lue (aria-label)", chargeAriaLabel({zone:"idéale"}, 1.08), "Charge d'entraînement : dans la zone idéale, 1,08");
-  assertEqual("charge : phrase lue sans repère", chargeAriaLabel({zone:"inconnue"}, null), "Charge d'entraînement : pas encore de repère");
+  assertEqual("charge : phrase lue sans repère", chargeAriaLabel({zone:"inconnue"}, null), "Charge d'entraînement : bientôt disponible");
 
   const todayTs = new Date(2026, 9, 5).getTime();
   const wk = (i, v) => ({ ts:new Date(2026, 6, 6+7*i).getTime(), value:v });
@@ -1905,7 +1918,8 @@ try {
   const dayMs = 86400000;
   assertEqual("charge vide : sorties récentes sans ressenti -> « unrated »", chargeEmptyReason([{ts:todayT-3*dayMs, rpe:null},{ts:todayT-9*dayMs}], todayT), "unrated");
   assertEqual("charge vide : aucune sortie depuis 4 semaines -> « norun »", chargeEmptyReason([{ts:todayT-40*dayMs, rpe:5}], todayT), "norun");
-  assertEqual("charge vide : un ressenti noté dans les 28 jours -> la charge se calcule", chargeEmptyReason([{ts:todayT-3*dayMs, rpe:6}], todayT), null);
+  assertEqual("charge vide : des ressentis notés mais pas assez de recul -> « few »", chargeEmptyReason([{ts:todayT-3*dayMs, rpe:6}], todayT), "few");
+  assertEqual("charge vide : texte « few » qui explique les 4 séances notées", /4 séances notées/.test(CHARGE_EMPTY_TEXTS.few.tile) && /4 séances notées/.test(CHARGE_EMPTY_TEXTS.few.sheet), true);
   assertEqual("charge vide : textes validés par Omar", [CHARGE_EMPTY_TEXTS.unrated.tile, CHARGE_EMPTY_TEXTS.norun.tile, CHARGE_EMPTY_TEXTS.norun.sheet], ["Note ton ressenti après tes séances pour la voir.", "Pas de course ces 4 dernières semaines.", "Dès que tu auras repris et noté ta difficulté, ta charge apparaîtra."]);
 }
 

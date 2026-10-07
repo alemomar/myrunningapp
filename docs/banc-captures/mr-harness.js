@@ -457,6 +457,12 @@
   } else if(scen==="jauge_charge" || scen==="jauge_info"){
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; openMonths=null; openManageRow=new Set(); show("progression");
     openChargeSheet(); if(scen==="jauge_info") toggleChargeInfo();
+  } else if(/^charge_bientot/.test(scen)){
+    // nouveau testeur (E8) : historique Apple Santé sans ressenti, une seule sortie notée -> « Bientôt », 4 séances notées sur 3 semaines
+    celebrationOff(); plannedSessions=[...wkSessions, ...future];
+    runningRuns.forEach(r=>{ r.painRatings = null; }); RUNS.forEach(r=>{ r.painRatings = null; });
+    runningRuns[runningRuns.length-1].painRatings = { rpe:5, gene:false };
+    show("progression"); if(scen==="charge_bientot_fenetre") openChargeSheet(); else scrollToCard("progIndicators");
   } else if(scen==="profil_objectifs"){
     setProfilSectionState("objectifs"); show("profil");
   } else if(scen==="profil_compte"){
