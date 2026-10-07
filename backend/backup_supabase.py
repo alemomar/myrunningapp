@@ -17,6 +17,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime
 from pathlib import Path
@@ -38,6 +39,18 @@ FETCH_RETRY_SECONDS = 20
 # supprimée du schéma, plus rien à en sauvegarder.
 TABLES = ["runs", "profiles", "planned_sessions"]
 BACKUP_KEEP = 60
+# Supabase ne renvoie jamais plus de 1 000 lignes par lecture (réglage « max
+# rows » de l'API). Sans pagination, la sauvegarde du 2026-10-07 s'est arrêtée
+# à 1 000 séances sur environ 1 350, en se disant « terminée ». On lit donc
+# chaque table par paquets, triés par sa clé primaire, chaque paquet reprenant
+# après la dernière clé lue (pas de doublon ni d'oubli si une séance arrive
+# pendant la sauvegarde : elle sera dans la suivante), jusqu'à un paquet vide.
+PAGE_SIZE = 1000
+TABLE_KEYS = {"runs": "id", "profiles": "user_id", "planned_sessions": "id"}
+
+
+class IncompleteTable(Exception):
+    """Moins de lignes lues que le total annoncé par Supabase."""
 
 # Chemin fixe (pas dérivé de __file__) : le script tourne depuis une copie
 # locale hors Google Drive (~/.local/share/myrunningapp/), pour que launchd
@@ -82,19 +95,42 @@ def wait_for_network() -> bool:
 
 
 def fetch_table(table: str, key: str) -> list:
-    url = f"{SUPABASE_URL}/rest/v1/{table}?select=*"
-    request = urllib.request.Request(
-        url,
-        headers={
-            "apikey": key,
-            "Authorization": f"Bearer {key}",
-        },
-    )
+    pk = TABLE_KEYS[table]
+    rows = []
+    total = None
+    last = None
+    while True:
+        url = f"{SUPABASE_URL}/rest/v1/{table}?select=*&order={pk}.asc&limit={PAGE_SIZE}"
+        if last is not None:
+            url += f"&{pk}=gt.{urllib.parse.quote(str(last), safe='')}"
+        page, count = fetch_page(url, key, want_count=last is None)
+        if last is None:
+            total = count
+        if not page:
+            break
+        rows.extend(page)
+        last = page[-1][pk]
+    if total is not None and len(rows) < total:
+        raise IncompleteTable(f"{len(rows)} ligne(s) lue(s) sur {total} annoncée(s)")
+    return rows
+
+
+def fetch_page(url: str, key: str, want_count: bool) -> tuple:
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+    }
+    if want_count:
+        # Total de la table dans l'en-tête Content-Range (« 0-999/1353 »).
+        headers["Prefer"] = "count=exact"
+    request = urllib.request.Request(url, headers=headers)
     last_error = None
     for attempt in range(1, FETCH_ATTEMPTS + 1):
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
-                return json.loads(response.read().decode("utf-8"))
+                page = json.loads(response.read().decode("utf-8"))
+                total = response.headers.get("Content-Range", "").rpartition("/")[2]
+                return page, int(total) if total.isdigit() else None
         except urllib.error.HTTPError as err:
             # 4xx = la requête est mauvaise (table absente, clé refusée) :
             # réessayer ne changera rien. 5xx = souci passager côté serveur.
@@ -186,7 +222,7 @@ def main() -> None:
     for table in TABLES:
         try:
             rows = fetch_table(table, key)
-        except urllib.error.URLError as err:
+        except (urllib.error.URLError, IncompleteTable) as err:
             print(f"[{timestamp}] ERREUR sur {table} : {err}", file=sys.stderr)
             errors.append((table, str(err)))
             continue
