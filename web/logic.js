@@ -550,7 +550,7 @@ function resolveRunnerProfile(goals, programSettings, todayStr){
     const date = ps.refDate || null;
     return {
       distanceKm:Number(ps.refDistanceKm), timeSec:Number(ps.refTimeSec),
-      source: ps.refSource==="test" ? "level_test" : "level_chrono",
+      source: ps.refSource==="test" ? "level_test" : ps.refSource==="estimate" ? "level_estimate" : "level_chrono",
       date, approx:!!ps.refDateApprox, undated:!date,
       stale:!!(date && todayStr && !isLevelDateFresh(date, todayStr)),
     };
@@ -569,13 +569,16 @@ function levelSourceText(profile){
   if(!profile) return "";
   if(profile.source==="goal_vma") return `ta VMA (${String(Math.round(profile.distanceKm*100)/10).replace(".",",")} km/h)`;
   if(profile.source==="level_test") return `ton test de 20 minutes (${String(Math.round(profile.distanceKm*10)/10).replace(".",",")} km)`;
+  if(profile.source==="level_estimate") return `ta réponse (5 km en ${fmtDur(profile.timeSec)} environ)`;
   return `ton chrono sur ${levelDistanceName(profile.distanceKm).on} (${fmtDur(profile.timeSec)})`;
 }
-// Ligne d'état de « Ton niveau » : d'après quoi, de quand, et si c'est à rafraîchir.
+// Ligne d'état de « Ton niveau » : d'après quoi, de quand, et si c'est à rafraîchir. Allures estimées (R14) : pas de date,
+// et une invitation à donner un vrai chrono.
 function levelStatus(profile){
   if(!profile) return null;
+  if(profile.source==="level_estimate") return { text:`Allures conseillées estimées d'après ${levelSourceText(profile)}. Un chrono récent ou le test de 20 minutes les rendra plus justes.`, stale:false, estimated:true };
   const when = profile.date && !profile.approx ? levelDateLabel(profile.date) : "";
-  return { text:`Allures conseillées calculées d'après ${levelSourceText(profile)}${when?`, ${when}`:""}.`, stale:!!profile.stale };
+  return { text:`Allures conseillées calculées d'après ${levelSourceText(profile)}${when?`, ${when}`:""}.`, stale:!!profile.stale, estimated:false };
 }
 
 // --- Garde-fou « temps trop rapide » (D76, point 4) ---
@@ -601,16 +604,19 @@ function refTimeTooFast(distanceKm, timeSec, reality){
 // Formulaire « chrono récent » (A10). `input` : { distanceKm, h, m, s, month } (month : « 2026-09 », « old » = plus de
 // 6 mois, vide = pas choisi). Résultat : errors par champ, ok (peut calculer), stale (plus de 6 mois : faire le test
 // guidé), tooFast (avertissement violet, qui ne bloque pas), et les valeurs lues.
+// « Autre distance » (R1, 08/10/2026) : la formule de Daniels accepte toute distance, mais devient peu fiable sous 3 km.
+const CHRONO_KM_MIN = 3, CHRONO_KM_MAX = 42.2;
 function levelChronoCheck(input, todayStr, reality){
   const errors = {}, km = Number(input.distanceKm)||0;
   const h = parseInt(input.h,10)||0, m = parseInt(input.m,10)||0, s = parseInt(input.s,10)||0;
   const sec = h*3600 + m*60 + s;
   let plausible = false;
   if(!(km>0)) errors.distance = "Choisis la distance.";
+  else if(km<CHRONO_KM_MIN || km>CHRONO_KM_MAX) errors.distance = "Choisis une distance entre 3 et 42 km.";
   if(m>59 || s>59) errors.time = "Les minutes et les secondes vont de 0 à 59.";
   else if(!(sec>0)) errors.time = "Indique ton temps.";
   else if(km>0 && (sec/km<165 || sec/km>840)) errors.time = "Ce temps ne semble pas possible sur cette distance : vérifie les heures, minutes et secondes.";
-  else plausible = km>0;
+  else plausible = km>0 && !errors.distance;
   let date = null, stale = false;
   if(!input.month) errors.month = "Indique de quand date ce temps.";
   else if(input.month==="old") stale = true;
@@ -795,6 +801,21 @@ function efQualitatif(hrSeries, maxHr, restingHr){
   const lowZone = secs[0]+secs[1];
   return lowZone/total > 0.7;
 }
+/* ---------- Détail cardio incomplet (R24, 08/10/2026) ----------
+   Apple Santé range parfois la fréquence cardiaque d'une séance en « paquets » (un enregistrement pour 10 à 20 minutes,
+   vérifié dans l'export de Leïla : 2 paquets pour sa sortie du 31/01) ; RunSync n'en lit aujourd'hui que la première
+   valeur. Moins d'une mesure par minute, ou des mesures qui couvrent moins de 70 % de la séance : pas de courbe ni de
+   zones. La FC moyenne et maximale, calculées par Apple, restent justes. */
+const HR_MIN_PER_MIN = 1, HR_MIN_COVER = 0.7;
+function hrSeriesIncomplete(hrSeries, durationSec){
+  const pts = Array.isArray(hrSeries) ? hrSeries.filter(p=>p && p.hr>0) : [];
+  const dur = Number(durationSec)||0;
+  if(pts.length<2) return true;
+  if(dur<=0) return false;
+  const ts = pts.map(p=>p.t).sort((a,b)=>a-b);
+  return pts.length/(dur/60) < HR_MIN_PER_MIN || (ts[ts.length-1]-ts[0])/dur < HR_MIN_COVER;
+}
+
 /* ---------- Suggestion du « Détail cardio » (C9, 07/10/2026) ----------
    Rejouée sur les vraies séances d'Omar et de Leïla (291 avec FC) : l'ancienne règle proposait 63 reclassements, presque
    tous faux : « Fractionné ? » sur 22 renfos, marches et autres activités, « Zone haute ? » sur 5 vrais fractionnés et sur
@@ -1011,8 +1032,10 @@ function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, 
   if(state.terrain) newGoals.terrain = state.terrain;
   if(Array.isArray(state.equipement)) newGoals.equipement = state.equipement.join(",");
   const ps = { ...(programSettings||{}) };
-  const km = raceDistancesKm ? raceDistancesKm[state.chronoDistance] : null;
-  if(km && state.chronoSec>0){
+  // « Autre distance » (R1) : `chronoKm` (km saisis) passe avant la distance choisie parmi les pastilles.
+  const km = Number(state.chronoKm)>0 ? Number(state.chronoKm) : (raceDistancesKm ? raceDistancesKm[state.chronoDistance] : null);
+  const chronoGiven = !!(km && state.chronoSec>0);
+  if(chronoGiven){
     ps.refDistanceKm = km; ps.refTimeSec = state.chronoSec; ps.refSource = "chrono";
     if(state.chronoDate){ ps.refDate = state.chronoDate; delete ps.refDateApprox; }
     else if(todayStr){ ps.refDate = addMonthsStr(todayStr, -3); ps.refDateApprox = true; }
@@ -1020,15 +1043,32 @@ function onboardingProfilePatch(state, goals, programSettings, raceDistancesKm, 
   const beginner = isBeginnerPlanEligible(state.niveau, state.frequenceHistorique, state.dureeMax);
   if(beginner) ps.beginnerPlan = ps.beginnerPlan || { startMonday: startMondayStr };
   else delete ps.beginnerPlan;
-  // Ni plan débutant, ni chrono : première séance = test guidé de 20 minutes
-  // (4.1.e), dont le résultat devient le temps de référence. Un record ne
-  // compte pas (D76) : seules les allures de « Ton niveau » servent.
+  // Sans chrono, le programme est créé quand même (R14, 08/10/2026 : le test de 20 minutes obligatoire bloquait le
+  // programme) : allures estimées d'après une fourchette de temps sur 5 km, ou le temps type du niveau déclaré. Un vrai
+  // temps de référence déjà connu (chrono, test) n'est jamais remplacé par une estimation.
+  if(!beginner && !chronoGiven){
+    const realRef = ps.refTimeSec && ps.refSource!=="estimate";
+    if(!realRef && (state.estimateKey || !ps.refTimeSec)){
+      ps.refDistanceKm = 5; ps.refTimeSec = estimate5kSec(state.estimateKey, state.niveau); ps.refSource = "estimate";
+      if(todayStr) ps.refDate = todayStr;
+      delete ps.refDateApprox;
+    }
+  }
   const hasReference = !!(ps.refTimeSec);
   const needsGuidedTest = !beginner && !hasReference;
   if(needsGuidedTest) ps.guidedTest = ps.guidedTest || { status:"pending" };
   // Un compte qui a déjà un programme garde sa signature : un changement d'objectif fait avec le parcours sera signalé (D62).
   if(!ps.programSignature) ps.programSignature = programSignature(newGoals);
-  return { goals:newGoals, programSettings:ps, beginner, needsGuidedTest };
+  return { goals:newGoals, programSettings:ps, beginner, needsGuidedTest, estimated: !beginner && ps.refSource==="estimate" };
+}
+// « Une idée, à peu près ? » (R14) : fourchettes de temps sur 5 km, on garde le milieu ; « Aucune idée » : temps type du
+// niveau déclaré. [libellé, clé, secondes].
+const ESTIMATE_5K_OPTIONS = [["Moins de 25 min","lt25",1440],["25 à 30 min","25-30",1650],["30 à 35 min","30-35",1950],
+  ["35 à 40 min","35-40",2250],["Plus de 40 min","gt40",2700],["Aucune idée","none",null]];
+const ESTIMATE_5K_BY_LEVEL = { "Débutant":2280, "Intermédiaire":1800, "Confirmé":1500 };
+function estimate5kSec(key, niveau){
+  const o = ESTIMATE_5K_OPTIONS.find(x=>x[1]===key);
+  return (o && o[2]) || ESTIMATE_5K_BY_LEVEL[niveau] || ESTIMATE_5K_BY_LEVEL["Intermédiaire"];
 }
 // Écran « Ton profil coureur » du parcours (D108). Équipement : plusieurs choix possibles, « Aucun » exclut les autres
 // (et un appareil choisi retire « Aucun »).
@@ -1084,6 +1124,15 @@ function pickSpacedDays(available, n){
   };
   choose(0, []);
   return best.picked;
+}
+// Première semaine incomplète (R26, 08/10/2026) : jusqu'à `n` jours parmi `available`, jamais deux jours de suite ;
+// on en place moins s'il le faut (le programme ne se tasse pas sur les derniers jours de la semaine).
+function pickNonConsecutiveDays(available, n){
+  for(let k=Math.min(n, [...new Set(available||[])].length); k>0; k--){
+    const picked = pickSpacedDays(available, k);
+    if(picked.every((d,i)=>i===0 || d-picked[i-1]>=2)) return picked;
+  }
+  return [];
 }
 // Lignes de séances d'une semaine du plan : `dayIndexes` (jours choisis),
 // `firstSessionNumber` (1 pour la première séance de la semaine ; plus si
@@ -2083,21 +2132,26 @@ function formatMinutesShort(min){
      que depuis la première course (un débutant n'est pas pénalisé).
    - Volume : km des 28 derniers jours vs les 28 d'avant, sans flèche ni %
      (même principe que weekRecap). */
-const EFFICIENCY_STABLE_PCT = 2;
+const EFFICIENCY_STABLE_PCT = 2, EFFICIENCY_MIN_KM = 3, EFFICIENCY_UNUSUAL_PCT = 15;
 function efficiencyTrend(efRuns, todayStr){
   const parse = (str) => { const [y,m,d] = str.split("-").map(Number); return new Date(y, m-1, d); };
   const today = parse(todayStr);
   const dayMs = 86400000;
   const daysAgo = (dateStr) => Math.round((today - parse(dateStr)) / dayMs);
-  const valid = (efRuns||[]).filter(r=>r.allure>0 && r.fc>0);
+  // R15 (08/10/2026) : sorties d'au moins 3 km seulement (quand la distance est connue), médiane plutôt que moyenne (une
+  // sortie mal classée ne fait plus bondir le chiffre), et `unusual` au-delà de 15 % (le « ! » invite à vérifier le type
+  // des dernières sorties dans l'Historique, le chiffre reste affiché).
+  const valid = (efRuns||[]).filter(r=>r.allure>0 && r.fc>0 && (r.distKm==null || r.distKm>=EFFICIENCY_MIN_KM));
   const recent = valid.filter(r=>{ const a=daysAgo(r.date); return a>=0 && a<=29; });
   const baseline = valid.filter(r=>{ const a=daysAgo(r.date); return a>=30 && a<=59; });
   if(recent.length<2 || baseline.length<2) return { status:"insuffisant" };
-  const avgRatio = (arr) => arr.reduce((a,r)=>a+r.allure/r.fc,0)/arr.length;
-  const pct = (avgRatio(baseline) - avgRatio(recent)) / avgRatio(baseline) * 100;
+  const medRatio = (arr) => median(arr.map(r=>r.allure/r.fc));
+  const pct = (medRatio(baseline) - medRatio(recent)) / medRatio(baseline) * 100;
   const rounded = Math.round(Math.abs(pct));
   if(Math.abs(pct) < EFFICIENCY_STABLE_PCT) return { status:"stable", pct:0 };
-  return { status: pct>0 ? "mieux" : "moins", pct: rounded };
+  const out = { status: pct>0 ? "mieux" : "moins", pct: rounded };
+  if(Math.abs(pct) > EFFICIENCY_UNUSUAL_PCT) out.unusual = true;
+  return out;
 }
 function efficiencyPhrase(trend){
   if(trend.status==="mieux") return `À fréquence cardiaque égale, tu es ${trend.pct} % plus efficace qu'il y a un mois.`;
@@ -2754,7 +2808,42 @@ function dateStepBlocked(model, choice){
    TestFlight a son étape (D107) : RunSync s'installe maintenant par le lien direct de TestFlight, qui ne marche que si
    TestFlight est déjà là. */
 const SYNC_GUIDE_TITLES = ["Installe TestFlight", "Installe RunSync", "Ouvre RunSync et laisse-toi guider", "On reçoit tes courses"];
-const SYNC_WAIT_EMPTY_SEC = 90;
+const SYNC_WAIT_EMPTY_SEC = 30;   // R4 (08/10/2026) : 90 s « dans le vide » pour Mohamed, sans historique
+// Guide selon l'équipement déclaré dans « Ton profil coureur » (R4). RunSync lit Apple Santé : une Apple Watch y écrit
+// toute seule ; Garmin Connect et Strava seulement si on l'active dans leurs réglages ; RunSync écarte les séances Whoop
+// (doublons avec l'Apple Watch) ; sans montre ni app de course, rien n'arrive. `equipement` : « Apple Watch,Whoop »…
+function syncEquip(equipement){
+  const list = String(equipement||"").split(",").map(s=>s.trim()).filter(Boolean);
+  if(!list.length) return { kind:null, apps:[] };
+  if(list.includes("Apple Watch")) return { kind:"watch", apps:[] };
+  const apps = list.filter(x=>x==="Garmin" || x==="Strava");
+  if(apps.length) return { kind:"app", apps };
+  if(list.includes("Whoop")) return { kind:"whoop", apps:[] };
+  return { kind:"none", apps:[] };
+}
+const SYNC_APP_NAMES = { Garmin:"Garmin Connect", Strava:"Strava" };
+const syncAppsText = (apps) => (apps||[]).map(a=>SYNC_APP_NAMES[a]||a).join(" ou ");
+// Note en tête du guide, avant d'installer quoi que ce soit ; null pour une Apple Watch ou sans réponse. `skip` : proposer
+// de passer le guide (rien ne pourra arriver tout seul).
+function syncGuideNote(eq){
+  if(!eq) return null;
+  if(eq.kind==="app") return { text:`Avant de commencer : dans ${syncAppsText(eq.apps)}, active l'envoi de tes activités vers Apple Santé. Sinon, rien n'arrivera.`, skip:false };
+  if(eq.kind==="whoop") return { text:"Les séances Whoop ne sont pas encore reprises par RunSync. Tu peux saisir tes courses à la main, ou installer RunSync quand même pour plus tard.", skip:true };
+  if(eq.kind==="none") return { text:"Sans montre ni app de course, rien ne peut arriver tout seul. Enregistre tes courses avec une app qui les envoie dans Apple Santé (Strava, Nike Run Club…), ou saisis-les à la main.", skip:true };
+  return null;
+}
+// Ce que dit l'étape 4 quand rien n'arrive (R4) : RunSync relié au compte ou pas (`linked` : date de départ posée par
+// RunSync), puis selon l'équipement. `sinceText` : « 1er janv. » (facultatif).
+const SYNC_MANUAL_LINE = "Tu peux aussi saisir tes courses à la main : « J'ai fait cette séance » sur Aujourd'hui, ou « Séance réalisée » dans Progression.";
+function syncEmptyMessage(linked, eq, sinceText){
+  if(!linked) return { title:"RunSync n'est pas encore connecté à ton compte.", lines:["Rouvre-le et connecte-toi avec le même e-mail que dans MyRunningApp."], reopen:true };
+  const since = sinceText ? ` depuis le ${sinceText}` : "";
+  const kind = eq ? eq.kind : null;
+  if(kind==="watch") return { title:"RunSync est bien connecté.", lines:[`Apple Santé ne contient pas encore de course${since}. Ta prochaine course enregistrée avec ta montre arrivera toute seule.`, SYNC_MANUAL_LINE], reopen:false };
+  if(kind==="app") return { title:`RunSync est bien connecté, mais Apple Santé ne contient aucune course${since}.`, lines:[`Active l'envoi de tes activités vers Apple Santé dans ${syncAppsText(eq.apps)} : elles arriveront ici toutes seules.`, SYNC_MANUAL_LINE], reopen:false };
+  if(kind==="whoop") return { title:"RunSync est bien connecté.", lines:["Les séances Whoop ne sont pas encore reprises. Pour l'instant, enregistre aussi tes courses avec une autre app.", SYNC_MANUAL_LINE], reopen:false };
+  return { title:`RunSync est bien connecté, mais Apple Santé ne contient aucune course${since}.`, lines:["Pour que tes courses arrivent toutes seules, enregistre-les avec une app qui les envoie dans Apple Santé (Strava, Nike Run Club, Garmin Connect…).", SYNC_MANUAL_LINE], reopen:false };
+}
 // `done` : une case par étape à faire, toutes sauf la dernière (cases en trop ignorées) ; `received` : séances reçues
 // d'Apple Santé (courses, marches, renfo…) ; `waitedSec` : attente à la dernière étape ; `runs` : combien de ces séances
 // sont des courses (inconnu tant que les séances ne sont pas chargées).

@@ -548,6 +548,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 button.pg-tile{cursor:pointer}
 .pg-tile .big{font:700 26px/1.05 var(--font-display);text-transform:uppercase}
 .pg-coach{display:flex;gap:6px;font-size:12.5px;line-height:1.35;color:var(--text-2)}
+.pg-warn{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:6px;border-radius:50%;background:var(--attention);color:var(--on-accent);font:700 12px/1 var(--font-body);vertical-align:4px}
 .pg-coach svg{color:var(--accent);margin-top:3px;flex:none}
 .pg-chg-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .pg-chg-row .z{font:700 20px/1.05 var(--font-display);text-transform:uppercase}
@@ -699,6 +700,8 @@ button.pg-rec-row{cursor:pointer}
 .ms-link svg{color:var(--accent);flex:none}
 .ms-alert{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r-lg);background:var(--attention-bg);box-shadow:inset 0 0 0 1px var(--attention-line);font-size:14px;line-height:1.4;margin-top:12px}
 .ms-alert svg{color:var(--attention);flex:none;margin-top:1px}
+.ms-alert.soft{background:var(--surface);box-shadow:inset 0 0 0 1px var(--line-field);margin-top:0;color:var(--text-2)}
+.ms-alert.soft svg{color:var(--text-muted)}
 .btn-ghost{width:100%;height:48px;margin-top:6px;border:none;border-radius:24px;background:none;color:var(--text-2);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
 .ac-card{background:var(--surface);border-radius:var(--r-xl);padding:18px 16px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:14px}
 .ac-head{display:flex;align-items:center;gap:10px}
@@ -820,6 +823,9 @@ button.pg-rec-row{cursor:pointer}
 .lv-times .pf-row{height:52px;font-size:17px}
 .lv-times .pf-row input{font-size:17px}
 .lv-times .pf-row.warn{border-color:var(--attention)}
+.lv-km{max-width:160px}
+.lv-km .pf-row{height:52px;font-size:17px}
+.lv-km .pf-row input{font-size:17px}
 .lv-date select{appearance:none;-webkit-appearance:none;text-align:left;font-size:16px}
 .lv-date .u{display:flex}
 .lv-err{font-size:13px;font-weight:600;color:var(--attention);margin-top:10px}
@@ -875,7 +881,7 @@ button.pg-rec-row{cursor:pointer}
 .on-sub{font-size:15px;line-height:1.45;color:var(--text-3);text-wrap:pretty}
 .on-body{display:flex;flex-direction:column;gap:18px}
 .on-group{display:flex;flex-direction:column;gap:10px}
-.on-lbl{font-size:13.5px;color:var(--text-2)}
+.on-lbl{font-size:16px;font-weight:600;color:var(--text);line-height:1.3}   /* R11 (08/10/2026) : questions plus visibles que les réponses */
 .on-hint{font-size:12.5px;color:var(--text-muted);text-align:center}
 .on-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .on-tile{min-height:76px;border-radius:var(--r-lg);padding:12px;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line-field);color:var(--text);font:inherit;text-align:left;cursor:pointer}
@@ -974,6 +980,8 @@ button.pg-rec-row{cursor:pointer}
 .sg-wait .spinner{width:18px;height:18px;margin:0}
 .sg-tips{margin:0;padding-left:18px;font-size:13.5px;line-height:1.5;color:var(--text-2)}
 .sg-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sg-btns .btn-primary{margin-top:0}
+.sg-pre{margin:2px 0 12px;padding:12px 14px;border-radius:var(--r-lg);background:var(--surface);box-shadow:inset 0 0 0 1px var(--line-field)}
 .sg-skip{border:none;background:none;color:var(--text-3);font:inherit;font-size:13.5px;padding:4px 0;cursor:pointer;align-self:flex-start;text-decoration:underline}
 .sg-hint{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r-md);background:var(--attention-bg);box-shadow:inset 0 0 0 1px var(--attention-line);font-size:13.5px;line-height:1.4;color:var(--text-2)}
 .sg-hint > svg{color:var(--attention);flex:none;margin-top:1px}
@@ -1170,7 +1178,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=95"></script>
+<script src="logic.js?v=96"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -2252,15 +2260,18 @@ const MANUAL_RUN_TYPES = SESSION_TYPES_DONE;
 // N1a « J'ai fait cette séance » (séance prévue : date, type, distance et durée préremplis) et N1b « Ajouter une séance
 // réalisée » (rien de prérempli). Le ressenti se remplit dans la même feuille (difficulté, gêne ou douleur, carte du corps).
 // Un doublon possible ou des chiffres surprenants s'affichent dans la feuille (carte violette) : ils ne bloquent pas.
-window.openManualRun = (sessionId) => {
+// `dateStr` (R7) : jour choisi dans le planning (un jour passé ou aujourd'hui), prérempli.
+window.openManualRun = (sessionId, dateStr) => {
   const todayStr = localDateStr(new Date());
   const s = sessionId ? plannedSessions.find(p=>p.id===sessionId) : null;
+  const asked = typeof dateStr==="string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) && dateStr<=todayStr ? dateStr : null;
   let durationMin = 0;
   if(s && s.target_duration_min) durationMin = Math.round(s.target_duration_min);
   else if(s && s.target_distance_km && s.target_pace_sec_per_km) durationMin = Math.round(s.target_distance_km*s.target_pace_sec_per_km/60);
+  sessionSheetId = null; addChoiceDate = null;
   manualRunForm = {
     sessionId: s ? s.id : null,
-    date: s ? (s.planned_date <= todayStr ? s.planned_date : todayStr) : todayStr,
+    date: s ? (s.planned_date <= todayStr ? s.planned_date : todayStr) : (asked || todayStr),
     type: s && MANUAL_RUN_TYPES.includes(s.type) ? s.type : "EF",
     distKm: s && s.target_distance_km ? String(s.target_distance_km).replace(".",",") : "",
     durationText: formatDurationInput(durationMin), hr:"", error:"", saving:false,
@@ -2714,7 +2725,7 @@ function objectiveCardHTML(){
 function indicatorTilesHTML(){
   const todayStr = localDateStr(new Date());
   const ds = (r) => localDateStr(dateFromRun(r));
-  const eff = efficiencyTrend(efRuns.map(r=>({date:ds(r), allure:r.allure, fc:r.fc})), todayStr);
+  const eff = efficiencyTrend(efRuns.map(r=>({date:ds(r), allure:r.allure, fc:r.fc, distKm:r.dist||0})), todayStr);
   const reg = regularitySummary(runningRuns.map(ds), todayStr);
   const vol = volumeComparison(runningRuns.map(r=>({date:ds(r), distKm:r.dist||0})), todayStr);
   const { acwr } = computeProgramInputs();
@@ -2726,6 +2737,9 @@ function indicatorTilesHTML(){
     const inner = `<div class="pg-over">${over}</div><div class="big" style="color:${color}">${big}</div>${coach(txt)}${target?`<span class="pg-chev" aria-hidden="true">${icon("chevronRight",14)}</span>`:""}`;
     return target ? `<button type="button" class="pg-tile" onclick="scrollToCard('${target}')">${inner}</button>` : `<div class="pg-tile">${inner}</div>`;
   };
+  // R15 (08/10/2026) : au-delà de 15 % d'écart, le chiffre reste, avec un « ! » ; la tuile mène à l'Historique pour vérifier
+  // le type des dernières sorties (une sortie mal classée suffit à fausser la comparaison).
+  const effUnusualTile = `<button type="button" class="pg-tile" onclick="openHistory()" aria-label="Efficience cardiaque ${escHtml(effText)}. Écart inhabituel : vérifie le type de tes dernières sorties dans l'Historique."><div class="pg-over">Efficience cardiaque</div><div class="big" style="color:${effColor}">${effText}<span class="pg-warn" aria-hidden="true">!</span></div>${coach("Écart inhabituel : vérifie le type de tes dernières sorties dans l'Historique.")}<span class="pg-chev" aria-hidden="true">${icon("chevronRight",14)}</span></button>`;
   const ci = chargeLineInfo(gauge, acwr), seg = chargeSegments(), pos = chargeGaugePosition(acwr);
   const chargeReason = pos==null ? chargeEmptyReason(chargeRunsForReason(), Date.now()) : null;
   const chargeFoot = chargeReason ? CHARGE_EMPTY_TEXTS[chargeReason].tile : "Touche pour la jauge complète";
@@ -2740,7 +2754,7 @@ function indicatorTilesHTML(){
   </button>`;
   return `<div class="pg-h2" id="progIndicators">Tes indicateurs</div>
     <div class="pg-grid">
-      ${tile("Efficience cardiaque", effText, effColor, efficiencyPhrase(eff), "cardEff")}
+      ${eff.unusual ? effUnusualTile : tile("Efficience cardiaque", effText, effColor, efficiencyPhrase(eff), "cardEff")}
       ${tile("Régularité", reg.status==="ok" ? `${reg.weeksWithRun}/${reg.totalWeeks} sem.` : "—", reg.status==="ok" ? "var(--text)" : "var(--text-faint)", regularityPhrase(reg), null)}
       ${tile("Volume", `${fmtKm1(vol.last28)} km`, "var(--text)", `4 dernières semaines. Les 4 d'avant : ${fmtKm1(vol.prev28)} km.`, "cardVol")}
       ${chargeTile}
@@ -3435,7 +3449,7 @@ function levelMainHTML(){
        ${st.stale ? `<div class="ms-alert" role="status">${icon("alert",16)}<span>Ce temps date de plus de 6 mois. Refais un chrono ou le test guidé pour garder des allures justes.</span></div>` : ""}
        ${resume ? `<button type="button" class="pf-btn" style="margin-top:10px" onclick="levelGoResume()">Préciser la date de ce temps</button>` : ""}`
     : `<div class="lv-info">${icon("info",16)}<span>Pour calculer tes allures conseillées, il nous faut un chrono récent, ou le résultat du test guidé de 20 minutes.</span></div>`;
-  const plannedText = planned ? `planifié ${escHtml(dayLabelShort(new Date(planned.planned_date+"T00:00:00")))}` : "test guidé de 20 min, à faire plus tard";
+  const plannedText = planned ? `planifié ${escHtml(dayLabelShort(new Date(planned.planned_date+"T00:00:00")))}` : (st && st.estimated ? "test guidé de 20 min, pour des allures plus précises" : "test guidé de 20 min, à faire plus tard");
   return `<div class="lv-lbl" style="margin-top:2px">Ton niveau estimé : tu peux le corriger</div>
     <div class="lv-levels" role="group" aria-label="Niveau">${levels}</div>
     <div class="pg-over" style="margin:18px 0 0">Tes allures conseillées</div>
@@ -3459,12 +3473,15 @@ function levelChronoHTML(){
   const st = levelSheet, f = st.form, today = localDateStr(new Date());
   const chk = levelChronoCheck({ distanceKm:f.distanceKm, h:f.h, m:f.m, s:f.s, month:f.month }, today, st.reality);
   const dyn = levelChronoDynamic(chk);
-  const chips = Object.keys(RACE_DISTANCES_KM).map(k=>`<button type="button" class="rt-pill" aria-pressed="${f.distanceKm===RACE_DISTANCES_KM[k]}" onclick="levelPickDistance('${k}')">${RACE_LABELS[k]}</button>`).join("");
+  const chips = Object.keys(RACE_DISTANCES_KM).map(k=>`<button type="button" class="rt-pill" aria-pressed="${!f.other && f.distanceKm===RACE_DISTANCES_KM[k]}" onclick="levelPickDistance('${k}')">${RACE_LABELS[k]}</button>`).join("")
+    + `<button type="button" class="rt-pill" aria-pressed="${!!f.other}" onclick="levelPickDistance('autre')">Autre distance</button>`;
+  const kmBox = f.other ? `<div class="lv-km" style="margin-top:8px"><div class="pf-row stack"><input type="text" inputmode="decimal" maxlength="5" autocomplete="off" aria-label="Distance en kilomètres" placeholder="7,5" value="${escHtml(f.kmText||"")}" oninput="levelFormInput('km', this.value)"><span class="u">km</span></div></div>
+    <div class="ms-alert soft" style="margin-top:8px" role="note">${icon("info",16)}<span>${CHRONO_FULL_EFFORT_TEXT}</span></div>` : "";
   const box = (field, unit, label, ph) => `<div class="pf-row stack${chk.tooFast?" warn":""}"><input type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="${label}" placeholder="${ph}" value="${escHtml(f[field])}" oninput="levelFormInput('${field}', this.value)"><span class="u">${unit}</span></div>`;
   const months = levelMonthOptions(today).map(o=>`<option value="${o.value}"${f.month===o.value?" selected":""}>${o.label}</option>`).join("");
   return `<div class="lv-info" style="margin-top:0">${icon("info",16)}<span>Ton temps sur une course ou un effort à fond, récent. Pas ton record de toute une vie, pas ta sortie tranquille : à partir de là, on calcule tes allures faciles, plus lentes.</span></div>
     <div class="lv-lbl">Distance</div>
-    <div class="rt-pills" role="group" aria-label="Distance">${chips}</div>
+    <div class="rt-pills" role="group" aria-label="Distance">${chips}</div>${kmBox}
     <div class="lv-lbl">Temps</div>
     <div class="lv-times">${box("h","h","Heures","0")}${box("m","min","Minutes","00")}${box("s","s","Secondes","00")}</div>
     <div id="lvWarn">${dyn.warn}</div>
@@ -3496,11 +3513,18 @@ function renderLevelSheet(){
 }
 window.levelGoChrono = () => { if(!levelSheet) return; levelSheet.view = "chrono"; levelSheet.reality = levelReality(); levelSheet.error = ""; refreshSheet(); };
 window.levelGoResume = () => { if(!levelSheet) return; levelSheet.view = "resume"; refreshSheet(); };
-window.levelPickDistance = (key) => { if(!levelSheet) return; levelSheet.form.distanceKm = RACE_DISTANCES_KM[key]; levelSheet.error = ""; refreshSheet(); };
+window.levelPickDistance = (key) => {
+  if(!levelSheet) return;
+  const f = levelSheet.form;
+  if(key==="autre"){ f.other = true; f.distanceKm = kmFromText(f.kmText); }   // R1 : autre distance, saisie en km
+  else { f.other = false; f.distanceKm = RACE_DISTANCES_KM[key]; }
+  levelSheet.error = ""; refreshSheet();
+};
 // Saisie dans le formulaire : on ne redessine pas les champs (le clavier resterait coupé), seulement ce qui dépend du temps.
 window.levelFormInput = (field, value) => {
   const st = levelSheet; if(!st) return;
-  st.form[field] = field==="month" ? value : String(value).replace(/\D/g,"").slice(0,2);
+  if(field==="km"){ st.form.kmText = String(value).replace(/[^\d.,]/g,"").slice(0,5); st.form.distanceKm = kmFromText(st.form.kmText); }
+  else st.form[field] = field==="month" ? value : String(value).replace(/\D/g,"").slice(0,2);
   st.error = "";
   const chk = levelChronoCheck({ distanceKm:st.form.distanceKm, h:st.form.h, m:st.form.m, s:st.form.s, month:st.form.month }, localDateStr(new Date()), st.reality);
   const dyn = levelChronoDynamic(chk), set = (id, html) => { const el = document.getElementById(id); if(el) el.innerHTML = html; };
@@ -4217,7 +4241,7 @@ function profilSwitchHTML(){
 // Agrège le temps par zone de toutes les séances avec détail FC, groupé par mois calendaire.
 function monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr){
   const byMonth = {};
-  cardioRuns.filter(r=>r.hrSeries && r.hrSeries.length>1).forEach(r=>{
+  cardioRuns.filter(r=>r.hrSeries && r.hrSeries.length>1 && !hrSeriesIncomplete(r.hrSeries, r.durationSec)).forEach(r=>{   // R24 : pas de zones fausses
     const d = dateFromRun(r);
     const key = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
     if(!byMonth[key]) byMonth[key] = {label: d.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'}), secs:[0,0,0,0,0], sortKey: d.getFullYear()*12+d.getMonth()};
@@ -4271,6 +4295,13 @@ function hrCurveSVG(series, efLimit, W){
 // Contenu déployé du « Détail cardio » : FC moyenne et maximale, courbe, temps par zone, allures du fractionné, suggestions de type.
 function cardioCardHTML(r, effMaxHr, effRestingHr){
   if(!r.hrSeries || r.hrSeries.length<2) return `<div class="cd-note">Pas de détail de fréquence cardiaque pour cette séance.</div>`;
+  // R24 (08/10/2026) : trop peu de mesures (fréquence cardiaque rangée « en paquets » dans Apple Santé) : pas de courbe
+  // ni de zones, qui seraient fausses ; la moyenne et le maximum, calculés par Apple, restent justes.
+  if(hrSeriesIncomplete(r.hrSeries, r.durationSec)){
+    const n = r.hrSeries.length;
+    const tilesInc = r.fc ? `<div class="sc-tiles2" style="margin:0">${scTile("FC moy.", Math.round(r.fc), "var(--data-coral)")}${r.peakHr?scTile("FC max", r.peakHr, "var(--data-coral)"):""}</div>` : "";
+    return `<div class="cd-card">${tilesInc}<div class="cd-note">Détail incomplet pour cette séance : ta montre n'a transmis que ${n} mesure${n>1?"s":""} de fréquence cardiaque. La moyenne et le maximum restent justes.</div></div>`;
+  }
   if(!effMaxHr) return `<div class="cd-note">Renseigne ta FC max (Profil › Mon compte) pour voir la répartition par zones.</div>`;
   const { secs, defs } = computeHrZoneSeconds(r.hrSeries, effMaxHr, effRestingHr);
   const total = secs.reduce((a,b)=>a+b,0)||1;
@@ -4475,7 +4506,12 @@ window.generateProgram = async (mondayDate, opts) => {
   // "en existe-t-il au moins une" : sinon une seule séance ajoutée à la
   // main (ex: 1 renfo alors que 2/semaine sont visées) faisait croire la
   // semaine "complète" et masquait le bouton pour ajouter le reste.
-  const minDayIndex = opts.fromToday && mondayStr===localDateStr(mondayOf(new Date())) ? dayIndexOf(localDateStr(new Date())) : 0;
+  // R26 (08/10/2026) : jamais de séance générée dans le passé de la semaine en cours ; à la création du programme
+  // (`opts.fromTomorrow`, fin du parcours), à partir de demain. Semaine déjà entamée : jamais deux courses de suite.
+  const isThisWeek = mondayStr===localDateStr(mondayOf(new Date()));
+  const todayIdx = isThisWeek ? dayIndexOf(localDateStr(new Date())) : 0;
+  const minDayIndex = isThisWeek ? (opts.fromTomorrow ? todayIdx+1 : todayIdx) : 0;
+  const partialWeek = minDayIndex>0;
   const desiredRunning = isCouch ? 3 : (Number(goals.frequence) || 3);
   const desiredCross = Number(goals.frequenceAutre) || 0;
   const actualRunning = existing.filter(p=>p.pace_zone).length;
@@ -4502,9 +4538,8 @@ window.generateProgram = async (mondayDate, opts) => {
     const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d) && !dayBlockedForRun.includes(d) && d>=minDayIndex);
     if(minDayIndex>0 && !isCouch && !availableDayIndexes.length){ /* plus de jour disponible cette semaine */ }
     else if(isCouch){
-      // Cette semaine : pas de séance dans le passé.
-      const todayIndex = mondayStr===localDateStr(mondayOf(new Date())) ? dayIndexOf(localDateStr(new Date())) : 0;
-      const days = pickSpacedDays(availableDayIndexes.filter(d=>d>=todayIndex), missingRunning);
+      // Cette semaine : pas de séance dans le passé (minDayIndex), et jamais deux de suite si la semaine est entamée.
+      const days = partialWeek ? pickNonConsecutiveDays(availableDayIndexes, missingRunning) : pickSpacedDays(availableDayIndexes, missingRunning);
       generated = days.map(d=>({dayIndex:d}));
       runningRows = couchSessionRows(couchWeek, days, actualRunning+1).map(r => ({
         user_id:user.id,
@@ -4516,7 +4551,9 @@ window.generateProgram = async (mondayDate, opts) => {
         status:"planned", source:"generated", generation_reason:"beginner_plan",
       }));
     } else {
-    generated = generateWeekSessions({ profile, structure, weeklyKm, frequency:missingRunning, availableDayIndexes, avoidQualityReason, weekIndex });
+    const runDays = partialWeek ? pickNonConsecutiveDays(availableDayIndexes, missingRunning) : availableDayIndexes;
+    generated = (partialWeek && !runDays.length) ? [] :
+      generateWeekSessions({ profile, structure, weeklyKm, frequency: partialWeek ? runDays.length : missingRunning, availableDayIndexes: runDays, avoidQualityReason, weekIndex });
     runningRows = generated.map(s => ({
       user_id:user.id,
       planned_date: addDaysStr(mondayDate, s.dayIndex),
@@ -4570,7 +4607,7 @@ window.generateProgram = async (mondayDate, opts) => {
   }
 
   const rows = [...runningRows, ...crossRows];
-  if(!rows.length){ if(!opts.silent) profileMissingToast(); return; }
+  if(!rows.length){ if(!opts.silent){ if(partialWeek) toast("Plus de jour libre cette semaine : ton programme reprend lundi."); else profileMissingToast(); } return; }
   const { error } = await supa.from("planned_sessions").insert(rows);
   if(error){ if(!opts.silent) toast("Ta semaine n'a pas pu être générée, vérifie ta connexion et réessaie."); return; }
   await loadData();
@@ -5958,6 +5995,7 @@ function refreshSheet(){
 function renderSheetContent(root){
   if(typeof renderNewsSheet==="function" && renderNewsSheet()) { /* « L'app a changé de look » : passe avant le reste */ }
   else if(manualRunForm) renderManualRunSheet();
+  else if(renderAddChoiceSheet()) { /* « Ajouter » aujourd'hui : séance faite ou à prévoir (R7) */ }
   else if(typeof renderRatingSheet==="function" && renderRatingSheet()) { /* feuille de ressenti */ }
   else if(exerciseSheet) renderExerciseSheet();
   else if(typeof renderProgramSheet==="function" && renderProgramSheet()) { /* feuille Ajouter / Modifier */ }
@@ -5982,12 +6020,34 @@ function renderSheetContent(root){
 let programSheet = null; // { mode:"add"|"edit", sessionId, form, order, error }
 const PS_RUN_TYPES = ["EF","Long","Fractionné","Seuil","Course"];
 function psPaceParts(sec){ return sec>0 ? [String(Math.floor(sec/60)), String(Math.round(sec%60))] : ["",""]; }
-window.openAddSheet = (dateStr) => {
+// « Ajouter » dans le planning, semaine ou mois (R7, retour de Mohamed du 07/10/2026) : selon le jour choisi.
+// Jour passé : « Ajouter une séance réalisée » (elle compte dans les stats) ; aujourd'hui : choisir entre une séance
+// faite et une séance à prévoir ; jour à venir : séance prévue. `force` : « plan » (le choix d'aujourd'hui est fait).
+let addChoiceDate = null;
+window.openAddSheet = (dateStr, force) => {
   sessionSheetId = null; closeSessionMenu();
-  const d = (typeof dateStr==="string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) ? dateStr : (programSelectedDate || localDateStr(new Date()));
-  programSheet = { mode:"add", sessionId:null, order:[], error:"", form:{ type:"EF", date:d, distKm:"", paceMin:"", paceSec:"", durationMin:"", notes:"" } };
+  const todayStr = localDateStr(new Date());
+  const d = (typeof dateStr==="string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) ? dateStr : (programSelectedDate || todayStr);
+  if(force!=="plan"){
+    if(d<todayStr){ openManualRun(null, d); return; }
+    if(d===todayStr){ addChoiceDate = d; refreshSheet(); return; }
+  }
+  addChoiceDate = null;
+  programSheet = { mode:"add", sessionId:null, order:[], error:"", form:{ type:"EF", date:d<todayStr ? todayStr : d, distKm:"", paceMin:"", paceSec:"", durationMin:"", notes:"" } };
   refreshSheet();
 };
+window.closeAddChoice = () => { addChoiceDate = null; refreshSheet(); };
+function renderAddChoiceSheet(){
+  if(!addChoiceDate) return false;
+  const d = addChoiceDate;
+  document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeAddChoice()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Ajouter">
+    ${sheetHeadHTML("Ajouter", "closeAddChoice()", "Aujourd'hui")}
+    <div class="lv-choices">
+      <button type="button" class="lv-choice" onclick="openManualRun(null,'${d}')"><span class="ic">${icon("check",18)}</span><span><div class="t">J'ai déjà fait une séance</div><div class="s">elle compte dans ta semaine et ta progression</div></span></button>
+      <button type="button" class="lv-choice" onclick="openAddSheet('${d}','plan')"><span class="ic">${icon("calendarPlus",18)}</span><span><div class="t">Prévoir une séance</div><div class="s">elle s'ajoute à ton programme</div></span></button>
+    </div></div></div>`;
+  return true;
+}
 window.openEditSheet = (id) => {
   const s = plannedSessions.find(p=>p.id===id);
   if(!s) return;
@@ -6039,7 +6099,7 @@ function renderProgramSheet(){
     <span class="l" style="margin-top:4px">Type</span>
     <div class="ps-pills">${pills}</div>
     <label class="l" for="ps_date">Date</label>
-    <input class="sheet-input" id="ps_date" type="date" value="${escHtml(f.date)}" oninput="psField('date',this.value)">
+    <input class="sheet-input" id="ps_date" type="date" min="${localDateStr(new Date())}" value="${escHtml(f.date)}" oninput="psField('date',this.value)">
     ${isRun ? runFields : `<div class="ps-grid" style="grid-template-columns:1fr">${dur}</div>`}
     ${showNotes ? `<label class="l" for="ps_notes">Notes <span style="color:var(--text-muted)">(facultatif)</span></label><textarea class="sheet-input" id="ps_notes" oninput="psField('notes',this.value)">${escHtml(f.notes)}</textarea>` : ""}
     <div class="ps-err" id="psError" role="alert">${escHtml(st.error||"")}</div>
@@ -6059,6 +6119,10 @@ window.saveProgramSheet = async () => {
   const dur = Number(f.durationMin)||0;
   const fail = (msg) => { st.error = msg; const el = document.getElementById("psError"); if(el) el.textContent = msg; };
   if(!/^\d{4}-\d{2}-\d{2}$/.test(f.date||"")) return fail("Choisis la date de la séance.");
+  // R7 : une séance prévue n'a pas de sens dans le passé (elle ne compterait jamais) ; une séance déjà prévue peut être
+  // modifiée sur place, mais pas déplacée vers un jour passé.
+  const sEdit = st.mode==="edit" ? plannedSessions.find(p=>p.id===st.sessionId) : null;
+  if(f.date<localDateStr(new Date()) && (!sEdit || f.date!==sEdit.planned_date)) return fail("Une séance prévue ne peut pas être dans le passé. Pour une sortie déjà faite : « J'ai fait cette séance » ou « Séance réalisée ».");
   if(isRun && dist>250) return fail("Plus de 250 km : vérifie la distance.");
   if(dur>720) return fail("Plus de 12 heures : vérifie la durée.");
   const s = st.mode==="edit" ? plannedSessions.find(p=>p.id===st.sessionId) : null;
@@ -6405,6 +6469,9 @@ window.dismissGuidedTestSeen = () => {
 const ONB_STEPS = 6;
 // [libellé affiché, clé utilisée dans les données] — même ordre que ONBOARDING_DUREE_OPTIONS ([libellé, valeur]).
 const ONB_RACES = [["5 km","5km"],["10 km","10km"],["15 km","15km"],["Semi-marathon","Semi"],["Marathon","Marathon"]];
+const ONB_CHRONO_RACES = [...ONB_RACES, ["Autre distance","autre"]];   // R1 : chrono sur une autre distance (3 à 42 km)
+const CHRONO_FULL_EFFORT_TEXT = "Un temps d'effort à fond, pas une sortie tranquille, sinon tes allures seront trop lentes.";
+const kmFromText = (txt) => { const v = Number(String(txt||"").replace(",",".")); return v>0 ? v : 0; };
 let onbConnect = false;   // étape 6 : le programme est créé, le parcours est enregistré, on propose de connecter les courses
 const onbToday = () => localDateStr(new Date());
 function onbInit(){
@@ -6412,8 +6479,9 @@ function onbInit(){
   const detected = detectLevelFromHistory(
     runningRuns.map(r=>({ date: dateFromRun(r), distanceKm: r.dist||0 })), new Date());
   const chronoKm = programSettings?.refDistanceKm;
-  const chronoKey = Object.keys(RACE_DISTANCES_KM).find(k=>RACE_DISTANCES_KM[k]===chronoKm) || "";
+  const estimated = programSettings?.refSource==="estimate";
   const refSec = programSettings?.refTimeSec || 0;
+  const chronoKey = !refSec || estimated ? "" : (Object.keys(RACE_DISTANCES_KM).find(k=>RACE_DISTANCES_KM[k]===chronoKm) || "autre");
   onb = {
     step: 0,
     objectif: principal.objectifPrincipal && principal.objectifPrincipal!=="Autre" ? principal.objectifPrincipal : "",
@@ -6425,11 +6493,14 @@ function onbInit(){
     niveauManual: false,
     frequenceHistorique: "",
     dureeMax: null,
-    chronoMode: refSec ? "known" : "",   // « known » : « Je connais un chrono récent » ; « unknown » : « Je ne sais pas » (test guidé plus tard)
+    // « known » : « Je connais un chrono récent » ; « estimate » : « Une idée, à peu près ? » (fourchette sur 5 km, R14)
+    chronoMode: refSec ? (estimated ? "estimate" : "known") : "",
     chronoDistance: chronoKey,
-    chronoH: refSec ? String(Math.floor(refSec/3600)) : "",
-    chronoM: refSec ? String(Math.floor((refSec%3600)/60)) : "",
-    chronoS: refSec ? String(refSec%60) : "",
+    chronoKm: chronoKey==="autre" ? String(chronoKm).replace(".",",") : "",
+    chronoH: refSec && !estimated ? String(Math.floor(refSec/3600)) : "",
+    chronoM: refSec && !estimated ? String(Math.floor((refSec%3600)/60)) : "",
+    chronoS: refSec && !estimated ? String(refSec%60) : "",
+    estimateKey: estimated ? ((ESTIMATE_5K_OPTIONS.find(o=>o[2]===refSec)||[])[1] || "") : "",
     frequence: Number(goals?.frequence) || 3,
     joursIndisponibles: (goals?.joursIndisponibles ? goals.joursIndisponibles.split(",").map(Number) : []),
     // « Ton profil coureur » (D108) : réglages du profil s'il y en a ; sinon une séance de renfo/mobilité proposée
@@ -6446,8 +6517,9 @@ function onbChronoSec(){
 }
 function onbBeginner(){ return isBeginnerPlanEligible(onb.niveau, onb.frequenceHistorique, onb.dureeMax); }
 // Chrono saisi à l'étape 2 : mêmes garde-fous que « Ton niveau » (temps possible, avertissement « trop rapide »).
+function onbChronoKmValue(){ return onb.chronoDistance==="autre" ? kmFromText(onb.chronoKm) : (RACE_DISTANCES_KM[onb.chronoDistance]||0); }
 function onbChronoCheck(){
-  return levelChronoCheck({ distanceKm:RACE_DISTANCES_KM[onb.chronoDistance]||0, h:onb.chronoH, m:onb.chronoM, s:onb.chronoS, month:onbToday().slice(0,7) }, onbToday(), onb.reality);
+  return levelChronoCheck({ distanceKm:onbChronoKmValue(), h:onb.chronoH, m:onb.chronoM, s:onb.chronoS, month:onbToday().slice(0,7) }, onbToday(), onb.reality);
 }
 function onbChronoKnown(){ return onb.chronoMode==="known" && !onbBeginner(); }
 function onbPatch(){
@@ -6457,6 +6529,8 @@ function onbPatch(){
     frequenceHistorique:onb.frequenceHistorique, dureeMax:onb.dureeMax, frequence:onb.frequence, joursIndisponibles:onb.joursIndisponibles,
     frequenceAutre:onb.frequenceAutre, terrain:onb.terrain, equipement:onb.equipement,
     chronoDistance:known ? onb.chronoDistance : "", chronoSec:known ? onbChronoSec() : 0,
+    chronoKm: known && onb.chronoDistance==="autre" ? kmFromText(onb.chronoKm) : 0,
+    estimateKey: onb.chronoMode==="estimate" && !onbBeginner() ? onb.estimateKey : "",
   }, goals, programSettings, RACE_DISTANCES_KM, beginnerPlanStartMonday(onbToday()), onbToday());
 }
 function onbRecomputeLevel(){
@@ -6480,6 +6554,7 @@ function onbCanContinue(){
   if(onb.step===2){
     if(!onb.niveau) return false;
     if(!onb.detected && (!onb.frequenceHistorique || onb.dureeMax==null)) return false;
+    if(onb.chronoMode==="estimate" && !onbBeginner() && !onb.estimateKey) return false;
     return !onbChronoKnown() || onbChronoCheck().ok;
   }
   if(onb.step===4) return !!onb.terrain && onb.equipement.length>0;
@@ -6496,7 +6571,7 @@ window.onbSet = (key, value) => {
 window.onbSetField = (key, value) => { onb[key] = value; };
 // Saisie du chrono : on ne redessine pas les champs (le clavier resterait coupé), seulement l'avertissement et le bouton.
 window.onbChronoInput = (key, value) => {
-  onb[key] = String(value).replace(/\D/g,"").slice(0,2);
+  onb[key] = key==="chronoKm" ? String(value).replace(/[^\d.,]/g,"").slice(0,5) : String(value).replace(/\D/g,"").slice(0,2);
   onbRefreshChrono();
 };
 function onbRefreshChrono(){
@@ -6586,7 +6661,7 @@ function onbStepObjectif(){
   let course = "", hint = "";
   if(onb.objectif==="Préparer une course"){
     const model = onbDateModel(), warn = model && model.status!=="ok" && onb.dateChoice!=="first" && onb.dateChoice!=="none";
-    course = `<div class="on-group"><div class="on-lbl">Quelle distance ?</div>${onbChipsHTML(ONB_RACES, onb.distanceCourse, "onbSet.bind(null,'distanceCourse')")}</div>
+    course = `<div class="on-group"><div class="on-lbl">Quelle distance&nbsp;?</div>${onbChipsHTML(ONB_RACES, onb.distanceCourse, "onbSet.bind(null,'distanceCourse')")}</div>
       <div class="on-group"><div class="on-lbl">À quelle date ? (facultatif)</div>
         <label class="on-date${warn?" warn":""}"><input type="date" id="onbDate" value="${onb.dateCible}" aria-label="Date de la course" onchange="onbSet('dateCible', this.value)"><span class="ic">${icon("calendar",18)}</span></label>
         <div class="on-hint" style="text-align:left">${escHtml(weeksUntilText(onb.dateCible))}</div></div>
@@ -6602,18 +6677,25 @@ function onbStepNiveau(){
   if(onb.detected){
     body += onbInfoHTML(`On a regardé tes courses des 8 dernières semaines : ton niveau semble être <strong>${onb.detected}</strong>. Tu peux le corriger si ça ne te ressemble pas.`);
   } else {
-    body += `<div class="on-group"><div class="on-lbl">Tu cours à quelle fréquence en ce moment ?</div>${onbChipsHTML(QUESTIONNAIRE_FREQUENCE_OPTIONS, onb.frequenceHistorique, "onbSet.bind(null,'frequenceHistorique')")}</div>
-      <div class="on-group"><div class="on-lbl">Combien de temps peux-tu courir sans t'arrêter ?</div>${onbChipsHTML(ONBOARDING_DUREE_OPTIONS, onb.dureeMax, "onbSet.bind(null,'dureeMax')")}</div>`;
+    body += `<div class="on-group"><div class="on-lbl">Tu cours à quelle fréquence en ce moment&nbsp;?</div>${onbChipsHTML(QUESTIONNAIRE_FREQUENCE_OPTIONS, onb.frequenceHistorique, "onbSet.bind(null,'frequenceHistorique')")}</div>
+      <div class="on-group"><div class="on-lbl">Combien de temps peux-tu courir sans t'arrêter&nbsp;?</div>${onbChipsHTML(ONBOARDING_DUREE_OPTIONS, onb.dureeMax, "onbSet.bind(null,'dureeMax')")}</div>`;
   }
   if(!beginner){
+    // R1 et R14 (08/10/2026) : chrono sur n'importe quelle distance, ou une fourchette de temps sur 5 km ; plus de test de
+    // 20 minutes obligatoire (il bloquait le programme), il reste proposé dans Profil › Ton niveau.
     const box = (field, unit, label, ph) => `<div class="pf-row stack"><input type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="${label}" placeholder="${ph}" value="${escHtml(onb[field])}" oninput="onbChronoInput('${field}', this.value)"><span class="u">${unit}</span></div>`;
-    const chk = known ? onbChronoCheck() : null;
-    const fields = known ? `<div class="on-chrono">${onbChipsHTML(ONB_RACES, onb.chronoDistance, "onbSet.bind(null,'chronoDistance')")}
+    const chk = known ? onbChronoCheck() : null, other = onb.chronoDistance==="autre";
+    const kmBox = other ? `<div class="lv-km"><div class="pf-row stack"><input type="text" inputmode="decimal" maxlength="5" autocomplete="off" aria-label="Distance en kilomètres" placeholder="7,5" value="${escHtml(onb.chronoKm)}" oninput="onbChronoInput('chronoKm', this.value)"><span class="u">km</span></div></div>
+        <div class="ms-alert soft" role="note">${icon("info",16)}<span>${CHRONO_FULL_EFFORT_TEXT}</span></div>` : "";
+    const fields = known ? `<div class="on-chrono">${onbChipsHTML(ONB_CHRONO_RACES, onb.chronoDistance, "onbSet.bind(null,'chronoDistance')")}${kmBox}
         <div class="lv-times">${box("chronoH","h","Heures","0")}${box("chronoM","min","Minutes","00")}${box("chronoS","s","Secondes","00")}</div>
         <div id="onbChronoMsg">${chk.tooFast ? `<div class="ms-alert" role="status">${icon("alert",16)}<span>Vérifie ce temps : il est bien plus rapide que ce que tu cours en ce moment.</span></div>` : ""}</div></div>` : "";
-    body += `<div class="on-group"><div class="on-lbl">Un chrono récent ?</div><div class="on-opts">
+    const est = onb.chronoMode==="estimate";
+    const ranges = est ? `<div class="on-chrono"><div class="on-hint" style="text-align:left;margin:0 0 8px">Tu cours 5 km en combien de temps, à peu près ?</div>${onbChipsHTML(ESTIMATE_5K_OPTIONS.map(o=>[o[0], o[1]]), onb.estimateKey, "onbSet.bind(null,'estimateKey')")}
+        <div class="on-hint" style="text-align:left;margin-top:8px">Tes allures seront estimées. Pour plus de précision, tu pourras donner un chrono ou faire le test de 20 minutes, dans Profil › Ton niveau.</div></div>` : "";
+    body += `<div class="on-group"><div class="on-lbl">Un chrono récent&nbsp;?</div><div class="on-opts">
       <button type="button" class="on-opt${known?" sel":""}" aria-pressed="${known}" onclick="onbSet('chronoMode','known')"><span class="ic">${icon("timer",18)}</span><span><b>Je connais un chrono récent</b><small>un temps approximatif suffit</small></span></button>${fields}
-      <button type="button" class="on-opt${onb.chronoMode==="unknown"?" sel":""}" aria-pressed="${onb.chronoMode==="unknown"}" onclick="onbSet('chronoMode','unknown')"><span class="ic">${icon("help",18)}</span><span><b>Je ne sais pas</b><small>test guidé de 20 min, à faire plus tard</small></span></button>
+      <button type="button" class="on-opt${est?" sel":""}" aria-pressed="${est}" onclick="onbSet('chronoMode','estimate')"><span class="ic">${icon("help",18)}</span><span><b>Une idée, à peu près ?</b><small>une fourchette de temps sur 5 km suffit</small></span></button>${ranges}
     </div></div>`;
   }
   if(onb.niveau) body += `<div class="on-group"><div class="on-lbl">${onb.detected ? "Ton niveau" : "Ton niveau estimé : tu peux le corriger"}</div>${onbLevelBoxesHTML()}</div>`;
@@ -6625,9 +6707,9 @@ function onbStepDispos(){
   const beginner = onbBeginner();
   if(beginner && onb.frequence!==3) onb.frequence = 3;
   const nums = ["1","2","3","4","5","6","7"].map(o=>`<button type="button" class="${String(onb.frequence)===o?"active":""}" aria-pressed="${String(onb.frequence)===o}" ${beginner?"disabled":""} onclick="onbSet('frequence',${o})">${o}</button>`).join("");
-  const body = `<div class="on-group"><div class="on-lbl">Combien de séances de course par semaine ?</div><div class="pf-nums on-nums n7">${nums}</div>
+  const body = `<div class="on-group"><div class="on-lbl">Combien de séances de course par semaine&nbsp;?</div><div class="pf-nums on-nums n7">${nums}</div>
       <div class="on-hint" style="text-align:left">${beginner ? "Le programme marche/course comporte toujours 3 séances par semaine." : escHtml(FREQUENCE_HINTS[String(onb.frequence)]||"")}</div></div>
-    <div class="on-group"><div class="on-lbl">Des jours où tu ne peux jamais courir ?</div><div class="pf-chips">${JOURS_OPTIONS.map((d,i)=>`<button type="button" class="pf-chip${onb.joursIndisponibles.includes(i)?" active":""}" aria-pressed="${onb.joursIndisponibles.includes(i)}" onclick="onbToggleDay(${i})">${d}</button>`).join("")}</div></div>`;
+    <div class="on-group"><div class="on-lbl">Des jours où tu ne peux jamais courir&nbsp;?</div><div class="pf-chips">${JOURS_OPTIONS.map((d,i)=>`<button type="button" class="pf-chip${onb.joursIndisponibles.includes(i)?" active":""}" aria-pressed="${onb.joursIndisponibles.includes(i)}" onclick="onbToggleDay(${i})">${d}</button>`).join("")}</div></div>`;
   return onbScreenHTML({ step:3, title:"Tes disponibilités", sub:"On placera tes séances sur les autres jours.", body, next:{ label:"Continuer", call:"onbGo(1)" } });
 }
 // D108 : les réglages du profil qui manquaient au parcours, une touche chacun. Le renfo entre dans le programme dès sa
@@ -6646,12 +6728,13 @@ function onbStepRecap(){
   const raceLabel = (ONB_RACES.find(r=>r[1]===onb.distanceCourse)||[])[0];
   const jours = onb.joursIndisponibles.length ? onb.joursIndisponibles.slice().sort((a,b)=>a-b).map(i=>JOURS_OPTIONS[i]).join(", ") : "aucun";
   const row = (lbl, val) => `<div class="on-row"><span class="k">${lbl}</span><span class="v">${escHtml(val)}</span></div>`;
-  const needsTest = onbPatch().needsGuidedTest;
-  const programme = onbBeginner() ? "Marche/course sur 9 semaines (NHS)" : (needsTest ? "Test de 20 minutes, puis programme personnalisé" : "Programme personnalisé");
+  const patchNow = onbPatch(), needsTest = patchNow.needsGuidedTest;
+  const programme = onbBeginner() ? "Marche/course sur 9 semaines (NHS)" : (needsTest ? "Test de 20 minutes, puis programme personnalisé" : patchNow.estimated ? "Programme personnalisé, allures estimées" : "Programme personnalisé");
   const objectif = onb.objectif + (onb.objectif==="Préparer une course" ? ` · ${raceLabel||""}${onb.dateCible?" · le "+isoToFr(onb.dateCible):""}` : "");
   const renfo = Number(onb.frequenceAutre)>0 ? onb.frequenceAutre+" par semaine" : "aucune";
   const body = `<div class="on-rows">${row("Objectif", objectif)}${row("Niveau", onb.niveau)}${row("Séances de course", onb.frequence+" par semaine")}${row("Renfo / mobilité", renfo)}${row("Jours indisponibles", jours)}${row("Terrain", onb.terrain||"—")}${row("Équipement", onb.equipement.join(", ")||"—")}${row("Programme", programme)}</div>
-    ${needsTest ? onbInfoHTML("Comme tu n'as pas de chrono, ta première séance sera un <strong>test de 20 minutes</strong> : la distance que tu parcours nous sert à calculer tes allures. Tu pourras aussi donner un chrono plus tard, dans « Ton niveau ».") : ""}`;
+    ${needsTest ? onbInfoHTML("Comme tu n'as pas de chrono, ta première séance sera un <strong>test de 20 minutes</strong> : la distance que tu parcours nous sert à calculer tes allures. Tu pourras aussi donner un chrono plus tard, dans « Ton niveau ».")
+      : patchNow.estimated ? onbInfoHTML("Tes allures sont <strong>estimées</strong> d'après ta réponse. Elles deviendront plus justes dès que tu donneras un chrono récent ou feras le test de 20 minutes, dans Profil › Ton niveau.") : ""}`;
   return onbScreenHTML({ step:5, title:"Voilà ce qu'on a compris", sub:"Tout pourra être modifié dans Profil.", body,
     next:{ label:onb.saving ? "Création de ton programme…" : "Créer mon programme", call:"onbFinish()", off:!onbCanContinue() } });
 }
@@ -6703,7 +6786,7 @@ window.onbFinish = async function(){
   try{
     await tick(2);                                // allures : celles de « Ton niveau » (ou le test de 20 minutes à venir)
     if(patch.needsGuidedTest){ await window.scheduleGuidedTest(true); await tick(3); }
-    else { await window.generateProgram(mondayOf(new Date()), {silent:true}); await tick(3); }
+    else { await window.generateProgram(mondayOf(new Date()), {silent:true, fromTomorrow:true}); await tick(3); }   // R26 : à partir de demain
     if(!patch.needsGuidedTest){ programAdjustmentChecked = false; await applyProgramAdjustments(); }   // les 4 premières semaines
     await tick(4);
   }catch(e){ console.error("Génération initiale :", e); }
@@ -6771,7 +6854,7 @@ function startSyncPoll(){ stopSyncPoll(); syncPollTimer = setInterval(syncPollOn
 const receivedRunCount = () => receivedRuns().filter(r=>r.appleType==="Running").length;
 // Ce que montre le guide : on ne le redessine que si ça change. Le redessiner rejouait l'animation d'ouverture de la
 // fenêtre toutes les 4 s, et on voyait l'écran du dessous (clignotement filmé par Omar le 06/10/2026).
-const syncGuideView = () => { const m = syncGuideModelNow(); return JSON.stringify([m.active, m.phase, syncGuide.done, syncGuide.received, syncGuide.runs, syncGuide.hint]); };
+const syncGuideView = () => { const m = syncGuideModelNow(); return JSON.stringify([m.active, m.phase, syncGuide.done, syncGuide.received, syncGuide.runs, syncGuide.hint, !!syncSinceDate]); };
 // Toutes les 4 s, à n'importe quelle étape : combien de séances sont arrivées d'Apple Santé ? (requête légère)
 async function syncPollOnce(){
   if(!syncGuide){ stopSyncPoll(); return; }
@@ -6780,6 +6863,11 @@ async function syncPollOnce(){
     const { count, error } = await supa.from("runs").select("id", { count:"exact", head:true }).not("apple_type","is",null).neq("apple_type", MANUAL_RUN_MARKER);
     if(!syncGuide) return;
     if(!error && (count||0)>0 && !syncGuide.received){ syncGuide.received = count; stopSyncPoll(); await loadData(); if(syncGuide) syncGuide.runs = receivedRunCount(); }
+    // R4 : RunSync pose sa date de départ à la connexion ; elle dit si RunSync est relié au compte, même sans course.
+    else if(!syncSinceDate){
+      const { data:prof } = await supa.from("profiles").select("sync_since_date").maybeSingle();
+      if(prof && prof.sync_since_date) syncSinceDate = prof.sync_since_date;
+    }
   }
   if(syncGuide && syncGuideView()!==before) refreshSheet();
 }
@@ -6844,6 +6932,7 @@ function syncStepBodyHTML(m, n){
   const skip = (step, label) => `<button type="button" class="sg-skip" onclick="syncMarkDone(${step})">${label}</button>`;
   // D107 : une phrase et un bouton par étape ; chaque bouton ouvre directement l'app, sans mini-navigateur.
   if(n===1) return `<div class="sg-tx">RunSync est encore en test : elle s'installe avec <b>TestFlight</b>, l'app d'Apple pour les apps en test. Installe TestFlight, puis reviens ici.</div>
+    <div class="sg-tx"><b>Pourquoi deux apps ?</b> RunSync n'est pas encore sur l'App Store : pendant les tests, Apple la distribue ainsi. Tu ne le fais qu'une fois.</div>
     ${syncHintHTML()}${next(`Installer TestFlight ${icon("arrowUpRight",16)}`, "syncLaunch(1)")}${skip(1, "Je l'ai déjà")}`;
   if(n===2) return `<div class="sg-tx">RunSync est une petite app relais : elle récupère tes courses dans Apple Santé et les envoie ici, toute seule.</div>
     <div class="sg-flow"><div class="c">${icon("heart",20)}<span>Apple Santé</span></div><span class="ar">${icon("arrowRight",16)}</span><div class="c">${icon("refresh",20)}<span>RunSync</span></div><span class="ar">${icon("arrowRight",16)}</span><div class="c me">${icon("runner",20)}<span>MyRunningApp</span></div></div>
@@ -6854,11 +6943,29 @@ function syncStepBodyHTML(m, n){
     <div class="sg-note">${icon("info",16)}<span>À la fin, reviens ici avec le petit retour tout en haut à gauche, ou depuis ton écran d'accueil.</span></div>
     ${syncHintHTML()}${next("Ouvrir RunSync", "syncLaunch(3)")}${skip(3, "C'est déjà fait")}`;
   if(m.phase==="ok") return `<div class="sg-tx"><b>${escHtml(m.summary.replace("C'est connecté · ",""))}.</b> Les prochaines arriveront toutes seules.</div>${next("Continuer", "closeSyncGuide(true)")}`;
-  if(m.phase==="empty") return `<div class="sg-tx">Rien reçu pour l'instant. Pas grave si tu n'as encore jamais couru avec ta montre ou ton téléphone : ta prochaine course arrivera toute seule.</div>
-    <ul class="sg-tips"><li>Ouvre RunSync et touche « Synchroniser maintenant »</li><li>Vérifie l'accès : Réglages › Confidentialité et sécurité › Santé › RunSync</li></ul>
-    <div class="sg-btns"><button type="button" class="btn-secondary" style="min-height:48px" onclick="closeSyncGuide(true)">Continuer sans attendre</button><button type="button" class="btn-secondary" style="min-height:48px" onclick="syncRetry()">Réessayer</button></div>`;
-  return `<div class="sg-wait"><div class="spinner" aria-hidden="true"></div><span>Synchronisation de tes courses…</span></div>`;
+  // R4 (08/10/2026) : au bout de 30 s, ce qui se passe vraiment : RunSync relié ou pas, puis selon l'équipement déclaré.
+  if(m.phase==="empty"){
+    const msg = syncEmptyMessage(!!syncSinceDate, syncEquip(goals?.equipement), syncSinceDate ? fmtDayMonth(syncSinceDate) : "");
+    const tips = msg.reopen ? "" : `<ul class="sg-tips"><li>Ouvre RunSync et touche « Synchroniser maintenant »</li><li>Vérifie l'accès : Réglages › Confidentialité et sécurité › Santé › RunSync</li></ul>`;
+    const btns = msg.reopen
+      ? `<div class="sg-btns"><button type="button" class="btn-primary" style="min-height:48px" onclick="syncLaunch(3)">Ouvrir RunSync</button><button type="button" class="btn-secondary" style="min-height:48px" onclick="closeSyncGuide(true)">Continuer sans attendre</button></div>`
+      : `<div class="sg-btns"><button type="button" class="btn-primary" style="min-height:48px" onclick="closeSyncGuide(true)">Continuer</button><button type="button" class="btn-secondary" style="min-height:48px" onclick="syncRetry()">Réessayer</button></div>`;
+    return `<div class="sg-tx"><b>${escHtml(msg.title)}</b></div>${msg.lines.map(l=>`<div class="sg-tx">${escHtml(l)}</div>`).join("")}${tips}${btns}`;
+  }
+  return `<div class="sg-wait"><div class="spinner" aria-hidden="true"></div><span>Synchronisation de tes courses… Ça prend en général moins de 30 secondes.</span></div>
+    <button type="button" class="sg-skip" onclick="closeSyncGuide(true)">Continuer sans attendre</button>`;
 }
+// Note en tête du guide selon l'équipement déclaré (R4) : Garmin ou Strava, activer l'envoi vers Apple Santé ; Whoop seul ou
+// aucun appareil, le dire avant d'installer quoi que ce soit, et proposer la saisie à la main.
+function syncGuideNoteHTML(m){
+  const note = m.connected || m.phase ? null : syncGuideNote(syncEquip(goals?.equipement));   // à l'étape 4, le message du bas prend le relais
+  if(!note) return "";
+  const skip = note.skip ? `<div class="sg-btns" style="margin-top:10px"><button type="button" class="btn-secondary" style="min-height:44px" onclick="syncManualInstead()">Saisir à la main</button><button type="button" class="btn-secondary" style="min-height:44px" onclick="closeSyncGuide(true)">Passer pour l'instant</button></div>` : "";
+  return `<div class="sg-pre" role="note"><div class="sg-note">${icon("info",16)}<span>${escHtml(note.text)}</span></div>${skip}</div>`;
+}
+// « 1er janvier », « 12 mars » : date de départ de RunSync dans le message de l'étape 4.
+const fmtDayMonth = (iso) => { const d = new Date(String(iso).slice(0,10)+"T00:00:00"); if(isNaN(d)) return ""; const t = d.toLocaleDateString("fr-FR", { day:"numeric", month:"long" }); return d.getDate()===1 ? t.replace(/^1 /, "1er ") : t; };
+window.syncManualInstead = () => { closeSyncGuide(true); setTimeout(()=>openManualRun(), 50); };
 function renderSyncGuide(){
   if(!syncGuide) return false;
   const m = syncGuideModelNow();
@@ -6872,6 +6979,7 @@ function renderSyncGuide(){
   document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back"${still} onclick="if(event.target===this)closeSyncGuide()"><div class="sheet" data-sheet="sync"${still} role="dialog" aria-modal="true" aria-label="Connecter Apple Santé">
     ${sheetHeadHTML("Connecter Apple Santé", "closeSyncGuide()")}
     <div class="np-intro">4 étapes, environ 4 minutes. On coche chaque étape tout seul quand tu reviens.</div>
+    ${syncGuideNoteHTML(m)}
     <div class="sg-list">${items}</div>
     ${m.connected ? "" : `<button type="button" class="btn-ghost" onclick="closeSyncGuide(false)">Je le ferai plus tard</button>`}
   </div></div>`;

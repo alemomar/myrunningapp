@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=95"></script>
+<script src="logic.js?v=96"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -422,6 +422,46 @@ try {
   assertEqual("E8 : nombre de jours notés renvoyé", acwrAt([0,2,4,30].map(n=>day(n)), target).ratedDays28, 3);
 }
 
+// --- Lot du 08/10/2026 : retours de Mohamed et Leïla (R26, R4, R1, R24, R15) ---
+{
+  // R26 : première semaine incomplète, jamais deux courses de suite
+  assertEqual("R26 : inscription un jeudi soir (ven., sam., dim. libres), 3 courses -> ven. et dim.", pickNonConsecutiveDays([4,5,6], 3), [4,6]);
+  assertEqual("R26 : 2 jours libres qui se suivent -> 1 seule course", pickNonConsecutiveDays([5,6], 3), [5]);
+  assertEqual("R26 : rien de libre -> rien", pickNonConsecutiveDays([], 3), []);
+  assertEqual("R26 : semaine complète -> espacement habituel", pickNonConsecutiveDays([0,1,2,3,4,5,6], 3), [0,3,6]);
+  // R4 : guide selon l'équipement
+  assertEqual("R4 : Apple Watch prime (même avec Whoop)", syncEquip("Apple Watch,Whoop").kind, "watch");
+  assertEqual("R4 : Garmin et Strava", syncEquip("Garmin,Strava"), { kind:"app", apps:["Garmin","Strava"] });
+  assertEqual("R4 : Whoop seul / Aucun / sans réponse", [syncEquip("Whoop").kind, syncEquip("Aucun").kind, syncEquip("").kind], ["whoop","none",null]);
+  assertEqual("R4 : note en tête du guide pour Garmin", /dans Garmin Connect, active l'envoi de tes activités vers Apple Santé/.test(syncGuideNote(syncEquip("Garmin")).text), true);
+  assertEqual("R4 : pas de note pour une Apple Watch, proposition de passer sans montre", [syncGuideNote(syncEquip("Apple Watch")), syncGuideNote(syncEquip("Aucun")).skip, syncGuideNote(syncEquip("Whoop")).skip], [null, true, true]);
+  assertEqual("R4 : RunSync pas relié -> rouvrir RunSync", [syncEmptyMessage(false, syncEquip("Aucun")).reopen, /pas encore connecté/.test(syncEmptyMessage(false, syncEquip("Aucun")).title)], [true, true]);
+  const em = syncEmptyMessage(true, syncEquip("Aucun"), "1er janv.");
+  assertEqual("R4 : relié, sans montre -> explique quoi faire, et la saisie à la main", [/depuis le 1er janv\./.test(em.title), /Strava, Nike Run Club/.test(em.lines[0]), /à la main/.test(em.lines[1])], [true, true, true]);
+  assertEqual("R4 : attente ramenée à 30 s", SYNC_WAIT_EMPTY_SEC, 30);
+  // R1 : autre distance, de 3 à 42 km
+  const chk = (km) => levelChronoCheck({ distanceKm:km, h:"0", m:"40", s:"00", month:"2026-09" }, "2026-10-08", null);
+  assertEqual("R1 : 7,5 km accepté", chk(7.5).ok, true);
+  assertEqual("R1 : moins de 3 km refusé", [chk(2).ok, chk(2).errors.distance], [false, "Choisis une distance entre 3 et 42 km."]);
+  assertEqual("R1 : marathon toujours accepté", levelChronoCheck({ distanceKm:42.195, h:"4", m:"10", s:"00", month:"2026-09" }, "2026-10-08", null).ok, true);
+  // R24 : fréquence cardiaque incomplète
+  assertEqual("R24 : 2 mesures sur 30 min (sortie de Leïla du 31/01) -> incomplète", hrSeriesIncomplete([{t:1,hr:153},{t:1022,hr:186}], 1803), true);
+  const dense = []; for(let t=0;t<=1800;t+=5) dense.push({t, hr:150});
+  assertEqual("R24 : une mesure toutes les 5 s -> complète", hrSeriesIncomplete(dense, 1803), false);
+  assertEqual("R24 : mesures denses mais sur 10 min d'une séance de 30 -> incomplète", hrSeriesIncomplete(dense.filter(p=>p.t<=600), 1800), true);
+  // R15 : efficience
+  const ef = (date, allure, fc, distKm) => ({ date, allure, fc, distKm });
+  const base = [ef("2026-08-20",420,150,6), ef("2026-08-25",420,150,6), ef("2026-08-30",420,150,6)];
+  const recentOk = [ef("2026-09-20",400,150,6), ef("2026-09-25",400,150,6), ef("2026-09-30",400,150,6)];
+  assertEqual("R15 : progrès réaliste -> chiffre sans « ! »", efficiencyTrend([...base, ...recentOk], "2026-10-08"), { status:"mieux", pct:5 });
+  const walkInBase = [...base, ef("2026-08-28",820,110,5)];
+  assertEqual("R15 : une marche mal classée ne fait plus bondir le chiffre (médiane)", efficiencyTrend([...walkInBase, ...recentOk], "2026-10-08").pct<=6, true);
+  assertEqual("R15 : sorties de moins de 3 km écartées", efficiencyTrend([...base, ef("2026-09-20",300,150,1), ef("2026-09-21",300,150,1)], "2026-10-08").status, "insuffisant");
+  const big = efficiencyTrend([...base, ef("2026-09-20",300,150,6), ef("2026-09-25",300,150,6)], "2026-10-08");
+  assertEqual("R15 : au-delà de 15 % -> chiffre gardé, avec « ! »", [big.status, big.pct, big.unusual], ["mieux", 29, true]);
+  assertEqual("R15 : 2 sorties de chaque côté suffisent toujours", efficiencyTrend([ef("2026-08-20",420,150,6), ef("2026-08-25",420,150,6), ef("2026-09-20",400,150,6), ef("2026-09-25",400,150,6)], "2026-10-08").status, "mieux");
+}
+
 // --- Suggestion du « Détail cardio » (C9, 07/10/2026) ---
 {
   const hrOsc = []; for(let t=0;t<=2000;t+=15){ const ph=(t%250)/250; hrOsc.push({t, hr: Math.round(155 + Math.sin(ph*2*Math.PI-Math.PI/2)*25)}); }
@@ -775,9 +815,16 @@ try {
   assertEqual("patch : pas de plan débutant pour un coureur régulier", [r.beginner, "beginnerPlan" in r.programSettings], [false,false]);
   assertEqual("patch : chrono saisi -> pas de test guidé", [r.needsGuidedTest, "guidedTest" in r.programSettings], [false,false]);
   const noRef = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {}, {}, race, "2026-10-05");
-  assertEqual("patch : ni chrono ni record -> test guidé en attente", [noRef.needsGuidedTest, noRef.programSettings.guidedTest], [true, {status:"pending"}]);
+  assertEqual("patch R14 : ni chrono ni fourchette -> programme quand même, allures estimées d'après le niveau (pas de test obligatoire)", [noRef.needsGuidedTest, "guidedTest" in noRef.programSettings, noRef.programSettings.refSource, noRef.programSettings.refDistanceKm, noRef.programSettings.refTimeSec, noRef.estimated], [false, false, "estimate", 5, 1800, true]);
   const withPb = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {principal:{pbSec:3000}}, {}, race, "2026-10-05");
-  assertEqual("patch : un record existant n'évite plus le test guidé (D76)", withPb.needsGuidedTest, true);
+  assertEqual("patch : un record existant ne sert toujours pas de référence (D76) : estimation", [withPb.needsGuidedTest, withPb.programSettings.refSource], [false, "estimate"]);
+  const range = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0, estimateKey:"25-30" }, {}, {}, race, "2026-10-05", "2026-10-08");
+  assertEqual("patch R14 : fourchette 25 à 30 min -> 5 km en 27:30, datée du jour", [range.programSettings.refTimeSec, range.programSettings.refDate, range.estimated], [1650, "2026-10-08", true]);
+  const keepReal = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0, estimateKey:"25-30" }, {}, {refDistanceKm:10, refTimeSec:3000, refSource:"chrono"}, race, "2026-10-05");
+  assertEqual("patch R14 : un vrai chrono déjà connu n'est jamais remplacé par une estimation", [keepReal.programSettings.refSource, keepReal.programSettings.refTimeSec, keepReal.estimated], ["chrono", 3000, false]);
+  const custom = onboardingProfilePatch({ ...base, chronoDistance:"autre", chronoKm:7.5, chronoSec:2550 }, {}, {}, race, "2026-10-05");
+  assertEqual("patch R1 : chrono sur une autre distance (7,5 km)", [custom.programSettings.refDistanceKm, custom.programSettings.refTimeSec, custom.programSettings.refSource], [7.5, 2550, "chrono"]);
+  assertEqual("estimation R14 : « Aucune idée » -> temps type du niveau", [estimate5kSec("none","Débutant"), estimate5kSec("none","Confirmé"), estimate5kSec("lt25","Débutant")], [2280, 1500, 1440]);
   const shortRunner = onboardingProfilePatch({ ...base, niveau:"Débutant", frequenceHistorique:"1 fois par semaine ou moins", dureeMax:15, chronoDistance:"", chronoSec:0 }, {}, {}, race, "2026-10-05");
   assertEqual("patch : Débutant qui court moins de 20 min -> plan marche/course, pas de test guidé", [shortRunner.beginner, shortRunner.needsGuidedTest], [true,false]);
   const testDone = onboardingProfilePatch({ ...base, chronoDistance:"", chronoSec:0 }, {}, {guidedTest:{status:"done"}}, race, "2026-10-05");
@@ -1721,7 +1768,9 @@ try {
     levelSourceText(resolveRunnerProfile({}, {refDistanceKm:4.2, refTimeSec:1200, refDate:"2026-09-20", refSource:"test"}, T)),
     levelSourceText(resolveRunnerProfile({ principal:{ objectifPrincipal:"Améliorer mon allure", vmaConnue:"Oui", vma:15, vmaDate:"2026-08-15" } }, null, T))],
     ["ton chrono sur 10 km (47:00)", "ton test de 20 minutes (4,2 km)", "ta VMA (15 km/h)"]);
-  assertEqual("ligne d'état : chrono daté", levelStatus(prChrono), { text:"Allures conseillées calculées d'après ton chrono sur 10 km (47:00), septembre 2026.", stale:false });
+  assertEqual("ligne d'état : chrono daté", levelStatus(prChrono), { text:"Allures conseillées calculées d'après ton chrono sur 10 km (47:00), septembre 2026.", stale:false, estimated:false });
+  const prEst = resolveRunnerProfile({}, { refDistanceKm:5, refTimeSec:1650, refSource:"estimate", refDate:"2026-10-08" }, "2026-10-08");
+  assertEqual("ligne d'état R14 : allures estimées, avec l'invitation à donner un chrono", [prEst.source, levelStatus(prEst).estimated, /estimées d'après ta réponse \(5 km en 27:30 environ\)/.test(levelStatus(prEst).text)], ["level_estimate", true, true]);
   assertEqual("ligne d'état : plus de 6 mois", levelStatus(resolveRunnerProfile({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-03-01"}, T)).stale, true);
   assertEqual("ligne d'état : date estimée, pas de mois affiché", levelStatus(resolveRunnerProfile({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-07-05", refDateApprox:true}, T)).text, "Allures conseillées calculées d'après ton chrono sur 10 km (47:00).");
   assertEqual("ligne d'état : rien sans temps de référence", levelStatus(null), null);

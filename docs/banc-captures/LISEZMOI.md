@@ -38,7 +38,8 @@ Le détecteur a été vérifié le 03/10/2026 : il voit les hauteurs réelles de
 ## Scénarios
 
 Aujourd'hui : `aujourdhui_course`, `aujourdhui_renfo`, `aujourdhui_repos`, `aujourdhui_savoir_plus`, `douleur_forte`, `zone_pause`, `rappels`, `merge`, `merge_ask`, `attach`, `celebration_record`, `marche_course`, `test_niveau`.
-Programme : `programme_semaine`, `programme_mois`, `programme_ajout`.
+Programme : `programme_semaine`, `programme_mois`, `programme_ajout`, `ajout_choix`, `ajout_passe` (S21 : « Ajouter » selon le jour).
+Retours des testeurs (S21) : `onboarding_niveau_estimation`, `onboarding_niveau_autre`, `onboarding_recap_estimation`, `niveau_autre`, `profil_niveau_estime`, `guide_note_garmin`, `guide_note_aucun`, `guide_vide_montre`, `guide_vide_garmin`, `detail_cardio_incomplet`, `efficience_inhabituelle`.
 Progression et Profil : `progression`, `profil_objectifs`, `profil_compte`.
 États vides : `vide_aujourdhui`, `vide_programme`, `vide_progression`.
 Démarrage : `onboarding_bienvenue`, `onboarding`, `onboarding_niveau`, `onboarding_dispos`, `onboarding_recap`.

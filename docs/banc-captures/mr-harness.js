@@ -377,6 +377,32 @@
     const ef = runningRuns.filter(r=>r.type==="EF" && r.hrSeries && r.hrSeries.length>10).slice(-1)[0] || lastRun;
     if(scen==="detail_cardio") openHrDetail.add(ef.id);
     openRunSheet(ef.id); if(scen==="detail_suppression") askDeleteRun();
+  } else if(scen==="detail_cardio_incomplet"){
+    // R24 : fréquence cardiaque rangée « en paquets » dans Apple Santé (2 mesures pour toute la sortie) : pas de courbe ni de
+    // zones, la moyenne et le maximum restent
+    celebrationOff(); plannedSessions=[...wkSessions, ...future]; show("progression"); openHistory();
+    const ef = runningRuns.filter(r=>r.type==="EF" && r.hrSeries && r.hrSeries.length>10).slice(-1)[0] || lastRun;
+    ef.hrSeries = [{t:0, hr:153}, {t:Math.round(ef.durationSec*0.55), hr:Math.round(ef.fc||150)+20}];
+    openHrDetail.add(ef.id); openRunSheet(ef.id);
+  } else if(scen==="efficience_inhabituelle"){
+    // R15 : plus de 15 % d'écart sur un mois (ici, la FC des sorties easy récentes relevée de 25 %) : le chiffre reste, avec
+    // un « ! », et la tuile mène à l'Historique
+    celebrationOff(); plannedSessions=[...wkSessions, ...future];
+    const cut = Date.now()-29*86400000;
+    efRuns.forEach(r=>{ if(dateFromRun(r).getTime()>=cut) r.fc = Math.round(r.fc*1.25); });
+    show("progression"); scrollToCard("progIndicators");
+  } else if(scen==="ajout_choix" || scen==="ajout_passe"){
+    // R7 : « Ajouter » selon le jour choisi ; aujourd'hui : séance faite ou séance à prévoir ; jour passé sans course : saisie
+    // d'une séance faite, à cette date
+    celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, ...future];
+    programViewMode="week"; programWeekOffset=0; programSelectedDate=localDateStr(today); show("programme");
+    const runDays = new Set(RUNS.map(r=>localDateStr(dateFromRun(r))));
+    let k=2; while(k<14 && runDays.has(localDateStr(at(-k)))) k++;
+    openAddSheet(scen==="ajout_choix" ? localDateStr(today) : localDateStr(at(-k)));
+  } else if(scen==="profil_niveau_estime"){
+    // R14 : pas de chrono, une fourchette sur 5 km donnée au démarrage : allures estimées
+    programSettings = { ...programSettings, refDistanceKm:5, refTimeSec:1650, refSource:"estimate", refDate:localDateStr(today) };
+    celebrationOff(); plannedSessions=[...wkSessions, ...future]; setProfilSectionState("objectifs"); show("profil"); openLevelSheet();
   } else if(/^ressenti/.test(scen)){
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; show("progression"); openHistory();
     const tgt = runningRuns.filter(r=>r.type==="EF").slice(-1)[0] || lastRun;
@@ -406,7 +432,7 @@
       const newRef = scen==="nouvelles_allures_test" ? { source:"test", distanceKm:4.6, timeSec:1200, date:localDateStr(new Date()) } : { source:"chrono", distanceKm:10, timeSec:2700, date:localDateStr(new Date()) };
       show("progression"); openNewPacesSheet({ oldRef, newRef, proposal:newPaceProposal(oldRef, newRef) });
     }
-  } else if(/^niveau_(chrono|chrono_alerte|chrono_ancien|reprise|reprise_choix|carte_reprise|carte_ancien|programme)$/.test(scen)){
+  } else if(/^niveau_(chrono|chrono_alerte|chrono_ancien|reprise|reprise_choix|carte_reprise|carte_ancien|programme|autre)$/.test(scen)){
     // « Ton niveau » (S8) : formulaire de chrono, avertissement « temps trop rapide », plus de 6 mois, question de reprise, cartes
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, ...future];
     try{ localStorage.setItem("mra_notLinked", JSON.stringify(rows.map(r=>r.id))); }catch(e){}      // pas de carte de rattachement : la carte « Ton niveau » est seule
@@ -424,6 +450,12 @@
         refreshSheet();
       }
       if(scen==="niveau_reprise_choix") levelResumePick("recent");
+      if(scen==="niveau_autre"){
+        // R1 : chrono sur une distance libre (7 km en 38 min)
+        levelPickDistance("autre"); levelFormInput("km","7"); levelFormInput("h","0"); levelFormInput("m","38"); levelFormInput("s","0");
+        const d=new Date(); d.setMonth(d.getMonth()-1); levelFormInput("month", d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));
+        refreshSheet();
+      }
     }
   } else if(/^(suppression_confirmation|menu_seance)$/.test(scen)){
     // Retours du 05/10 : carte « Supprimer cette séance ? » et menu « … » avec « Supprimer la séance » en rouge léger (D92)
@@ -515,19 +547,24 @@
     else if(scen==="message_erreur"){ show("profil"); toast("Pas enregistré, vérifie ta connexion.", { actionLabel:"Réessayer", ms:600000 }); }
     else if(scen==="profil_synchro_muette"){ RUNS=RUNS.filter(r=>dateFromRun(r).getTime() < Date.now()-9*86400000); runningRuns=RUNS.filter(r=>r.includeInStats); setProfilSectionState("compte"); show("profil"); }
     else if(scen==="onboarding_preparation"){ RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbInit(); onb.step=5; onb.saving=true; onb.prepDone=2; renderApp(); }
-  } else if(/^guide_(etape[123]|attente|ok|vide|indice[23])$/.test(scen)){
+  } else if(/^guide_(etape[123]|attente|ok|vide|indice[23]|note_garmin|note_aucun|vide_montre|vide_garmin)$/.test(scen)){
     // S10 : guide « Voir comment » (connecter RunSync), depuis Mon compte › Synchronisation ; 4 étapes depuis D107
     // (guide_indice2 / guide_indice3 : TestFlight / RunSync ne s'est pas ouvert, un mot propose de l'installer)
+    // R4 : note en tête selon l'équipement (guide_note_garmin, guide_note_aucun) ; au bout de 30 s sans course, RunSync relié
+    // (date de départ posée) avec une montre ou avec Garmin (guide_vide_montre, guide_vide_garmin) ; guide_vide : pas encore relié
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; setProfilSectionState("compte"); show("profil");
+    if(scen==="guide_note_garmin" || scen==="guide_vide_garmin") goals.equipement = "Garmin";
+    if(scen==="guide_note_aucun") goals.equipement = "Aucun";
+    if(scen==="guide_vide_montre" || scen==="guide_vide_garmin") syncSinceDate = localDateStr(new Date(new Date().getFullYear(), 0, 1));
     RUNS=RUNS.filter(r=>r.appleType===MANUAL_RUN_MARKER); runningRuns=RUNS.filter(r=>r.includeInStats); try{ localStorage.removeItem("mra_syncGuide"); }catch(e){}
     openSyncGuide(); stopSyncPoll();
-    const done = scen==="guide_etape1" ? [false,false,false] : (scen==="guide_etape2" || scen==="guide_indice2") ? [true,false,false]
+    const done = (scen==="guide_etape1" || /^guide_note/.test(scen)) ? [false,false,false] : (scen==="guide_etape2" || scen==="guide_indice2") ? [true,false,false]
       : (scen==="guide_etape3" || scen==="guide_indice3") ? [true,true,false] : [true,true,true];
     syncGuide.done = done;
     if(scen==="guide_indice2"){ syncGuide.pending = 2; syncGuide.hint = 2; }
     if(scen==="guide_indice3"){ syncGuide.pending = 3; syncGuide.hint = 3; }
     if(scen==="guide_attente") syncGuide.waitStart = Date.now();
-    if(scen==="guide_vide") syncGuide.waitStart = Date.now()-100000;
+    if(/^guide_vide/.test(scen)) syncGuide.waitStart = Date.now()-100000;
     if(scen==="guide_ok"){ syncGuide.received = 12; syncGuide.runs = 9; }
     refreshSheet();
   } else if(/^visite_([1-4]|pret)$/.test(scen)){
@@ -549,10 +586,14 @@
     onbGo(1);
     onbSet("objectif","Préparer une course"); onbSet("distanceCourse", /date_/.test(scen) ? "Semi" : "10km");
     onbSet("dateCible", scen==="onboarding_date_serree" ? inDays(63) : scen==="onboarding_date_proche" ? inDays(28) : "2026-12-13");
-    if(scen==="onboarding_niveau"||scen==="onboarding_niveau_chrono"||scen==="onboarding_recap"||scen==="onboarding_profil"){ onbGo(1); onbSet("frequenceHistorique","2 à 3 fois par semaine"); onbSet("dureeMax",40); if(scen!=="onboarding_niveau"){ onbSet("chronoMode","known"); onbSet("chronoDistance","10km"); onbSetField("chronoM","47"); } }
+    if(/^onboarding_(niveau|recap|profil)/.test(scen)){ onbGo(1); onbSet("frequenceHistorique","2 à 3 fois par semaine"); onbSet("dureeMax",40);
+      // R14 : une fourchette sur 5 km au lieu d'un chrono ; R1 : chrono sur une distance libre (7 km en 38 min)
+      if(/_estimation$/.test(scen)){ onbSet("chronoMode","estimate"); onbSet("estimateKey","25-30"); }
+      else if(scen==="onboarding_niveau_autre"){ onbSet("chronoMode","known"); onbSet("chronoDistance","autre"); onbSetField("chronoKm","7"); onbSetField("chronoM","38"); renderApp(); }
+      else if(scen!=="onboarding_niveau"){ onbSet("chronoMode","known"); onbSet("chronoDistance","10km"); onbSetField("chronoM","47"); } }
     if(scen==="onboarding_dispos"){ onbGo(1); onbSet("frequenceHistorique","2 à 3 fois par semaine"); onbSet("dureeMax",40); onbGo(1); onbToggleDay(6); onbToggleDay(2); }
     if(scen==="onboarding_profil"){ onbGo(1); onbGo(1); }   // D108 : « Ton profil coureur », tel qu'il s'ouvre (renfo proposé, le reste à choisir)
-    if(scen==="onboarding_recap"){ onbGo(1); onbToggleDay(6); onbGo(1); onbSet("terrain","Route"); onbToggleEquip("Apple Watch"); onbGo(1); }
+    if(/^onboarding_recap/.test(scen)){ onbGo(1); onbToggleDay(6); onbGo(1); onbSet("terrain","Route"); onbToggleEquip("Apple Watch"); onbGo(1); }
     }
   }
   setTimeout(()=>{ try{ const ds=(r)=>localDateStr(dateFromRun(r)); const rec=weekRecap(runningRuns.map(r=>({date:ds(r),distKm:r.dist,durationSec:r.durationSec})), plannedSessions, localDateStr(new Date())); document.title="DIAG "+JSON.stringify({n:runningRuns.length, sem:rec.thisWeek, derniers:runningRuns.slice(-5).map(r=>[ds(r),r.type,r.dist,Math.round(r.durationSec/60)])}); }catch(e){ document.title="DIAG ERR "+e; } const h=Math.ceil(document.getElementById("content").getBoundingClientRect().bottom + window.scrollY + 96); const tops=[...document.getElementById("content").children].map(c=>Math.round(c.getBoundingClientRect().top+window.scrollY)); parent.postMessage({h, tops}, "*"); }, 4500);
