@@ -149,6 +149,8 @@ final class SyncService {
         // synchronisées avant l'ajout de ce champ (voir backfillLapMarkersIfNeeded).
         // Fire-and-forget, ne doit jamais faire échouer une sync normale.
         Task { await backfillLapMarkersIfNeeded(session: session) }
+        // Même principe pour la courbe de FC des séances dont la FC était rangée en paquets (B9).
+        Task { await backfillHrSeriesIfNeeded(session: session) }
 
         // Fait avancer la date de départ après chaque sync réussie : sans ça,
         // sync_since_date reste figée à sa valeur initiale pour toujours, et
@@ -262,6 +264,58 @@ final class SyncService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
         request.httpBody = try JSONEncoder().encode(["lap_markers": markers])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "réponse invalide"
+            throw SyncServiceError.badResponse(message)
+        }
+    }
+
+    // Rattrapage ponctuel de la courbe de FC (B9, 09/10/2026) : les séances déjà envoyées dont la FC était rangée « en
+    // paquets » dans Apple Santé n'avaient qu'une valeur par paquet (courbe et zones fausses, « Détail incomplet » dans
+    // MyRunningApp). Relues une fois avec la lecture en série : seule la colonne hr_series est mise à jour, et seulement
+    // si la nouvelle lecture trouve plus de mesures (type, inclusion dans les stats, ressenti ne bougent pas). Une fois
+    // par compte sur l'appareil ; s'il y a eu un échec, il sera retenté à la synchro suivante.
+    private func backfillHrSeriesIfNeeded(session: Session) async {
+        let doneKey = "runsync.hrSeriesBackfillDone.\(session.userId)"
+        guard !UserDefaults.standard.bool(forKey: doneKey) else { return }
+        syncLogger.notice("[backfill] hr_series: début")
+
+        let veryEarly = Date(timeIntervalSince1970: 0)
+        guard let workouts = try? await healthKit.fetchWorkouts(since: veryEarly) else {
+            syncLogger.error("[backfill] hr_series: échec récupération séances")
+            return
+        }
+
+        var updated = 0, failed = 0
+        for workout in workouts {
+            guard let series = await healthKit.improvedHrSeries(for: workout) else { continue }
+            do {
+                try await updateHrSeries(startDate: workout.startDate, series: series, session: session)
+                updated += 1
+            } catch {
+                failed += 1
+                syncLogger.error("[backfill] hr_series: échec sur une séance: \(String(describing: error), privacy: .public)")
+            }
+        }
+
+        if failed == 0 { UserDefaults.standard.set(true, forKey: doneKey) }
+        syncLogger.notice("[backfill] hr_series: terminé, \(updated) séance(s) mise(s) à jour, \(failed) échec(s)")
+    }
+
+    private func updateHrSeries(startDate: Date, series: [HrPoint], session: Session) async throws {
+        let isoFormatter = ISO8601DateFormatter()
+        let dateStr = isoFormatter.string(from: startDate)
+        guard let encodedDate = dateStr.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { return }
+
+        var request = URLRequest(url: URL(string: "\(Config.supabaseURL)/rest/v1/runs?user_id=eq.\(session.userId)&start_date=eq.\(encodedDate)")!)
+        request.httpMethod = "PATCH"
+        request.setValue(Config.supabaseAnonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+        request.httpBody = try JSONEncoder().encode(["hr_series": series])
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {

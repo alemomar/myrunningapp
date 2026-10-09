@@ -178,8 +178,10 @@ struct HealthAccessView: View {
                 .padding(.top, 10)
             AppleSheetIllustration().padding(.top, 16)
             VStack(alignment: .leading, spacing: 10) {
-                marker(1, Text("Touche ") + Text("Tout activer").fontWeight(.semibold).foregroundStyle(Theme.text))
-                marker(2, Text("Puis ") + Text("Autoriser").fontWeight(.semibold).foregroundStyle(Theme.text) + Text(", en haut à droite"))
+                // R2 et R13 (testeurs, 07/10/2026) : la fenêtre d'Apple change selon la version d'iOS (« Autoriser » en bas ou
+                // en haut à droite, interrupteurs parfois déjà activés) : une consigne valable dans tous les cas.
+                marker(1, Text("Vérifie que tout est activé : touche ") + Text("Tout activer").fontWeight(.semibold).foregroundStyle(Theme.text) + Text(" (si tu lis « Tout désactiver », c'est déjà fait)"))
+                marker(2, Text("Puis touche ") + Text("Autoriser").fontWeight(.semibold).foregroundStyle(Theme.text) + Text(", en bas ou en haut à droite selon ta version d'iOS"))
             }
             .padding(.top, 16)
             HStack(alignment: .top, spacing: 10) {
@@ -221,6 +223,8 @@ struct HealthAccessView: View {
 
 // Dessin simplifié de la fenêtre d'Apple, toujours en clair comme sur la maquette validée : les repères rouges 1 et 2
 // montrent où toucher, dans l'ordre. Les libellés exacts sont ceux d'Apple (8 catégories demandées, 3 montrées).
+// Disposition d'iOS 26 (09/10/2026, R13) : titre centré, « Tout activer » en haut, « Autoriser » en grand bouton en bas,
+// « Refuser » dessous (avant iOS 26, « Autoriser » était en haut à droite : la consigne écrite couvre les deux cas).
 struct AppleSheetIllustration: View {
     private let appleBlue = Color(hex: 0x007AFF)
     private let separator = Color(hex: 0xE5E5EA)
@@ -233,26 +237,11 @@ struct AppleSheetIllustration: View {
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.muted)
             VStack(spacing: 0) {
-                HStack {
-                    Text("Ne pas autoriser").foregroundStyle(appleBlue)
-                    Spacer(minLength: 4)
-                    Text("Accès Santé").fontWeight(.semibold).foregroundStyle(.black)
-                    Spacer(minLength: 4)
-                    HStack(spacing: 6) {
-                        Text("Autoriser").fontWeight(.semibold).foregroundStyle(appleBlue)
-                        NumberBadge(number: 2, size: 20, fill: Theme.marker, foreground: .white)
-                    }
-                    .padding(.leading, 8)
-                    .padding(.trailing, 4)
-                    .padding(.vertical, 3)
-                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Theme.marker, lineWidth: 2.5))
-                }
-                .font(.system(size: 14))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                Rectangle().fill(Color(hex: 0xD8D8DE)).frame(height: 1)
+                Text("Accès à Santé")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 12)
                 HStack {
                     Text("Tout activer").foregroundStyle(appleBlue)
                     Spacer()
@@ -287,12 +276,31 @@ struct AppleSheetIllustration: View {
                 }
                 .background(.white, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 .padding(.horizontal, 10)
-                .padding(.bottom, 10)
+                HStack(spacing: 8) {
+                    Text("Autoriser").fontWeight(.semibold).foregroundStyle(appleBlue)
+                    NumberBadge(number: 2, size: 20, fill: Theme.marker, foreground: .white)
+                }
+                .font(.system(size: 15))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 11)
+                .background(Color(hex: 0xE3E3E8), in: Capsule())
+                .overlay(Capsule().strokeBorder(Theme.marker, lineWidth: 2.5))
+                .padding(.horizontal, 14)
+                .padding(.top, 14)
+                Text("Refuser")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .overlay(Capsule().strokeBorder(Color(hex: 0xC7C7CC), lineWidth: 1))
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
             }
             .background(Color(hex: 0xF2F2F7), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Dessin de la fenêtre d'Apple : touche d'abord Tout activer, puis Autoriser en haut à droite.")
+        .accessibilityLabel("Dessin de la fenêtre d'Apple : vérifie que tout est activé avec Tout activer, puis touche le bouton Autoriser.")
     }
 
     private func toggleRow(_ label: String) -> some View {

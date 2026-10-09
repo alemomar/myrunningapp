@@ -98,7 +98,32 @@ final class HealthKitManager {
     // ne montre pas la structure temporelle. Le calcul des zones et la
     // détection se font côté dashboard, pas ici (l'app iOS ne fait que
     // remonter la donnée brute).
+    // Mesure par mesure (B9, 09/10/2026) : Apple Santé range souvent après coup les mesures de FC « en paquets » (un seul
+    // échantillon qui contient des centaines de mesures). Lu échantillon par échantillon, chaque paquet ne donnait qu'une
+    // valeur, sa moyenne (2 mesures pour une sortie de 30 min chez une testeuse, R24). La lecture en série ouvre chaque
+    // paquet ; une mesure seule y reste une mesure. Les paquets qui débordent de la séance (commencés juste avant le
+    // départ) sont pris, en ne gardant que leurs mesures pendant la séance. Si la lecture échoue ou ne renvoie rien, on
+    // revient à l'ancienne lecture.
     private func fetchHeartRateSamples(start: Date, end: Date) async -> [(Date, Double)] {
+        let unit = HKUnit.count().unitDivided(by: .minute())
+        let overlapping = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
+        let descriptor = HKQuantitySeriesSampleQueryDescriptor(predicate: .quantitySample(type: HKQuantityType(.heartRate), predicate: overlapping))
+        var points: [(Date, Double)] = []
+        do {
+            for try await result in descriptor.results(for: store) {
+                let at = result.dateInterval.start
+                guard at >= start, at <= end else { continue }
+                points.append((at, result.quantity.doubleValue(for: unit)))
+            }
+        } catch {
+            points = []
+        }
+        if !points.isEmpty { return points.sorted { $0.0 < $1.0 } }
+        return await fetchHeartRateSamplesOneValueEach(start: start, end: end)
+    }
+
+    // Ancienne lecture : une valeur par échantillon (la moyenne d'un paquet). Gardée en secours, et pour le rattrapage.
+    private func fetchHeartRateSamplesOneValueEach(start: Date, end: Date) async -> [(Date, Double)] {
         guard let hrType = HKObjectType.quantityType(forIdentifier: .heartRate) else { return [] }
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
         let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
@@ -118,6 +143,29 @@ final class HealthKitManager {
             }
             store.execute(query)
         }
+    }
+
+    // La séance contient-elle au moins un paquet de FC (un échantillon de plusieurs mesures) ? Sert au rattrapage :
+    // une séance sans paquet n'a rien à corriger.
+    private func hasHeartRatePackets(start: Date, end: Date) async -> Bool {
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: HKQuantityType(.heartRate), predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
+                continuation.resume(returning: (samples as? [HKQuantitySample] ?? []).contains { $0.count > 1 })
+            }
+            store.execute(query)
+        }
+    }
+
+    // Rattrapage (B9) : la courbe de FC complète d'une séance déjà envoyée, quand elle contient des paquets ET que la
+    // lecture en série trouve plus de mesures que l'ancienne lecture. nil sinon : rien à corriger.
+    func improvedHrSeries(for workout: HKWorkout) async -> [HrPoint]? {
+        let start = workout.startDate, end = workout.endDate
+        guard await hasHeartRatePackets(start: start, end: end) else { return nil }
+        let before = await fetchHeartRateSamplesOneValueEach(start: start, end: end)
+        let now = await fetchHeartRateSamples(start: start, end: end)
+        guard now.count > before.count else { return nil }
+        return buildHrSeries(start: start, samples: now)
     }
 
     private func buildHrSeries(start: Date, samples: [(Date, Double)]) -> [HrPoint] {
