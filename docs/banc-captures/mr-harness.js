@@ -399,6 +399,59 @@
     const runDays = new Set(RUNS.map(r=>localDateStr(dateFromRun(r))));
     let k=2; while(k<14 && runDays.has(localDateStr(at(-k)))) k++;
     openAddSheet(scen==="ajout_choix" ? localDateStr(today) : localDateStr(at(-k)));
+  } else if(scen==="programme_creation"){
+    // R26 : programme créé à la fin du parcours, en milieu de semaine : rien dans les jours déjà passés, à partir de demain
+    celebrationOff(); rateYesterday(); plannedSessions=[];
+    await generateProgram(mondayOf(new Date()), {silent:true, fromTomorrow:true});
+    plannedSessions = window.__calls.filter(c=>c[0]==="insert" && c[1]==="planned_sessions").flatMap(c=>c[2]).map((r,i)=>({ id:"g"+i, ...r }));
+    programViewMode="week"; programWeekOffset=0; programSelectedDate=localDateStr(today); show("programme");
+  } else if(scen==="verif_completer"){
+    // Pas un écran : contrôles du bouton « Compléter cette semaine » et du remplissage le jour de l'inscription (revue du
+    // 09/10/2026) ; résultat dans window.__verif et le titre de la page (« COMPLETER OK n/n »).
+    celebrationOff(); rateYesterday();
+    const res = [], check = (nom, ok, detail) => res.push({ nom, ok:!!ok, detail });
+    const thisMonday = mondayOf(new Date()), todayStr = localDateStr(new Date()), weekStr = localDateStr(thisMonday);
+    const insertedSince = (k) => window.__calls.slice(k).filter(c=>c[0]==="insert" && c[1]==="planned_sessions").flatMap(c=>c[2]);
+    plannedSessions = [];
+    let k = window.__calls.length;
+    await generateProgram(thisMonday, {silent:true, fromTomorrow:true});
+    plannedSessions = insertedSince(k).map((r,i)=>({ id:"g"+i, ...r }));
+    const runDays = weekRunDayIndexes(thisMonday);
+    const newRunDays = plannedSessions.filter(p=>p.week_start_date===weekStr && p.pace_zone).map(p=>Math.round((new Date(p.planned_date+"T00:00:00")-thisMonday)/86400000));
+    check("création : rien avant demain", plannedSessions.filter(p=>p.week_start_date===weekStr).every(p=>p.planned_date>todayStr), JSON.stringify(plannedSessions.filter(p=>p.week_start_date===weekStr).map(p=>[p.planned_date,p.type])));
+    k = window.__calls.length;
+    await generateProgram(thisMonday);
+    const forced = insertedSince(k).filter(r=>r.pace_zone);
+    const all = [...runDays, ...forced.map(r=>Math.round((new Date(r.planned_date+"T00:00:00")-thisMonday)/86400000))].sort((a,b)=>a-b);
+    check("« Compléter » : jamais deux jours de course de suite", forced.every(r=>{ const d=Math.round((new Date(r.planned_date+"T00:00:00")-thisMonday)/86400000); return all.filter(x=>Math.abs(x-d)===1).length===0; }), JSON.stringify({ courses:runDays, ajout:forced.map(r=>r.planned_date) }));
+    programViewMode="week"; programWeekOffset=0; show("programme");
+    const btn = () => [...document.querySelectorAll("button")].some(x=>/(Compléter|Générer) cette semaine/.test(x.textContent));
+    check("bouton absent quand plus rien ne peut aller cette semaine", currentWeekHasRoom(thisMonday) || !btn(), "place=" + currentWeekHasRoom(thisMonday) + " bouton=" + btn());
+    programWeekOffset=-1; renderContent();
+    check("bouton absent dans une semaine passée", !btn(), "bouton=" + btn());
+    programWeekOffset=0; renderContent();
+    // jour de l'inscription : semaine vide, sans course reçue, seul aujourd'hui disponible pour courir -> aucune course ;
+    // inscription ancienne -> une course aujourd'hui (le contrôle ne dépend pas du jour de la semaine)
+    const saveRuns = runningRuns, saveIndisp = goals.joursIndisponibles; runningRuns = [];
+    const todayIdx = Math.round((new Date(todayStr+"T00:00:00")-thisMonday)/86400000);
+    goals.joursIndisponibles = [0,1,2,3,4,5,6].filter(d=>d!==todayIdx).join(",");
+    // (le faux loadData du banc remet les courses fictives après chaque création : on les retire à chaque essai)
+    const fill = async (completedAt) => { plannedSessions = []; runningRuns = []; onboardingCompletedAt = completedAt; programAdjustmentChecked = false; const k2 = window.__calls.length; await applyProgramAdjustments(); return insertedSince(k2).filter(r=>r.week_start_date===weekStr && r.pace_zone); };
+    const signup = await fill(new Date().toISOString());
+    check("jour de l'inscription : aucune course aujourd'hui", !signup.some(r=>r.planned_date===todayStr), JSON.stringify(signup.map(r=>[r.planned_date,r.type])));
+    const old = await fill("2026-06-01T08:00:00Z");
+    check("compte ancien : une course possible aujourd'hui, comme avant", old.some(r=>r.planned_date===todayStr), JSON.stringify(old.map(r=>[r.planned_date,r.type])));
+    // dans l'autre sens : semaine vide, aucune course, tous les jours disponibles -> le bouton reste
+    plannedSessions = []; runningRuns = []; goals.joursIndisponibles = ""; programWeekOffset = 0; renderContent();
+    check("bouton présent quand il reste de la place", currentWeekHasRoom(thisMonday) && btn(), "place=" + currentWeekHasRoom(thisMonday) + " bouton=" + btn());
+    runningRuns = saveRuns; goals.joursIndisponibles = saveIndisp; onboardingCompletedAt = "2026-06-01T08:00:00Z";
+    window.__verif = res;
+    document.title = "COMPLETER " + (res.every(r=>r.ok) ? "OK " : "KO ") + res.filter(r=>r.ok).length + "/" + res.length;
+    return;
+  } else if(scen==="programme_semaine_passee"){
+    // Revue du 09/10/2026 : une semaine passée sans programme complet n'a plus de bouton « Générer / Compléter cette semaine »
+    celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, ...future];
+    programViewMode="week"; programWeekOffset=-1; programSelectedDate=localDateStr(at(mondayOff-7)); show("programme");
   } else if(scen==="profil_niveau_estime"){
     // R14 : pas de chrono, une fourchette sur 5 km donnée au démarrage : allures estimées
     programSettings = { ...programSettings, refDistanceKm:5, refTimeSec:1650, refSource:"estimate", refDate:localDateStr(today) };

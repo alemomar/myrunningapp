@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=97"></script>
+<script src="logic.js?v=98"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -429,6 +429,13 @@ try {
   assertEqual("R26 : 2 jours libres qui se suivent -> 1 seule course", pickNonConsecutiveDays([5,6], 3), [5]);
   assertEqual("R26 : rien de libre -> rien", pickNonConsecutiveDays([], 3), []);
   assertEqual("R26 : semaine complète -> espacement habituel", pickNonConsecutiveDays([0,1,2,3,4,5,6], 3), [0,3,6]);
+  // Revue du 09/10/2026 : « Compléter cette semaine » ne place jamais une course à côté d'une course déjà là
+  assertEqual("Compléter : course jeudi et samedi, vendredi et dimanche libres -> rien (deux courses de suite sinon)", daysAwayFromRuns([4,6], [3,5]), []);
+  assertEqual("Compléter : course mardi seulement -> pas lundi ni mercredi", daysAwayFromRuns([0,2,3,4,5,6], [1]), [3,4,5,6]);
+  assertEqual("Compléter : course le dimanche d'avant (-1) -> pas lundi", daysAwayFromRuns([0,1,2], [-1]), [1,2]);
+  assertEqual("Compléter : course le lundi suivant (7) -> pas dimanche", daysAwayFromRuns([5,6], [7]), [5]);
+  assertEqual("Compléter : course aujourd'hui (vendredi) -> ni aujourd'hui ni demain", daysAwayFromRuns([4,5,6], [4]), [6]);
+  assertEqual("Compléter : aucune course -> tous les jours", daysAwayFromRuns([2,4], []), [2,4]);
   // R4 : guide selon l'équipement
   assertEqual("R4 : Apple Watch prime (même avec Whoop)", syncEquip("Apple Watch,Whoop").kind, "watch");
   assertEqual("R4 : Garmin et Strava", syncEquip("Garmin,Strava"), { kind:"app", apps:["Garmin","Strava"] });

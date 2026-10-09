@@ -1134,6 +1134,13 @@ function pickNonConsecutiveDays(available, n){
   }
   return [];
 }
+// Semaine en cours (revue d'Omar du 09/10/2026, bouton « Compléter cette semaine ») : une nouvelle course ne va ni le jour,
+// ni la veille, ni le lendemain d'une course déjà là (prévue, faite ou reçue d'Apple Santé). `runDayIndexes` : jours de ces
+// courses dans la semaine (-1 = dimanche d'avant, 7 = lundi suivant).
+function daysAwayFromRuns(available, runDayIndexes){
+  const runs = runDayIndexes || [];
+  return (available || []).filter(d => runs.every(r => Math.abs(d-r) > 1));
+}
 // Lignes de séances d'une semaine du plan : `dayIndexes` (jours choisis),
 // `firstSessionNumber` (1 pour la première séance de la semaine ; plus si
 // une séance existe déjà). Renvoie [{dayIndex,title,description,durationMin,rationale}].

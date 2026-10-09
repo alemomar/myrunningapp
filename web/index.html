@@ -471,7 +471,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .sv5 .tt{font-family:var(--font-display);font-weight:700;font-size:20px;line-height:1.15;text-transform:uppercase}
 .sv5 .chev{margin-left:auto;flex:none;color:var(--text-muted);display:flex}
 .pg-rest{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border-radius:var(--r-lg);background:var(--surface);color:var(--text-2);font-size:14px}
-.pg-add{flex:none;width:44px;height:44px;border:none;border-radius:50%;background:var(--surface-control);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.pg-add{flex:none;width:44px;height:44px;border:none;border-radius:50%;background:var(--surface-control);color:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer}
 .sheet .session-card{margin:0;padding:4px 0 0;background:none;border:none}
 /* ---------- Feuilles Ajouter / Modifier la séance (design 8) ---------- */
 .psheet .l{display:block;margin:14px 0 6px;font-size:12.5px;color:var(--text-2)}
@@ -702,6 +702,8 @@ button.pg-rec-row{cursor:pointer}
 .ms-alert svg{color:var(--attention);flex:none;margin-top:1px}
 .ms-alert.soft{background:var(--surface);box-shadow:inset 0 0 0 1px var(--line-field);margin-top:0;color:var(--text-2)}
 .ms-alert.soft svg{color:var(--text-muted)}
+.cd-alert{margin-top:0;color:var(--text)}
+.cd-alert .bang{flex:none;width:20px;height:20px;border-radius:50%;background:var(--attention);color:var(--on-accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .btn-ghost{width:100%;height:48px;margin-top:6px;border:none;border-radius:24px;background:none;color:var(--text-2);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
 .ac-card{background:var(--surface);border-radius:var(--r-xl);padding:18px 16px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:14px}
 .ac-head{display:flex;align-items:center;gap:10px}
@@ -1011,6 +1013,7 @@ button.pg-rec-row{cursor:pointer}
 /* Historique (S7, design 7g) */
 .page-back{width:36px;height:36px;margin:-4px 4px -4px -8px;border:none;border-radius:50%;background:none;color:var(--text);display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;cursor:pointer}
 .page-action.outline{background:none;box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent);font-size:13px}
+@media (max-width:370px){.pa-long{display:none}}   /* écran plus étroit qu'un iPhone : « + Ajouter », la date d'Aujourd'hui reste sur une ligne */
 .hs-filters{display:flex;gap:8px;align-items:center;margin-bottom:14px}
 .hs-filters .seg{flex:1;margin:0;padding:3px;border-radius:var(--r-sm);background:var(--surface-sunken);gap:4px}
 .hs-filters .seg button{height:34px;border-radius:9px;font-size:13px}
@@ -1178,7 +1181,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=97"></script>
+<script src="logic.js?v=98"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -4300,7 +4303,8 @@ function cardioCardHTML(r, effMaxHr, effRestingHr){
   if(hrSeriesIncomplete(r.hrSeries, r.durationSec)){
     const n = r.hrSeries.length;
     const tilesInc = r.fc ? `<div class="sc-tiles2" style="margin:0">${scTile("FC moy.", Math.round(r.fc), "var(--data-coral)")}${r.peakHr?scTile("FC max", r.peakHr, "var(--data-coral)"):""}</div>` : "";
-    return `<div class="cd-card">${tilesInc}<div class="cd-note">Détail incomplet pour cette séance : ta montre n'a transmis que ${n} mesure${n>1?"s":""} de fréquence cardiaque. La moyenne et le maximum restent justes.</div></div>`;
+    // Revue d'Omar du 09/10/2026 : en alerte violette avec « ! », plus en petite note grise.
+    return `<div class="cd-card">${tilesInc}<div class="ms-alert cd-alert" role="note"><span class="bang" aria-hidden="true">!</span><span><b>Détail incomplet</b> : ta montre n'a transmis que ${n} mesure${n>1?"s":""} de fréquence cardiaque pour cette séance. La moyenne et le maximum restent justes.</span></div></div>`;
   }
   if(!effMaxHr) return `<div class="cd-note">Renseigne ta FC max (Profil › Mon compte) pour voir la répartition par zones.</div>`;
   const { secs, defs } = computeHrZoneSeconds(r.hrSeries, effMaxHr, effRestingHr);
@@ -4483,6 +4487,43 @@ let programGenerationInFlight = new Set();
 function profileMissingToast(){
   toast("Il nous manque ton objectif et tes disponibilités pour construire ta semaine.", { actionLabel:"Compléter mon profil", onAction:()=>setTab("objectifs"), ms:8000 });
 }
+// Jours des courses de la semaine de `mondayDate` (séances de course prévues ou faites, sorties reçues d'Apple Santé ou
+// saisies), de -1 (dimanche d'avant) à 7 (lundi suivant).
+function weekRunDayIndexes(mondayDate){
+  const idx = (dateStr) => Math.round((new Date(dateStr+"T00:00:00") - mondayDate) / 86400000);
+  const planned = plannedSessions.filter(p=>(p.status==="planned"||p.status==="done") && sessionCategory(p)==="run").map(p=>idx(p.planned_date));
+  const done = runningRuns.map(r=>idx(localDateStr(dateFromRun(r))));
+  return [...new Set([...planned, ...done])].filter(d=>d>=-1 && d<=7);
+}
+// Jours où une NOUVELLE course peut aller (à partir de `minDayIndex`) : jour disponible, sans course ni renfo déjà là (une
+// séance légère, elle, peut cohabiter, voir sessionsCanShareDay) ; cette semaine, ni la veille ni le lendemain d'une course.
+function freeRunDayIndexes(mondayDate, minDayIndex){
+  const mondayStr = localDateStr(mondayDate);
+  const dayIndexOf = (dateStr) => Math.round((new Date(dateStr+"T00:00:00") - mondayDate) / 86400000);
+  const existing = plannedSessions.filter(p=>p.week_start_date===mondayStr && (p.status==="planned"||p.status==="done"));
+  const blocked = existing.filter(p=>!sessionsCanShareDay({pace_zone:"easy"}, p)).map(p=>dayIndexOf(p.planned_date));
+  const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
+  const days = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d) && !blocked.includes(d) && d>=minDayIndex);
+  return mondayStr===localDateStr(mondayOf(new Date())) ? daysAwayFromRuns(days, weekRunDayIndexes(mondayDate)) : days;
+}
+// « Compléter cette semaine », semaine en cours : reste-t-il au moins un jour, à partir d'aujourd'hui, pour une course ou
+// une séance complémentaire qui manque ? Mêmes règles que generateProgram ; sinon le bouton n'apparaît pas.
+function currentWeekHasRoom(mondayDate){
+  const mondayStr = localDateStr(mondayDate);
+  const dayIndexOf = (dateStr) => Math.round((new Date(dateStr+"T00:00:00") - mondayDate) / 86400000);
+  const todayIdx = dayIndexOf(localDateStr(new Date()));
+  const existing = plannedSessions.filter(p=>p.week_start_date===mondayStr && (p.status==="planned"||p.status==="done"));
+  const couchWeek = programSettings?.beginnerPlan ? couchWeekNumber(programSettings.beginnerPlan.startMonday, mondayStr) : null;
+  const desiredRunning = (couchWeek!=null && couchWeek>=1 && couchWeek<=COUCH_WEEKS) ? 3 : (Number(goals.frequence) || 3);
+  if(existing.filter(p=>p.pace_zone).length < desiredRunning && freeRunDayIndexes(mondayDate, todayIdx).length) return true;
+  if(existing.filter(p=>!p.pace_zone).length >= (Number(goals.frequenceAutre) || 0)) return false;
+  const runDays = existing.filter(p=>sessionCategory(p)==="run").map(p=>dayIndexOf(p.planned_date));
+  const nextMondayStr = addDaysStr(mondayDate, 7);
+  const runNextMonday = plannedSessions.some(p=>p.planned_date===nextMondayStr && p.pace_zone && (p.status==="planned"||p.status==="done"));
+  const avoid = new Set([...runDays.map(d=>d-1), ...(runNextMonday ? [6] : [])]);
+  const taken = new Set(existing.filter(p=>sessionCategory(p)!=="run").map(p=>dayIndexOf(p.planned_date)));
+  return [0,1,2,3,4,5,6].some(d=>d>=todayIdx && !avoid.has(d) && !taken.has(d));
+}
 window.generateProgram = async (mondayDate, opts) => {
   opts = opts || {};
   const mondayStr = localDateStr(mondayDate);
@@ -4499,9 +4540,6 @@ window.generateProgram = async (mondayDate, opts) => {
   if(!profile && !isCouch){ if(!opts.silent) profileMissingToast(); return; }
   const existing = plannedSessions.filter(p=>p.week_start_date===mondayStr && (p.status==="planned"||p.status==="done"));
   const dayIndexOf = (dateStr) => Math.round((new Date(dateStr+"T00:00:00") - mondayDate) / 86400000);
-  // Jours où une NOUVELLE course ne peut pas aller : course ou renfo déjà
-  // là (une séance légère, elle, peut cohabiter, voir sessionsCanShareDay).
-  const dayBlockedForRun = existing.filter(p=>!sessionsCanShareDay({pace_zone:"easy"}, p)).map(p=>dayIndexOf(p.planned_date));
   // Comparé au NOMBRE cible (goals.frequence/frequenceAutre), pas juste à
   // "en existe-t-il au moins une" : sinon une seule séance ajoutée à la
   // main (ex: 1 renfo alors que 2/semaine sont visées) faisait croire la
@@ -4522,7 +4560,6 @@ window.generateProgram = async (mondayDate, opts) => {
 
   const { structure, avoidQualityReason } = computeProgramInputs();
   const weeklyKm = goals.kmMensuel ? Number(goals.kmMensuel)/4.33 : 20;
-  const unavailable = (goals.joursIndisponibles ? goals.joursIndisponibles.split(",") : []).map(Number);
   // Semaines consécutives -> weekIndex consécutifs (mondayDate est toujours
   // un lundi minuit local, l'écart est exactement 7j en ms) : sert à
   // alterner Seuil/Fractionné d'une semaine sur l'autre, voir
@@ -4534,8 +4571,9 @@ window.generateProgram = async (mondayDate, opts) => {
   let generated = [];
   let runningRows = [];
   if(missingRunning>0){
-    // `opts.fromToday` (mise à jour du programme) : jamais de séance dans le passé de la semaine en cours.
-    const availableDayIndexes = [0,1,2,3,4,5,6].filter(d=>!unavailable.includes(d) && !dayBlockedForRun.includes(d) && d>=minDayIndex);
+    // `opts.fromToday` (mise à jour du programme) : jamais de séance dans le passé de la semaine en cours ; cette semaine,
+    // jamais à côté d'une course déjà là (freeRunDayIndexes).
+    const availableDayIndexes = freeRunDayIndexes(mondayDate, minDayIndex);
     if(minDayIndex>0 && !isCouch && !availableDayIndexes.length){ /* plus de jour disponible cette semaine */ }
     else if(isCouch){
       // Cette semaine : pas de séance dans le passé (minDayIndex), et jamais deux de suite si la semaine est entamée.
@@ -5216,10 +5254,13 @@ async function applyProgramAdjustments(){
   // toute seule). Compléter volontairement reste possible via le bouton
   // "Compléter cette semaine", déclenché explicitement par l'utilisateur.
   const thisMonday = mondayOf(new Date());
+  // Le jour de l'inscription, la semaine en cours part de demain, comme la création du programme (R26) : sinon, quand la
+  // création n'a rien pu placer (inscription un dimanche), ce remplissage remettait une course le jour même.
+  const signupDay = !!onboardingCompletedAt && localDateStr(new Date(onboardingCompletedAt))===localDateStr(new Date());
   for(let w=0; w<4; w++){
     const monday = addDays(thisMonday, w*7);
     const everTouched = plannedSessions.some(p=>p.week_start_date===localDateStr(monday));
-    if(!everTouched) await window.generateProgram(monday, {silent:true});
+    if(!everTouched) await window.generateProgram(monday, {silent:true, fromTomorrow: w===0 && signupDay});
   }
   // Compte existant sans mémoire de ses réglages (avant S8) : on suppose que son programme correspond aux réglages actuels ;
   // à partir de là, tout changement d'objectif, de séances, de renfo, de jours ou de niveau sera signalé (D62).
@@ -5917,7 +5958,7 @@ function programCalendarHTML(){
       <div class="pg-row">${programDayModels(dates).map((d,i)=>programDayColHTML(d,i,null)).join("")}</div>
       ${PROGRAM_LEGEND}
       <div class="pg-help" id="pgHelp" style="display:none"></div>
-      ${complete?"":`<button class="btn-primary" style="margin-top:14px" onclick="generateProgram(new Date('${monday.toISOString()}'))">${genLabel}</button>`}
+      ${complete || programWeekOffset<0 || (programWeekOffset===0 && !currentWeekHasRoom(monday)) ? "" : `<button class="btn-primary" style="margin-top:14px" onclick="generateProgram(new Date('${monday.toISOString()}'))">${genLabel}</button>`}
     </div>`;
   }
   const monthDate = new Date(); monthDate.setDate(1); monthDate.setMonth(monthDate.getMonth()+programWeekOffset);
@@ -6174,7 +6215,10 @@ function setPageTitle(){
   if(activeTab==="progression" && historyOpen) el.innerHTML = `<button type="button" class="page-back" aria-label="Retour à Progression" onclick="closeHistory()">${icon("chevronLeft",24)}</button>Historique`;
   else el.textContent = activeTab==="aujourdhui" ? dayLabelShort(new Date()) : (names[activeTab]||"");
   const act = document.getElementById("pageAction");
-  if(act) act.innerHTML = activeTab==="programme" ? `<button type="button" class="page-action" onclick="openAddSheet()">${icon("plus",16)} Ajouter</button>`
+  // Revue d'Omar du 09/10/2026 : les boutons d'ajout en citron sur tous les onglets ; sur Aujourd'hui, « Ajouter une séance »
+  // ouvre la saisie d'une séance faite, comme « Séance réalisée » dans l'Historique.
+  if(act) act.innerHTML = activeTab==="programme" ? `<button type="button" class="page-action outline" onclick="openAddSheet()">${icon("plus",15)} Ajouter</button>`
+    : activeTab==="aujourdhui" ? `<button type="button" class="page-action outline" onclick="openManualRun()">${icon("plus",15)} <span>Ajouter<span class="pa-long"> une séance</span></span></button>`
     : activeTab==="progression" && historyOpen ? `<button type="button" class="page-action outline" onclick="openManualRun()">${icon("plus",15)} Séance réalisée</button>`
     : activeTab==="progression" ? `<button type="button" class="page-action" onclick="openHistory()"><span style="color:var(--text-muted);display:flex">${icon("history",15)}</span>Historique<span style="color:var(--text-muted);display:flex">${icon("chevronRight",14)}</span></button>` : "";
 }
