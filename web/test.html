@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=96"></script>
+<script src="logic.js?v=97"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -1770,7 +1770,7 @@ try {
     ["ton chrono sur 10 km (47:00)", "ton test de 20 minutes (4,2 km)", "ta VMA (15 km/h)"]);
   assertEqual("ligne d'état : chrono daté", levelStatus(prChrono), { text:"Allures conseillées calculées d'après ton chrono sur 10 km (47:00), septembre 2026.", stale:false, estimated:false });
   const prEst = resolveRunnerProfile({}, { refDistanceKm:5, refTimeSec:1650, refSource:"estimate", refDate:"2026-10-08" }, "2026-10-08");
-  assertEqual("ligne d'état R14 : allures estimées, avec l'invitation à donner un chrono", [prEst.source, levelStatus(prEst).estimated, /estimées d'après ta réponse \(5 km en 27:30 environ\)/.test(levelStatus(prEst).text)], ["level_estimate", true, true]);
+  assertEqual("ligne d'état R14 : allures estimées, avec l'invitation à donner un chrono", [prEst.source, levelStatus(prEst).estimated, /estimées d'après ta réponse \(5\u00a0km en 27:30 environ\)/.test(levelStatus(prEst).text)], ["level_estimate", true, true]);
   assertEqual("ligne d'état : plus de 6 mois", levelStatus(resolveRunnerProfile({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-03-01"}, T)).stale, true);
   assertEqual("ligne d'état : date estimée, pas de mois affiché", levelStatus(resolveRunnerProfile({}, {refDistanceKm:10, refTimeSec:2820, refDate:"2026-07-05", refDateApprox:true}, T)).text, "Allures conseillées calculées d'après ton chrono sur 10 km (47:00).");
   assertEqual("ligne d'état : rien sans temps de référence", levelStatus(null), null);

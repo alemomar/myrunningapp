@@ -569,7 +569,7 @@ function levelSourceText(profile){
   if(!profile) return "";
   if(profile.source==="goal_vma") return `ta VMA (${String(Math.round(profile.distanceKm*100)/10).replace(".",",")} km/h)`;
   if(profile.source==="level_test") return `ton test de 20 minutes (${String(Math.round(profile.distanceKm*10)/10).replace(".",",")} km)`;
-  if(profile.source==="level_estimate") return `ta réponse (5 km en ${fmtDur(profile.timeSec)} environ)`;
+  if(profile.source==="level_estimate") return `ta réponse (5 km en ${fmtDur(profile.timeSec)} environ)`;
   return `ton chrono sur ${levelDistanceName(profile.distanceKm).on} (${fmtDur(profile.timeSec)})`;
 }
 // Ligne d'état de « Ton niveau » : d'après quoi, de quand, et si c'est à rafraîchir. Allures estimées (R14) : pas de date,
