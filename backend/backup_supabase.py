@@ -6,8 +6,13 @@ BACKUP_KEEP dernières sauvegardes (supprime les plus anciennes).
 
 Clé requise dans ~/.config/myrunningapp/backup.env :
   SUPABASE_SERVICE_ROLE_KEY=...
+
+Lancé à la main : sauvegarde tout de suite. Lancé par launchd avec --auto
+(toutes les 30 min) : sauvegarde seulement si le dernier créneau (14 h ou 17 h)
+n'est pas encore couvert et que le Mac est vraiment réveillé.
 """
 
+import http.client
 import json
 import os
 import re
@@ -19,7 +24,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 SUPABASE_URL = "https://iwzlxizgppghjpnasawy.supabase.co"
@@ -47,6 +52,20 @@ BACKUP_KEEP = 60
 # pendant la sauvegarde : elle sera dans la suivante), jusqu'à un paquet vide.
 PAGE_SIZE = 1000
 TABLE_KEYS = {"runs": "id", "profiles": "user_id", "planned_sessions": "id"}
+# Avec les courbes cardio, 1 000 séances pèsent environ 19 Mo : une coupure
+# pendant un si gros téléchargement faisait tout échouer (10/10/2026). Paquets
+# plus petits pour runs : une coupure ne fait reprendre qu'un petit paquet.
+PAGE_SIZES = {"runs": 200}
+
+# Créneaux de la sauvegarde automatique. launchd lance le script toutes les
+# 30 min avec --auto ; il ne sauvegarde que si le dernier créneau passé n'est
+# pas encore couvert par une sauvegarde réussie (rattrapage dès que le Mac est
+# rouvert, si le créneau a été manqué ou a échoué).
+SLOT_HOURS = (14, 17)
+# Hors Google Drive : launchd peut y lire et écrire sans restriction.
+STATE_FILE = Path.home() / ".local" / "share" / "myrunningapp" / "backup_state.json"
+# Pendant une série d'échecs, au plus une notification toutes les 6 heures.
+NOTIFY_EVERY = timedelta(hours=6)
 
 
 class IncompleteTable(Exception):
@@ -96,11 +115,12 @@ def wait_for_network() -> bool:
 
 def fetch_table(table: str, key: str) -> list:
     pk = TABLE_KEYS[table]
+    page_size = PAGE_SIZES.get(table, PAGE_SIZE)
     rows = []
     total = None
     last = None
     while True:
-        url = f"{SUPABASE_URL}/rest/v1/{table}?select=*&order={pk}.asc&limit={PAGE_SIZE}"
+        url = f"{SUPABASE_URL}/rest/v1/{table}?select=*&order={pk}.asc&limit={page_size}"
         if last is not None:
             url += f"&{pk}=gt.{urllib.parse.quote(str(last), safe='')}"
         page, count = fetch_page(url, key, want_count=last is None)
@@ -137,7 +157,11 @@ def fetch_page(url: str, key: str, want_count: bool) -> tuple:
             if err.code < 500:
                 raise
             last_error = err
-        except urllib.error.URLError as err:
+        except (OSError, http.client.HTTPException, ValueError) as err:
+            # Réseau coupé ou trop lent en plein téléchargement (connexion
+            # réinitialisée, délai dépassé, réponse tronquée) : ces erreurs
+            # n'étaient pas rattrapées et arrêtaient tout le script, sans
+            # sauvegarde ni notification (10/10/2026). URLError en fait partie.
             last_error = err
         if attempt < FETCH_ATTEMPTS:
             time.sleep(FETCH_RETRY_SECONDS)
@@ -158,6 +182,79 @@ def notify_failure(message: str) -> None:
         )
     except (OSError, subprocess.SubprocessError):
         pass
+
+
+def load_state() -> dict:
+    try:
+        return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def save_state(state: dict) -> None:
+    try:
+        STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except OSError as err:
+        print(f"[état] écriture de {STATE_FILE} impossible : {err}", file=sys.stderr)
+
+
+def parse_time(value) -> "datetime | None":
+    try:
+        return datetime.fromisoformat(value) if value else None
+    except (TypeError, ValueError):
+        return None
+
+
+def due_slot(now: datetime) -> datetime:
+    """Dernier créneau (14 h ou 17 h) déjà passé : celui qu'une sauvegarde réussie doit couvrir."""
+    past = [now.replace(hour=h, minute=0, second=0, microsecond=0) for h in SLOT_HOURS]
+    past = [slot for slot in past if slot <= now]
+    if past:
+        return past[-1]
+    yesterday = now - timedelta(days=1)
+    return yesterday.replace(hour=SLOT_HOURS[-1], minute=0, second=0, microsecond=0)
+
+
+def mac_fully_awake() -> bool:
+    # En veille, le Mac se réveille seul une quarantaine de secondes de temps en
+    # temps (« DarkWake ») ; launchd en profitait pour lancer la sauvegarde, que
+    # le Mac coupait en se rendormant (10/10/2026, 14 h 07 et 17 h 18). Réveil
+    # complet = écran disponible, « Graphics » dans les capacités du système.
+    try:
+        out = subprocess.run(
+            ["pmset", "-g", "systemstate"], capture_output=True, text=True, timeout=10
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return True
+    if "Capabilities" not in out:
+        return True
+    return "Graphics" in out
+
+
+def keep_mac_awake() -> None:
+    # Empêche la mise en veille tant que ce script tourne (caffeinate s'arrête
+    # tout seul à la fin du script, grâce à -w).
+    try:
+        subprocess.Popen(
+            ["caffeinate", "-i", "-w", str(os.getpid())],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        pass
+
+
+def fail(state: dict, now: datetime, timestamp: str, message: str, auto: bool) -> None:
+    print(f"[{timestamp}] {message}", file=sys.stderr)
+    state["last_failure"] = now.isoformat(timespec="seconds")
+    last_notified = parse_time(state.get("last_notified"))
+    if last_notified is None or now - last_notified >= NOTIFY_EVERY:
+        retry = " Nouvel essai automatique dans 30 min." if auto else ""
+        notify_failure(message + retry)
+        state["last_notified"] = now.isoformat(timespec="seconds")
+    save_state(state)
+    sys.exit(1)
 
 
 def prune_old_backups() -> None:
@@ -206,23 +303,38 @@ def update_readme_status(when: datetime, counts: dict, errors: list) -> None:
 
 
 def main() -> None:
-    key = load_service_role_key()
+    auto = "--auto" in sys.argv[1:]
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d_%H%M%S")
     dest = BACKUPS_DIR / timestamp
+    state = load_state()
 
+    if auto:
+        last_success = parse_time(state.get("last_success"))
+        if last_success is not None and last_success >= due_slot(now):
+            return  # créneau déjà couvert : rien à faire, sans rien écrire
+        if not mac_fully_awake():
+            print(f"[{timestamp}] Mac en veille (réveil de quelques secondes) : sauvegarde remise au prochain réveil.")
+            return
+
+    key = load_service_role_key()
+    keep_mac_awake()
+    try:
+        run_backup(key, now, timestamp, dest, state, auto)
+    except Exception as err:  # imprévu : prévenir plutôt que s'arrêter en silence
+        fail(state, now, timestamp, f"ÉCHEC imprévu : {err}", auto)
+
+
+def run_backup(key: str, now: datetime, timestamp: str, dest: Path, state: dict, auto: bool) -> None:
     if not wait_for_network():
-        message = "ÉCHEC : réseau injoignable, aucune sauvegarde faite."
-        print(f"[{timestamp}] {message}", file=sys.stderr)
-        notify_failure(message)
-        sys.exit(1)
+        fail(state, now, timestamp, "ÉCHEC : réseau injoignable, aucune sauvegarde faite.", auto)
 
     counts = {}
     errors = []
     for table in TABLES:
         try:
             rows = fetch_table(table, key)
-        except (urllib.error.URLError, IncompleteTable) as err:
+        except (OSError, http.client.HTTPException, ValueError, IncompleteTable) as err:
             print(f"[{timestamp}] ERREUR sur {table} : {err}", file=sys.stderr)
             errors.append((table, str(err)))
             continue
@@ -236,10 +348,7 @@ def main() -> None:
         print(f"[{timestamp}] {table} : {len(rows)} ligne(s) sauvegardée(s)")
 
     if not counts:
-        message = "ÉCHEC : aucune table sauvegardée."
-        print(f"[{timestamp}] {message}", file=sys.stderr)
-        notify_failure(message)
-        sys.exit(1)
+        fail(state, now, timestamp, "ÉCHEC : aucune table sauvegardée.", auto)
 
     prune_old_backups()
 
@@ -255,12 +364,13 @@ def main() -> None:
         print(f"[{timestamp}] mise à jour du README impossible : {err}", file=sys.stderr)
 
     if errors:
+        # Partielle = pas une réussite : le créneau reste à couvrir, --auto réessaiera.
         failed = ", ".join(table for table, _ in errors)
-        message = f"PARTIELLE : {failed} non sauvegardée(s)."
-        print(f"[{timestamp}] {message} -> {dest}", file=sys.stderr)
-        notify_failure(message)
-        sys.exit(1)
+        fail(state, now, timestamp, f"PARTIELLE : {failed} non sauvegardée(s) ({dest.name}).", auto)
 
+    state["last_success"] = now.isoformat(timespec="seconds")
+    state.pop("last_notified", None)
+    save_state(state)
     print(f"[{timestamp}] Sauvegarde terminée -> {dest}")
 
 

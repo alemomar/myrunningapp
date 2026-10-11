@@ -2,11 +2,21 @@
 
 `backup_supabase.py` exporte `runs`, `profiles` et
 `planned_sessions` en JSON dans `backups/<horodatage>/`, deux fois par jour
-(14h et 17h, tâche planifiée sur ce Mac, créneaux où le Mac est éveillé).
-Le script attend le réseau (jusqu'à 5 min) et réessaie ; en cas d'échec total
-ou partiel il n'écrit plus « Sauvegarde terminée », sort en erreur et envoie une
-notification macOS (ancien défaut : dossiers vides annoncés comme réussis,
-corrigé le 03/10/2026). La copie exécutée par launchd est
+(créneaux de 14h et 17h). Depuis le 11/10/2026, la tâche planifiée lance le
+script avec `--auto` toutes les 30 min et à l'ouverture de session : il ne
+sauvegarde que si le dernier créneau passé n'est pas encore couvert par une
+sauvegarde réussie (état dans `~/.local/share/myrunningapp/backup_state.json`)
+et seulement si le Mac est vraiment réveillé (`pmset -g systemstate` affiche
+« Graphics ») ; le Mac reste éveillé pendant la copie (`caffeinate`). Un créneau
+manqué ou raté est donc rattrapé dès que le Mac est rouvert. Cause : le 10/10,
+Mac en veille, launchd a lancé les créneaux pendant des réveils de quelques
+secondes et le Mac s'est rendormi en plein téléchargement.
+Le script attend le réseau (jusqu'à 5 min) et réessaie, y compris après une
+connexion coupée ou trop lente ; les séances sont lues par paquets de 200. En
+cas d'échec total ou partiel il n'écrit pas « Sauvegarde terminée », sort en
+erreur et envoie une notification macOS (au plus une toutes les 6 h pendant une
+série d'échecs). Lancé à la main (sans `--auto`), il sauvegarde tout de suite.
+La copie exécutée par launchd est
 `~/.local/share/myrunningapp/backup_supabase.py` : elle doit rester identique à
 `backend/backup_supabase.py` (la recopier à chaque modification).
 `restore_supabase.py` fait l'inverse : il
