@@ -552,6 +552,11 @@
     setProfilSectionState("objectifs"); show("profil");
   } else if(scen==="profil_compte"){
     setProfilSectionState("compte"); show("profil");
+  } else if(scen==="profil_compte_sans_runsync" || scen==="progression_aucune_incluse"){
+    // R38 : RunSync jamais relié (séances saisies à la main seulement) : « Connecter Apple Santé » au lieu du lien vers RunSync.
+    RUNS.forEach(r=>{ r.appleType = MANUAL_RUN_MARKER; if(scen==="progression_aucune_incluse") r.includeInStats = false; });
+    runningRuns = RUNS.filter(r=>r.includeInStats);
+    if(scen==="profil_compte_sans_runsync"){ setProfilSectionState("compte"); show("profil"); } else show("progression");
   } else if(scen==="aujourdhui_savoir_plus"){
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayEasy, ...future]; openLearnMore=new Set([todayEasy.id]); show("aujourdhui");
   } else if(scen==="programme_ajout"){

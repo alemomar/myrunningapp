@@ -4034,9 +4034,8 @@ function profilCompteHTML(){
       <div class="pf-sync${lastSynced && !silentDaysShown ? "" : " off"}"><i></i><span>Apple Santé · ${!lastSynced ? "Pas encore connecté" : silentDaysShown ? `aucune course depuis ${silentDaysShown} jours` : "Connecté"}</span></div>
       ${lastSynced ? `<div class="pf-hint" style="margin-top:-6px">Dernière course reçue : ${escHtml(relativeDayTime(dateFromRun(lastSynced).getTime(), Date.now()))}</div>` : `<div class="pf-hint" style="margin-top:-6px">Aucune course reçue pour l'instant.</div>`}
       ${silentDaysShown ? `<div class="pf-hint" style="margin-top:-6px">Pas de souci si tu n'as pas couru. Sinon, ouvre RunSync et touche « Synchroniser maintenant ».</div>` : ""}
-      <button type="button" class="pf-btn" onclick="location.href='myrunningapp://sync'">Synchroniser mes courses</button>
-      ${lastSynced ? "" : `<button type="button" class="pf-btn" onclick="openSyncGuide()">Voir comment</button>`}
-      <div class="pf-hint">Ouvre l'app iOS et lance la synchronisation : fonctionne uniquement depuis Safari sur ton iPhone.</div>
+      ${runSyncActionHTML("pf-btn")}
+      <div class="pf-hint">${lastSynced ? "Ouvre RunSync, qui envoie tout de suite tes dernières séances. Pratique juste après une course." : "Pour que tes courses arrivent toutes seules depuis ta montre : 4 étapes, environ 4 minutes."}</div>
       <div class="pf-group"><label class="pf-lbl" for="syncSince">Importer depuis</label><div class="pf-row stack"><input type="date" id="syncSince" value="${syncSinceDate||""}" onchange="saveSyncSinceDate(this.value); flashFieldSaved(this)"></div><div class="pf-slot"></div></div>
     </div>
     <div class="pf-card sm"><div class="pf-title">Parcours de démarrage</div><div class="pf-hint" style="margin-top:-4px">Refais les questions de départ (objectif, niveau, disponibilités). Tes réponses actuelles sont préremplies.</div><button type="button" class="pf-btn" onclick="restartOnboarding()">Refaire le parcours</button><button type="button" class="pf-btn" onclick="startTour()">Revoir la visite guidée</button></div>
@@ -4256,7 +4255,7 @@ function monthlyZoneBreakdown(cardioRuns, effMaxHr, effRestingHr){
 
 
 function emptyState(title,sub,withSyncCta){
-  const cta = withSyncCta ? `<button class="btn-primary" style="margin-top:16px" onclick="location.href='myrunningapp://sync'">Ouvrir l'app et synchroniser</button>` : "";
+  const cta = withSyncCta ? runSyncActionHTML("btn-primary", ' style="margin-top:16px"') : "";
   return `<div class="empty-state">${icon("runner",44)}<div class="title">${title}</div><div class="sub">${sub}</div>${cta}</div>`;
 }
 
@@ -6934,6 +6933,10 @@ window.syncLaunch = (step) => {
 // derrière : un mot dans l'étape ouverte, avec le bouton pour installer l'app qui manque. Rien n'est décoché : si l'app
 // s'ouvre finalement, le retour coche l'étape comme d'habitude.
 function watchAppOpen(step){
+  watchAppLeave(() => { if(syncGuide && syncGuide.pending===step){ syncGuide.hint = step; refreshSheet(); } });
+}
+// L'app ouverte par un lien a-t-elle pris la main ? `onStayed` est appelé si MyRunningApp n'est jamais passée derrière.
+function watchAppLeave(onStayed){
   let left = false, blurred = false, over = false;
   const onVis = () => { if(document.visibilityState==="hidden") left = true; };
   const onHide = () => { left = true; };
@@ -6946,7 +6949,7 @@ function watchAppOpen(step){
   function finish(){
     if(over) return;
     over = true; cleanup();
-    if(!left && syncGuide && syncGuide.pending===step){ syncGuide.hint = step; refreshSheet(); }
+    if(!left) onStayed();
   }
   document.addEventListener("visibilitychange", onVis); window.addEventListener("pagehide", onHide); window.addEventListener("blur", onBlur);
   setTimeout(() => {
@@ -6956,6 +6959,23 @@ function watchAppOpen(step){
     else finish();
   }, 2500);
 }
+// R38 (12/10/2026) : le lien myrunningapp://sync n'a de sens que si RunSync a déjà envoyé des séances. Sinon (RunSync pas
+// installé ou pas relié), iOS affichait « Safari ne peut pas ouvrir la page car l'adresse n'est pas valide » : on propose
+// le guide à la place.
+function runSyncActionHTML(cls, attrs){
+  return receivedRuns().length
+    ? `<button type="button" class="${cls}"${attrs||""} onclick="openRunSyncSync()">Synchroniser mes courses</button>`
+    : `<button type="button" class="${cls}"${attrs||""} onclick="openSyncGuide()">Connecter Apple Santé</button>`;
+}
+// RunSync déjà relié : il s'ouvre et envoie tout de suite les dernières séances. S'il ne s'ouvre pas (désinstallé depuis),
+// on le dit, avec de quoi le réinstaller (le guide ne convient pas : avec des séances déjà reçues, il se dit terminé).
+window.openRunSyncSync = () => {
+  watchAppLeave(() => {
+    const url = syncLinks().runsync;
+    toast("RunSync ne s'est pas ouvert : il n'est sans doute plus installé.", url ? { actionLabel:"L'installer", onAction:() => window.open(url, "_blank"), ms:10000 } : { ms:6000 });
+  });
+  window.location.href = "myrunningapp://sync";
+};
 window.syncMarkDone = (step) => { syncGuide.done[step-1] = true; syncGuide.pending = 0; syncGuide.hint = 0; saveSyncGuide(); refreshSheet(); };
 // L'app qu'on vient d'essayer d'ouvrir ne s'est pas ouverte : ce qui manque sans doute, et de quoi l'installer.
 function syncHintHTML(){
