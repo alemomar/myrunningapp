@@ -145,12 +145,12 @@ final class HealthKitManager {
         }
     }
 
-    // La séance contient-elle au moins un paquet de FC (un échantillon de plusieurs mesures) ? Sert au rattrapage :
-    // une séance sans paquet n'a rien à corriger.
-    private func hasHeartRatePackets(start: Date, end: Date) async -> Bool {
+    // La séance contient-elle au moins un paquet (un échantillon de plusieurs mesures) de ce type, FC ou distance ?
+    // Sert au rattrapage : une séance sans paquet n'a rien à corriger.
+    private func hasPackets(_ type: HKQuantityType, start: Date, end: Date) async -> Bool {
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
         return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(sampleType: HKQuantityType(.heartRate), predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
                 continuation.resume(returning: (samples as? [HKQuantitySample] ?? []).contains { $0.count > 1 })
             }
             store.execute(query)
@@ -161,7 +161,7 @@ final class HealthKitManager {
     // lecture en série trouve plus de mesures que l'ancienne lecture. nil sinon : rien à corriger.
     func improvedHrSeries(for workout: HKWorkout) async -> [HrPoint]? {
         let start = workout.startDate, end = workout.endDate
-        guard await hasHeartRatePackets(start: start, end: end) else { return nil }
+        guard await hasPackets(HKQuantityType(.heartRate), start: start, end: end) else { return nil }
         let before = await fetchHeartRateSamplesOneValueEach(start: start, end: end)
         let now = await fetchHeartRateSamples(start: start, end: end)
         guard now.count > before.count else { return nil }
@@ -176,7 +176,29 @@ final class HealthKitManager {
     // permet de calculer une allure instantanée dans le temps, pour distinguer
     // plus tard les phases "Work" des phases de récup sur un fractionné.
     // Calcul et interprétation faits côté dashboard, pas ici.
+    // Paquet ouvert (B13, 12/10/2026) : comme la FC (B9), Apple Santé range la distance en paquets ; lue échantillon par
+    // échantillon, une sortie de 73 min ne donnait que 21 points d'allure (un par paquet, février-mai chez une
+    // testeuse). La lecture en série rend chaque intervalle de quelques secondes ; même règles que pour la FC
+    // (paquet qui déborde de la séance, ancienne lecture en secours).
     private func fetchDistanceSamples(start: Date, end: Date) async -> [(Date, Date, Double)] {
+        let overlapping = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
+        let descriptor = HKQuantitySeriesSampleQueryDescriptor(predicate: .quantitySample(type: HKQuantityType(.distanceWalkingRunning), predicate: overlapping))
+        var points: [(Date, Date, Double)] = []
+        do {
+            for try await result in descriptor.results(for: store) {
+                let interval = result.dateInterval
+                guard interval.start >= start, interval.start <= end else { continue }
+                points.append((interval.start, interval.end, result.quantity.doubleValue(for: .meter())))
+            }
+        } catch {
+            points = []
+        }
+        if !points.isEmpty { return points.sorted { $0.0 < $1.0 } }
+        return await fetchDistanceSamplesOneValueEach(start: start, end: end)
+    }
+
+    // Ancienne lecture de la distance : une valeur par échantillon (le total d'un paquet). En secours, et pour le rattrapage.
+    private func fetchDistanceSamplesOneValueEach(start: Date, end: Date) async -> [(Date, Date, Double)] {
         guard let type = HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning) else { return [] }
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
         let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
@@ -207,6 +229,17 @@ final class HealthKitManager {
             guard paceSecPerKm > 120 && paceSecPerKm < 1200 else { return nil }
             return PacePoint(t: Int(round(sStart.timeIntervalSince(start))), paceSecKm: Int(round(paceSecPerKm)))
         }
+    }
+
+    // Rattrapage (B13) : la courbe d'allure complète d'une séance déjà envoyée, quand sa distance contient des paquets
+    // ET que la lecture en série donne plus de points que l'ancienne lecture. nil sinon : rien à corriger.
+    func improvedPaceSeries(for workout: HKWorkout) async -> [PacePoint]? {
+        let start = workout.startDate, end = workout.endDate
+        guard await hasPackets(HKQuantityType(.distanceWalkingRunning), start: start, end: end) else { return nil }
+        let before = buildPaceSeries(start: start, samples: await fetchDistanceSamplesOneValueEach(start: start, end: end))
+        let now = buildPaceSeries(start: start, samples: await fetchDistanceSamples(start: start, end: end))
+        guard now.count > before.count else { return nil }
+        return now
     }
 
     // Frontières d'intervalles posées par HealthKit lui-même, quand la séance

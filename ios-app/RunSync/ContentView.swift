@@ -29,6 +29,8 @@ struct ContentView: View {
     @State private var checkError: String?
     // RunSync ouvert par un lien de MyRunningApp (guide, Mon compte) : iOS affiche alors le petit retour « ◀ MyRunningApp ».
     @State private var openedFromMyRunningApp = false
+    // … depuis MyRunningApp utilisée dans le navigateur (lien avec « depuis=navigateur », B14) : le retour dit « ◀ Safari ».
+    @State private var openedFromBrowser = false
 
     var body: some View {
         Group {
@@ -66,11 +68,11 @@ struct ContentView: View {
             case .importing:
                 ImportView { startImport() }
             case .done(let summary):
-                DoneView(summary: summary, cameFromMyRunningApp: openedFromMyRunningApp) { finishFirstImport() }
+                DoneView(summary: summary, cameFromMyRunningApp: openedFromMyRunningApp, cameFromBrowser: openedFromBrowser) { finishFirstImport() }
             case .noWorkouts(let since):
                 NoWorkoutsView(since: since, onRetry: { startImport() }, onContinue: { finishFirstImport() })
             case .home:
-                HomeView(email: AuthService.currentSession?.accountEmail, cameFromMyRunningApp: openedFromMyRunningApp) { signOut() }
+                HomeView(email: AuthService.currentSession?.accountEmail, cameFromMyRunningApp: openedFromMyRunningApp, cameFromBrowser: openedFromBrowser) { signOut() }
                     .onAppear { coordinator.refreshLastSync() }
             }
         }
@@ -160,10 +162,13 @@ struct ContentView: View {
         stage = .login
     }
 
-    // myrunningapp://connexion?email=… (guide de MyRunningApp) et myrunningapp://sync (Mon compte).
+    // myrunningapp://connexion?email=… (guide de MyRunningApp) et myrunningapp://sync (Mon compte), avec
+    // « &depuis=navigateur » (ou « ?depuis=… ») quand MyRunningApp n'est pas installée sur l'écran d'accueil.
     private func handle(_ url: URL) {
         guard url.scheme == "myrunningapp" else { return }
         openedFromMyRunningApp = true
+        openedFromBrowser = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?.contains(where: { $0.name == "depuis" && $0.value == "navigateur" }) ?? false
         switch url.host {
         case "connexion":
             let email = URLComponents(url: url, resolvingAgainstBaseURL: false)?
@@ -237,12 +242,16 @@ struct DemoScreen: View {
                     .onAppear { coordinator.importPhase = .progressing(.importing(done: 37, total: 120)) }
             case "fini": DoneView(summary: ImportSummary(sessions: 120, runs: 87, since: lastYear), cameFromMyRunningApp: true) {}
             case "fini-testflight": DoneView(summary: ImportSummary(sessions: 120, runs: 87, since: lastYear), cameFromMyRunningApp: false) {}
+            case "fini-navigateur": DoneView(summary: ImportSummary(sessions: 120, runs: 87, since: lastYear), cameFromMyRunningApp: true, cameFromBrowser: true) {}
             case "aucune": NoWorkoutsView(since: lastYear, onRetry: {}, onContinue: {})
             case "accueil":
                 HomeView(email: email, cameFromMyRunningApp: true) {}
                     .onAppear { coordinator.lastSync = Calendar.current.date(bySettingHour: 10, minute: 18, second: 0, of: Date()) }
             case "accueil-testflight":
                 HomeView(email: email, cameFromMyRunningApp: false) {}
+                    .onAppear { coordinator.lastSync = Calendar.current.date(bySettingHour: 10, minute: 18, second: 0, of: Date()) }
+            case "accueil-navigateur":
+                HomeView(email: email, cameFromMyRunningApp: true, cameFromBrowser: true) {}
                     .onAppear { coordinator.lastSync = Calendar.current.date(bySettingHour: 10, minute: 18, second: 0, of: Date()) }
             case "autre-compte": OtherAccountView(currentEmail: "autre@exemple.fr", wantedEmail: email, onSwitch: {}, onKeep: {})
             default: LoginView(prefilledEmail: nil) {}

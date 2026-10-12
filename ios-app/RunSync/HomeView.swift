@@ -6,6 +6,7 @@ struct HomeView: View {
     @EnvironmentObject private var coordinator: SyncCoordinator
     let email: String?
     let cameFromMyRunningApp: Bool   // voir DoneView : le petit retour d'iOS n'existe que dans ce cas
+    var cameFromBrowser = false      // voir DoneView : un vrai bouton rouvre MyRunningApp dans le navigateur (B14)
     let onSignOut: () -> Void
 
     @State private var confirmSignOut = false
@@ -80,13 +81,17 @@ struct HomeView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 8)
         } bottom: {
-            Text(cameFromMyRunningApp
-                 ? "Pour revenir dans MyRunningApp : touche le petit retour, tout en haut à gauche."
-                 : "Pour revenir dans MyRunningApp : ouvre-la depuis ton écran d'accueil.")
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.muted)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+            if cameFromBrowser {
+                BackToMyRunningAppButton(primary: false)
+            } else {
+                Text(cameFromMyRunningApp
+                     ? "Pour revenir dans MyRunningApp : touche le petit retour, tout en haut à gauche."
+                     : "Pour revenir dans MyRunningApp : ouvre-la depuis ton écran d'accueil.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.muted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Button("Se déconnecter") { confirmSignOut = true }
                 .buttonStyle(QuietLinkStyle(underline: true))
         }

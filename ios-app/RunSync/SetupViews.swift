@@ -439,6 +439,8 @@ struct DoneView: View {
     // Le petit retour « ◀ MyRunningApp » d'iOS n'existe que si c'est MyRunningApp qui a ouvert RunSync (son lien).
     // Ouvert depuis TestFlight ou l'écran d'accueil, il afficherait « ◀ TestFlight » ou rien (test d'Omar du 06/10/2026).
     let cameFromMyRunningApp: Bool
+    // MyRunningApp utilisée dans le navigateur (B14) : le petit retour dit « ◀ Safari », un vrai bouton rouvre le site.
+    var cameFromBrowser = false
     let onFinish: () -> Void
 
     private var summaryText: Text {
@@ -457,7 +459,7 @@ struct DoneView: View {
 
     var body: some View {
         ScreenScaffold {
-            if cameFromMyRunningApp {
+            if cameFromMyRunningApp && !cameFromBrowser {
                 // Juste sous le petit retour d'iOS (en haut à gauche, il porte le nom donné à l'icône de MyRunningApp) :
                 // une flèche qui le désigne, car la consigne au milieu de l'écran passait inaperçue (test d'Omar, 06/10/2026).
                 HStack(spacing: 8) {
@@ -497,7 +499,9 @@ struct DoneView: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Theme.text)
                 }
-                Text(cameFromMyRunningApp
+                Text(cameFromBrowser
+                     ? "Touche le bouton ci-dessous : MyRunningApp se rouvre dans ton navigateur, avec tes séances."
+                     : cameFromMyRunningApp
                      ? "Touche le petit retour tout en haut à gauche, là où pointe la flèche. Tu ne le vois pas ? Ouvre MyRunningApp depuis ton écran d'accueil."
                      : "Ouvre MyRunningApp depuis ton écran d'accueil : tes séances y sont déjà.")
                     .font(.system(size: 14.5))
@@ -512,7 +516,36 @@ struct DoneView: View {
                         + Text("Rien à faire : tes prochaines courses arriveront toutes seules après chaque sortie. Tu n'auras plus besoin d'ouvrir RunSync."))
                 .padding(.top, 12)
         } bottom: {
+            if cameFromBrowser {
+                BackToMyRunningAppButton(primary: true, before: onFinish)
+            }
             Button("Terminé", action: onFinish).buttonStyle(SecondaryButtonStyle())
+        }
+    }
+}
+
+// Rouvre MyRunningApp quand on l'utilise dans le navigateur (B14, R33) : iOS ouvre le site dans le navigateur par
+// défaut, connecté, et le guide reprend là où il en était. Jamais proposé quand MyRunningApp est installée sur l'écran
+// d'accueil : un lien ne sait pas rouvrir cette app-là, il ouvrirait Safari (on garde alors le petit retour d'iOS).
+struct BackToMyRunningAppButton: View {
+    var primary = true
+    var before: () -> Void = {}
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        let button = Button {
+            before()
+            if let url = URL(string: Config.dashboardURL) { openURL(url) }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.uturn.backward").font(.system(size: 16, weight: .semibold))
+                Text("Revenir dans MyRunningApp")
+            }
+        }
+        if primary {
+            button.buttonStyle(PrimaryButtonStyle())
+        } else {
+            button.buttonStyle(SecondaryButtonStyle())
         }
     }
 }

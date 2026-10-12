@@ -149,8 +149,12 @@ final class SyncService {
         // synchronisées avant l'ajout de ce champ (voir backfillLapMarkersIfNeeded).
         // Fire-and-forget, ne doit jamais faire échouer une sync normale.
         Task { await backfillLapMarkersIfNeeded(session: session) }
-        // Même principe pour la courbe de FC des séances dont la FC était rangée en paquets (B9).
-        Task { await backfillHrSeriesIfNeeded(session: session) }
+        // Même principe pour la courbe de FC (B9) puis la courbe d'allure (B13) des séances rangées en paquets : l'une
+        // après l'autre, pour ne pas doubler la lecture d'Apple Santé.
+        Task {
+            await backfillHrSeriesIfNeeded(session: session)
+            await backfillPaceSeriesIfNeeded(session: session)
+        }
 
         // Fait avancer la date de départ après chaque sync réussie : sans ça,
         // sync_since_date reste figée à sa valeur initiale pour toujours, et
@@ -292,7 +296,7 @@ final class SyncService {
         for workout in workouts {
             guard let series = await healthKit.improvedHrSeries(for: workout) else { continue }
             do {
-                try await updateHrSeries(startDate: workout.startDate, series: series, session: session)
+                try await updateRunColumn("hr_series", value: series, startDate: workout.startDate, session: session)
                 updated += 1
             } catch {
                 failed += 1
@@ -304,7 +308,39 @@ final class SyncService {
         syncLogger.notice("[backfill] hr_series: terminé, \(updated) séance(s) mise(s) à jour, \(failed) échec(s)")
     }
 
-    private func updateHrSeries(startDate: Date, series: [HrPoint], session: Session) async throws {
+    // Rattrapage ponctuel de la courbe d'allure (B13, 12/10/2026), sur le modèle de celui de la FC : la distance rangée
+    // « en paquets » ne donnait qu'un point d'allure par paquet (fractionnés impossibles à repérer). Seule la colonne
+    // pace_series est mise à jour, et seulement si la nouvelle lecture donne plus de points. Une fois par compte sur
+    // l'appareil ; retenté à la synchro suivante en cas d'échec.
+    private func backfillPaceSeriesIfNeeded(session: Session) async {
+        let doneKey = "runsync.paceSeriesBackfillDone.\(session.userId)"
+        guard !UserDefaults.standard.bool(forKey: doneKey) else { return }
+        syncLogger.notice("[backfill] pace_series: début")
+
+        let veryEarly = Date(timeIntervalSince1970: 0)
+        guard let workouts = try? await healthKit.fetchWorkouts(since: veryEarly) else {
+            syncLogger.error("[backfill] pace_series: échec récupération séances")
+            return
+        }
+
+        var updated = 0, failed = 0
+        for workout in workouts {
+            guard let series = await healthKit.improvedPaceSeries(for: workout) else { continue }
+            do {
+                try await updateRunColumn("pace_series", value: series, startDate: workout.startDate, session: session)
+                updated += 1
+            } catch {
+                failed += 1
+                syncLogger.error("[backfill] pace_series: échec sur une séance: \(String(describing: error), privacy: .public)")
+            }
+        }
+
+        if failed == 0 { UserDefaults.standard.set(true, forKey: doneKey) }
+        syncLogger.notice("[backfill] pace_series: terminé, \(updated) séance(s) mise(s) à jour, \(failed) échec(s)")
+    }
+
+    // Met à jour une seule colonne d'une séance déjà envoyée (repérée par son heure de départ), sans toucher au reste.
+    private func updateRunColumn<Value: Encodable>(_ column: String, value: Value, startDate: Date, session: Session) async throws {
         let isoFormatter = ISO8601DateFormatter()
         let dateStr = isoFormatter.string(from: startDate)
         guard let encodedDate = dateStr.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { return }
@@ -315,7 +351,7 @@ final class SyncService {
         request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
-        request.httpBody = try JSONEncoder().encode(["hr_series": series])
+        request.httpBody = try JSONEncoder().encode([column: value])
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
