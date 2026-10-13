@@ -2832,9 +2832,24 @@ const SYNC_APP_NAMES = { Garmin:"Garmin Connect", Strava:"Strava" };
 const syncAppsText = (apps) => (apps||[]).map(a=>SYNC_APP_NAMES[a]||a).join(" ou ");
 // Note en tête du guide, avant d'installer quoi que ce soit ; null pour une Apple Watch ou sans réponse. `skip` : proposer
 // de passer le guide (rien ne pourra arriver tout seul).
+// E14 (R31, 12/10/2026) : un coureur Garmin allait « connecter Apple Santé » de lui-même avant TestFlight. Deux réglages
+// différents : Garmin Connect ou Strava vers Apple Santé (dans leur app, une fois), puis Apple Santé vers RunSync (demandé
+// par RunSync à l'étape 3). Chemins tirés des aides de Garmin et de Strava (octobre 2026).
+const SYNC_APP_HOWTO = {
+  Garmin: "dans l'app Garmin Connect, touche «\u00a0Plus\u00a0», puis cherche «\u00a0Apple Santé\u00a0» dans les paramètres (Applications connectées) et active-le",
+  Strava: "dans Strava, touche ton profil, puis l'engrenage › Applications, services et appareils › Santé, et active «\u00a0Envoyer vers Santé\u00a0»",
+};
+const SYNC_RUNSYNC_LATER = "L'accès pour RunSync, lui, viendra à l'étape 3\u00a0: RunSync te le demandera, rien à faire avant.";
 function syncGuideNote(eq){
   if(!eq) return null;
-  if(eq.kind==="app") return { text:`Avant de commencer : dans ${syncAppsText(eq.apps)}, active l'envoi de tes activités vers Apple Santé. Sinon, rien n'arrivera.`, skip:false };
+  if(eq.kind==="app"){
+    const garmin = eq.apps.includes("Garmin");
+    const first = garmin && eq.apps.includes("Strava")
+      ? `Avant de commencer, active l'envoi vers Apple Santé dans une seule de tes apps, de préférence Garmin Connect\u00a0: ${SYNC_APP_HOWTO.Garmin.replace("dans l'app Garmin Connect, ", "")}.`
+      : `Avant de commencer, ${SYNC_APP_HOWTO[eq.apps[0]] || `dans ${syncAppsText(eq.apps)}, active l'envoi de tes activités vers Apple Santé`}.`;
+    const late = garmin ? " Ensuite, si une course tarde à arriver, ouvre Garmin Connect\u00a0: c'est lui qui la copie dans Apple Santé." : "";
+    return { text:`${first} Sans ça, rien n'arrivera. ${SYNC_RUNSYNC_LATER}${late}`, skip:false };
+  }
   if(eq.kind==="whoop") return { text:"Les séances Whoop ne sont pas encore reprises par RunSync. Tu peux saisir tes courses à la main, ou installer RunSync quand même pour plus tard.", skip:true };
   if(eq.kind==="none") return { text:"Sans montre ni app de course, rien ne peut arriver tout seul. Enregistre tes courses avec une app qui les envoie dans Apple Santé (Strava, Nike Run Club…), ou saisis-les à la main.", skip:true };
   return null;
@@ -2920,10 +2935,16 @@ function shouldAutoMarkOnboarding(hasData, createdAtIso){
 }
 // Lien qui ouvre RunSync avec l'e-mail du compte déjà rempli (RunSync version 3 ; les versions 1 et 2 ignorent la suite
 // du lien et s'ouvrent simplement). Sans adresse valable, RunSync s'ouvre sans rien de rempli.
-function runSyncOpenUrl(email){
+// `fromBrowser` (B14, 12/10/2026) : MyRunningApp utilisée dans le navigateur, pas installée sur l'écran d'accueil ; RunSync
+// 1.0 (7) affiche alors un vrai bouton « Revenir dans MyRunningApp » (les versions d'avant ignorent ce signal).
+function runSyncOpenUrl(email, fromBrowser){
   const e = String(email||"").trim();
-  return validEmail(e) ? "myrunningapp://connexion?email=" + encodeURIComponent(e) : "myrunningapp://";
+  const from = fromBrowser ? "depuis=navigateur" : "";
+  if(validEmail(e)) return "myrunningapp://connexion?email=" + encodeURIComponent(e) + (from ? "&" + from : "");
+  return "myrunningapp://" + (from ? "?" + from : "");
 }
+// Lien « synchronise maintenant » (Mon compte), avec le même signal.
+function runSyncSyncUrl(fromBrowser){ return "myrunningapp://sync" + (fromBrowser ? "?depuis=navigateur" : ""); }
 
 /* ---------- Structure macro par objectif ----------
    Répartition Easy/qualité de départ par type d'objectif (base : polarisé
@@ -3400,21 +3421,27 @@ function detectInstallContext(ua, standalone, touchPoints){
   const ios = /iPhone|iPad|iPod/.test(u) || (/Macintosh/.test(u) && (touchPoints||0)>1);
   const inApp = /FBAN|FBAV|Instagram|Snapchat|TikTok|musical_ly|Line\/|MicroMessenger|Twitter|LinkedInApp|GSA\//.test(u);
   const browser = /CriOS/.test(u) ? "chrome" : /FxiOS/.test(u) ? "firefox" : /EdgiOS/.test(u) ? "edge" : /OPiOS|DuckDuckGo/.test(u) ? "other" : "safari";
-  return { ios, inApp, browser, standalone:!!standalone };
+  // Version de Safari (« Version/26.0 ») : à partir de 26 (iOS 26), Partager est rangé dans le menu « ••• » (E12).
+  const safariVersion = browser==="safari" ? (Number((u.match(/Version\/(\d+)/) || [])[1]) || null) : null;
+  return { ios, inApp, browser, safariVersion, standalone:!!standalone };
 }
 // Écran « Installe l'app » : iPhone ou iPad, hors de l'app installée, tant que l'utilisateur ne l'a pas écarté.
 function shouldShowInstall(ctx, skipped){ return !!(ctx && ctx.ios && !ctx.standalone && !skipped); }
 // Les trois gestes pour ajouter l'app à l'écran d'accueil ; seul le premier change selon le navigateur
 // (Chrome, Firefox et Edge savent le faire depuis iOS 16.4).
+// E12 (12/10/2026) : sur un iPhone à jour (Safari 26), Partager n'est plus en bas de l'écran mais dans le menu « ••• » à côté
+// de l'adresse (3 testeurs sur 4 bloqués : R9, R28, R29). Version inconnue : la consigne récente, qui couvre aussi l'ancienne.
 const INSTALL_STEP_FIRST = {
-  safari:{ icon:"share", title:"Touche Partager", hint:"Le carré avec une flèche vers le haut, en bas de l'écran." },
-  chrome:{ icon:"share", title:"Touche Partager", hint:"L'icône à droite de la barre d'adresse, en haut de l'écran." },
+  safari:{ icon:"more", title:"Touche •••, puis Partager", hint:"••• est à côté de l'adresse du site. Tu vois directement Partager (le carré avec une flèche) ? Touche-le." },
+  safariLegacy:{ icon:"share", title:"Touche Partager", hint:"Le carré avec une flèche vers le haut, en bas de l'écran." },
+  chrome:{ icon:"share", title:"Touche Partager", hint:"L'icône à droite de la barre d'adresse (en haut, ou en bas si tu l'y as mise)." },
   firefox:{ icon:"more", title:"Touche le menu, puis Partager", hint:"Le menu est en bas à droite de l'écran." },
   edge:{ icon:"more", title:"Touche le menu, puis Partager", hint:"Le menu est en bas de l'écran." },
   other:{ icon:"share", title:"Touche Partager", hint:"Cherche le bouton Partager, ou le menu de ton navigateur." },
 };
 function installGuide(ctx){
-  const first = INSTALL_STEP_FIRST[ctx && ctx.browser] || INSTALL_STEP_FIRST.other;
+  const legacySafari = ctx && ctx.browser==="safari" && ctx.safariVersion && ctx.safariVersion < 26;
+  const first = legacySafari ? INSTALL_STEP_FIRST.safariLegacy : (INSTALL_STEP_FIRST[ctx && ctx.browser] || INSTALL_STEP_FIRST.other);
   return { inApp:!!(ctx && ctx.inApp), browser:(ctx && ctx.browser) || "other", steps:[
     first,
     { icon:"squarePlus", title:"Touche «\u00a0Sur l'écran d'accueil\u00a0»", hint:"Fais défiler le menu si tu ne le vois pas. Laisse «\u00a0Ouvrir comme app web\u00a0» activé." },

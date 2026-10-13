@@ -23,11 +23,13 @@
     document.getElementById("appView").style.display = "none";
     const UA = {
       safari:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+      safari26:"Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1",
       chrome:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/126.0.6478.153 Mobile/15E148 Safari/604.1",
       instagram:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/21F90 Instagram 330.0.0.9.84 (iPhone14,5; iOS 17_5; fr_FR; fr; scale=3.00; 1170x2532; 570124516)",
     };
     const set = (step, patch) => { Object.assign(auth, { email:"camille@exemple.fr", password:"", code:"", error:"", notice:"", busy:false, sentAt:0, verified:false }, patch||{}, { step }); showAuth(); };
     if(scen==="install_safari") showInstall(detectInstallContext(UA.safari, false, 5));
+    else if(scen==="install_safari26") showInstall(detectInstallContext(UA.safari26, false, 5));   // E12 : iPhone à jour
     else if(scen==="install_chrome") showInstall(detectInstallContext(UA.chrome, false, 5));
     else if(scen==="install_dansapp") showInstall(detectInstallContext(UA.instagram, false, 5));
     else if(scen==="auth_connexion") set("signin");
@@ -605,7 +607,7 @@
     else if(scen==="message_erreur"){ show("profil"); toast("Pas enregistré, vérifie ta connexion.", { actionLabel:"Réessayer", ms:600000 }); }
     else if(scen==="profil_synchro_muette"){ RUNS=RUNS.filter(r=>dateFromRun(r).getTime() < Date.now()-9*86400000); runningRuns=RUNS.filter(r=>r.includeInStats); setProfilSectionState("compte"); show("profil"); }
     else if(scen==="onboarding_preparation"){ RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbInit(); onb.step=5; onb.saving=true; onb.prepDone=2; renderApp(); }
-  } else if(/^guide_(etape[123]|attente|ok|vide|indice[23]|note_garmin|note_aucun|vide_montre|vide_garmin)$/.test(scen)){
+  } else if(/^guide_(etape[123]|attente|ok|vide|indice[23]|note_garmin|note_strava|note_garmin_strava|note_aucun|vide_montre|vide_garmin)$/.test(scen)){
     // S10 : guide « Voir comment » (connecter RunSync), depuis Mon compte › Synchronisation ; 4 étapes depuis D107
     // (guide_indice2 / guide_indice3 : TestFlight / RunSync ne s'est pas ouvert, un mot propose de l'installer)
     // R4 : note en tête selon l'équipement (guide_note_garmin, guide_note_aucun) ; au bout de 30 s sans course, RunSync relié
@@ -613,6 +615,8 @@
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; setProfilSectionState("compte"); show("profil");
     if(scen==="guide_note_garmin" || scen==="guide_vide_garmin") goals.equipement = "Garmin";
     if(scen==="guide_note_aucun") goals.equipement = "Aucun";
+    if(scen==="guide_note_strava") goals.equipement = "Strava";   // E14
+    if(scen==="guide_note_garmin_strava") goals.equipement = "Garmin,Strava";
     if(scen==="guide_vide_montre" || scen==="guide_vide_garmin") syncSinceDate = localDateStr(new Date(new Date().getFullYear(), 0, 1));
     RUNS=RUNS.filter(r=>r.appleType===MANUAL_RUN_MARKER); runningRuns=RUNS.filter(r=>r.includeInStats); try{ localStorage.removeItem("mra_syncGuide"); }catch(e){}
     openSyncGuide(); stopSyncPoll();

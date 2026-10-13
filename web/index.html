@@ -117,6 +117,11 @@ button,input,select,textarea{font-family:inherit}
   flex:1;background:none;border:none;outline:none;color:var(--text);font-size:16px;
 }
 .field input::placeholder{color:var(--text-faint)}
+/* E13 (R30) : bouton œil pour voir le mot de passe tapé */
+.pw-eye{flex:none;display:flex;align-items:center;justify-content:center;width:40px;height:40px;margin:-10px -12px -10px 0;padding:0;background:none;border:none;color:var(--text-faint);cursor:pointer;border-radius:var(--r-sm)}
+.pw-eye:focus-visible{outline:2px solid var(--select);outline-offset:-2px}
+.pf-row .pw-eye{margin:-10px -10px -10px 2px}
+.on-lose{margin-top:8px}
 .goal-level-cards{display:flex;gap:6px}
 .goal-level-card{flex:1;padding:7px 6px;border-radius:var(--r-xs);border:1px solid var(--line);background:var(--surface);cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
 .goal-level-card.active{border-color:var(--select);background:var(--select-soft)}
@@ -1181,7 +1186,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=98"></script>
+<script src="logic.js?v=99"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1236,6 +1241,8 @@ const ICONS = {
   recup: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m11 7-3 5h4l-3 5"/><path d="M14.856 6H16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.935"/><path d="M22 14v-4"/><path d="M5.14 18H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2.936"/></svg>`,
   moveH: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 8 22 12 18 16"/><polyline points="6 8 2 12 6 16"/><line x1="2" x2="22" y1="12" y2="12"/></svg>`,
   alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
+  eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  eyeOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.2A10.4 10.4 0 0 1 12 4c6.5 0 10 7 10 7a17.6 17.6 0 0 1-2.2 3.2"/><path d="M6.6 6.6C3.7 8.5 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><line x1="2" y1="2" x2="22" y2="22"/></svg>`,
   more: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>`,
   moreV: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>`,
   plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`,
@@ -1377,7 +1384,8 @@ function installHTML(g){
     <div class="on-head"><div class="on-title">Installe l'app sur ton écran d'accueil</div><div class="on-sub">Elle s'ouvre alors comme une vraie app, en plein écran, et tu y restes connecté.</div></div>
     <div class="on-body">${warn}${g.inApp ? "" : `<div class="in-steps">${steps}</div>`}</div>
     <div class="on-foot">${g.inApp ? "" : `<div class="on-hint">Une fois l'app ajoutée, ouvre-la depuis ton écran d'accueil : c'est là que tu crées ton compte.</div>`}
-      <button type="button" class="btn-secondary on-second" onclick="installSkip()">Continuer dans le navigateur</button></div></div>`;
+      <button type="button" class="btn-secondary on-second" onclick="installSkip()">Continuer dans le navigateur</button>
+      <div class="on-hint on-lose">Dans le navigateur, pas de plein écran, et il faudra te reconnecter si tu installes l'app plus tard.</div></div></div>`;
 }
 function showInstall(ctx){
   document.getElementById("installView").innerHTML = installHTML(installGuide(ctx));
@@ -1398,8 +1406,22 @@ function showAuth(){
 function authEmailField(ac){
   return `<div class="field">${AUTH_ICON_MAIL}<input id="authEmail" type="email" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Email" aria-label="Adresse e-mail" autocomplete="${ac}" value="${authAttr(auth.email)}" oninput="authSet('email', this.value)" onkeydown="authKey(event)"></div>`;
 }
+// E13 (R30, 12/10/2026) : voir le mot de passe tapé, à la création du compte comme à la connexion et dans Mon compte. Le même
+// mot de passe sert ensuite dans RunSync (qui a déjà ce bouton) : une faute de frappe bloquait à l'étape 3 du guide.
+const pwVisible = {};
+function pwEyeHTML(id){
+  const on = !!pwVisible[id];
+  return `<button type="button" class="pw-eye" aria-label="${on?"Masquer":"Afficher"} le mot de passe" aria-pressed="${on}" onclick="togglePwVisible('${id}', this)">${icon(on?"eyeOff":"eye",18)}</button>`;
+}
+window.togglePwVisible = (id, btn) => {
+  const input = document.getElementById(id);
+  if(!input) return;
+  pwVisible[id] = !pwVisible[id];
+  input.type = pwVisible[id] ? "text" : "password";
+  btn.outerHTML = pwEyeHTML(id);
+};
 function authPasswordField(ac, ph){
-  return `<div class="field">${AUTH_ICON_LOCK}<input id="authPassword" type="password" placeholder="${ph}" aria-label="${ph}" autocomplete="${ac}" value="${authAttr(auth.password)}" oninput="authSet('password', this.value)" onkeydown="authKey(event)"></div>`;
+  return `<div class="field">${AUTH_ICON_LOCK}<input id="authPassword" type="${pwVisible.authPassword?"text":"password"}" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="${ph}" aria-label="${ph}" autocomplete="${ac}" value="${authAttr(auth.password)}" oninput="authSet('password', this.value)" onkeydown="authKey(event)">${pwEyeHTML("authPassword")}</div>`;
 }
 function authOtpField(){
   return `<div class="field otp"><input id="authOtp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10" autocomplete="one-time-code" placeholder="······" aria-label="Code reçu par e-mail" value="${authAttr(auth.code)}" oninput="authOtpInput(this)" onkeydown="authKey(event)"></div>`;
@@ -4019,7 +4041,7 @@ function profilCompteHTML(){
     </div>
     <div class="pf-card sm">
       <div class="pf-title">Sécurité</div>
-      <div class="pf-group">${pfRow("newPassword","Nouveau mot de passe",`<input type="password" id="newPassword" placeholder="6 caractères min." autocomplete="new-password">`)}</div>
+      <div class="pf-group">${pfRow("newPassword","Nouveau mot de passe",`<input type="${pwVisible.newPassword?"text":"password"}" id="newPassword" placeholder="6 caractères min." autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false">${pwEyeHTML("newPassword")}`)}</div>
       <button type="button" class="pf-btn" onclick="changePassword()">Changer le mot de passe</button>
       <div id="pwMsg" role="status" style="font-size:12.5px;text-align:center;min-height:0"></div>
     </div>
@@ -6922,7 +6944,7 @@ document.addEventListener("visibilitychange", () => {
 const syncLinks = () => syncInstallLinks(detectInstallContext(navigator.userAgent, isStandalone(), navigator.maxTouchPoints).ios, RUNSYNC_INSTALL_URL);
 window.syncLaunch = (step) => {
   const links = syncLinks();
-  const url = step===1 ? links.testflight : step===2 ? links.runsync : runSyncOpenUrl(userEmail);
+  const url = step===1 ? links.testflight : step===2 ? links.runsync : runSyncOpenUrl(userEmail, !isStandalone());
   if(!url){ toast("Le lien d'installation de RunSync arrive bientôt."); return; }
   syncGuide.pending = step; syncGuide.hint = 0; saveSyncGuide(); refreshSheet();
   watchAppOpen(step);
@@ -6974,7 +6996,7 @@ window.openRunSyncSync = () => {
     const url = syncLinks().runsync;
     toast("RunSync ne s'est pas ouvert : il n'est sans doute plus installé.", url ? { actionLabel:"L'installer", onAction:() => window.open(url, "_blank"), ms:10000 } : { ms:6000 });
   });
-  window.location.href = "myrunningapp://sync";
+  window.location.href = runSyncSyncUrl(!isStandalone());
 };
 window.syncMarkDone = (step) => { syncGuide.done[step-1] = true; syncGuide.pending = 0; syncGuide.hint = 0; saveSyncGuide(); refreshSheet(); };
 // L'app qu'on vient d'essayer d'ouvrir ne s'est pas ouverte : ce qui manque sans doute, et de quoi l'installer.

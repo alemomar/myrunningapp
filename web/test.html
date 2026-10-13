@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=98"></script>
+<script src="logic.js?v=99"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -440,7 +440,9 @@ try {
   assertEqual("R4 : Apple Watch prime (même avec Whoop)", syncEquip("Apple Watch,Whoop").kind, "watch");
   assertEqual("R4 : Garmin et Strava", syncEquip("Garmin,Strava"), { kind:"app", apps:["Garmin","Strava"] });
   assertEqual("R4 : Whoop seul / Aucun / sans réponse", [syncEquip("Whoop").kind, syncEquip("Aucun").kind, syncEquip("").kind], ["whoop","none",null]);
-  assertEqual("R4 : note en tête du guide pour Garmin", /dans Garmin Connect, active l'envoi de tes activités vers Apple Santé/.test(syncGuideNote(syncEquip("Garmin")).text), true);
+  assertEqual("E14 : note Garmin = chemin dans Garmin Connect, l'accès RunSync à l'étape 3, ouvrir Garmin Connect si ça tarde", ["Garmin"].map(e=>{ const t=syncGuideNote(syncEquip(e)).text; return [/dans l'app Garmin Connect, touche «\u00a0Plus\u00a0»/.test(t), /étape 3/.test(t), /si une course tarde à arriver, ouvre Garmin Connect/.test(t)]; })[0], [true, true, true]);
+  assertEqual("E14 : note Strava = chemin dans Strava, sans la phrase Garmin", (()=>{ const t=syncGuideNote(syncEquip("Strava")).text; return [/Envoyer vers Santé/.test(t), /étape 3/.test(t), /Garmin/.test(t)]; })(), [true, true, false]);
+  assertEqual("E14 : Garmin + Strava = une seule des deux, de préférence Garmin Connect", /une seule de tes apps, de préférence Garmin Connect/.test(syncGuideNote(syncEquip("Garmin,Strava")).text), true);
   assertEqual("R4 : pas de note pour une Apple Watch, proposition de passer sans montre", [syncGuideNote(syncEquip("Apple Watch")), syncGuideNote(syncEquip("Aucun")).skip, syncGuideNote(syncEquip("Whoop")).skip], [null, true, true]);
   assertEqual("R4 : RunSync pas relié -> rouvrir RunSync", [syncEmptyMessage(false, syncEquip("Aucun")).reopen, /pas encore connecté/.test(syncEmptyMessage(false, syncEquip("Aucun")).title)], [true, true]);
   const em = syncEmptyMessage(true, syncEquip("Aucun"), "1er janv.");
@@ -1953,6 +1955,7 @@ try {
   assertEqual("parcours d'office seulement pour un compte d'avant le 05/10/2026 (D106)", [shouldAutoMarkOnboarding(true, "2026-09-28T10:00:00Z"), shouldAutoMarkOnboarding(true, "2026-10-06T19:27:00Z"), shouldAutoMarkOnboarding(false, "2026-09-28T10:00:00Z"), shouldAutoMarkOnboarding(true, null), shouldAutoMarkOnboarding(true, "pas une date")], [true, false, false, true, true]);
   assertEqual("lien RunSync : e-mail rempli, + et @ encodés", [runSyncOpenUrl("camille@exemple.fr"), runSyncOpenUrl(" omaralempro+lot1a@gmail.com ")], ["myrunningapp://connexion?email=camille%40exemple.fr", "myrunningapp://connexion?email=omaralempro%2Blot1a%40gmail.com"]);
   assertEqual("lien RunSync : sans adresse valable, RunSync s'ouvre simplement", [runSyncOpenUrl(""), runSyncOpenUrl(null), runSyncOpenUrl("pas-une-adresse")], ["myrunningapp://", "myrunningapp://", "myrunningapp://"]);
+  assertEqual("B14 : depuis le navigateur, les liens vers RunSync le signalent", [runSyncOpenUrl("camille@exemple.fr", true), runSyncOpenUrl("", true), runSyncSyncUrl(true), runSyncSyncUrl(false)], ["myrunningapp://connexion?email=camille%40exemple.fr&depuis=navigateur", "myrunningapp://?depuis=navigateur", "myrunningapp://sync?depuis=navigateur", "myrunningapp://sync"]);
 }
 
 // --- S13.1 : message « L'app a changé de look » aux comptes existants (D91) ---
@@ -2026,7 +2029,7 @@ try {
     chromeMac:"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     android:"Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36",
   };
-  assertEqual("installation : Safari sur iPhone", detectInstallContext(UA.safari, false, 5), { ios:true, inApp:false, browser:"safari", standalone:false });
+  assertEqual("installation : Safari sur iPhone", detectInstallContext(UA.safari, false, 5), { ios:true, inApp:false, browser:"safari", safariVersion:17, standalone:false });
   assertEqual("installation : Chrome sur iPhone", detectInstallContext(UA.chrome, false, 5).browser, "chrome");
   assertEqual("installation : Firefox sur iPhone", detectInstallContext(UA.firefox, false, 5).browser, "firefox");
   assertEqual("installation : Edge sur iPhone", detectInstallContext(UA.edge, false, 5).browser, "edge");
@@ -2043,6 +2046,9 @@ try {
   assertEqual("installation : pas d'écran sur ordinateur", shouldShowInstall(detectInstallContext(UA.mac, false, 0), false), false);
   assertEqual("installation : 3 gestes, le dernier ouvre l'app depuis l'écran d'accueil", installGuide(detectInstallContext(UA.safari, false, 5)).steps.map(s=>s.icon), ["share","squarePlus","phone"]);
   assertEqual("installation : Safari et Chrome = bouton Partager", [installGuide(detectInstallContext(UA.safari,false,5)).steps[0].title, installGuide(detectInstallContext(UA.chrome,false,5)).steps[0].title], ["Touche Partager","Touche Partager"]);
+  const UA_S26 = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1";
+  assertEqual("E12 : Safari 26 = menu ••• puis Partager ; version inconnue = consigne récente", [installGuide(detectInstallContext(UA_S26,false,5)).steps[0].title, installGuide(detectInstallContext(UA_S26,false,5)).steps[0].icon, installGuide(detectInstallContext("Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) Mobile/15E148",false,5)).steps[0].title], ["Touche •••, puis Partager","more","Touche •••, puis Partager"]);
+  assertEqual("E12 : version de Safari lue, rien pour Chrome", [detectInstallContext(UA_S26,false,5).safariVersion, detectInstallContext(UA.safari,false,5).safariVersion, detectInstallContext(UA.chrome,false,5).safariVersion], [26, 17, null]);
   assertEqual("installation : Firefox et Edge = menu puis Partager", [installGuide(detectInstallContext(UA.firefox,false,5)).steps[0].title, installGuide(detectInstallContext(UA.edge,false,5)).steps[0].title], ["Touche le menu, puis Partager","Touche le menu, puis Partager"]);
   assertEqual("installation : « Sur l'écran d'accueil » pour tous", installGuide(detectInstallContext(UA.chrome, false, 5)).steps[1].title, "Touche «\u00a0Sur l'écran d'accueil\u00a0»");
   assertEqual("installation : navigateur intégré signalé dans le guide", installGuide(detectInstallContext(UA.instagram, false, 5)).inApp, true);
