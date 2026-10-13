@@ -28,7 +28,10 @@ final class HealthKitManager {
     }
 
     func fetchWorkouts(since start: Date) async throws -> [HKWorkout] {
-        let predicate = HKQuery.predicateForSamples(withStart: start, end: nil, options: .strictStartDate)
+        // 12 h de marge avant la date de départ : une séance d'une autre montre commencée juste avant doit pouvoir écarter
+        // le doublon Whoop commencé juste après (voir droppingWhoopDuplicates) ; on ne renvoie ensuite que depuis `start`.
+        let lookBehind = start.addingTimeInterval(-12 * 3600)
+        let predicate = HKQuery.predicateForSamples(withStart: lookBehind, end: nil, options: .strictStartDate)
         let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -42,18 +45,34 @@ final class HealthKitManager {
                     continuation.resume(throwing: error)
                     return
                 }
-                // Exclut les séances écrites par des apps tierces (Whoop en particulier),
-                // qui gardent leur propre nom/bundle identifier dans HealthKit. On exclut
-                // plutôt que de n'autoriser qu'un identifiant Apple deviné (fragile).
-                let workouts = (samples as? [HKWorkout] ?? []).filter { workout in
-                    let source = workout.sourceRevision.source
-                    let name = source.name.lowercased()
-                    let bundleId = source.bundleIdentifier.lowercased()
-                    return !name.contains("whoop") && !bundleId.contains("whoop")
-                }
+                let all = samples as? [HKWorkout] ?? []
+                let workouts = Self.droppingWhoopDuplicates(all, isWhoop: Self.isWhoop) { DateInterval(start: $0.startDate, end: $0.endDate) }
+                    .filter { $0.startDate >= start }
                 continuation.resume(returning: workouts)
             }
             store.execute(query)
+        }
+    }
+
+    // Séance écrite par l'app Whoop (son nom ou son identifiant d'app dans Apple Santé).
+    static func isWhoop(_ workout: HKWorkout) -> Bool {
+        let source = workout.sourceRevision.source
+        return source.name.lowercased().contains("whoop") || source.bundleIdentifier.lowercased().contains("whoop")
+    }
+
+    // Séances Whoop (E11, 13/10/2026) : longtemps toutes écartées, pour ne pas doubler celles de l'Apple Watch quand on
+    // porte les deux ; un coureur qui n'a qu'un Whoop ne recevait alors rien. Une séance Whoop est maintenant gardée, sauf
+    // si une séance d'une autre source (Apple Watch, Garmin Connect…) en recouvre au moins la moitié : c'est alors la même
+    // séance, et on garde celle de la montre. Générique pour pouvoir l'essayer sans Apple Santé.
+    static func droppingWhoopDuplicates<T>(_ items: [T], isWhoop: (T) -> Bool, interval: (T) -> DateInterval) -> [T] {
+        let others = items.filter { !isWhoop($0) }.map(interval)
+        return items.filter { item in
+            guard isWhoop(item) else { return true }
+            let whoop = interval(item)
+            return !others.contains { other in
+                guard let shared = whoop.intersection(with: other) else { return false }
+                return whoop.duration > 0 ? shared.duration >= whoop.duration / 2 : true
+            }
         }
     }
 
