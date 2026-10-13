@@ -182,6 +182,7 @@
   // Séance d'hier : sortie easy rapide (meilleure allure easy) ; un renfo mercredi
   const yest = rows.find(r=>new Date(r.start_date).toDateString()===startOf(1).toDateString());
   if(yest){ yest.distance_km=8.1; yest.duration_sec=Math.round(8.1*343); yest.avg_hr=147; yest.hr_series=genHr(yest.duration_sec,147,"ef"); yest.peak_hr=Math.max(...yest.hr_series.map(x=>x.hr)); }
+  if(/^hier_(ressenti|verifier)/.test(scen) && yest){ yest.duration_sec=Math.round(yest.distance_km*400); yest.avg_hr=152; yest.hr_series=genHr(yest.duration_sec,152,"ef"); yest.peak_hr=Math.max(...yest.hr_series.map(x=>x.hr)); }   // pas de record : la carte demande seulement le ressenti (E4)
   if((scen==="celebration_record"||scen==="hier") && yest){ yest.distance_km=15.4; yest.duration_sec=Math.round(15.4*331); yest.avg_hr=150; yest.hr_series=genHr(yest.duration_sec,150,"ef"); yest.peak_hr=Math.max(...yest.hr_series.map(x=>x.hr)); }
   // S9 : hier, un 5 km en 27:41 qui bat l'ancien record (28:15, il y a 3 semaines) : plein écran de record de distance
   if((scen==="celebration_plein_ecran"||scen==="celebration_animation") && yest){
@@ -192,6 +193,7 @@
   // ressentis : tous notés sauf hier
   rows.forEach(r=>{ if(r.include_in_stats===false) return; r.pain_ratings = { rpe: r.type==="Fractionné"?8:r.type==="Seuil"?7:r.type==="Long"?6:5, note: 4, gene:false, fatigue:3, mental:2, respiration:2 }; });
   if(yest) yest.pain_ratings = null;
+  if(/^hier_verifier/.test(scen)){ push({start_date:startOf(6).toISOString(), type:"EF", distance_km:1.7, duration_sec:610, avg_hr:138}); push({start_date:startOf(9).toISOString(), type:"EF", distance_km:1.9, duration_sec:700, avg_hr:141}); }   // E5 : 2 sorties très courtes à vérifier
   if(scen==='q1') push({start_date:new Date().toISOString(), type:'EF', distance_km:7.6, duration_sec:2700, avg_hr:148});
   let todayRunRow = null;
   if(scen==="seance_faite"){ const d=new Date(); d.setHours(7,33,0,0); todayRunRow = push({start_date:d.toISOString(), type:"EF", distance_km:8.1, duration_sec:2778, avg_hr:148, hr_series:genHr(2778,148,"ef"), calories:500}); todayRunRow.peak_hr=Math.max(...todayRunRow.hr_series.map(x=>x.hr)); todayRunRow.pain_ratings={rpe:5,note:4,gene:false,fatigue:3,mental:2,respiration:2}; }
@@ -345,10 +347,14 @@
     const late = P(-1, {type:"EF", pace_zone:"easy", title:"Sortie easy", target_distance_km:7, target_pace_sec_per_km:362, rationale:easyRationale});
     plannedSessions=[late]; show("aujourdhui");
     document.getElementById("content").innerHTML = programSessionCardHTML(late, new Date());
-  } else if(scen==="hier"){
-    // Carte « Hier » : record de distance + ressenti à noter, sans carte de rattachement
+  } else if(scen==="hier" || /^hier_(ressenti|verifier)/.test(scen)){
+    // Carte « Hier » : record de distance + ressenti à noter, sans carte de rattachement ; « hier_ressenti » : sans record,
+    // la carte demande seulement le ressenti (E4)
     try{ localStorage.setItem("mra_notLinked", JSON.stringify(rows.map(r=>r.id))); localStorage.setItem("mra_celebratedRuns","[]"); localStorage.removeItem("mra_effCelebratedAt"); }catch(e){}
     plannedSessions=[...wkSessions, todayRenfo, ...future]; show("aujourdhui");
+    if(scen==="hier_ressenti") document.getElementById("content").innerHTML = hierCardHTML();   // la carte seule, en haut
+    if(scen==="hier_verifier") document.getElementById("content").innerHTML = hierCardHTML() + verifyReminderHTML();   // E5 : la carte « Hier » et la ligne de rappel
+    if(scen==="hier_verifier_ouvert"){ verifyOpened = true; document.getElementById("content").innerHTML = hierCardHTML() + verifyCardHTML(); }
   } else if(scen==="aujourdhui_renfo"){
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayRenfo, ...future]; openLearnMore=new Set([todayRenfo.id]); show("aujourdhui");
   } else if(scen==="aujourdhui_repos"){
@@ -570,6 +576,13 @@
     if(scen==="celebration_plein_ecran"){ const el=document.querySelector("record-man"); if(el){ el.start=()=>{}; cancelAnimationFrame(el.raf); el.draw(9.7); } }
   } else if(scen==="celebration_record"){
     rateYesterday(); localStorage.removeItem("mra_celebratedRuns"); plannedSessions=[...wkSessions, ...future]; show("aujourdhui");
+  } else if(scen==="douleur_repetee" || scen==="douleur_ancienne"){
+    // E2 : genou gauche à 4 sur 3 ressentis de suite ; « ancienne » : ces 3 ressentis datent de plus de 3 semaines, rien de noté depuis
+    celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayEasy, ...future];
+    const cut = Date.now()-24*86400000, rated = runningRuns.filter(r=>r.painRatings);
+    if(scen==="douleur_repetee") rated.slice(-3).forEach(r=>{ r.painRatings={...r.painRatings, gene:true, genoux_g:4}; });
+    else { rated.filter(r=>dateFromRun(r).getTime()<cut).slice(-3).forEach(r=>{ r.painRatings={...r.painRatings, gene:true, genoux_g:4}; }); rated.filter(r=>dateFromRun(r).getTime()>=cut).forEach(r=>{ r.painRatings=null; }); }
+    programViewMode="week"; programWeekOffset=0; programSelectedDate=localDateStr(today); show("programme");
   } else if(scen==="douleur_forte" || scen==="zone_pause"){
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayEasy, ...future];
     if(scen==="douleur_forte"){ const lr=runningRuns[runningRuns.length-1]; lr.painRatings={...(lr.painRatings||{}), genoux_g:8}; }

@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=100"></script>
+<script src="logic.js?v=101"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -2157,6 +2157,19 @@ try {
   assertEqual("« Seuil » s'affiche « Tempo »", [sessionTypeLabel("Seuil"), sessionTypeLabel("EF"), sessionTypeLabel("Other")], ["Tempo", "EF", "Autre"]);
   assertEqual("« Seuil » dans un texte enregistré", withTempoName("Cette séance est en Seuil : un rythme soutenu"), "Cette séance est en Tempo : un rythme soutenu");
   assertEqual("titre « Seuil » d'une séance ajoutée", sessionDisplayTitle({ type:"Seuil", title:"Seuil" }).title, "Tempo");
+}
+
+// --- Lot E4, E5, E2 (retours d'Omar du 07/10/2026) ---
+{
+  // E2 : alerte « avis médical » sur les ressentis des 21 derniers jours seulement, avec les notes et leurs dates
+  const day = 86400000, now = new Date(2026,9,13,12).getTime(), zk = ["genoux_g","dos"];
+  const r = (id, daysAgo, g) => ({ id, ts:now-daysAgo*day, ratings:{ genoux_g:g } });
+  assertEqual("E2 : 3 ressentis à 4 sur le genou dans les 21 jours -> alerte, avec les 3 notes datées",
+    recentPainAlert([r("a",9,4), r("b",5,4), r("c",1,4)], zk, now), { zone:"genoux_g", reason:"recurring", runId:"c", history:[{ts:now-9*day,value:4},{ts:now-5*day,value:4},{ts:now-day,value:4}] });
+  assertEqual("E2 : les mêmes ressentis vieux de plus de 3 semaines -> plus d'alerte (cas d'Omar)", recentPainAlert([r("a",36,4), r("b",31,4), r("c",24,4)], zk, now), null);
+  assertEqual("E2 : un ressenti récent sans douleur coupe la série", recentPainAlert([r("a",12,4), r("b",8,4), r("c",6,4), r("d",1,0)], zk, now), null);
+  assertEqual("E2 : douleur très forte (8) sur le dernier ressenti -> sa seule note est montrée", recentPainAlert([r("a",30,2), r("b",1,8)], zk, now).history, [{ts:now-day,value:8}]);
+  assertEqual("E2 : seulement 2 ressentis dans les 21 jours -> pas d'alerte « revient »", recentPainAlert([r("a",30,4), r("b",10,4), r("c",2,4)], zk, now), null);
 }
 
 document.getElementById("summary").innerHTML =

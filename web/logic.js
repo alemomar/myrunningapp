@@ -2000,6 +2000,19 @@ function acutePainTrigger(ratingsHistory, zoneKeys){
   return null;
 }
 
+/* E2 (retour d'Omar du 07/10/2026) : l'alerte « avis médical » ne regarde que les ressentis des PAIN_ALERT_DAYS derniers
+   jours. Avant, elle prenait les 3 derniers ressentis notés, même vieux de plusieurs semaines (Omar : genou gauche à 4 les
+   07, 12 et 19/09, alerte encore début octobre). Renvoie aussi les notes de la zone avec leur date, affichées dans l'alerte.
+   `rated` : [{ id, ts, ratings }] dans l'ordre chronologique. */
+const PAIN_ALERT_DAYS = 21;
+function recentPainAlert(rated, zoneKeys, nowTs){
+  const recent = (rated||[]).filter(r=>r.ratings && r.ts>=nowTs-PAIN_ALERT_DAYS*DAY_MS && r.ts<=nowTs+DAY_MS).slice(-3);
+  const trig = acutePainTrigger(recent.map(r=>r.ratings), zoneKeys);
+  if(!trig) return null;
+  const used = trig.reason==="severe" ? recent.slice(-1) : recent;
+  return { ...trig, runId:recent[recent.length-1].id, history:used.map(r=>({ ts:r.ts, value:r.ratings[trig.zone]||0 })) };
+}
+
 /* ---------- Tuile d'un jour (design 3c et 8, D18, D48) ----------
    Modèle d'un jour pour « Ta semaine » et pour le calendrier de Programme (semaine et mois).
    `status` (une seule valeur par jour) : « fait » si une séance est faite ou une vraie course existe ce
