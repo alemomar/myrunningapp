@@ -469,7 +469,7 @@ const VDOT_ZONE_PCT = { easy:0.70, marathon:0.84, threshold:0.88, interval:0.98,
 // index.html) — une seule description à tenir à jour.
 const ZONE_FRIENDLY = {
   easy: { name:"Easy", what:"un rythme confortable, où tu peux parler sans être essoufflé", why:"Elle construit ton endurance de fond en douceur, sans te fatiguer — c'est le type de séance le plus fréquent dans un bon programme d'entraînement." },
-  threshold: { name:"Seuil", what:"un rythme soutenu mais tenable, juste avant que l'effort devienne vraiment difficile", why:"Elle t'entraîne à repousser le moment où tu commences à t'essouffler, pour tenir plus longtemps à une bonne allure." },
+  threshold: { name:"Tempo", what:"un rythme soutenu mais tenable, juste avant que l'effort devienne vraiment difficile", why:"Elle t'entraîne à repousser le moment où tu commences à t'essouffler, pour tenir plus longtemps à une bonne allure." },
   interval: { name:"Fractionné", what:"des efforts courts et rapides, entrecoupés de phases de récupération", why:"Elle développe ta vitesse et ta capacité à encaisser un effort intense." },
   repetition: { name:"Répétition", what:"un rythme plus rapide que ton allure de course, sur de courtes distances avec une récupération complète entre chaque", why:"Elle améliore ta vitesse pure et ta technique de course." },
   marathon: { name:"Marathon", what:"le rythme que tu pourrais tenir sur la distance d'un marathon", why:"Elle t'habitue à courir longtemps à une allure stable, sans à-coups." },
@@ -631,7 +631,7 @@ function levelChronoCheck(input, todayStr, reality){
 // --- « Tes nouvelles allures » (N3, D72, D76) ---
 // Proposée seulement si l'allure facile change d'au moins 5 s/km, après un nouveau chrono ou un nouveau test.
 const NEW_PACE_MIN_DELTA_SEC = 5;
-const NEW_PACE_ROWS = [["easy","EF"],["threshold","Seuil"],["interval","Fractionné"]];
+const NEW_PACE_ROWS = [["easy","EF"],["threshold","Tempo"],["interval","Fractionné"]];
 function newPaceProposal(oldRef, newRef){
   if(!oldRef || !newRef) return null;
   const o = levelPaceZones(oldRef.distanceKm, oldRef.timeSec), n = levelPaceZones(newRef.distanceKm, newRef.timeSec);
@@ -1218,7 +1218,7 @@ const SESSION_LEARN_MORE = {
     sources: "Hal Higdon, programme Advanced 1 Marathon (halhigdon.com), section « Race Pace ».",
   },
   threshold: {
-    title: "La séance au seuil",
+    title: "La séance tempo",
     blocks: [
       { h:"À quoi ça sert ?", p:"À repousser le moment où l'effort devient vraiment difficile, pour tenir plus longtemps à une bonne allure. C'est un effort soutenu, mais que tu peux maîtriser." },
       { h:"Comment la faire ?", p:"Cours à un rythme soutenu où tu ne peux dire que quelques mots à la fois. Hal Higdon décrit la sortie « tempo » comme une course continue avec une montée en rythme au milieu, jusqu'à près de l'allure d'un 10 km, le pic arrivant environ aux deux tiers de la séance et seulement pendant quelques minutes." },
@@ -1659,7 +1659,7 @@ function sessionHeadline(session, segments){
 function sessionDisplayTitle(session){
   const ordinary = !session.generation_reason || (session.generation_reason!=="beginner_plan" && session.generation_reason!=="guided_test");
   if(session.type==="EF" && ordinary) return { title:"EF", subtitle:"Endurance Fondamentale, à allure facile" };
-  return { title:session.title||sessionTypeLabel(session.type), subtitle:"" };
+  return { title:withTempoName(session.title)||sessionTypeLabel(session.type), subtitle:"" };
 }
 
 /* ---------- Feuilles Ajouter / Modifier : distance, allure, durée (D47) ----------
@@ -1724,29 +1724,54 @@ function buildDailyLoadSeries(sessions){
   return Object.values(byDay).sort((a,b)=>a.date-b.date);
 }
 
+/* ---------- Course non notée : difficulté estimée (retour d'Omar du 13/10, point 3, règle 2) ----------
+   Seules les courses notées comptaient : une course oubliée valait zéro, et qui ne note jamais n'avait jamais de
+   charge (42 courses des testeurs depuis le 15/09, 12 notées). Une course sans difficulté notée compte désormais
+   avec la note habituelle de la personne pour ce type de séance (moyenne de ses notes), sinon une note par défaut.
+   Valeurs par défaut : notre choix, validé par Omar (EF 4, sortie longue 5, tempo 6, fractionné 7), pas une règle
+   sourcée ; « Course » (une compétition) 8 et tout autre type 5 complètent, même logique. */
+const CHARGE_DEFAULT_RPE = { "EF":4, "Long":5, "Seuil":6, "Fractionné":7, "Course":8 };
+const CHARGE_FALLBACK_RPE = 5;
+// `runs` : [{date:Date, durationMin, rpe, type}]. Renvoie les mêmes séances avec `rpe` rempli, et `estimated` vrai
+// quand la difficulté est estimée.
+function chargeSessionsWithEstimates(runs){
+  const notes = {};
+  (runs||[]).forEach(r=>{ if(r.rpe!=null){ (notes[r.type] = notes[r.type] || []).push(Number(r.rpe)); } });
+  const habit = {};
+  Object.keys(notes).forEach(t=>{ habit[t] = notes[t].reduce((a,v)=>a+v,0)/notes[t].length; });
+  return (runs||[]).map(r=>r.rpe!=null ? { ...r, estimated:false }
+    : { ...r, rpe: habit[r.type] ?? CHARGE_DEFAULT_RPE[r.type] ?? CHARGE_FALLBACK_RPE, estimated:true });
+}
+
 /* ---------- ACWR (Acute:Chronic Workload Ratio) ----------
    Source : Gabbett (2016), "The training-injury prevention paradox: should
    athletes be training smarter and harder?", British Journal of Sports
    Medicine 50(5). Cible 0.8-1.3, risque accru au-delà de 1.5. Méthode
-   "coupled" : charge aiguë = somme des 7 derniers jours, charge chronique =
-   moyenne hebdomadaire sur les 28 derniers jours (somme/4).
-   Garde-fou (E8, 07/10/2026) : sans recul, le rapport ne veut rien dire. L'historique d'Apple Santé arrive sans
-   difficulté notée : à la 1re séance notée, l'aigu vaut 4 fois le chronique, d'où une fausse alerte « risque de
-   blessure élevé » pendant environ 3 semaines ; même chose au retour d'une pause sans séance notée. Le rapport
-   n'est donné que si : au moins CHARGE_MIN_RATED jours avec une séance notée dans les 28 derniers jours, une
-   1re séance notée il y a au moins CHARGE_MIN_SPAN_DAYS jours, et de la charge notée avant la dernière semaine
-   (J-27 à J-7). Sinon acwr = null (texte « few » de CHARGE_EMPTY_TEXTS). */
-const CHARGE_MIN_RATED = 4, CHARGE_MIN_SPAN_DAYS = 21;
+   "coupled" : charge aiguë = somme des 7 derniers jours, charge chronique = semaine habituelle.
+   Semaine habituelle (retour d'Omar du 13/10, point 3) : moyenne par semaine sur les CHARGE_BASELINE_WEEKS
+   dernières semaines, ou depuis la 1re course quand il y a moins de recul. Sur 4 semaines (Gabbett), une pause
+   de 2 semaines comptait pour moitié et faisait croire à un pic au retour ; sur 12, elle pèse 2 semaines sur 12,
+   et une vraie longue pause fait toujours baisser la référence. Garder les seuils 0,8 / 1,3 / 1,5 (établis avec
+   une moyenne sur 4 semaines) avec 12 semaines est notre choix.
+   Garde-fou (E8, 07/10/2026) : sans recul, le rapport ne veut rien dire. Il n'est donné que si : au moins
+   CHARGE_MIN_RUN_DAYS jours avec une course dans les 28 derniers jours, une 1re course il y a au moins
+   CHARGE_MIN_SPAN_DAYS jours, et de la charge avant la dernière semaine. Sinon acwr = null (texte « few » de
+   CHARGE_EMPTY_TEXTS). Depuis le point 3, toutes les courses comptent, notées ou non. */
+const CHARGE_BASELINE_WEEKS = 12, CHARGE_MIN_RUN_DAYS = 4, CHARGE_MIN_SPAN_DAYS = 21;
 function acwrAt(dailySeries, targetDate){
-  const back = (n) => { const d = new Date(targetDate); d.setDate(d.getDate()-n); return d; };
+  // Jours entiers : appelé avec l'heure courante, le 1er jour de chaque fenêtre (J-6, J-27…) sautait.
+  const target = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+  const back = (n) => { const d = new Date(target); d.setDate(d.getDate()-n); return d; };
   const sumBetween = (from, to) => dailySeries.filter(d=>d.date>=from && d.date<=to).reduce((a,d)=>a+d.load,0);
-  const acute7j = sumBetween(back(6), targetDate);
-  const chronic28j = sumBetween(back(27), targetDate)/4;
-  const rated = dailySeries.filter(d=>d.load>0 && d.date<=targetDate);
-  const ratedDays28 = rated.filter(d=>d.date>=back(27)).length;
-  const first = rated.reduce((m,d)=>(m==null || d.date<m) ? d.date : m, null);
-  const enough = ratedDays28>=CHARGE_MIN_RATED && first!=null && first<=back(CHARGE_MIN_SPAN_DAYS) && sumBetween(back(27), back(7))>0;
-  return { acute7j, chronic28j, ratedDays28, enough, acwr: enough && chronic28j>0 ? acute7j/chronic28j : null };
+  const acute7j = sumBetween(back(6), target);
+  const days = dailySeries.filter(d=>d.load>0 && d.date<=target);
+  const runDays28 = days.filter(d=>d.date>=back(27)).length;
+  const first = days.reduce((m,d)=>(m==null || d.date<m) ? d.date : m, null);
+  const baselineStart = first && first>back(CHARGE_BASELINE_WEEKS*7-1) ? first : back(CHARGE_BASELINE_WEEKS*7-1);
+  const baselineWeeks = (Math.round((target - baselineStart)/86400000) + 1) / 7;
+  const chronic = sumBetween(baselineStart, target)/baselineWeeks;
+  const enough = runDays28>=CHARGE_MIN_RUN_DAYS && first!=null && first<=back(CHARGE_MIN_SPAN_DAYS) && sumBetween(baselineStart, back(7))>0;
+  return { acute7j, chronic, baselineWeeks, runDays28, enough, acwr: enough && chronic>0 ? acute7j/chronic : null };
 }
 
 /* ---------- Charge d'entraînement affichée à l'utilisateur (4.4) ----------
@@ -1760,14 +1785,17 @@ function acwrAt(dailySeries, targetDate){
    `acwr` : résultat de acwrAt(...).acwr (peut être null, pas assez
    d'historique). Renvoie {zone, color, phrase, severe} — `severe` sert à
    l'UI pour renforcer l'alerte au-delà de 1,5 sans changer de couleur. */
+// Messages adoucis et concrets au-dessus de 1,3 (retour d'Omar du 13/10, point 3) : « environ N fois », N arrondi à
+// la demi-unité (1,5 / 2 / 2,5…), au lieu de « risque de blessure élevé ».
+function chargeTimesText(acwr){ return String(Math.round(acwr*2)/2).replace(".",","); }
 function chargeEntrainementGauge(acwr){
-  if(acwr==null) return { zone:"inconnue", color:"#A3A7AD", phrase:"Ta charge d'entraînement s'affichera après quelques séances notées.", severe:false };
+  if(acwr==null) return { zone:"inconnue", color:"#A3A7AD", phrase:"Ta charge d'entraînement s'affichera après quelques courses.", severe:false };
   if(acwr<0.8) return { zone:"sous-charge", color:"#8B8F96", phrase:"Tu pourrais progresser un peu plus vite — ta charge est en dessous de la zone idéale.", severe:false };
   if(acwr<=1.3) return { zone:"idéale", color:"#C6F432", phrase:"Tu augmentes ta charge à un rythme sûr.", severe:false };
   const severe = acwr>1.5;
   return { zone:"attention", color:"oklch(0.72 0.17 300)", phrase: severe
-    ? "Ta charge augmente très vite — risque de blessure élevé, pense à lever le pied."
-    : "Ta charge augmente vite — reste attentif à ton ressenti.", severe };
+    ? `Grosse semaine : environ ${chargeTimesText(acwr)} fois ta semaine habituelle. Pour éviter la blessure, n'augmente pas la semaine prochaine.`
+    : "Ta semaine est un peu au-dessus de tes habitudes : reste attentif à ton ressenti.", severe };
 }
 
 /* ---------- Séances manquées (4.3.c) ----------
@@ -1834,7 +1862,10 @@ function isIntensePaceZone(paceZone){
 const SESSION_TYPES_DONE = ["EF","Long","Fractionné","Seuil","Course","Récup","Marche","Renfo","Mobilité","Yoga","Pilates","Étirements","Kiné","Other"];
 const SESSION_TYPES_PLANNED = SESSION_TYPES_DONE.filter(t=>t!=="Récup" && t!=="Marche");
 function normalizeSessionType(type){ return type==="Souplesse" ? "Étirements" : type; }
-function sessionTypeLabel(type){ return type==="Other" ? "Autre" : (normalizeSessionType(type)||""); }
+// « Seuil » s'affiche « Tempo » (retour d'Omar du 13/10, point 5) ; la valeur enregistrée reste « Seuil ».
+function sessionTypeLabel(type){ return type==="Other" ? "Autre" : type==="Seuil" ? "Tempo" : (normalizeSessionType(type)||""); }
+// Même renommage dans un texte déjà enregistré (titre « Seuil » d'une séance ajoutée, explication « Cette séance est en Seuil »).
+function withTempoName(text){ return text==null ? text : String(text).replace(/\bSeuil\b/g, "Tempo"); }
 const NON_RUNNING_SESSION_TYPES = ["Renfo","Mobilité","Yoga","Étirements","Kiné","Pilates","Other","Marche","Récup"];
 function sessionCategory(s){
   if(s.pace_zone) return "run";
@@ -2384,7 +2415,10 @@ function keyFigures(runs, todayTs){
   const year = list.filter(r=>r.ts>=yearStart), month = list.filter(r=>r.ts>=monthStart);
   const longestRun = month.reduce((m,r)=>(r.distKm||0)>((m&&m.distKm)||0) ? r : m, null);
   const longest = longestRun ? (longestRun.distKm||0) : 0;
-  const best = recordHolders(list).allure_ef;
+  const holders = recordHolders(list), best = holders.allure_ef, frac = holders.allure_frac;
+  // Meilleure allure Tempo (retour d'Omar du 13/10, point 8) : allure moyenne de la course entière, la plus rapide des
+  // courses rangées en « Seuil » (affichées « Tempo »), sans autre règle. À égalité, la plus ancienne la garde.
+  const tempo = list.slice().sort((a,b)=>a.ts-b.ts).reduce((m,r)=>(r.type==="Seuil" && r.paceSecKm>0 && (!m || r.paceSecKm<m.paceSecKm)) ? r : m, null);
   return {
     yearKm: Math.round(year.reduce((a,r)=>a+(r.distKm||0),0)*10)/10,
     longestMonthKm: longest>0 ? Math.round(longest*10)/10 : null,
@@ -2392,6 +2426,10 @@ function keyFigures(runs, todayTs){
     monthTimeSec: month.reduce((a,r)=>a+(r.durationSec||0),0),
     bestEfPaceSecKm: best ? best.paceSecKm : null,
     bestEfRunId: best ? (best.runId ?? null) : null,
+    bestFracPaceSecKm: frac ? frac.workPaceSecKm : null,
+    bestFracRunId: frac ? (frac.runId ?? null) : null,
+    bestTempoPaceSecKm: tempo ? tempo.paceSecKm : null,
+    bestTempoRunId: tempo ? (tempo.id ?? null) : null,   // la séance qu'ouvre la tuile « Meilleure allure Tempo »
   };
 }
 
@@ -2682,6 +2720,54 @@ function removeExerciseFromDescription(description, name, library){
 function replaceExerciseInDescription(description, oldName, newEx, library){
   return parseExerciseBlocks(description, library).map(b=>(b.kind==="ex" && b.name===oldName) ? formatExerciseList([newEx]) : b.lines.join("\n")).join("\n");
 }
+// Remarques d'Omar du 13/10 : changer les séries / répétitions d'un exercice et l'ordre des exercices, toujours en
+// réécrivant ce texte. Le format affiché est celui de la ligne (il peut avoir été changé), pas celui de la bibliothèque.
+function exerciseLineFormat(line, name){
+  const rest = String(line||"").slice((name+" — ").length);
+  const cut = rest.indexOf(" · matériel : ");
+  return (cut>=0 ? rest.slice(0, cut) : rest).trim();
+}
+function exerciseRowsInDescription(description, library){
+  return parseExerciseBlocks(description, library).filter(b=>b.kind==="ex").map(b=>({ ex:b.ex, format:exerciseLineFormat(b.lines[0], b.name) }));
+}
+function setExerciseFormatInDescription(description, name, format, library){
+  const f = String(format||"").trim();
+  return parseExerciseBlocks(description, library).map(b=>{
+    if(!(b.kind==="ex" && b.name===name) || !f) return b.lines.join("\n");
+    const first = b.lines[0], cut = first.indexOf(" · matériel : ");
+    return [`${name} — ${f}${cut>=0 ? first.slice(cut) : ""}`, ...b.lines.slice(1)].join("\n");
+  }).join("\n");
+}
+// Déplace le n° `from` à la place n° `to` (numéros parmi les exercices) ; les autres lignes restent où elles sont.
+function moveExerciseInDescription(description, from, to, library){
+  const blocks = parseExerciseBlocks(description, library);
+  const pos = blocks.map((b,i)=>b.kind==="ex" ? i : -1).filter(i=>i>=0);
+  if(!(from>=0 && from<pos.length && to>=0 && to<pos.length) || from===to) return String(description||"");
+  const order = pos.map(i=>blocks[i]);
+  const [moved] = order.splice(from, 1);
+  order.splice(to, 0, moved);
+  pos.forEach((p,k)=>{ blocks[p] = order[k]; });
+  return blocks.map(b=>b.lines.join("\n")).join("\n");
+}
+/* Séance Kiné (retour d'Omar du 13/10, point 1) : c'est le kiné qui donne les exercices, l'app n'en propose jamais.
+   Sa description ne garde que les notes de l'utilisateur ; une liste d'exercices restée d'un autre type (séance de
+   mobilité changée en Kiné) n'est pas montrée comme des notes. */
+function isKineSession(type){ return normalizeSessionType(type)==="Kiné"; }
+function kineNotesFromDescription(description){
+  return description && !exercisesInDescription(description).length ? String(description) : "";
+}
+// Quand on change le type d'une séance prévue, la liste d'exercices suit le nouveau type : Kiné, les notes seulement ;
+// Renfo, Mobilité, Étirements (exercices de mobilité, la base n'a pas d'étirements à part), `exercises` construits par
+// l'appelant (buildStrengthSession) ; autre type, une ancienne liste d'exercices est retirée, un autre texte est gardé.
+const EXERCISE_LIBRARY_TYPE = { "Renfo":"Renfo", "Mobilité":"Mobilité", "Étirements":"Mobilité" };
+function exerciseLibraryType(type){ return EXERCISE_LIBRARY_TYPE[normalizeSessionType(type)] || null; }
+function descriptionAfterTypeChange(description, newType, exercises){
+  if(isKineSession(newType)) return kineNotesFromDescription(description).trim() || null;
+  if(exerciseLibraryType(newType)) return exercises && exercises.length ? formatExerciseList(exercises) : null;
+  if(description && exercisesInDescription(description).length) return null;
+  return description ? String(description) : null;
+}
+
 // Exercices proposés pour en remplacer un : même zone travaillée d'abord, puis zone de douleur commune,
 // puis même type. Jamais un exercice déjà dans la séance ; l'exercice remplacé lui-même est exclu.
 function replacementCandidates(exName, currentNames, library){
@@ -3075,7 +3161,7 @@ function generateWeekSessions(params){
       const mixNote = qualityN>=2
         ? (zoneKey==="threshold"
             ? " Cette semaine, tu as aussi une séance de Fractionné : les deux types d'effort intense sont travaillés."
-            : " Cette semaine, tu as aussi une séance de Seuil : les deux types d'effort intense sont travaillés.")
+            : " Cette semaine, tu as aussi une séance tempo : les deux types d'effort intense sont travaillés.")
         : " La prochaine fois, ce sera l'autre type d'effort intense, pour varier les stimulations.";
       sessions.push({
         dayIndex, type:"Qualité", paceZone: zoneKey,
@@ -3376,22 +3462,25 @@ function missedBannerTitle(session, todayStr){
   return `Ta séance du ${d.toLocaleDateString("fr-FR",{weekday:"long", day:"numeric", month:"long"})} n'a pas pu se faire.`;
 }
 // Charge d'entraînement vide : pourquoi ? Appelée seulement quand la charge ne se calcule pas (acwrAt -> null).
-// « few » = des ressentis notés, mais pas encore assez de recul (garde-fou E8 : 4 séances notées, sur 3 semaines) ;
-// « unrated » = des sorties ces 4 dernières semaines mais aucun ressenti noté ; « norun » = aucune sortie. `runs` : [{ ts, rpe }].
+// « few » = des courses, mais pas encore assez de recul (garde-fou E8 : 4 courses, sur 3 semaines) ; « norun » = aucune
+// course ces 4 dernières semaines. Depuis le point 3 du 13/10, une course non notée compte (difficulté estimée) : plus
+// de cas « aucune course notée ». `runs` : [{ ts }].
 function chargeEmptyReason(runs, todayTs){
   const from = todayTs - 28*DAY_MS;
-  const recent = (runs||[]).filter(r=>r.ts>=from && r.ts<=todayTs+DAY_MS);
-  if(recent.some(r=>r.rpe!=null)) return "few";
-  return recent.length ? "unrated" : "norun";
+  return (runs||[]).some(r=>r.ts>=from && r.ts<=todayTs+DAY_MS) ? "few" : "norun";
 }
 const CHARGE_EMPTY_TEXTS = {
-  few:{ tile:"Elle s'affiche après 4 séances notées, sur 3 semaines.",
-        sheet:"Ta charge compare ta dernière semaine à tes habitudes. Pour te donner un repère fiable, il lui faut au moins 4 séances notées, réparties sur 3 semaines. Continue de noter ton ressenti après chaque sortie : elle s'affichera toute seule." },
-  unrated:{ tile:"Note ton ressenti après tes séances pour la voir.",
-            sheet:"Ta charge se calcule avec la difficulté (0 à 10) que tu notes après chaque séance. Aucune de tes sorties des 4 dernières semaines n'en a." },
+  few:{ tile:"Elle s'affiche après 4 courses, sur 3 semaines.",
+        sheet:"Ta charge compare ta dernière semaine à tes habitudes. Pour te donner un repère fiable, il lui faut au moins 4 courses, réparties sur 3 semaines : elle s'affichera toute seule." },
   norun:{ tile:"Pas de course ces 4 dernières semaines.",
-          sheet:"Dès que tu auras repris et noté ta difficulté, ta charge apparaîtra." },
+          sheet:"Dès que tu auras repris, ta charge apparaîtra." },
 };
+// « N courses sur M estimées » dans la fiche de la charge : courses non notées de la semaine habituelle (12 semaines).
+function chargeEstimatedNote(estimated, total){
+  if(!estimated || !total) return "";
+  if(estimated===total) return `Aucune de tes ${total} courses de ces 12 semaines n'est notée : leur difficulté est estimée. Note ton ressenti pour plus de précision.`;
+  return `${estimated} course${estimated>1?"s":""} sur ${total} estimée${estimated>1?"s":""} : note ton ressenti pour plus de précision.`;
+}
 
 /* ---------- Données à jour sans fermer l'app (E1, retour d'Omar du 07/10/2026) ----------
    Au retour dans l'app, on recharge si le dernier chargement date d'au moins 30 s (sauf pendant une saisie : `busy`).

@@ -377,7 +377,6 @@
   } else if(scen==="detail_seance" || scen==="detail_cardio" || scen==="detail_suppression"){
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; show("progression"); openHistory();
     const ef = runningRuns.filter(r=>r.type==="EF" && r.hrSeries && r.hrSeries.length>10).slice(-1)[0] || lastRun;
-    if(scen==="detail_cardio") openHrDetail.add(ef.id);
     openRunSheet(ef.id); if(scen==="detail_suppression") askDeleteRun();
   } else if(scen==="detail_cardio_incomplet"){
     // R24 : fréquence cardiaque rangée « en paquets » dans Apple Santé (2 mesures pour toute la sortie) : pas de courbe ni de
@@ -385,7 +384,7 @@
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; show("progression"); openHistory();
     const ef = runningRuns.filter(r=>r.type==="EF" && r.hrSeries && r.hrSeries.length>10).slice(-1)[0] || lastRun;
     ef.hrSeries = [{t:0, hr:153}, {t:Math.round(ef.durationSec*0.55), hr:Math.round(ef.fc||150)+20}];
-    openHrDetail.add(ef.id); openRunSheet(ef.id);
+    openRunSheet(ef.id);
   } else if(scen==="efficience_inhabituelle"){
     // R15 : plus de 15 % d'écart sur un mois (ici, la FC des sorties easy récentes relevée de 25 %) : le chiffre reste, avec
     // un « ! », et la tuile mène à l'Historique

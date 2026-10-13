@@ -395,6 +395,13 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .sc-coach .chart-hint{margin:6px 0 0;font-size:14px;color:var(--text-2)}
 .sc-coach strong{color:var(--text)}
 .sc-sep{height:1px;margin:16px 0 14px;background:var(--line)}
+.sc-kine{display:block;font-size:14px;line-height:1.5;color:var(--text-2);margin-bottom:8px}
+.sc-notes{display:block;width:100%;min-height:72px;resize:vertical;border-radius:var(--r-md)}
+.sc-actions{display:flex;flex-direction:column;gap:2px;margin-top:16px}
+.sc-do{gap:8px}
+.sc-links{display:flex;justify-content:center;flex-wrap:wrap;gap:0 6px}
+.sc-link{display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:0 10px;border:none;border-radius:var(--r-sm);background:none;color:var(--text-2);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer}
+.sc-link:active{color:var(--text)}
 .sc-late{display:flex;align-items:center;gap:8px;margin:14px 0 10px;font-size:14px;font-weight:600;color:var(--attention)}
 .btn-outline{display:flex;align-items:center;justify-content:center;width:100%;min-height:var(--btn-h);padding:0 20px;border:1.5px solid var(--accent);border-radius:24px;background:none;color:var(--accent);font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
 .ex-row{position:relative;display:flex;align-items:center;gap:12px;min-height:72px;padding:8px 0;border-top:1px solid var(--line);cursor:pointer}
@@ -402,6 +409,23 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .ex-row .nm{font-size:15px;font-weight:600;line-height:1.25}
 .ex-row .fm{margin-top:2px;font-size:13px;color:var(--text-muted)}
 .ex-row .menu-wrap{margin-left:auto}
+/* Remarques d'Omar du 13/10 : poignée, « Fait », « Modifier », « Supprimer » sur chaque exercice */
+.ex-row.ed{gap:8px}
+.ex-row.ed img{width:48px;height:48px}
+.ex-tx{min-width:0;flex:1}
+.ex-handle{flex:none;display:flex;align-items:center;justify-content:center;width:28px;height:44px;margin-left:-6px;padding:0;border:none;background:none;color:var(--text-faint);cursor:grab;touch-action:none}
+.ex-side{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;margin-right:-4px}
+.ex-side .ok{width:40px;height:40px}
+.ex-mini{display:flex;gap:0}
+.ex-mini .ex-act{width:30px;height:28px;border-radius:8px}
+.ex-act{display:flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:none;border-radius:50%;background:none;color:var(--text-3);cursor:pointer}
+.ex-act.ok{border:1.5px solid var(--line-field)}
+.ex-act.ok.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.ex-row.is-done .nm,.ex-row.is-done .fm{opacity:.45}
+.ex-row.is-done .nm{text-decoration:line-through}
+.ex-row.dragging{z-index:2;background:var(--surface-2,var(--surface));box-shadow:0 8px 24px rgba(0,0,0,.35);border-radius:12px}
+.ex-row:not(.dragging){transition:transform .15s ease}
+.ex-progress{margin-top:10px;font-size:13px;color:var(--text-muted);text-align:center}
 .ex-detail-img{display:block;width:200px;height:200px;margin:0 auto 14px;border-radius:var(--r-lg);background:var(--surface-sunken)}
 .ex-detail-meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
 .ex-detail-meta span{padding:5px 12px;border-radius:var(--r-pill);background:var(--surface-sunken);border:1px solid var(--line-field);font-size:13px;color:var(--text-2)}
@@ -569,6 +593,7 @@ button.pg-key{display:block;width:100%;border:none;text-align:left;color:inherit
 .pg-key .big{font:700 24px/1.1 var(--font-display);text-transform:uppercase;margin-top:4px}
 .pg-key .big.none{color:var(--text-faint)}
 .pg-key .u{font-size:12px;color:var(--text-muted)}
+.pg-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
 .pg-rec-head{display:flex;justify-content:space-between;align-items:center}
 .pg-rec-head svg{color:var(--accent)}
 .pg-rec-row{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:44px;border:none;border-top:1px solid var(--surface-control);background:none;color:inherit;font:inherit;text-align:left;width:100%;padding:0}
@@ -577,8 +602,6 @@ button.pg-rec-row{cursor:pointer}
 .pg-rec-row .d{font-size:12.5px;color:var(--text-muted)}
 .pg-rec-row .t{font:700 20px var(--font-display)}
 .pg-rec-row .t.none{color:var(--text-faint)}
-.pg-rec-sub{display:flex;flex-direction:column;gap:2px}
-.pg-rec-note{font-size:12px;color:var(--text-muted)}
 @media (max-width:370px){
   .pg-ring .v,.pg-chg-row .z{font-size:17px}
   .pg-chg-row .n{font-size:19px}
@@ -766,6 +789,7 @@ button.pg-rec-row{cursor:pointer}
 .pf-obj .s{font-size:13px;color:var(--text-3)}
 .pf-obj .chev{margin-left:auto;color:var(--text-faint);display:flex}
 .pf-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pf-tiles.n2{grid-template-columns:repeat(2,1fr)}
 .pf-tiles>div{background:var(--surface-sunken);border-radius:12px;padding:8px 10px;min-width:0}
 .pf-tiles .k{font-size:11px;color:var(--text-muted)}
 .pf-tiles .v{font:700 18px var(--font-display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1077,6 +1101,10 @@ button.pg-rec-row{cursor:pointer}
 .pc-plot svg .bub rect,.pc-plot svg .bub path{fill:var(--select)}
 .pc-plot svg .bub text{fill:var(--on-accent);font-size:12px}
 .pc-plot svg .bub{cursor:pointer}
+/* Étiquette et marques du point choisi (retours d'Omar du 13/10, points 10 à 12) : cachées au repos pour ne pas masquer les
+   points, visibles pendant que le doigt est sur le curseur puis 2 s après (classe « reveal », chartReveal). */
+.pc-plot svg .selm,.pc-plot svg .bub{opacity:0;pointer-events:none;transition:opacity .35s ease}
+.pc-plot.reveal svg .selm,.pc-plot.reveal svg .bub{opacity:1;pointer-events:auto;transition-duration:.12s}
 .pc-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11.5px;color:var(--text-muted);margin-top:-8px}
 .pc-legend span{display:inline-flex;align-items:center;gap:6px}
 .pc-legend i{display:inline-block;flex:none}
@@ -1103,9 +1131,13 @@ button.pg-rec-row{cursor:pointer}
   .pc-plot.anim.time svg{animation:cgReveal .6s ease-out both}
   .pc-plot.anim .bar{transform-box:fill-box;transform-origin:50% 100%;animation:barRise .4s ease-out both;animation-delay:calc(var(--i) * 40ms)}
   .pc-slider .handle{transition:left .15s ease-out}
+  /* Curseur qui pulse lentement au repos (point 11 du 13/10) ; arrêté pendant qu'on s'en sert (« active ») et au focus clavier. */
+  .pc-slider .handle{animation:pcPulse 2.5s ease-out infinite}
+  .pc-slider.active .handle,.pc-slider:focus-visible .handle{animation:none}
   .pc-title .heart svg,.cd-row .cd-heart svg{animation:heartBeat 1.6s ease-in-out infinite}
 }
 @keyframes barRise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes pcPulse{0%{box-shadow:0 0 0 4px rgba(198,244,50,.28)}75%{box-shadow:0 0 0 15px rgba(198,244,50,0)}100%{box-shadow:0 0 0 15px rgba(198,244,50,0)}}
 @keyframes heartBeat{0%,40%,100%{transform:scale(1)}10%{transform:scale(1.18)}20%{transform:scale(1)}30%{transform:scale(1.18)}}
 .sheet-back{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface-raised);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-sizing:border-box;box-shadow:var(--shadow-sheet)}
@@ -1186,7 +1218,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=99"></script>
+<script src="logic.js?v=100"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1243,6 +1275,7 @@ const ICONS = {
   alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
   eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`,
   eyeOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.2A10.4 10.4 0 0 1 12 4c6.5 0 10 7 10 7a17.6 17.6 0 0 1-2.2 3.2"/><path d="M6.6 6.6C3.7 8.5 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><line x1="2" y1="2" x2="22" y2="22"/></svg>`,
+  grip: `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>`,
   more: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>`,
   moreV: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>`,
   plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>`,
@@ -2494,9 +2527,9 @@ function verifyCardHTML(){
     if(!r) return "";
     const why = d.reason==="courte" ? "Très courte\u00a0: un échauffement, ou une sortie interrompue\u00a0?"
       : `Plus rapide que d'habitude (${fmtA(Math.round(d.refPace))}/km)${d.race ? ", sur une distance de course" : ""}.`;
-    const chips = VERIFY_TYPES.map(t => `<button type="button" class="vf-chip${t===d.suggestion?" sugg":""}" aria-label="${escHtml(t)}${t===d.suggestion?" (proposé)":""}" onclick="verifyRun('${r.id}','${t}',this)">${escHtml(t)}</button>`).join("");
+    const chips = VERIFY_TYPES.map(t => `<button type="button" class="vf-chip${t===d.suggestion?" sugg":""}" aria-label="${escHtml(sessionTypeLabel(t))}${t===d.suggestion?" (proposé)":""}" onclick="verifyRun('${r.id}','${t}',this)">${escHtml(sessionTypeLabel(t))}</button>`).join("");
     return `<div class="vf-item"><div class="vf-hd"><span class="d">${escHtml(dayLabelShort(dateFromRun(r)))}</span><span class="m">${fmtDec(r.dist,1)} km · ${fmtA(Math.round(d.pace))}/km</span></div>
-      <div class="vf-why">${escHtml(why)} Enregistrée en ${escHtml(r.type)}.</div><div class="vf-chips" role="group" aria-label="Type de la sortie">${chips}</div></div>`;
+      <div class="vf-why">${escHtml(why)} Enregistrée en ${escHtml(sessionTypeLabel(r.type))}.</div><div class="vf-chips" role="group" aria-label="Type de la sortie">${chips}</div></div>`;
   }).join("");
   return `<div class="ac-card">
     <div class="ac-head"><div class="ic">${icon("check",17)}</div><span class="pg-over">Tes données</span></div>
@@ -2788,8 +2821,9 @@ function indicatorTilesHTML(){
 function keyFiguresHTML(){
   const kf = keyFigures(runningRuns.map(runAsRecord), Date.now());
   // Chaque tuile qui a une donnée mène quelque part (D95) ; « — » : pas cliquable.
-  const key = (over, big, unit, act) => {
-    const inner = `<div class="pg-over">${over}</div><div class="big${big==null?" none":""}">${big==null?"—":big}</div>${unit?`<div class="u">${unit}</div>`:""}`;
+  // `dot` : pastille de la couleur du type devant le titre des tuiles d'allure (retour d'Omar du 13/10, point 9).
+  const key = (over, big, unit, act, dot) => {
+    const inner = `<div class="pg-over">${dot?`<i class="pg-dot" style="background:${dot}" aria-hidden="true"></i>`:""}${over}</div><div class="big${big==null?" none":""}">${big==null?"—":big}</div>${unit?`<div class="u">${unit}</div>`:""}`;
     return act && big!=null ? `<button type="button" class="pg-key" onclick="${act}">${inner}<span class="pg-chev" aria-hidden="true">${icon("chevronRight",14)}</span></button>` : `<div class="pg-key">${inner}</div>`;
   };
   return `<div class="pg-h2">Chiffres clés</div>
@@ -2797,28 +2831,23 @@ function keyFiguresHTML(){
       ${key("Distance annuelle", `${fmtKm1(kf.yearKm)} km`, "", runningRuns.length ? "scrollToCard('cardVol')" : "")}
       ${key("Plus longue sortie", kf.longestMonthKm!=null?`${fmtKm1(kf.longestMonthKm)} km`:null, "ce mois", kf.longestMonthRunId ? `openHistoryRun('${kf.longestMonthRunId}')` : "")}
       ${key("Temps de course", formatHoursMinutes(kf.monthTimeSec), "ce mois", kf.monthTimeSec>0 ? "openHistoryThisMonth()" : "")}
-      ${key("Meilleure allure EF", kf.bestEfPaceSecKm!=null?fmtA(kf.bestEfPaceSecKm):null, "/km", kf.bestEfRunId ? "scrollToCard('cardEf')" : "")}
+      ${key("Meilleure allure EF", kf.bestEfPaceSecKm!=null?fmtA(kf.bestEfPaceSecKm):null, "/km", kf.bestEfRunId ? "scrollToCard('cardEf')" : "", "var(--type-ef)")}
+      ${key("Meilleure allure fractionné", kf.bestFracPaceSecKm!=null?fmtA(kf.bestFracPaceSecKm):null, "/km", kf.bestFracRunId ? "scrollToCard('cardFrac')" : "", "var(--type-fractionne)")}
+      ${key("Meilleure allure Tempo", kf.bestTempoPaceSecKm!=null?fmtA(kf.bestTempoPaceSecKm):null, "/km", kf.bestTempoRunId ? `openHistoryRun('${kf.bestTempoRunId}')` : "", "var(--type-seuil)")}
     </div>`;
 }
-// « Tes records » : une ligne par distance (D26), les chronos déclarés à part en gris (jamais célébrés), meilleure allure fractionné dessous.
+// « Tes records » : une ligne par distance (D26).
 function recordsCardHTML(){
   const holders = recordHolders(recordRuns().map(runAsRecord));   // sans les sorties à vérifier (D109)
   const rows = recordsListModel(holders).map(r=>{
     const inner = `<span class="k">${escHtml(r.label)}</span><span class="d">${escHtml(r.dateText)}</span><span class="t${r.timeText?"":" none"}">${r.timeText||"—"}</span>`;
     return r.runId ? `<button type="button" class="pg-rec-row" onclick="openHistoryRun('${r.runId}')">${inner}</button>` : `<div class="pg-rec-row">${inner}</div>`;
   }).join("");
-  // Chrono déclaré dans « Ton niveau » (S8) : à part, en gris, jamais célébré. Un test guidé ou une VMA n'est pas un chrono de course.
-  const prof = runnerProfile();
-  let declared = "";
-  if(prof && prof.source==="level_chrono" && prof.timeSec>0){
-    const known = RECORD_DISTANCES.find(d=>Math.abs(d.km-prof.distanceKm)<0.05);
-    const label = known ? known.label : fmtKm1(prof.distanceKm)+" km";
-    declared = `<div class="pg-rec-sub"><div class="pg-over">Déclaré dans « Ton niveau »</div><div class="pg-rec-row"><span class="k">${escHtml(label)}</span><span class="d">déclaré</span><span class="t" style="color:var(--text-muted)">${fmtDur(prof.timeSec)}</span></div></div>`;
-  }
-  const frac = holders.allure_frac ? `<div class="pg-rec-note">Meilleure allure fractionné : ${fmtA(holders.allure_frac.workPaceSecKm)}/km</div>` : "";
+  // Le chrono déclaré dans « Ton niveau » n'apparaît plus ici, ni la meilleure allure fractionné, devenue une tuile
+  // des chiffres clés (retours d'Omar du 13/10, points 6 et 7).
   return `<div class="pg-card" id="progRecords">
     <div class="pg-rec-head"><span class="pg-over">Tes records</span>${icon("trophy",16)}</div>
-    <div>${rows}</div>${declared}${frac}
+    <div>${rows}</div>
   </div>`;
 }
 window.scrollToCard = (id) => { document.getElementById(id)?.scrollIntoView({ behavior: prefersReducedMotion()?"auto":"smooth", block:"start" }); };
@@ -2904,7 +2933,7 @@ function timeChartModel(key, cfg){
       else plot.push(`<circle cx="${x}" cy="${y}" r="${cfg.line?3:3.6}" fill="${p.kind==="frac"?FRAC_COLOR:p.kind==="eff"?"#FF645F":"#C6F432"}"/>`);
     });
     const cur = nav[sel].p, cx = X(cur.ts), cy = Y(cur.value);
-    plot.push(`<line x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="10" y2="148" stroke="#F2F3F0" stroke-width="1" opacity=".4"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="none" stroke="#F2F3F0" stroke-width="2"/>`);
+    plot.push(`<g class="selm"><line x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="10" y2="148" stroke="#F2F3F0" stroke-width="1" opacity=".4"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="none" stroke="#F2F3F0" stroke-width="2"/></g>`);
     return `<svg width="${W}" height="${CH_H}" viewBox="0 0 ${W} ${CH_H}" role="img" aria-label="${svgEsc(cfg.title)}, ${all.length} séances">${g.join("")}<g>${plot.join("")}</g>${chartBubbleSVG(cx, cy, cfg.bubbleFn(cur), W, cur.id?`openHistoryRun('${cur.id}')`:"")}</svg>`;
   };
   return { key, kind:"time", W, title:cfg.title, heart:cfg.heart, progress, since:prog.since, period:true, coach:cfg.coachFn(prog, all), nav, svg, legend:cfg.legend, noun:"Séance",
@@ -2926,7 +2955,7 @@ function barChartModel(key, cfg){
     const every = slot < 30 ? 2 : 1;
     const bars = cfg.bars.map((b,i)=>`<g class="bar" style="--i:${i}">${cfg.drawBar(b, i, geom)}</g>${i%every===(n-1)%every ? svgText(cx(i), 164, b.label) : ""}`).join("");
     const b = cfg.bars[sel], bx = cx(sel), by = Y(b.top!=null?b.top:b.value||0);   // b.flag : pastille « ! » au-dessus de la barre
-    const sel1 = `<rect x="${(bx-bw/2-2).toFixed(1)}" y="${(by-2).toFixed(1)}" width="${(bw+4).toFixed(1)}" height="${(CH_B-by+2).toFixed(1)}" rx="5" fill="none" stroke="#F2F3F0" stroke-width="1.5"/>`;
+    const sel1 = `<rect class="selm" x="${(bx-bw/2-2).toFixed(1)}" y="${(by-2).toFixed(1)}" width="${(bw+4).toFixed(1)}" height="${(CH_B-by+2).toFixed(1)}" rx="5" fill="none" stroke="#F2F3F0" stroke-width="1.5"/>`;
     return `<svg width="${W}" height="${CH_H}" viewBox="0 0 ${W} ${CH_H}" role="img" aria-label="${svgEsc(cfg.title)}, ${n} mois">${g.join("")}<g>${bars}${cfg.extra?cfg.extra(geom):""}</g>${sel1}${chartBubbleSVG(bx, by-(b.flag?22:0), cfg.bubbleFn(b), W, "")}</svg>`;
   };
   return { key, kind:"bars", W, title:cfg.title, progress:null, period:false, coach:cfg.coach, nav, svg, legend:cfg.legend, noun:"Mois", yearMenu:cfg.yearMenu||null, srText:(i)=>cfg.bubbleFn(nav[i].bar).map(p=>p.t).join("") };
@@ -3114,7 +3143,18 @@ function selectChart(key, index){
   if(n) n.textContent = `${m.noun} ${i+1} sur ${m.nav.length}`;
   if(sr) sr.textContent = m.srText(i)+". ";
 }
-window.stepChart = (key, d) => { const m = CHART_BUILDERS[key](); if(m && m.nav) selectChart(key, chartSel(m)+d); };
+window.stepChart = (key, d) => { const m = CHART_BUILDERS[key](); if(m && m.nav){ selectChart(key, chartSel(m)+d); chartReveal(key); } };
+// Montre l'étiquette du point choisi : tant que `hold` (doigt posé sur le curseur), sinon CHART_REVEAL_MS puis fondu.
+const CHART_REVEAL_MS = 2000, chartRevealTimers = {};
+function chartReveal(key, hold){
+  const els = () => [document.getElementById("pcPlot_"+key), document.querySelector(`#${CHART_CARD_ID[key]} .pc-slider`)];
+  clearTimeout(chartRevealTimers[key]);
+  const [plot, sl] = els();
+  if(plot) plot.classList.add("reveal");
+  if(sl) sl.classList.add("active");
+  if(hold) return;
+  chartRevealTimers[key] = setTimeout(()=>{ const [p2, s2] = els(); if(p2) p2.classList.remove("reveal"); if(s2) s2.classList.remove("active"); }, CHART_REVEAL_MS);
+}
 let chartDrag = null;
 function chartPointer(e){
   const el = chartDrag.el, rect = el.getBoundingClientRect();
@@ -3125,17 +3165,17 @@ function chartPointer(e){
   m.nav.forEach((n,i)=>{ if(Math.abs(n.frac-frac) < Math.abs(m.nav[best].frac-frac)) best = i; });
   if(chartSel(m)!==best) selectChart(chartDrag.key, best);
 }
-document.addEventListener("pointerdown", (e)=>{ const s = e.target.closest && e.target.closest(".pc-slider"); if(!s) return; chartDrag = { key:s.dataset.key, el:s }; try{ s.setPointerCapture(e.pointerId); }catch(_){} chartPointer(e); });
+document.addEventListener("pointerdown", (e)=>{ const s = e.target.closest && e.target.closest(".pc-slider"); if(!s) return; chartDrag = { key:s.dataset.key, el:s }; try{ s.setPointerCapture(e.pointerId); }catch(_){} chartPointer(e); chartReveal(chartDrag.key, true); });
 document.addEventListener("pointermove", (e)=>{ if(chartDrag) chartPointer(e); });
-document.addEventListener("pointerup", ()=>{ chartDrag = null; });
-document.addEventListener("pointercancel", ()=>{ chartDrag = null; });
+document.addEventListener("pointerup", ()=>{ if(chartDrag) chartReveal(chartDrag.key); chartDrag = null; });
+document.addEventListener("pointercancel", ()=>{ if(chartDrag) chartReveal(chartDrag.key); chartDrag = null; });
 document.addEventListener("keydown", (e)=>{
   const s = e.target.closest && e.target.closest(".pc-slider"); if(!s) return;
   const k = s.dataset.key, m = CHART_BUILDERS[k](); if(!m || !m.nav) return;
   if(e.key==="ArrowLeft"||e.key==="ArrowDown"){ e.preventDefault(); stepChart(k,-1); }
   else if(e.key==="ArrowRight"||e.key==="ArrowUp"){ e.preventDefault(); stepChart(k,1); }
-  else if(e.key==="Home"){ e.preventDefault(); selectChart(k,0); }
-  else if(e.key==="End"){ e.preventDefault(); selectChart(k,m.nav.length-1); }
+  else if(e.key==="Home"){ e.preventDefault(); selectChart(k,0); chartReveal(k); }
+  else if(e.key==="End"){ e.preventDefault(); selectChart(k,m.nav.length-1); chartReveal(k); }
 });
 
 // ---------- Historique : écran à part (design 7g) ----------
@@ -3413,8 +3453,27 @@ function objectiveSummaryHTML(slotKey){
   const isRace = type==="Préparer une course";
   const dist = (slot.distanceCourse||"").replace(/(\d)km$/, "$1 km");
   const title = isRace ? [type, dist].filter(Boolean).join(" · ") : type;
-  const sub = isRace ? (slot.dateCible ? `${parseDay(slot.dateCible).toLocaleDateString("fr-FR")} · ${weeksUntilText(slot.dateCible)}` : "Date de la course à renseigner") : "";
-  const tiles = isRace ? `<div class="pf-tiles"><div><div class="k">Terrain</div><div class="v">${escHtml(slot.terrainCourse||"—")}</div></div><div><div class="k">Record</div><div class="v">${slot.pbSec>0?fmtDur(slot.pbSec):"—"}</div></div><div class="tgt"><div class="k">Visé</div><div class="v">${slot.tempsViseSec>0?fmtDur(slot.tempsViseSec):"—"}</div></div></div>` : "";
+  // Aperçu pour chaque type d'objectif, pas seulement la course (retour d'Omar du 13/10, point 13) : les listes
+  // (jours, motivations) en sous-titre, où elles peuvent passer à la ligne, les chiffres en tuiles ; « tgt » = valeur
+  // visée, mise en avant ; une valeur non remplie s'affiche « — ».
+  const tile = (k, v, tgt) => `<div${tgt?` class="tgt"`:""}><div class="k">${k}</div><div class="v">${escHtml(v||"—")}</div></div>`;
+  const list = (csv) => (csv||"").split(",").filter(Boolean).join(", ");
+  let sub = "", tileList = [];
+  if(isRace){
+    sub = slot.dateCible ? `${parseDay(slot.dateCible).toLocaleDateString("fr-FR")} · ${weeksUntilText(slot.dateCible)}` : "Date de la course à renseigner";
+    tileList = [tile("Terrain", slot.terrainCourse), tile("Record", slot.pbSec>0?fmtDur(slot.pbSec):""), tile("Visé", slot.tempsViseSec>0?fmtDur(slot.tempsViseSec):"", true)];
+  } else if(type==="Améliorer mon allure"){
+    const cur = recentEfPace();
+    tileList = [tile("EF actuelle", cur!=null?fmtA(cur):""), tile("EF visée", slot.allureEfVisee?fmtA(Number(slot.allureEfVisee)):"", true), tile("Fractionné visé", slot.allureWorkVisee?fmtA(Number(slot.allureWorkVisee)):"", true)];
+  } else if(type==="Courir plus régulièrement"){
+    const reg = regularitySummary(runningRuns.map(r=>localDateStr(dateFromRun(r))), localDateStr(new Date()));
+    if(slot.joursDisponibles) sub = `Jours disponibles : ${list(slot.joursDisponibles)}`;
+    tileList = [tile("Régularité", reg.status==="ok"?`${reg.weeksWithRun}/${reg.totalWeeks} sem.`:""), tile("Visé", goals.frequence?`${goals.frequence} / sem.`:"", true)];
+  } else if(type==="Rester en forme"){
+    if(slot.motivationForme) sub = `Motivation : ${list(slot.motivationForme)}`;
+    tileList = [tile("Course / sem.", goals.frequence), tile("Renfo / sem.", goals.frequenceAutre)];
+  }
+  const tiles = tileList.length ? `<div class="pf-tiles${tileList.length===2?" n2":""}">${tileList.join("")}</div>` : "";
   return `<div class="pg-over pf-over">${over}</div><button type="button" class="pf-obj" onclick="openObjectiveSheet('${slotKey}')" aria-label="${escHtml(title)}, modifier l'objectif">
     <div class="top"><div class="ic">${icon(ic,18)}</div><div style="min-width:0"><div class="t">${escHtml(title)}</div>${sub?`<div class="s">${escHtml(sub)}</div>`:""}</div><span class="chev">${icon("chevronRight",16)}</span></div>${tiles}</button>`;
 }
@@ -4112,20 +4171,23 @@ function renderChargeSheet(){
   let body;
   if(chargeSheet==="info"){
     body = `${sheetHeadHTML("La charge d'entraînement", "toggleChargeInfo()")}
-      <div class="cg-text">Chaque séance compte pour sa durée multipliée par la difficulté que tu as notée (0 à 10). La charge compare ce que tu as couru ces 7 derniers jours à ce que ton corps a l'habitude de faire (la moyenne de tes 4 dernières semaines). Autour de 1, tu progresses à un rythme qu'il encaisse bien.</div>
+      <div class="cg-text">Chaque course compte pour sa durée multipliée par la difficulté que tu as notée (0 à 10). Une course non notée compte avec ta note habituelle pour ce type de séance, ou une note par défaut. La charge compare ce que tu as couru ces 7 derniers jours à ce que ton corps a l'habitude de faire : ta semaine moyenne sur les 12 dernières semaines. Autour de 1, tu progresses à un rythme qu'il encaisse bien.</div>
       <div class="cg-levels">
         <div><i style="background:var(--text-faint)"></i><span><b>En dessous de 0,8 :</b> tu peux en faire un peu plus.</span></div>
         <div><i style="background:var(--accent)"></i><span><b>Entre 0,8 et 1,3 :</b> zone idéale.</span></div>
         <div><i style="background:oklch(0.72 0.17 300 / .6)"></i><span><b>Au-dessus de 1,3 :</b> ta charge monte vite, écoute ton corps.</span></div>
-        <div><i style="background:var(--attention)"></i><span><b>Au-dessus de 1,5 :</b> elle monte très vite, un jour de repos en plus serait bienvenu.</span></div>
+        <div><i style="background:var(--attention)"></i><span><b>Au-dessus de 1,5 :</b> grosse semaine, n'augmente pas la semaine suivante.</span></div>
       </div>
       <div class="cg-text">C'est un repère, pas une règle absolue : chaque coureur est différent, et une douleur compte plus qu'un chiffre.</div>
-      <div class="cg-src">Source : Gabbett (2016), British Journal of Sports Medicine.</div>`;
+      <div class="cg-src">Source : Gabbett (2016), British Journal of Sports Medicine. Semaine habituelle sur 12 semaines et notes par défaut : nos choix.</div>`;
   } else {
     const ci = chargeLineInfo(gauge, acwr);
     const emptyReason = pos==null ? chargeEmptyReason(chargeRunsForReason(), Date.now()) : null;
     const animate = !playedChargeSheet && !prefersReducedMotion(); playedChargeSheet = true;
-    const dailySeries = buildDailyLoadSeries(chargeLoadSessions());
+    const loadSessions = chargeLoadSessions();
+    const dailySeries = buildDailyLoadSeries(loadSessions);
+    const inBaseline = loadSessions.filter(x=>x.date.getTime()>=Date.now()-CHARGE_BASELINE_WEEKS*7*DAY_MS);
+    const estNote = pos!=null ? chargeEstimatedNote(inBaseline.filter(x=>x.estimated).length, inBaseline.length) : "";
     const curve = chargeCurve(chargeWeeklySeries(dailySeries, new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()), 8), 280, 80);
     const barColors = ["var(--text-faint)", "var(--accent)", "var(--attention)"];
     const bar = [seg.low, seg.ideal, seg.high].map((w,i)=>`<i style="flex:${w};background:${pos==null?"var(--line-field)":barColors[i]}"></i>`).join("");
@@ -4144,7 +4206,8 @@ function renderChargeSheet(){
         <div class="cg-ticks" aria-hidden="true">${tick(CHARGE_LOW)}${tick(CHARGE_HIGH)}</div>
         ${graph}
         <div class="cg-coach">${icon("sparkle",13)}<span>${escHtml(pos!=null ? gauge.phrase : (emptyReason ? CHARGE_EMPTY_TEXTS[emptyReason].sheet : gauge.phrase))}</span></div>
-        ${pos==null && (emptyReason==="unrated" || (emptyReason==="few" && chargeRunsForReason().some(x=>x.ts>=Date.now()-28*DAY_MS && x.rpe==null))) ? `<button type="button" class="btn-primary" style="margin-top:14px" onclick="rateLatestUnrated()">Noter mon ressenti</button>` : ""}
+        ${estNote ? `<div class="cg-text" style="margin-top:10px">${escHtml(estNote)}</div>` : ""}
+        ${chargeRunsForReason().some(x=>x.ts>=Date.now()-28*DAY_MS && x.rpe==null) ? `<button type="button" class="btn-primary" style="margin-top:14px" onclick="rateLatestUnrated()">Noter mon ressenti</button>` : ""}
       </div>`;
   }
   root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeChargeSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Charge d'entraînement">${body}</div></div>`;
@@ -4282,7 +4345,8 @@ function emptyState(title,sub,withSyncCta){
 }
 
 
-let openHrDetail = new Set();
+// Détail cardio ouvert d'office (point 4 du 13/10) : on retient seulement les séances où on l'a replié.
+let closedHrDetail = new Set();
 // Liste "Toutes les séances" repliée par défaut (date/type/km) : dépliée au
 // clic pour voir le détail complet (édition, cardio) — évite une liste très
 // longue de cartes toutes ouvertes en permanence.
@@ -4294,8 +4358,8 @@ let openHrDetail = new Set();
 // l'app : l'animation de célébration de la carte "Dernière séance" ne doit
 // jouer qu'une fois, pas à chaque re-render (changement de filtre, etc.).
 window.toggleHrDetail = (id) => {
-  if(openHrDetail.has(id)) openHrDetail.delete(id);
-  else { openHrDetail.add(id); justOpenedKey = "hr_"+id; }
+  if(!closedHrDetail.has(id)) closedHrDetail.add(id);
+  else { closedHrDetail.delete(id); justOpenedKey = "hr_"+id; }
   renderContent(); refreshSheet(); justOpenedKey = null;
 };
 
@@ -4353,10 +4417,10 @@ function soonCard(iconName,title,sub){
   </div>`;
 }
 
-// Ligne « Détail cardio » (V2), repliée par défaut ; n'apparaît que si la séance a des échantillons de FC.
+// Ligne « Détail cardio » (V2), ouverte d'office (point 4 du 13/10) ; n'apparaît que si la séance a des échantillons de FC.
 function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
   if(!r.hrSeries || r.hrSeries.length<2) return "";
-  const open = openHrDetail.has(r.id);
+  const open = !closedHrDetail.has(r.id);
   const flagFrac = cardioTypeSuggestion(r)==="Fractionné";
   return `<button type="button" class="cd-row" aria-expanded="${open}" onclick="toggleHrDetail('${r.id}')"><span class="cd-label"><span class="cd-heart" aria-hidden="true">${icon("heart",16)}</span>Détail cardio</span>${flagFrac?`<span class="tag">Fractionné détecté ?</span>`:""}<span class="chev">${icon(open?"chevronUp":"chevronDown",18)}</span></button>
     ${open?`<div class="${justOpenedKey==="hr_"+r.id?"expand-in":""}">${cardioCardHTML(r, effMaxHr, effRestingHr)}</div>`:""}`;
@@ -4366,7 +4430,7 @@ function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
    Onglet Programme — calendrier de séances généré (moteur en logic.js).
    ============================================================ */
 
-const PACE_ZONE_LABEL = { easy:"Easy", marathon:"Marathon", threshold:"Seuil", interval:"Fractionné", repetition:"Répétition" };
+const PACE_ZONE_LABEL = { easy:"Easy", marathon:"Marathon", threshold:"Tempo", interval:"Fractionné", repetition:"Répétition" };
 // « calculée à partir de ton chrono sur 10 km (47:00) » : d'après quoi les allures sont calculées (« Ton niveau » seulement).
 function programProfileSourceLabel(profile){ return levelSourceText(profile); }
 // Explique l'allure visée en langage clair (ZONE_FRIENDLY, logic.js) — pas
@@ -4428,8 +4492,9 @@ function dayLabelShort(date){ return date.toLocaleDateString('fr-FR',{weekday:'s
 // structure hebdo ajustée — utilisé à la fois pour générer une semaine et
 // pour décider si la prochaine séance planifiée doit être ajustée.
 // Séances qui comptent dans la charge : celles qui ont un ressenti d'effort (RPE).
+// Toutes les courses comptent : une course non notée prend une difficulté estimée (point 3 du 13/10, chargeSessionsWithEstimates).
 function chargeLoadSessions(){
-  return runningRuns.filter(r=>r.painRatings?.rpe!=null).map(r=>({ date: dateFromRun(r), durationMin: (r.durationSec||0)/60, rpe: r.painRatings.rpe }));
+  return chargeSessionsWithEstimates(runningRuns.map(r=>({ date: dateFromRun(r), durationMin: (r.durationSec||0)/60, rpe: r.painRatings?.rpe ?? null, type: r.type })));
 }
 function computeProgramInputs(){
   const principalType = goals.principal?.objectifPrincipal;
@@ -5329,20 +5394,97 @@ function programNeedLevelHTML(profile){
 let openExMenu = null;      // "idSéance|numéro" du « ⋮ » ouvert
 let exerciseSheet = null;   // { sessionId, index, mode:"detail"|"replace" }
 function exerciseListHTML(description, session){
-  const found = exercisesInDescription(description);
-  if(!found.length) return `<div style="font-size:13px;line-height:1.55;white-space:pre-line">${escHtml(description)}</div>`;
+  const rows = exerciseRowsInDescription(description);
+  if(!rows.length) return `<div style="font-size:13px;line-height:1.55;white-space:pre-line">${escHtml(description)}</div>`;
   const editable = !!session && session.status==="planned";
-  return found.map((ex,i)=>{
-    const key = session ? session.id+"|"+i : "";
-    const menu = editable ? `<div class="menu-wrap" onclick="event.stopPropagation()"><button type="button" class="sc-menu" aria-label="Actions sur ${escHtml(ex.name)}" aria-haspopup="menu" aria-expanded="${openExMenu===key}" onclick="toggleExMenu('${key}')">${icon("moreV",18)}</button>
-      ${openExMenu===key?`<div class="menu-pop" role="menu"><button type="button" role="menuitem" onclick="openExerciseReplace('${session.id}',${i})">Remplacer</button><button type="button" role="menuitem" class="danger" onclick="removeExercise('${session.id}',${i})">Supprimer de la séance</button></div>`:""}</div>` : "";
-    return `<div class="ex-row"${session?` onclick="openExerciseDetail('${session.id}',${i})"`:""}>
-      <img src="${ex.visuel}" alt="Animation : ${escHtml(ex.name)}" width="56" height="56" loading="lazy">
-      <div style="min-width:0"><div class="nm">${escHtml(ex.name)}</div><div class="fm">${escHtml(ex.format)}${ex.materiel && ex.materiel!=="Aucun" ? " · matériel : "+escHtml(ex.materiel) : ""}</div></div>
-      ${menu}
+  // Remarques d'Omar du 13/10 : sur chaque exercice, « Fait », « Modifier », « Supprimer » et une poignée pour changer
+  // l'ordre ; la séance se valide toute seule quand le dernier est coché (voir toggleExerciseDone).
+  const doneNames = new Set(editable ? (session.exercises_done||[]) : []);
+  const items = rows.map(({ex, format}, i)=>{
+    const isDone = doneNames.has(ex.name);
+    const mat = ex.materiel && ex.materiel!=="Aucun" ? " · matériel : "+escHtml(ex.materiel) : "";
+    const handle = editable ? `<button type="button" class="ex-handle" aria-label="Déplacer ${escHtml(ex.name)}" onclick="event.stopPropagation()" onpointerdown="exDragStart(event,'${session.id}',${i})">${icon("grip",18)}</button>` : "";
+    // Tout à droite (choix d'Omar du 13/10) : la coche « Fait » en haut, « Modifier » et « Supprimer » en plus petit dessous.
+    const side = editable ? `<div class="ex-side" onclick="event.stopPropagation()">
+        <button type="button" class="ex-act ok${isDone?" on":""}" aria-pressed="${isDone}" aria-label="${isDone?"Décocher":"Fait"} : ${escHtml(ex.name)}" onclick="toggleExerciseDone('${session.id}',${i})">${icon("check",18)}</button>
+        <div class="ex-mini"><button type="button" class="ex-act" aria-label="Modifier ${escHtml(ex.name)}" onclick="openExerciseEdit('${session.id}',${i})">${icon("pencil",14)}</button><button type="button" class="ex-act" aria-label="Supprimer ${escHtml(ex.name)}" onclick="removeExercise('${session.id}',${i})">${icon("trash",14)}</button></div>
+      </div>` : "";
+    return `<div class="ex-row${editable?" ed":""}${isDone?" is-done":""}" data-ex="${i}"${session?` onclick="openExerciseDetail('${session.id}',${i})"`:""}>
+      ${handle}<img src="${ex.visuel}" alt="Animation : ${escHtml(ex.name)}" width="56" height="56" loading="lazy">
+      <div class="ex-tx"><div class="nm">${escHtml(ex.name)}</div><div class="fm">${escHtml(format)}${mat}</div></div>
+      ${side}
     </div>`;
   }).join("");
+  const n = rows.filter(r=>doneNames.has(r.ex.name)).length;
+  const progress = !editable ? "" : `<div class="ex-progress">${n ? `${n} exercice${n>1?"s":""} sur ${rows.length} fait${n>1?"s":""}` : "Coche chaque exercice une fois fait : la séance se valide toute seule au dernier."}</div>`;
+  return `<div class="ex-list">${items}</div>${progress}`;
 }
+// Coche ou décoche un exercice ; au dernier, la séance passe en « Fait » (même enregistrement que « C'est fait »).
+window.toggleExerciseDone = async (sid, i) => {
+  const s = plannedSessions.find(p=>p.id===sid);
+  const rows = s ? exerciseRowsInDescription(s.description) : [];
+  const ex = rows[i] && rows[i].ex;
+  if(!ex) return;
+  const set = new Set(s.exercises_done||[]);
+  if(set.has(ex.name)) set.delete(ex.name); else set.add(ex.name);
+  const list = rows.map(r=>r.ex.name).filter(name=>set.has(name));
+  const { error } = await supa.from("planned_sessions").update({ exercises_done:list, updated_at:new Date().toISOString() }).eq("id", sid);
+  if(error){ toast("Pas enregistré, vérifie ta connexion."); return; }
+  s.exercises_done = list;
+  if(list.length===rows.length){
+    await markSessionDone(sid, "Séance terminée, bravo !", async () => {
+      const back = list.filter(name=>name!==ex.name);
+      await supa.from("planned_sessions").update({ exercises_done:back }).eq("id", sid);
+      const again = plannedSessions.find(p=>p.id===sid); if(again) again.exercises_done = back;
+    });
+    return;
+  }
+  renderContent();
+};
+window.openExerciseEdit = (sid, i) => { openExMenu = null; exerciseSheet = { sessionId:sid, index:i, mode:"edit" }; renderExerciseSheet(); };
+window.saveExerciseFormat = async () => {
+  const st = exerciseSheet;
+  const s = st && plannedSessions.find(p=>p.id===st.sessionId);
+  const row = s && exerciseRowsInDescription(s.description)[st.index];
+  const input = document.getElementById("exFormat");
+  if(!row || !input) return;
+  const value = input.value.trim();
+  if(!value){ input.focus(); return; }
+  const before = s.description;
+  if(!(await saveSessionDescription(s.id, setExerciseFormatInDescription(before, row.ex.name, value)))) return;
+  closeExerciseSheet(); renderContent();
+  toast("Exercice modifié", { actionLabel:"Annuler", ms:5000, onAction: async () => { if(await saveSessionDescription(s.id, before)) renderContent(); } });
+};
+// Changer l'ordre : on appuie sur la poignée et on glisse ; les autres lignes s'écartent ; au lâcher, l'ordre est enregistré.
+window.exDragStart = (e, sid, from) => {
+  const row = e.target.closest(".ex-row"), list = row && row.parentElement;
+  if(!list) return;
+  e.preventDefault(); e.stopPropagation();
+  const rows = [...list.querySelectorAll(".ex-row")];
+  const mids = rows.map(r=>{ const b = r.getBoundingClientRect(); return b.top + b.height/2; });
+  const step = rows.length>1 ? mids[1]-mids[0] : row.getBoundingClientRect().height;
+  let to = from;
+  row.classList.add("dragging");
+  const move = (ev) => {
+    const dy = ev.clientY - e.clientY;
+    row.style.transform = `translateY(${dy}px)`;
+    const y = mids[from] + dy;
+    to = mids.filter((m,k)=>k!==from && m<y).length;
+    rows.forEach((r,k)=>{
+      if(k===from) return;
+      const shift = from<to && k>from && k<=to ? -step : from>to && k>=to && k<from ? step : 0;
+      r.style.transform = shift ? `translateY(${shift}px)` : "";
+    });
+  };
+  const end = async () => {
+    window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", end); window.removeEventListener("pointercancel", end);
+    rows.forEach(r=>{ r.style.transform = ""; r.classList.remove("dragging"); });
+    const s = plannedSessions.find(p=>p.id===sid);
+    if(!s || to===from) return;
+    if(await saveSessionDescription(sid, moveExerciseInDescription(s.description, from, to))) renderContent();
+  };
+  window.addEventListener("pointermove", move); window.addEventListener("pointerup", end); window.addEventListener("pointercancel", end);
+};
 window.toggleExMenu = (key) => { openExMenu = openExMenu===key ? null : key; renderContent(); };
 async function saveSessionDescription(id, description){
   const s = plannedSessions.find(p=>p.id===id);
@@ -5391,6 +5533,18 @@ function renderExerciseSheet(){
   if(!st || !s || !ex){ root.innerHTML = ""; return; }
   const editable = s.status==="planned";
   const dim = "color:var(--text-3)";
+  const fmt = (exerciseRowsInDescription(s.description)[st.index] || {}).format || ex.format;
+  if(st.mode==="edit"){
+    root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeExerciseSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Modifier ${escHtml(ex.name)}">
+      ${sheetHeadHTML("Modifier", "closeExerciseSheet()", ex.name)}
+      <label class="l" for="exFormat" style="display:block;font-size:13px;color:var(--text-3);margin:4px 0 6px">Séries et répétitions</label>
+      <input class="sheet-input" id="exFormat" style="width:100%" type="text" value="${escHtml(fmt)}" placeholder="${escHtml(ex.format)}" autocomplete="off">
+      <div style="font-size:13px;color:var(--text-muted);margin:8px 0 4px">Par exemple 3x15, 2x10/côté ou 3x30 s. Ça ne change que cette séance.</div>
+      <button type="button" class="btn-primary" style="margin-top:12px" onclick="saveExerciseFormat()">Enregistrer</button>
+      <button type="button" class="btn-secondary" style="margin-top:8px" onclick="openExerciseReplace('${s.id}',${st.index})">Remplacer par un autre exercice</button>
+    </div></div>`;
+    return;
+  }
   if(st.mode==="replace"){
     const cands = replacementCandidates(ex.name, list.map(e=>e.name));
     root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeExerciseSheet()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Remplacer ${escHtml(ex.name)}">
@@ -5404,7 +5558,7 @@ function renderExerciseSheet(){
   root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeExerciseSheet()"><div class="sheet ex-detail" role="dialog" aria-modal="true" aria-label="${escHtml(ex.name)}">
     ${sheetHeadHTML(ex.name, "closeExerciseSheet()", `${sessionTypeLabel(s.type)} · exercice ${st.index+1} sur ${list.length}`)}
     <img class="ex-detail-img" src="${ex.visuel}" alt="Animation : ${escHtml(ex.name)}">
-    <div class="ex-detail-meta"><span>${escHtml(ex.zoneTravaillee)}</span><span>${escHtml(ex.format)}</span>${ex.materiel && ex.materiel!=="Aucun" ? `<span>${escHtml(ex.materiel)}</span>` : ""}</div>
+    <div class="ex-detail-meta"><span>${escHtml(ex.zoneTravaillee)}</span><span>${escHtml(fmt)}</span>${ex.materiel && ex.materiel!=="Aucun" ? `<span>${escHtml(ex.materiel)}</span>` : ""}</div>
     <ul>${ex.consignes.map(c=>`<li>${escHtml(c)}</li>`).join("")}</ul>
     ${ex.variante ? `<div style="font-size:13.5px;color:var(--text-muted);margin-bottom:12px">${escHtml(ex.variante)}</div>` : ""}
     ${editable ? `<button type="button" class="btn-secondary" onclick="openExerciseReplace('${s.id}',${st.index})">Remplacer</button>
@@ -5820,7 +5974,7 @@ function todayScreenHTML(){
   </div>` : body) + (picked ? cards[picked] : "") + weekRecapCardHTML();
 }
 // Carte de séance (design 2d, V1 à V7). Même carte sur Aujourd'hui et, pour le jour choisi, dans Programme.
-// États : prévue, faite (reçue d'Apple Santé ou saisie à la main : chiffres réels + détail cardio replié),
+// États : prévue, faite (reçue d'Apple Santé ou saisie à la main : chiffres réels + détail cardio ouvert),
 // en retard (« Pas encore reçue d'Apple Santé » + « J'ai fait cette séance »).
 let openSessionMenu = null;
 window.toggleSessionMenu = (id) => { openSessionMenu = openSessionMenu===id ? null : id; renderContent(); };
@@ -5837,6 +5991,49 @@ function scTile(label, value, color){
 function scMetricsHTML(big, tiles){
   if(!big && !tiles.length) return "";
   return `<div class="sc-metrics">${big?`<div class="sc-big"><span class="n">${escHtml(big.value)}</span><span class="u">${escHtml(big.unit)}</span>${big.note?`<div class="note">${escHtml(big.note)}</div>`:""}</div>`:""}${tiles.length?`<div class="sc-tiles">${tiles.join("")}</div>`:""}</div>`;
+}
+// Actions de la séance visibles en bas de la carte (remarque d'Omar du 13/10 : le menu « ••• » ne se devinait pas).
+// « C'est fait » le jour même ou après : en un toucher hors course (durée prévue, « Annuler » quelques secondes) ; pour une
+// course, la fiche « J'ai fait cette séance » (distance et temps), RunSync l'apportant d'habitude tout seul.
+function sessionActionsHTML(session, todayStr, state){
+  const canDo = session.planned_date<=todayStr;
+  const running = isRunningRunType(session.type);
+  const hasExercises = !isKineSession(session.type) && !!session.description && exercisesInDescription(session.description).length>0;
+  // Séance d'exercices : elle se valide exercice par exercice. Course : elle arrive toute seule d'Apple Santé ; « C'est
+  // fait » seulement si rien n'arrive jamais tout seul (sans RunSync) ou si elle est en retard.
+  const showDone = canDo && !hasExercises && (!running || !receivedRuns().length || state==="late");
+  const done = showDone ? `<button type="button" class="btn-primary sc-do" onclick="${running?`openManualRun('${session.id}')`:`quickMarkDone('${session.id}')`}">${icon("check",18)}C'est fait</button>` : "";
+  const easy = session.pace_zone && session.pace_zone!=="easy" ? `<button type="button" class="sc-link" onclick="replaceWithEasy('${session.id}')">${icon("refresh",15)}Remplacer par une EF</button>` : "";
+  return `<div class="sc-actions">${done}<div class="sc-links"><button type="button" class="sc-link" onclick="openEditSheet('${session.id}')">${icon("pencil",15)}${hasExercises?"Modifier la séance":"Modifier"}</button>${easy}<button type="button" class="sc-link" onclick="askDeleteSession('${session.id}')">${icon("trash",15)}Supprimer</button></div></div>`;
+}
+window.quickMarkDone = (id) => markSessionDone(id, "Séance notée.");
+window.saveKineNotes = async (id, value) => {
+  if(await saveSessionDescription(id, String(value||"").trim() || null)) toast("Notes enregistrées.", { icon:"check" });
+};
+// Enregistre la séance comme faite (date et durée prévues, comme « J'ai fait cette séance »), avec « Annuler » quelques
+// secondes ; `onUndo` défait en plus ce qui a déclenché la validation (le dernier exercice coché).
+async function markSessionDone(id, message, onUndo){
+  const s = plannedSessions.find(p=>p.id===id);
+  if(!s) return;
+  const todayStr = localDateStr(new Date());
+  const input = { date: s.planned_date<=todayStr ? s.planned_date : todayStr, type:s.type, distKm:"", durationMin:Math.round(s.target_duration_min||30), hr:"", time:"" };
+  const { data:{user} } = await supa.auth.getUser();
+  if(!user){ toast("Tu n'es plus connecté : reconnecte-toi."); return; }
+  let data = null, error = null;
+  for(let attempt=0; attempt<3; attempt++){
+    ({ data, error } = await supa.from("runs").insert(manualRunRow(input, user.id, new Date(Date.now()+attempt*1000))).select("id").single());
+    if(!error || error.code!=="23505") break;
+  }
+  if(error){ toastRetry("Pas enregistrée, vérifie ta connexion.", () => markSessionDone(id, message, onUndo)); return; }
+  const runId = data.id;
+  await supa.from("planned_sessions").update({ status:"done", linked_run_id:runId, updated_at:new Date().toISOString() }).eq("id", id);
+  await loadData(); await runProgramMaintenance(); renderContent();
+  toast(message, { actionLabel:"Annuler", ms:6000, icon:"check", onAction: async () => {
+    await supa.from("planned_sessions").update({ status:"planned", linked_run_id:null, updated_at:new Date().toISOString() }).eq("id", id);
+    await supa.from("runs").delete().eq("id", runId);
+    if(onUndo) await onUndo();
+    await loadData(); renderContent(); toast("C'est annulé.");
+  } });
 }
 function sessionMenuHTML(session, todayStr){
   const items = [];
@@ -5856,13 +6053,14 @@ function programSessionCardHTML(session, date){
   const dayTxt = session.planned_date===todayStr ? "Aujourd'hui" : dayLabelShort(new Date(session.planned_date+"T00:00:00"));
   const { title, subtitle } = sessionDisplayTitle(session);
   const isCouchSession = session.generation_reason==="beginner_plan" || session.generation_reason==="guided_test";
-  const exercises = state!=="done" && session.description ? exercisesInDescription(session.description) : [];
+  const isKine = isKineSession(session.type);
+  const exercises = !isKine && state!=="done" && session.description ? exercisesInDescription(session.description) : [];
   let metrics = "";
   if(state==="done"){
     if(run){
       const big = run.dist>0 ? { value:run.dist.toFixed(1).replace(".",","), unit:"km", note: session.target_distance_km ? `prévu ${String(session.target_distance_km).replace(".",",")} km` : "" }
         : { value:String(Math.round(run.durationSec/60)), unit:"min", note:"" };
-      const tiles = [scTile("Durée", run.dur)];
+      const tiles = isRunningRunType(run.type) ? [scTile("Durée", run.dur)] : [];
       if(run.dist>0 && run.allure) tiles.push(scTile("Allure /km", fmtA(run.allure)));
       metrics = scMetricsHTML(big, tiles);
     }
@@ -5879,27 +6077,31 @@ function programSessionCardHTML(session, date){
   }
   const effMaxHr = maxHr || estimatedMaxHr();
   const detailCardio = run ? cardioDetailBlockHTML(run, effMaxHr, restingHr || null) : "";
-  const coach = state==="done" ? "" : `<div class="sc-coach">${icon("sparkle",16)}<div>${session.rationale||""}${programPaceExplanationHTML(session)}</div></div>`;
-  const body = state==="done" ? "" : `${sessionStructureBarHTML(session)}${coach}
-    ${session.description?`<div class="sc-sep"></div>
+  const coach = state==="done" ? "" : `<div class="sc-coach">${icon("sparkle",16)}<div>${withTempoName(session.rationale)||""}${programPaceExplanationHTML(session)}</div></div>`;
+  // Kiné (point 1 du 13/10) : jamais de liste d'exercices, des notes libres à la place (enregistrées dans la description).
+  const kineNotes = isKine ? `<div class="sc-sep"></div>
+      <label class="sc-kine" for="kn_${session.id}">Ton kiné te donne tes exercices : note-les ici si tu veux.</label>
+      <textarea class="sheet-input sc-notes" id="kn_${session.id}" rows="3" placeholder="Exercices, conseils de ton kiné…" onchange="saveKineNotes('${session.id}', this.value)">${escHtml(kineNotesFromDescription(session.description))}</textarea>` : "";
+  const body = state==="done" ? "" : `${sessionStructureBarHTML(session)}${coach}${kineNotes}
+    ${!isKine && session.description?`<div class="sc-sep"></div>
       <div class="stitle" style="margin-bottom:6px">${isCouchSession?"Déroulé de la séance":"Exercices"}${session.target_duration_min?` · environ ${Math.round(session.target_duration_min)} min`:""}</div>
       ${exerciseListHTML(session.description, session)}`:""}
     ${learnMoreHTML(session)}`;
-  const late = state==="late" ? `<div class="sc-late">${icon("alert",16)}Pas encore reçue d'Apple Santé</div>
-    <button type="button" class="btn-outline" onclick="openManualRun('${session.id}')">J'ai fait cette séance</button>` : "";
+  const late = state==="late" ? `<div class="sc-late">${icon("alert",16)}Pas encore reçue d'Apple Santé</div>` : "";
   return `<div class="session-card" id="sc_${session.id}">
     <div class="sc-head">
       <div class="sc-icon" style="background:${c}22;color:${c}">${icon(TICON[session.type]||"activity",18)}</div>
       <div class="sc-overline">${escHtml(dayTxt)}${run&&run.time?" · "+escHtml(run.time):""}</div>
-      ${state==="done" ? `<span class="sc-done">${icon("check",14)} Fait</span>` : sessionMenuHTML(session, todayStr)}
+      ${state==="done" ? `<span class="sc-done">${icon("check",14)} Fait</span>` : ""}
     </div>
     <div class="sc-title">${escHtml(title)}</div>
     ${subtitle?`<div class="sc-sub">${escHtml(subtitle)}</div>`:""}
-    ${run && run.appleType===MANUAL_RUN_MARKER ? `<span class="sc-src">Saisie à la main</span>` : ""}
+    ${run && run.appleType===MANUAL_RUN_MARKER && isRunningRunType(run.type) ? `<span class="sc-src">Saisie à la main</span>` : ""}
     ${state==="done" ? "" : ""}
     ${metrics || (state==="done" ? "" : `<div style="height:12px"></div>`)}
     ${detailCardio}
     ${body}${late}
+    ${state==="done" ? "" : sessionActionsHTML(session, todayStr, state)}
   </div>`;
 }
 
@@ -6210,11 +6412,17 @@ window.saveProgramSheet = async () => {
     if(typeChanged){
       patch.type = f.type; patch.title = f.type; patch.pace_zone = null;
       patch.rationale = CROSS_TRAINING_RATIONALE[f.type] || `Séance de ${sessionTypeLabel(f.type)}, modifiée manuellement.`;
+      // La liste d'exercices suit le nouveau type (point 1 du 13/10) : aucune pour Kiné, une nouvelle pour Renfo / Mobilité / Étirements.
+      const libType = exerciseLibraryType(f.type);
+      const built = libType ? buildStrengthSession({ type:libType, niveau:goals.niveau, objectif:goals.principal?.objectifPrincipal,
+        pausedZoneKeys:suspendedZones.map(z=>z.zone), rotationSeed:new Date(f.date+"T00:00:00").getDate() }) : null;
+      patch.description = descriptionAfterTypeChange(s.source==="manual_add" ? f.notes : s.description, f.type, built && built.exercises);
+      patch.exercises_done = null;
     }
     patch.target_distance_km = isRun && dist>0 ? dist : null;
     patch.target_pace_sec_per_km = isRun && pace>0 ? pace : null;
     patch.target_duration_min = dur>0 ? dur : null;
-    if(s.source==="manual_add") patch.description = (f.notes||"").trim() || null;
+    if(s.source==="manual_add" && !typeChanged) patch.description = (f.notes||"").trim() || null;
     if(f.date!==s.planned_date){ patch.planned_date = f.date; patch.week_start_date = monday; }
     ({ error } = await supa.from("planned_sessions").update(patch).eq("id", st.sessionId));
   }

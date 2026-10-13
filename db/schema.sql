@@ -127,6 +127,7 @@ create table public.planned_sessions (
   linked_run_id uuid references public.runs(id) on delete set null,
   user_confirmed boolean not null default false,
   reminder_time time,                    -- rappel affiché, aucune notification envoyée à ce jour
+  exercises_done jsonb,                  -- noms des exercices cochés de la séance (migration_025)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=99"></script>
+<script src="logic.js?v=100"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -416,10 +416,10 @@ try {
   assertEqual("E8 : régulier depuis 3 semaines -> la charge s'affiche", threeWeeks.acwr!=null, true);
   assertEqual("E8 : régulier depuis 3 semaines -> zone idéale (≤ 1,3), pas d'alerte", threeWeeks.acwr<=1.3, true);
   assertEqual("E8 : 4 séances notées en une semaine pour un nouveau -> pas de charge", acwrAt([0,1,2,3].map(n=>day(n)), target).acwr, null);
-  assertEqual("E8 : reprise après plus de 3 semaines sans séance notée -> pas de charge", acwrAt([40,42,44,0,1,3,5].map(n=>day(n)), target).acwr, null);
+  assertEqual("point 3 du 13/10 : reprise après 6 semaines de pause -> la charge s'affiche et signale la grosse semaine (> 1,5)", acwrAt([40,42,44,0,1,3,5].map(n=>day(n)), target).acwr>1.5, true);
   assertEqual("E8 : reprise après 2 semaines de pause -> charge basse (pas d'alerte)", acwrAt([14,16,18,21,23,25,0].map(n=>day(n)), target).acwr<0.8, true);
   assertEqual("E8 : moins de 4 jours notés sur 28 jours -> pas de charge", acwrAt([0,10,22].map(n=>day(n)), target).acwr, null);
-  assertEqual("E8 : nombre de jours notés renvoyé", acwrAt([0,2,4,30].map(n=>day(n)), target).ratedDays28, 3);
+  assertEqual("E8 : nombre de jours avec une course sur 28 jours renvoyé", acwrAt([0,2,4,30].map(n=>day(n)), target).runDays28, 3);
 }
 
 // --- Lot du 08/10/2026 : retours de Mohamed et Leïla (R26, R4, R1, R24, R15) ---
@@ -1464,6 +1464,13 @@ try {
   assertEqual("candidats : zone de douleur commune avant les autres", replacementCandidates("Pont fessier", ["Pont fessier"], lib).map(e=>e.name), ["Fente arrière","Marche latérale","Clamshell","Planche"]);
   assertEqual("candidats : un type différent n'est pas proposé (mobilité ≠ renfo)", replacementCandidates("Pont fessier", ["Pont fessier"], lib).some(e=>e.type!=="Renfo"), false);
   assertEqual("candidats : exercice inconnu = aucun", replacementCandidates("Inconnu", [], lib), []);
+  // Remarques d'Omar du 13/10 : séries modifiables et ordre changeable, par exercice
+  assertEqual("format affiché = celui de la ligne, matériel à part", exerciseRowsInDescription(desc, lib).map(r=>r.format), ["3x15","3x15/côté","3x10/côté"]);
+  assertEqual("changer les séries garde le matériel et la variante", setExerciseFormatInDescription(desc, "Clamshell", " 2x12/côté ", lib), "Pont fessier — 3x15\nClamshell — 2x12/côté · matériel : Élastique\n   Sans élastique.\nFente arrière — 3x10/côté");
+  assertEqual("séries vides ou exercice absent : rien ne change", [setExerciseFormatInDescription(desc, "Clamshell", "  ", lib), setExerciseFormatInDescription(desc, "Planche", "2x10", lib)], [desc, desc]);
+  assertEqual("déplacer le 1er en dernier, la variante suit son exercice", moveExerciseInDescription(desc, 0, 2, lib), "Clamshell — 3x15/côté · matériel : Élastique\n   Sans élastique.\nFente arrière — 3x10/côté\nPont fessier — 3x15");
+  assertEqual("déplacer le dernier en premier", exercisesInDescription(moveExerciseInDescription(desc, 2, 0, lib), lib).map(e=>e.name), ["Fente arrière","Pont fessier","Clamshell"]);
+  assertEqual("déplacer : le texte libre reste à sa place ; numéro hors liste = rien ne change", [moveExerciseInDescription("Intro\nPont fessier — 3x15\nFente arrière — 3x10/côté", 1, 0, lib), moveExerciseInDescription(desc, 0, 5, lib)], ["Intro\nFente arrière — 3x10/côté\nPont fessier — 3x15", desc]);
 }
 
 // ---------- S4.4 : « Ta semaine » (tuiles, phrases, ligne de charge) ----------
@@ -1714,8 +1721,17 @@ try {
     run(2026,8,20,{type:"Long", distKm:15, durationSec:5400, paceSecKm:360}),
     run(2026,9,4,{distKm:5, durationSec:1800, paceSecKm:360}),
   ], todayTs);
-  assertEqual("chiffres clés : année, plus longue du mois, temps du mois, meilleure allure EF propre", kf, {yearKm:38.1, longestMonthKm:8.1, longestMonthRunId:"r2", monthTimeSec:4560, bestEfPaceSecKm:341, bestEfRunId:"r2"});
-  assertEqual("chiffres clés : rien de couru", keyFigures([], todayTs), {yearKm:0, longestMonthKm:null, longestMonthRunId:null, monthTimeSec:0, bestEfPaceSecKm:null, bestEfRunId:null});
+  assertEqual("chiffres clés : année, plus longue du mois, temps du mois, meilleure allure EF propre", kf, {yearKm:38.1, longestMonthKm:8.1, longestMonthRunId:"r2", monthTimeSec:4560, bestEfPaceSecKm:341, bestEfRunId:"r2", bestFracPaceSecKm:null, bestFracRunId:null, bestTempoPaceSecKm:null, bestTempoRunId:null});
+  assertEqual("chiffres clés : rien de couru", keyFigures([], todayTs), {yearKm:0, longestMonthKm:null, longestMonthRunId:null, monthTimeSec:0, bestEfPaceSecKm:null, bestEfRunId:null, bestFracPaceSecKm:null, bestFracRunId:null, bestTempoPaceSecKm:null, bestTempoRunId:null});
+  const kf2 = keyFigures([
+    run(2026,8,1,{id:"f1", type:"Fractionné", distKm:8, durationSec:2820, paceSecKm:352, workPaceSecKm:268}),
+    run(2026,8,8,{id:"f2", type:"Fractionné", distKm:8, durationSec:2820, paceSecKm:340, workPaceSecKm:275}),
+    run(2026,8,20,{id:"t3", type:"Seuil", distKm:8, durationSec:3128, paceSecKm:391}),
+    run(2026,6,26,{id:"t1", type:"Seuil", distKm:9.4, durationSec:3675, paceSecKm:391}),
+    run(2026,8,15,{id:"t2", type:"Seuil", distKm:8, durationSec:3200, paceSecKm:400}),
+  ], todayTs);
+  assertEqual("chiffres clés : meilleure allure fractionné = allure des efforts ; Tempo = allure de la course, la plus ancienne à égalité",
+    {f:kf2.bestFracPaceSecKm, fId:kf2.bestFracRunId, t:kf2.bestTempoPaceSecKm, tId:kf2.bestTempoRunId}, {f:268, fId:"f1", t:391, tId:"t1"});
   assertEqual("date courte : 12 sept.", shortDateFr(new Date(2026,8,12).getTime()), "12 sept.");
   assertEqual("date courte : 1er oct.", shortDateFr(new Date(2026,9,1).getTime()), "1er oct.");
   const rl = recordsListModel(recordHolders([ run(2026,8,12,{distKm:5.1, durationSec:1500, paceSecKm:294}) ]));
@@ -1808,7 +1824,7 @@ try {
 
   // Nouvelles allures
   const prop = newPaceProposal({ distanceKm:5, timeSec:1710 }, { distanceKm:5, timeSec:1661 });
-  assertEqual("nouvelles allures : 5 km de 28:30 à 27:41 -> EF 7'09 -> 6'57, Seuil, Fractionné", prop, { faster:true, rows:[{key:"easy",label:"EF",oldSec:429,newSec:417},{key:"threshold",label:"Seuil",oldSec:358,newSec:348},{key:"interval",label:"Fractionné",oldSec:329,newSec:320}] });
+  assertEqual("nouvelles allures : 5 km de 28:30 à 27:41 -> EF 7'09 -> 6'57, Tempo, Fractionné", prop, { faster:true, rows:[{key:"easy",label:"EF",oldSec:429,newSec:417},{key:"threshold",label:"Tempo",oldSec:358,newSec:348},{key:"interval",label:"Fractionné",oldSec:329,newSec:320}] });
   assertEqual("nouvelles allures : moins de 5 s/km d'écart sur l'EF, rien à proposer", newPaceProposal({ distanceKm:5, timeSec:1710 }, { distanceKm:5, timeSec:1700 }), null);
   assertEqual("nouvelles allures : plus lent, proposé aussi (faster false)", newPaceProposal({ distanceKm:5, timeSec:1661 }, { distanceKm:5, timeSec:1710 }).faster, false);
   assertEqual("nouvelles allures : sans ancien temps (premier calcul), pas de feuille", newPaceProposal(null, { distanceKm:5, timeSec:1710 }), null);
@@ -2010,11 +2026,12 @@ try {
   assertEqual("volume, 12 derniers mois : de nov. 2025 à oct. 2026 (comme avant)", [monthlyVolumeBars(runsY, 0, todayT, 12).bars[0].label, monthlyVolumeBars(runsY, 0, todayT, 12).bars.length], ["nov.", 12]);
 
   const dayMs = 86400000;
-  assertEqual("charge vide : sorties récentes sans ressenti -> « unrated »", chargeEmptyReason([{ts:todayT-3*dayMs, rpe:null},{ts:todayT-9*dayMs}], todayT), "unrated");
+  assertEqual("charge vide : sorties récentes sans ressenti -> « few » (point 3 du 13/10 : elles comptent, estimées)", chargeEmptyReason([{ts:todayT-3*dayMs, rpe:null},{ts:todayT-9*dayMs}], todayT), "few");
   assertEqual("charge vide : aucune sortie depuis 4 semaines -> « norun »", chargeEmptyReason([{ts:todayT-40*dayMs, rpe:5}], todayT), "norun");
   assertEqual("charge vide : des ressentis notés mais pas assez de recul -> « few »", chargeEmptyReason([{ts:todayT-3*dayMs, rpe:6}], todayT), "few");
-  assertEqual("charge vide : texte « few » qui explique les 4 séances notées", /4 séances notées/.test(CHARGE_EMPTY_TEXTS.few.tile) && /4 séances notées/.test(CHARGE_EMPTY_TEXTS.few.sheet), true);
-  assertEqual("charge vide : textes validés par Omar", [CHARGE_EMPTY_TEXTS.unrated.tile, CHARGE_EMPTY_TEXTS.norun.tile, CHARGE_EMPTY_TEXTS.norun.sheet], ["Note ton ressenti après tes séances pour la voir.", "Pas de course ces 4 dernières semaines.", "Dès que tu auras repris et noté ta difficulté, ta charge apparaîtra."]);
+  assertEqual("charge vide : texte « few » qui explique les 4 courses", /4 courses/.test(CHARGE_EMPTY_TEXTS.few.tile) && /4 courses/.test(CHARGE_EMPTY_TEXTS.few.sheet), true);
+  assertEqual("charge vide : plus de cas « aucune course notée »", Object.keys(CHARGE_EMPTY_TEXTS), ["few","norun"]);
+  assertEqual("charge vide : textes « pas de course »", [CHARGE_EMPTY_TEXTS.norun.tile, CHARGE_EMPTY_TEXTS.norun.sheet], ["Pas de course ces 4 dernières semaines.", "Dès que tu auras repris, ta charge apparaîtra."]);
 }
 
 // --- S15.1 : première connexion, lot 1 (D99 à D101) ---
@@ -2088,6 +2105,58 @@ try {
   const ctxSafari = detectInstallContext(UA.safari, false, 5);
   assertEqual("premier écran : installation, sauf en pleine inscription ou une fois écarté ou sur ordinateur",
     [authEntryView(ctxSafari, false, false), authEntryView(ctxSafari, false, true), authEntryView(ctxSafari, true, false), authEntryView(detectInstallContext(UA.mac, false, 0), false, false)], ["install", "auth", "auth", "auth"]);
+}
+
+// --- S24 : les 13 remarques d'Omar du 13/10/2026 ---
+{
+  // Point 1 : une séance Kiné n'a jamais d'exercices ; la liste suit le type quand on le change
+  const mob = formatExerciseList(EXERCISE_LIBRARY.filter(e=>e.type==="Mobilité").slice(0,2));
+  assertEqual("Kiné : une liste d'exercices restée d'une mobilité n'est pas montrée comme des notes", kineNotesFromDescription(mob), "");
+  assertEqual("Kiné : des notes libres sont gardées", kineNotesFromDescription("Pont fessier 3x10, glace le soir"), "Pont fessier 3x10, glace le soir");
+  assertEqual("type changé vers Kiné : la liste d'exercices disparaît", descriptionAfterTypeChange(mob, "Kiné", null), null);
+  assertEqual("type changé vers Kiné : des notes restent", descriptionAfterTypeChange("Voir le kiné mardi", "Kiné", null), "Voir le kiné mardi");
+  const renfo = EXERCISE_LIBRARY.filter(e=>e.type==="Renfo").slice(0,3);
+  assertEqual("type changé vers Renfo : nouvelle liste de renfo", exercisesInDescription(descriptionAfterTypeChange(mob, "Renfo", renfo)).map(e=>e.name), renfo.map(e=>e.name));
+  assertEqual("Étirements : exercices de la base mobilité ; Kiné et EF : aucun", [exerciseLibraryType("Étirements"), exerciseLibraryType("Kiné"), exerciseLibraryType("EF")], ["Mobilité", null, null]);
+  assertEqual("type changé vers EF : l'ancienne liste d'exercices est retirée", descriptionAfterTypeChange(mob, "EF", null), null);
+  assertEqual("type changé vers EF : un autre texte est gardé", descriptionAfterTypeChange("Sortie avec le club", "EF", null), "Sortie avec le club");
+  assertEqual("séance Kiné reconnue", [isKineSession("Kiné"), isKineSession("Mobilité")], [true, false]);
+
+  // Point 3, règle 2 : une course non notée compte avec une difficulté estimée
+  const d = (n) => new Date(2026,9,n);
+  const est = chargeSessionsWithEstimates([
+    {date:d(1), durationMin:40, rpe:6, type:"EF"}, {date:d(3), durationMin:40, rpe:4, type:"EF"},
+    {date:d(5), durationMin:30, rpe:null, type:"EF"}, {date:d(6), durationMin:50, rpe:null, type:"Fractionné"},
+    {date:d(7), durationMin:60, rpe:null, type:"Seuil"}, {date:d(8), durationMin:20, rpe:null, type:"Marche"},
+  ]);
+  assertEqual("charge : course non notée = note habituelle pour ce type (EF : moyenne de 6 et 4)", est[2].rpe, 5);
+  assertEqual("charge : sans note de ce type = valeur par défaut (fractionné 7, tempo 6)", [est[3].rpe, est[4].rpe], [7, 6]);
+  assertEqual("charge : autre type = 5", est[5].rpe, 5);
+  assertEqual("charge : notées gardées, estimées marquées", est.map(x=>x.estimated), [false,false,true,true,true,true]);
+  assertEqual("charge : valeurs par défaut validées par Omar", [CHARGE_DEFAULT_RPE.EF, CHARGE_DEFAULT_RPE.Long, CHARGE_DEFAULT_RPE.Seuil, CHARGE_DEFAULT_RPE["Fractionné"]], [4,5,6,7]);
+
+  // Point 3 : semaine habituelle = moyenne des 12 dernières semaines (le cas d'Omar du 13/10 : 2,63 sur 4 semaines)
+  const T = new Date(2026,9,13);
+  const at = (n, load) => ({ date:new Date(2026,9,13-n), load });
+  const omar = [at(150,300), ...[[1,111],[3,243],[4,417],[5,639],[6,228],[9,549],[10,319],[11,637]].map(([k,l])=>at(7*k,l)), at(5,236), at(2,440)];
+  const r = acwrAt(omar, T);
+  assertClose("charge d'Omar du 13/10 : semaine habituelle sur 12 semaines = 318", r.chronic, 318.25, 0.01);
+  assertClose("charge d'Omar du 13/10 : 2,12 au lieu de 2,63", r.acwr, 2.12, 0.01);
+  assertClose("semaine habituelle : depuis la 1re course quand il y a moins de 12 semaines de recul", acwrAt([0,2,4,7,9,11,14,16,18,21].map(n=>at(n,300)), T).baselineWeeks, 22/7, 0.001);
+  assertClose("charge : l'heure du calcul ne change rien (jours entiers)", acwrAt(omar, new Date(2026,9,13,18,30)).acwr, r.acwr, 0.0001);
+
+  // Point 3 : messages adoucis
+  assertEqual("message au-dessus de 1,5 : « environ 2 fois »", chargeEntrainementGauge(2.12).phrase, "Grosse semaine : environ 2 fois ta semaine habituelle. Pour éviter la blessure, n'augmente pas la semaine prochaine.");
+  assertEqual("message au-dessus de 1,5 : arrondi à la demi-unité", [chargeTimesText(1.6), chargeTimesText(2.63), chargeTimesText(1.74)], ["1,5", "2,5", "1,5"]);
+  assertEqual("message de 1,3 à 1,5", chargeEntrainementGauge(1.4).phrase, "Ta semaine est un peu au-dessus de tes habitudes : reste attentif à ton ressenti.");
+  assertEqual("plus de « risque de blessure élevé »", /risque de blessure/.test(chargeEntrainementGauge(3).phrase), false);
+  assertEqual("fiche de la charge : courses estimées", [chargeEstimatedNote(10,17), chargeEstimatedNote(1,5), chargeEstimatedNote(0,5)],
+    ["10 courses sur 17 estimées : note ton ressenti pour plus de précision.", "1 course sur 5 estimée : note ton ressenti pour plus de précision.", ""]);
+
+  // Point 5 : « Seuil » s'affiche « Tempo »
+  assertEqual("« Seuil » s'affiche « Tempo »", [sessionTypeLabel("Seuil"), sessionTypeLabel("EF"), sessionTypeLabel("Other")], ["Tempo", "EF", "Autre"]);
+  assertEqual("« Seuil » dans un texte enregistré", withTempoName("Cette séance est en Seuil : un rythme soutenu"), "Cette séance est en Tempo : un rythme soutenu");
+  assertEqual("titre « Seuil » d'une séance ajoutée", sessionDisplayTitle({ type:"Seuil", title:"Seuil" }).title, "Tempo");
 }
 
 document.getElementById("summary").innerHTML =
