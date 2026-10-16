@@ -1305,7 +1305,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=104"></script>
+<script src="logic.js?v=105"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -4271,7 +4271,7 @@ function renderChargeSheet(){
   let body;
   if(chargeSheet==="info"){
     body = `${sheetHeadHTML("La charge d'entraînement", "toggleChargeInfo()")}
-      <div class="cg-text">Chaque course compte pour sa durée multipliée par la difficulté que tu as notée (0 à 10). Une course non notée compte avec ta note habituelle pour ce type de séance, ou une note par défaut. La charge compare ce que tu as couru ces 7 derniers jours à ce que ton corps a l'habitude de faire : ta semaine moyenne sur les 12 dernières semaines. Autour de 1, tu progresses à un rythme qu'il encaisse bien.</div>
+      <div class="cg-text">Chaque course compte pour sa durée multipliée par la difficulté que tu as notée (0 à 10). Une course non notée compte avec ta note habituelle pour ce type de séance, ou une note par défaut. La charge compare tes derniers jours à ce que ton corps a l'habitude de faire : ta semaine moyenne sur les 12 dernières semaines. Une séance récente compte beaucoup, puis de moins en moins : chaque jour sans courir, elle perd environ un quart de son poids. Autour de 1, tu progresses à un rythme qu'il encaisse bien.</div>
       <div class="cg-levels">
         <div><i style="background:var(--text-faint)"></i><span><b>En dessous de 0,8 :</b> tu peux en faire un peu plus.</span></div>
         <div><i style="background:var(--accent)"></i><span><b>Entre 0,8 et 1,3 :</b> zone idéale.</span></div>
@@ -4279,7 +4279,7 @@ function renderChargeSheet(){
         <div><i style="background:var(--attention)"></i><span><b>Au-dessus de 1,5 :</b> grosse semaine, n'augmente pas la semaine suivante.</span></div>
       </div>
       <div class="cg-text">C'est un repère, pas une règle absolue : chaque coureur est différent, et une douleur compte plus qu'un chiffre.</div>
-      <div class="cg-src">Source : Gabbett (2016), British Journal of Sports Medicine. Semaine habituelle sur 12 semaines et notes par défaut : nos choix.</div>`;
+      <div class="cg-src">Sources : Gabbett (2016) et Williams et al. (2017, charge récente lissée), British Journal of Sports Medicine. Semaine habituelle sur 12 semaines et notes par défaut : nos choix.</div>`;
   } else {
     const ci = chargeLineInfo(gauge, acwr);
     const emptyReason = pos==null ? chargeEmptyReason(chargeRunsForReason(), Date.now()) : null;
@@ -6092,12 +6092,14 @@ const TODAY_MOBILITY_RATIONALE = "Mobilité proposée dans Aujourd'hui.";
 const isTodayMobility = (p) => p.rationale===TODAY_MOBILITY_RATIONALE;
 function todayContext(){
   const todayStr = localDateStr(new Date());
-  const { acwr } = acwrAt(buildDailyLoadSeries(chargeLoadSessions()), new Date());
+  const ac = acwrAt(buildDailyLoadSeries(chargeLoadSessions()), new Date()), acwr = ac.acwr;
   const last = runningRuns[runningRuns.length-1];
   const daysSinceLastRun = last ? daysBetween(localDateStr(dateFromRun(last)), todayStr) : null;
   const rated = runningRuns.map(r=>({ ts:dateFromRun(r).getTime(), ratings:r.painRatings }));
-  const forme = formeDuJour({ acwr, daysSinceLastRun, painAtLastRun: !!(last && ratingHasGene(last.painRatings)), painAlert: !!urgentAlert() });
-  return { todayStr, acwr, forme, charge: formeChargeModel(acwr),
+  const lastZone = recentSensitiveZone(rated, Date.now(), 30);
+  const forme = formeDuJour({ acwr, daysSinceLastRun, painAtLastRun: !!(last && ratingHasGene(last.painRatings)), painAlert: !!urgentAlert(),
+    painZoneLabel: lastZone && lastZone.runsAgo===0 ? zoneSideLabel(lastZone.zone, ZONE_SHORT_LABEL).toLowerCase() : "" });
+  return { todayStr, acwr, ac, forme, charge: formeChargeModel(acwr),
     chargeEmpty: acwr==null ? CHARGE_EMPTY_TEXTS[chargeEmptyReason(chargeRunsForReason(), Date.now())].tile : "",
     rated, zone30: recentSensitiveZone(rated, Date.now(), 30), zone14: recentSensitiveZone(rated, Date.now(), 14) };
 }
@@ -6359,8 +6361,9 @@ function choiceBlockHTML(session, state){
     const mx = maxHr || estimatedMaxHr();
     const zones = mx ? hrZoneDefs(mx, restingHr||null) : null;
     const ctx = todayContext();
-    const rows = realRunsExplainRows(programPlan(), { z2Max: zones ? zones[1].max : null, maxHr:mx, restingHr:restingHr||null, forme:ctx.forme, chargeZoneLabel: ctx.charge ? ctx.charge.label : "" });
-    body = `<div class="ch-box">${rows.map(r=>`<div class="ch-row${r.bar!=null?" bar":""}"><div class="ch-l"><span>${escHtml(r.k)}</span><b>${escHtml(r.v)}</b></div>${r.bar!=null?`<div class="ch-split" aria-hidden="true"><i style="flex:${Math.max(0,100-Math.round(r.bar*100))}"></i><i style="flex:${Math.round(r.bar*100)}"></i></div>`:""}${r.s?`<div class="ch-s">${escHtml(r.s)}</div>`:""}</div>`).join("")}
+    const rows = realRunsExplainRows(programPlan(), { z2Max: zones ? zones[1].max : null, maxHr:mx, restingHr:restingHr||null, forme:ctx.forme,
+      charge: ctx.charge ? { acwr:ctx.acwr, acute:ctx.ac.acute, chronic:ctx.ac.chronic, label:ctx.charge.label } : null });
+    body = `<div class="ch-box">${rows.map(r=>`<div class="ch-row${r.bar!=null||r.link?" bar":""}"><div class="ch-l"><span>${escHtml(r.k)}</span><b>${escHtml(r.v)}</b></div>${r.bar!=null?`<div class="ch-split" aria-hidden="true"><i style="flex:${Math.max(0,100-Math.round(r.bar*100))}"></i><i style="flex:${Math.round(r.bar*100)}"></i></div>`:""}${r.s?`<div class="ch-s">${escHtml(r.s)}</div>`:""}${r.link?`<button type="button" class="ch-rules" style="margin-top:4px" onclick="openChargeSheet()">Voir ta charge</button>`:""}</div>`).join("")}
       <button type="button" class="ch-rules" onclick="openProgramRules()">Comment est construit ton programme</button></div>`;
   }
   return `<button type="button" class="flt" style="margin-top:12px;gap:6px" onclick="toggleChoice('${session.id}')" aria-expanded="${open}">Comment on l'a choisie ${icon(open?"chevronUp":"chevronDown",14)}</button>${body}`;
@@ -6374,7 +6377,7 @@ const PROGRAM_RULES = [
   ["80 % facile, 20 % soutenu", "Le temps passé en zones 4 et 5 ne dépasse pas 20 % sur 4 semaines. Sans cœur détaillé, toute la durée des séances d'allure et des courses compte."],
   ["Les bons jours", "Tes jours de course. Si tu as couru la veille, mieux vaut décaler (sauf si tu cours 4 fois par semaine ou plus)."],
   ["La bonne séance", "Une sortie longue par semaine si tu cours 3 fois ou plus, ou si tu prépares une course de 10 km et plus. Une séance d'allure par semaine si ton objectif est l'allure ou une course, que tu coures 3 fois ou plus, et que tu sois en forme. Sinon, des EF."],
-  ["La bonne durée", "Ta durée habituelle en EF ; un tiers de moins après 2 semaines sans courir. Ta semaine ne dépasse pas ta moyenne de plus de 10 %. La sortie longue : ta plus longue sortie récente, +10 % au plus."],
+  ["La bonne durée", "Ta durée habituelle en EF ; un tiers de moins après 2 semaines sans courir. Tes km de la semaine ne dépassent pas ta moyenne de plus de 10 %. La sortie longue : ta plus longue sortie récente, +10 % au plus."],
   ["La bonne allure", "Celle de tes EF récentes, avec la limite de ta zone 2 en battements par minute."],
 ];
 function renderRulesSheet(){

@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=104"></script>
+<script src="logic.js?v=105"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -417,7 +417,7 @@ try {
   assertEqual("E8 : régulier depuis 3 semaines -> zone idéale (≤ 1,3), pas d'alerte", threeWeeks.acwr<=1.3, true);
   assertEqual("E8 : 4 séances notées en une semaine pour un nouveau -> pas de charge", acwrAt([0,1,2,3].map(n=>day(n)), target).acwr, null);
   assertEqual("point 3 du 13/10 : reprise après 6 semaines de pause -> la charge s'affiche et signale la grosse semaine (> 1,5)", acwrAt([40,42,44,0,1,3,5].map(n=>day(n)), target).acwr>1.5, true);
-  assertEqual("E8 : reprise après 2 semaines de pause -> charge basse (pas d'alerte)", acwrAt([14,16,18,21,23,25,0].map(n=>day(n)), target).acwr<0.8, true);
+  assertEqual("E8 : reprise après 2 semaines de pause -> pas d'alerte (≤ 1,3 ; 0,96 avec la charge lissée, une séance du jour pèse plus)", acwrAt([14,16,18,21,23,25,0].map(n=>day(n)), target).acwr<=1.3, true);
   assertEqual("E8 : moins de 4 jours notés sur 28 jours -> pas de charge", acwrAt([0,10,22].map(n=>day(n)), target).acwr, null);
   assertEqual("E8 : nombre de jours avec une course sur 28 jours renvoyé", acwrAt([0,2,4,30].map(n=>day(n)), target).runDays28, 3);
 }
@@ -2141,7 +2141,12 @@ try {
   const omar = [at(150,300), ...[[1,111],[3,243],[4,417],[5,639],[6,228],[9,549],[10,319],[11,637]].map(([k,l])=>at(7*k,l)), at(5,236), at(2,440)];
   const r = acwrAt(omar, T);
   assertClose("charge d'Omar du 13/10 : semaine habituelle sur 12 semaines = 318", r.chronic, 318.25, 0.01);
-  assertClose("charge d'Omar du 13/10 : 2,12 au lieu de 2,63", r.acwr, 2.12, 0.01);
+  assertClose("charge d'Omar du 13/10 : 1,75 avec la charge récente lissée (2,12 en somme sur 7 jours, 2,63 sur 4 semaines)", r.acwr, 1.75, 0.01);
+  // Charge lissée (revue d'Omar du 16/10, Williams 2017) : chaque jour sans courir, la charge récente perd un quart de sa valeur
+  const seul = [at(80,300), at(60,300), at(40,300), at(30,300), at(20,300), at(10,300), at(5,440)];
+  const j0 = acwrAt(seul, new Date(2026,9,8)).acute, j3 = acwrAt(seul, new Date(2026,9,11)).acute;
+  assertClose("charge lissée : 3 jours sans courir -> la séance pèse 0,75³ de son poids", j3/j0, Math.pow(0.75,3), 0.001);
+  assertEqual("charge lissée : une séance compte encore après 7 jours, mais beaucoup moins (avant : plus du tout)", acwrAt(seul, new Date(2026,9,15)).acute>0 && acwrAt(seul, new Date(2026,9,15)).acute<j0*0.15, true);
   assertClose("semaine habituelle : depuis la 1re course quand il y a moins de 12 semaines de recul", acwrAt([0,2,4,7,9,11,14,16,18,21].map(n=>at(n,300)), T).baselineWeeks, 22/7, 0.001);
   assertClose("charge : l'heure du calcul ne change rien (jours entiers)", acwrAt(omar, new Date(2026,9,13,18,30)).acwr, r.acwr, 0.0001);
 
@@ -2179,19 +2184,24 @@ try {
   assertEqual("forme : charge 1,1 -> Frais", f({ acwr:1.1 }), "frais");
   assertEqual("forme : charge 1,4 la veille -> Normal", f({ acwr:1.4 }), "normal");
   assertEqual("forme : charge 1,6 la veille -> À ménager", f({ acwr:1.6 }), "menager");
-  assertEqual("forme : 2 jours sans courir font baisser d'un cran (1,6 -> Normal)", f({ acwr:1.6, daysSinceLastRun:2 }), "normal");
-  assertEqual("forme : cas d'Omar du 16/10, 1,52 après 5 jours sans courir -> Frais", f({ acwr:1.52, daysSinceLastRun:5 }), "frais");
-  assertEqual("forme : gêne à la dernière sortie -> À ménager, même reposé", f({ acwr:0.9, daysSinceLastRun:6, painAtLastRun:true }), "menager");
+  assertEqual("forme : les jours de repos ne baissent plus l'état à part (la charge lissée baisse déjà)", f({ acwr:1.6, daysSinceLastRun:2 }), "menager");
+  assertEqual("forme : cas d'Omar du 16/10, charge lissée 0,81 et gêne notée il y a 5 jours -> Frais", f({ acwr:0.81, daysSinceLastRun:5, painAtLastRun:true }), "frais");
+  assertEqual("forme : gêne à une sortie de 2 jours -> À ménager", f({ acwr:0.9, daysSinceLastRun:2, painAtLastRun:true }), "menager");
+  const fp = (o) => formeDuJour({ acwr:null, daysSinceLastRun:1, painAtLastRun:false, painAlert:false, ...o }).phrase;
+  assertEqual("forme : la phrase dit la cause (gêne seule)", fp({ acwr:0.9, painAtLastRun:true, painZoneLabel:"psoas gauche" }), "Gêne notée à ta dernière sortie (psoas gauche) : va doucement.");
+  assertEqual("forme : la phrase dit la cause (charge élevée seule)", fp({ acwr:1.6 }), "Ta charge est élevée : garde une allure facile, raccourcis si besoin.");
+  assertEqual("forme : la phrase dit la cause (charge haute et gêne)", fp({ acwr:1.4, painAtLastRun:true, painZoneLabel:"genou droit" }), "Charge haute et gêne récente (genou droit) : va doucement, raccourcis si besoin.");
+  assertEqual("forme : la phrase dit la cause (alerte douleur)", fp({ painAlert:true }), "Une douleur revient : va doucement.");
   assertEqual("forme : alerte douleur active -> À ménager", f({ painAlert:true }), "menager");
   assertEqual("forme : sans charge (pas assez de recul) ni gêne -> Frais", f({ acwr:null }), "frais");
   assertEqual("forme : charge légère -> phrase « tu peux même en faire un peu plus »", formeDuJour({ acwr:0.6, daysSinceLastRun:1 }).phrase, "Feu vert, tu peux même en faire un peu plus.");
   assertEqual("forme : pastille neutre (genre inconnu)", formeDuJour({ acwr:1, daysSinceLastRun:1 }).pill, "Feu vert");
   assertEqual("jauge : 1,1 -> Équilibrée, repère à 55 %", (({label, markerPct}) => ({label, markerPct}))(formeChargeModel(1.1)), { label:"Équilibrée", markerPct:55 });
-  assertEqual("jauge : 1,1 -> « à peu près ta semaine habituelle »", formeChargeModel(1.1).sentence, "Ces 7 derniers jours : à peu près ta semaine habituelle. Tu es dans ta zone habituelle.");
-  assertEqual("jauge : 1,52 -> « environ 1,5 fois »", formeChargeModel(1.52).sentence, "Ces 7 derniers jours : environ 1,5 fois ta semaine habituelle. Bien plus que d'habitude.");
-  assertEqual("jauge : 1,29 reste « à peu près ta semaine habituelle » (pas « 1,5 fois »)", formeChargeModel(1.29).sentence, "Ces 7 derniers jours : à peu près ta semaine habituelle. Tu es dans ta zone habituelle.");
-  assertEqual("jauge : 0,6 -> « moins que ta semaine habituelle »", formeChargeModel(0.6).sentence, "Ces 7 derniers jours : moins que ta semaine habituelle. Tu as de la marge.");
-  assertEqual("jauge : 1,4 -> « un peu plus »", formeChargeModel(1.4).sentence, "Ces 7 derniers jours : un peu plus que ta semaine habituelle. Garde une allure facile.");
+  assertEqual("jauge : 1,1 -> « à peu près ta semaine habituelle »", formeChargeModel(1.1).sentence, "Tes derniers jours : à peu près ta semaine habituelle. Tu es dans ta zone habituelle.");
+  assertEqual("jauge : 1,52 -> « environ 1,5 fois »", formeChargeModel(1.52).sentence, "Tes derniers jours : environ 1,5 fois ta semaine habituelle. Bien plus que d'habitude.");
+  assertEqual("jauge : 1,29 reste « à peu près ta semaine habituelle » (pas « 1,5 fois »)", formeChargeModel(1.29).sentence, "Tes derniers jours : à peu près ta semaine habituelle. Tu es dans ta zone habituelle.");
+  assertEqual("jauge : 0,6 -> « moins que ta semaine habituelle »", formeChargeModel(0.6).sentence, "Tes derniers jours : moins que ta semaine habituelle. Tu as de la marge.");
+  assertEqual("jauge : 1,4 -> « un peu plus »", formeChargeModel(1.4).sentence, "Tes derniers jours : un peu plus que ta semaine habituelle. Garde une allure facile.");
   assertEqual("jauge : au-delà de 2, repère au bout", formeChargeModel(3.9).markerPct, 100);
   assertEqual("jauge : pas de charge -> rien", formeChargeModel(null), null);
 
@@ -2314,8 +2324,9 @@ try {
   const h = sessionHeadline({ generation_reason:"real_runs", pace_zone:"easy", target_duration_min:40, target_distance_km:5.8, target_pace_sec_per_km:413 }, []);
   assertEqual("carte : 40 min, allure 6'48 à 7'03, environ 5,8 km", [h.big.value, h.big.unit, h.tiles.map(t=>t.value)], ["40", "min", ["6'48 à 7'03", "≈ 5,8 km"]]);
   // « Comment on l'a choisie »
-  const rows = realRunsExplainRows(pO, { z2Max:149, maxHr:188, restingHr:58, forme:{ label:"Frais" }, chargeZoneLabel:"Équilibrée" });
-  assertEqual("comment on l'a choisie : les lignes", rows.map(r=>r.k), ["Ton rythme", "Ta durée habituelle en EF", "Ton allure en EF", "Ta semaine habituelle", "Ta zone 2", "Facile / soutenu, 4 semaines", "Ta forme"]);
+  const rows = realRunsExplainRows(pO, { z2Max:149, maxHr:188, restingHr:58, forme:{ label:"Frais", cause:null }, charge:{ acwr:0.81, acute:235, chronic:290, label:"Équilibrée" } });
+  assertEqual("comment on l'a choisie : les lignes, avec la charge expliquée", rows.map(r=>r.k), ["Ton rythme", "Ta durée habituelle en EF", "Ton allure en EF", "Tes km par semaine", "Ta zone 2", "Facile / soutenu, 4 semaines", "Ta charge", "Ta forme"]);
+  assertEqual("comment on l'a choisie : la charge détaillée", [rows[6].v, rows[6].s], ["0,81 · équilibrée", "Tes derniers jours (235) comparés à ta semaine habituelle (290, sur 12 semaines). Chaque jour sans courir, elle baisse."]);
 }
 
 document.getElementById("summary").innerHTML =

@@ -1767,6 +1767,21 @@ function chargeSessionsWithEstimates(runs){
    CHARGE_MIN_SPAN_DAYS jours, et de la charge avant la dernière semaine. Sinon acwr = null (texte « few » de
    CHARGE_EMPTY_TEXTS). Depuis le point 3, toutes les courses comptent, notées ou non. */
 const CHARGE_BASELINE_WEEKS = 12, CHARGE_MIN_RUN_DAYS = 4, CHARGE_MIN_SPAN_DAYS = 21;
+/* Charge récente LISSÉE (revue d'Omar du 16/10/2026) : la somme des 7 derniers jours gardait une séance à 100 % pendant 7 jours,
+   puis plus rien (Omar « en surcharge » après 5 jours sans courir). Source : Williams et al. (2017), « Better way to determine
+   the acute:chronic workload ratio? », British Journal of Sports Medicine 51(3). Moyenne mobile exponentielle des charges du
+   jour, constante de 7 jours (λ = 2 / (7 + 1) = 0,25), ramenée à une semaine (× 7) : chaque jour sans courir, la charge
+   récente perd un quart de sa valeur. La semaine habituelle (chronique) reste la moyenne sur 12 semaines. */
+const CHARGE_ACUTE_LAMBDA = 2/(7+1), CHARGE_ACUTE_HORIZON_DAYS = 120;
+function acuteLoadSmoothed(dailySeries, target){
+  const key = (d) => d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();
+  const loads = new Map();
+  (dailySeries||[]).forEach(d=>{ if(d.date<=target) loads.set(key(d.date), (loads.get(key(d.date))||0) + d.load); });
+  let ew = 0;
+  const day = new Date(target.getFullYear(), target.getMonth(), target.getDate()-CHARGE_ACUTE_HORIZON_DAYS);
+  for(; day<=target; day.setDate(day.getDate()+1)) ew = CHARGE_ACUTE_LAMBDA*(loads.get(key(day))||0) + (1-CHARGE_ACUTE_LAMBDA)*ew;
+  return ew*7;
+}
 function acwrAt(dailySeries, targetDate){
   // Jours entiers : appelé avec l'heure courante, le 1er jour de chaque fenêtre (J-6, J-27…) sautait.
   const target = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
@@ -1780,7 +1795,8 @@ function acwrAt(dailySeries, targetDate){
   const baselineWeeks = (Math.round((target - baselineStart)/86400000) + 1) / 7;
   const chronic = sumBetween(baselineStart, target)/baselineWeeks;
   const enough = runDays28>=CHARGE_MIN_RUN_DAYS && first!=null && first<=back(CHARGE_MIN_SPAN_DAYS) && sumBetween(baselineStart, back(7))>0;
-  return { acute7j, chronic, baselineWeeks, runDays28, enough, acwr: enough && chronic>0 ? acute7j/chronic : null };
+  const acute = acuteLoadSmoothed(dailySeries, target);
+  return { acute, acute7j, chronic, baselineWeeks, runDays28, enough, acwr: enough && chronic>0 ? acute/chronic : null };
 }
 
 /* ---------- Charge d'entraînement affichée à l'utilisateur (4.4) ----------
@@ -3614,22 +3630,25 @@ function pendingAuthFrom(raw, now){
    trois écrans selon le jour (repos, séance, sortie faite), une seule carte d'action, ta forme du jour, la mobilité
    proposée, la prochaine séance, l'objectif et le chiffre du jour, « Ta semaine » allégée. */
 
-// Ta forme du jour (point 4). La charge déjà calculée (acwrAt) donne le niveau : Frais jusqu'à 1,3, Normal de 1,3 à 1,5,
-// À ménager au-delà. Chaque tranche de 2 jours sans courir fait baisser d'un cran : sans cela, une grosse séance laissait
-// « À ménager » 7 jours entiers (Omar le 16/10 : 1,52 après 5 jours sans courir). Une gêne notée à la dernière sortie ou
-// l'alerte douleur active donnent toujours « À ménager ». Sans charge (pas assez de recul), seule la gêne compte.
-// Pastille d'un jour de séance : « Feu vert » plutôt que « Tu es frais » de la maquette (le genre est inconnu pour 14 profils
-// sur 16).
-const FORME_STATES = ["frais", "normal", "menager"];
-function formeDuJour({ acwr, daysSinceLastRun, painAtLastRun, painAlert }){
+// Ta forme du jour (point 4, revue du 16/10/2026). La charge (lissée, acwrAt) donne le niveau : Frais jusqu'à 1,3, Normal de
+// 1,3 à 1,5, À ménager au-delà ; chaque jour de repos la fait déjà baisser (la règle « 2 jours sans courir = un cran » est
+// retirée). L'alerte douleur active, ou une gêne notée à une sortie de 3 jours ou moins, donnent « À ménager ». La phrase dit
+// la vraie cause : la gêne n'entre jamais dans la charge (Omar, 16/10). Pastille d'un jour de séance : « Feu vert » plutôt que
+// « Tu es frais » de la maquette (le genre est inconnu pour 14 profils sur 16).
+const FORME_STATES = ["frais", "normal", "menager"], FORME_GENE_DAYS = 3;
+function formeDuJour({ acwr, daysSinceLastRun, painAtLastRun, painAlert, painZoneLabel }){
   const chargeLevel = acwr==null ? 0 : acwr>1.5 ? 2 : acwr>1.3 ? 1 : 0;
-  const drop = daysSinceLastRun>0 ? Math.floor(daysSinceLastRun/2) : 0;
-  let level = Math.max(0, chargeLevel - drop), cause = level>0 ? "charge" : null;
+  const geneRecent = !!painAtLastRun && (daysSinceLastRun==null || daysSinceLastRun<=FORME_GENE_DAYS);
+  let level = chargeLevel, cause = chargeLevel>0 ? "charge" : null;
   if(painAlert){ level = 2; cause = "alerte"; }
-  else if(painAtLastRun){ level = 2; cause = "gene"; }
+  else if(geneRecent){ level = 2; cause = chargeLevel>0 ? "charge_gene" : "gene"; }
   const state = FORME_STATES[level];
-  const phrase = state==="menager" ? "Va doucement : raccourcis ta prochaine séance si besoin."
-    : state==="normal" ? "Tu peux faire ta prochaine séance, à allure facile."
+  const z = painZoneLabel ? ` (${painZoneLabel})` : "";
+  const phrase = cause==="alerte" ? "Une douleur revient : va doucement."
+    : cause==="charge_gene" ? `Charge haute et gêne récente${z} : va doucement, raccourcis si besoin.`
+    : cause==="gene" ? `Gêne notée à ta dernière sortie${z} : va doucement.`
+    : level===2 ? "Ta charge est élevée : garde une allure facile, raccourcis si besoin."
+    : level===1 ? "Ta charge est un peu haute : garde une allure facile."
     : acwr!=null && acwr<0.8 ? "Feu vert, tu peux même en faire un peu plus." : "Feu vert pour ta prochaine séance.";
   return { state, level, cause, phrase,
     label: { frais:"Frais", normal:"Normal", menager:"À ménager" }[state],
@@ -3642,10 +3661,10 @@ function formeDuJour({ acwr, daysSinceLastRun, painAtLastRun, painAlert }){
 function formeChargeModel(acwr){
   if(acwr==null) return null;
   const zone = acwr<0.8 ? "legere" : acwr<=1.3 ? "equilibree" : "elevee";
-  const sentence = acwr<0.8 ? "Ces 7 derniers jours : moins que ta semaine habituelle. Tu as de la marge."
-    : acwr<=1.3 ? "Ces 7 derniers jours : à peu près ta semaine habituelle. Tu es dans ta zone habituelle."
-    : acwr<=1.5 ? "Ces 7 derniers jours : un peu plus que ta semaine habituelle. Garde une allure facile."
-    : `Ces 7 derniers jours : environ ${chargeTimesText(acwr)} fois ta semaine habituelle. Bien plus que d'habitude.`;
+  const sentence = acwr<0.8 ? "Tes derniers jours : moins que ta semaine habituelle. Tu as de la marge."
+    : acwr<=1.3 ? "Tes derniers jours : à peu près ta semaine habituelle. Tu es dans ta zone habituelle."
+    : acwr<=1.5 ? "Tes derniers jours : un peu plus que ta semaine habituelle. Garde une allure facile."
+    : `Tes derniers jours : environ ${chargeTimesText(acwr)} fois ta semaine habituelle. Bien plus que d'habitude.`;
   return { zone, label:{ legere:"Légère", equilibree:"Équilibrée", elevee:"Élevée" }[zone],
     value: Number(acwr).toFixed(2).replace(".", ","), markerPct: Math.round(Math.min(Math.max(acwr, 0), 2)/2*1000)/10, sentence };
 }
@@ -3929,7 +3948,7 @@ function realRunsWeekSessions({ plan, days, zones, currentWeek, weekIndex, struc
     easy.forEach(s=>{
       const min = Math.max(EF_MIN_MINUTES, Math.min(s.durationMin, round5(each*(efPace||360)/60)));
       if(min<s.durationMin){ s.durationMin = min; s.distanceKm = kmFor(min, efPace);
-        if(s.rationale===efWhy) s.rationale = `Pourquoi : on ne dépasse pas ta semaine habituelle de plus de 10 % (${capText} km), donc une EF de ${min} minutes.`; }
+        if(s.rationale===efWhy) s.rationale = `Pourquoi : on ne dépasse pas tes km habituels de plus de 10 % (${capText} km par semaine), donc une EF de ${min} minutes.`; }
     });
     const long = out.find(s=>s.type==="Long");
     const after = out.reduce((a,s)=>a+(s.distanceKm||0), 0);
@@ -3937,13 +3956,13 @@ function realRunsWeekSessions({ plan, days, zones, currentWeek, weekIndex, struc
       const efKm = kmFor(plan.efMin, efPace) || 0;
       const km = Math.max(efKm, Math.floor((long.distanceKm - (after - plan.capWeekKm))*10)/10);
       if(km<long.distanceKm){ long.distanceKm = km; long.durationMin = long.targetPaceSecPerKm ? Math.max(plan.efMin, round5(km*long.targetPaceSecPerKm/60)) : long.durationMin;
-        long.rationale = `Pourquoi : ta sortie longue de la semaine, raccourcie pour ne pas dépasser ta semaine habituelle de plus de 10 % (${capText} km). Elle se court à allure facile.`; }
+        long.rationale = `Pourquoi : ta sortie longue de la semaine, raccourcie pour ne pas dépasser tes km habituels de plus de 10 % (${capText} km par semaine). Elle se court à allure facile.`; }
     }
   }
   return out;
 }
 // Ce que montre « Comment on l'a choisie » (C30, point 2 de la revue) : les chiffres qui ont servi au calcul.
-function realRunsExplainRows(plan, { z2Max, maxHr, restingHr, forme, chargeZoneLabel }){
+function realRunsExplainRows(plan, { z2Max, maxHr, restingHr, forme, charge }){
   if(!plan) return [];
   const rows = [];
   if(plan.source!=="courses"){
@@ -3952,12 +3971,14 @@ function realRunsExplainRows(plan, { z2Max, maxHr, restingHr, forme, chargeZoneL
     rows.push({ k:"Ton rythme", v:`${plan.runs8} sortie${plan.runs8>1?"s":""}`, s:"ces 8 dernières semaines" });
     rows.push({ k:"Ta durée habituelle en EF", v:`${plan.efMin} min`, s: plan.efCount>=2 ? `médiane de tes ${plan.efCount} EF` : "médiane de tes sorties" });
     if(plan.efPace) rows.push({ k:"Ton allure en EF", v:`${fmtA(plan.efPace)} /km`, s:"médiane sur 8 semaines" });
-    rows.push({ k:"Ta semaine habituelle", v:`${String(Math.round(plan.avgWeekKm*10)/10).replace(".",",")} km`, s:"+10 % au plus" });
+    rows.push({ k:"Tes km par semaine", v:`${String(Math.round(plan.avgWeekKm*10)/10).replace(".",",")} km`, s:"moyenne des semaines courues, +10 % au plus" });
   }
   if(z2Max) rows.push({ k:"Ta zone 2", v:`sous ${z2Max} bpm`, s: restingHr ? `FC max ${maxHr}, au repos ${restingHr}` : `FC max ${maxHr}` });
   if(plan.intensity) rows.push({ k:"Facile / soutenu, 4 semaines", v:`${100-Math.round(plan.intensity.share*100)} % / ${Math.round(plan.intensity.share*100)} %`, bar: plan.intensity.share,
     s: plan.room8020 ? "Règle : 80 % facile au moins. Tu as de la marge pour une séance d'allure." : "Règle : 80 % facile au moins. Pas de séance d'allure tant que ça ne s'équilibre pas." });
-  if(forme) rows.push({ k:"Ta forme", v:forme.label, s: chargeZoneLabel ? `charge ${chargeZoneLabel.toLowerCase()}` : "" });
+  if(charge && charge.acwr!=null) rows.push({ k:"Ta charge", v:`${String(Math.round(charge.acwr*100)/100).replace(".",",")} · ${charge.label.toLowerCase()}`,
+    s:`Tes derniers jours (${Math.round(charge.acute)}) comparés à ta semaine habituelle (${Math.round(charge.chronic)}, sur 12 semaines). Chaque jour sans courir, elle baisse.`, link:true });
+  if(forme) rows.push({ k:"Ta forme", v:forme.label, s: { gene:"une gêne récente", charge_gene:"charge haute et gêne récente", alerte:"une douleur qui revient", charge:"ta charge" }[forme.cause] || "" });
   return rows;
 }
 // Jours de course d'une semaine, répartis au mieux parmi les jours disponibles (même règle que generateWeekSessions).
