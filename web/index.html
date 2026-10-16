@@ -442,7 +442,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .wk-stat{flex:1;min-width:0}
 .wk-num{font-family:var(--font-display);font-weight:700;font-size:30px;line-height:1.05;text-transform:uppercase}
 .wk-lbl{margin-top:2px;font-size:12.5px;color:var(--text-2)}
-.wk-last{margin-top:3px;font-size:11.5px;color:var(--text-muted)}
 .wk-days{display:flex;gap:4px;margin-bottom:14px}
 .wk-day{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:2px 0;border:none;background:none;color:inherit;font-family:inherit;cursor:pointer}
 .wk-letter{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:500;color:var(--text-muted)}
@@ -460,8 +459,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .wk-msg{display:flex;align-items:flex-start;gap:10px;padding:12px;margin-bottom:6px;border-radius:var(--r-md);background:var(--surface-sunken);font-size:14px;line-height:1.45;color:var(--text-2)}
 .wk-msg>svg{flex:none;margin-top:2px;color:var(--accent)}
 .wk-msg .bang{flex:none;width:20px;height:20px;border-radius:50%;background:var(--attention);color:var(--on-accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.wk-charge{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;width:100%;min-height:52px;margin-top:12px;padding:12px 0 0;border:none;border-top:1px solid var(--line);background:none;color:inherit;font-family:inherit;font-size:14px;text-align:left;cursor:pointer}
-.wk-charge .r{display:flex;align-items:center;gap:6px;margin-left:auto}
 /* ---------- Programme : en-tête, calendrier semaine / mois, petites cartes (design 8, V5) ---------- */
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .page-action{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border:none;border-radius:var(--r-pill);background:var(--surface-control);color:var(--text);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
@@ -733,6 +730,75 @@ button.pg-rec-row{cursor:pointer}
 .cd-alert{margin-top:0;color:var(--text)}
 .cd-alert .bang{flex:none;width:20px;height:20px;border-radius:50%;background:var(--attention);color:var(--on-accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .btn-ghost{width:100%;height:48px;margin-top:6px;border:none;border-radius:24px;background:none;color:var(--text-2);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+/* Refonte d'Aujourd'hui (C27, revue du 16/10/2026 ; maquette Claude Design « Aujourd'hui repos », 4a) */
+.topbar-title .pt-over{display:block;font:600 11px/1.4 var(--font-text);letter-spacing:.14em;color:var(--text-muted)}
+.fm-card{display:flex;flex-direction:column;gap:14px;margin-bottom:14px;padding:18px 16px;border-radius:var(--r-xl);background:linear-gradient(180deg,var(--fm-tint),var(--surface) 55%)}
+.fm-card.frais{--fm-tint:rgba(198,244,50,.13);--fm-color:var(--accent)}
+.fm-card.normal{--fm-tint:rgba(242,243,240,.07);--fm-color:var(--text)}
+.fm-card.menager{--fm-tint:oklch(0.72 0.17 300 / .16);--fm-color:var(--attention)}
+.fm-over{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-2)}
+.fm-state{font:700 40px/1 var(--font-display);text-transform:uppercase;color:var(--fm-color)}
+.fm-phrase{font-size:16px;font-weight:600;line-height:1.35}
+.fm-block{display:flex;flex-direction:column;gap:10px;width:100%;padding:14px;border:none;border-radius:var(--r-md);background:var(--surface-sunken);color:var(--text);font:inherit;text-align:left}
+button.fm-block{cursor:pointer}
+.fm-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:15px}
+.fm-row .k{font-weight:600}
+.fm-row .m{color:var(--text-muted)}
+.fm-row b.att{color:var(--attention)}
+.fm-gauge{position:relative;padding:4px 0}
+.fm-gauge .seg,.fm-seglbl{display:grid;grid-template-columns:40fr 25fr 35fr;gap:3px}
+.fm-gauge .seg i{height:8px;border-radius:4px}
+.fm-gauge .seg i:nth-child(1){background:var(--grabber)}
+.fm-gauge .seg i:nth-child(2){background:var(--accent)}
+.fm-gauge .seg i:nth-child(3){background:oklch(0.72 0.17 300 / .55)}
+.fm-gauge .mk{position:absolute;top:0;width:3px;height:16px;margin-left:-1.5px;border-radius:2px;background:var(--text)}
+.fm-seglbl{margin-top:-6px;font-size:11.5px;color:var(--text-muted)}
+.fm-seglbl .on{color:var(--text-2);font-weight:600}
+.fm-tx{font-size:13px;line-height:1.45;color:var(--text-3)}
+.fm-dots{display:flex;gap:6px}
+.fm-dots i{flex:1;height:8px;border-radius:4px;background:var(--line-empty)}
+.fm-dots i.ok{background:var(--accent)}
+.fm-dots i.gene{background:var(--attention)}
+.fm-dots i.legere{background:oklch(0.72 0.17 300 / .5)}
+.fm-pill{flex:none;font:700 13px/1 var(--font-display);letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;border-radius:var(--r-pill);background:var(--accent-soft);color:var(--accent)}
+.fm-pill.normal{background:var(--select-soft);color:var(--text)}
+.fm-pill.menager{background:var(--attention-bg-strong);color:var(--attention)}
+.mb-card{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;padding:16px;border-radius:var(--r-xl);background:var(--surface)}
+.mb-card.mb-done{flex-direction:row;align-items:center;gap:12px;font-size:15px;color:var(--text-2)}
+.mb-head{display:flex;align-items:flex-start;gap:12px}
+.mb-ic{flex:none;width:36px;height:36px;border-radius:12px;background:oklch(0.75 0.13 330 / .14);color:var(--type-souple);display:flex;align-items:center;justify-content:center}
+.mb-done .mb-ic{background:var(--accent-soft);color:var(--accent)}
+.mb-hd{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.mb-over{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--type-souple)}
+.mb-title{font-size:16px;font-weight:600}
+.mb-tx{font-size:13px;line-height:1.4;color:var(--text-3)}
+.mb-ex{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:8px 12px 8px 8px;border:none;border-radius:var(--r-sm);background:var(--surface-sunken);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.mb-ex img{flex:none;width:44px;height:44px;border-radius:8px;background:var(--surface-control);object-fit:contain}
+.mb-ex .t{flex:1;min-width:0;display:flex;flex-direction:column}
+.mb-ex .f{font-size:13px;color:var(--text-3)}
+.mb-ex>svg{flex:none;color:var(--text-muted)}
+.mb-help{font-size:12.5px;color:var(--text-muted)}
+.mb-actions{display:flex;align-items:center;gap:14px}
+.mb-actions .btn-primary{flex:1;margin:0}
+.mb-other{min-height:48px;padding:0 6px;border:none;background:none;color:var(--text-2);font:inherit;font-size:14px;text-decoration:underline;cursor:pointer}
+.nx-tile{display:flex;align-items:center;gap:12px;width:100%;margin-bottom:14px;padding:16px;border:none;border-radius:var(--r-xl);background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.nx-tile .bar{flex:none;width:6px;align-self:stretch;border-radius:3px}
+.nx-tile .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.nx-tile .ov{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+.nx-tile .ti{font:700 26px/1.05 var(--font-display);text-transform:uppercase}
+.nx-tile .ln{font-size:14px;color:var(--text-2)}
+.nx-tile .ad{font-size:13px;line-height:1.4;color:var(--text-3)}
+.nx-tile>svg{flex:none;color:var(--text-muted)}
+.tf-row{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px;margin-bottom:14px}
+.tf-row.one{grid-template-columns:minmax(0,1fr)}
+.tf-tile{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;padding:16px;border:none;border-radius:var(--r-xl);background:var(--surface);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.tf-over{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+.tf-big{display:flex;align-items:baseline;gap:6px;margin-top:4px;font:700 40px/1 var(--font-display);white-space:nowrap}
+.tf-big em{font:700 20px var(--font-display);font-style:normal;color:var(--text)}
+.tf-big em.up{color:var(--accent)}
+.tf-big.fig{color:var(--accent)}
+.tf-big.soon{font-size:30px;color:var(--text-2)}
+.tf-sub{font-size:12.5px;line-height:1.4;color:var(--text-3)}
 .ac-card{background:var(--surface);border-radius:var(--r-xl);padding:18px 16px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:14px}
 .vf-remind{display:flex;align-items:center;gap:10px;width:100%;min-height:var(--tap-min);margin:0 0 14px;padding:10px 14px;border:1px solid var(--line);border-radius:var(--r-lg);background:none;color:var(--text-2);font:inherit;font-size:14px;text-align:left;cursor:pointer}
 .vf-remind .ic{display:flex;color:var(--accent)}
@@ -1223,7 +1289,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=101"></script>
+<script src="logic.js?v=103"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -5539,13 +5605,15 @@ window.closeExerciseSheet = () => { exerciseSheet = null; refreshSheet(); };
 window.exerciseNav = (delta) => {
   if(!exerciseSheet) return;
   const s = plannedSessions.find(p=>p.id===exerciseSheet.sessionId);
-  const n = s ? exercisesInDescription(s.description).length : 0;
+  const m = exerciseSheet.mobility ? todayMobility(todayContext()) : null;
+  const n = m ? m.exercises.length : s ? exercisesInDescription(s.description).length : 0;
   exerciseSheet.index = Math.max(0, Math.min(n-1, exerciseSheet.index + delta));
   renderExerciseSheet();
 };
 function renderExerciseSheet(){
   const root = document.getElementById("sheetRoot");
   const st = exerciseSheet;
+  if(st && st.mobility){ renderMobilityExerciseSheet(root, st); return; }
   const s = st && plannedSessions.find(p=>p.id===st.sessionId);
   const list = s ? exercisesInDescription(s.description) : [];
   const ex = list[st ? st.index : 0];
@@ -5582,6 +5650,21 @@ function renderExerciseSheet(){
     ${ex.variante ? `<div style="font-size:13.5px;color:var(--text-muted);margin-bottom:12px">${escHtml(ex.variante)}</div>` : ""}
     ${editable ? `<button type="button" class="btn-secondary" onclick="openExerciseReplace('${s.id}',${st.index})">Remplacer</button>
       <button type="button" class="btn-secondary" style="margin-top:8px;${dim}" onclick="removeExercise('${s.id}',${st.index})">Supprimer de la séance</button>` : ""}
+    <div class="ex-nav"><button type="button" class="btn-secondary" ${st.index===0?"disabled":""} onclick="exerciseNav(-1)">Précédent</button><button type="button" class="btn-secondary" ${st.index===list.length-1?"disabled":""} onclick="exerciseNav(1)">Suivant</button></div>
+  </div></div>`;
+}
+// Exercice de la mobilité proposée dans Aujourd'hui (pas de séance enregistrée : figure, consignes, précédent / suivant).
+function renderMobilityExerciseSheet(root, st){
+  const m = todayMobility(todayContext());
+  const list = m ? m.exercises : [];
+  const ex = list[st.index];
+  if(!ex){ root.innerHTML = ""; return; }
+  root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeExerciseSheet()"><div class="sheet ex-detail" role="dialog" aria-modal="true" aria-label="${escHtml(ex.name)}">
+    ${sheetHeadHTML(ex.name, "closeExerciseSheet()", `Mobilité du jour · exercice ${st.index+1} sur ${list.length}`)}
+    <img class="ex-detail-img" src="${ex.visuel}" alt="Animation : ${escHtml(ex.name)}">
+    <div class="ex-detail-meta"><span>${escHtml(ex.zoneTravaillee)}</span><span>${escHtml(ex.format)}</span>${ex.materiel && ex.materiel!=="Aucun" ? `<span>${escHtml(ex.materiel)}</span>` : ""}</div>
+    <ul>${ex.consignes.map(c=>`<li>${escHtml(c)}</li>`).join("")}</ul>
+    ${ex.variante ? `<div style="font-size:13.5px;color:var(--text-muted);margin-bottom:12px">${escHtml(ex.variante)}</div>` : ""}
     <div class="ex-nav"><button type="button" class="btn-secondary" ${st.index===0?"disabled":""} onclick="exerciseNav(-1)">Précédent</button><button type="button" class="btn-secondary" ${st.index===list.length-1?"disabled":""} onclick="exerciseNav(1)">Suivant</button></div>
   </div></div>`;
 }
@@ -5665,43 +5748,23 @@ function weekRecapCardHTML(){
   const { thisWeek, lastWeek, days } = recap;
   const { acwr } = computeProgramInputs();
   const gauge = chargeEntrainementGauge(acwr);
-  const stat = (value, label, last, zero) => `<div class="wk-stat">
+  // Revue du 16/10 (point 7, R6) : plus de légende, ni de « sem. dernière », ni de ligne de charge (elle est dans « Ta forme du
+  // jour ») ; la ligne de message seulement quand une séance est à replacer.
+  const stat = (value, label, zero) => `<div class="wk-stat">
     <div class="wk-num${zero?" zero":""}">${value}</div>
     <div class="wk-lbl">${label}</div>
-    <div class="wk-last">sem. dernière : ${last}</div>
   </div>`;
   const msg = weekMessage(recap, gauge, days.filter(d=>d.status==="manque").map(d=>d.date), unlinkedRunDatesThisWeek());
-  const ci = chargeLineInfo(gauge, acwr);
   return `<div class="card">
     <div class="stitle" style="margin-bottom:0">Ta semaine</div>
     <div class="wk-stats">
-      ${stat(countUpHTML(thisWeek.km,"km","recap_km"), "distance", lastWeek.km.toLocaleString("fr-FR")+" km", !thisWeek.km)}
-      ${stat(countUpHTML(thisWeek.sessions,"int","recap_n"), thisWeek.sessions>1?"courses":"course", lastWeek.sessions, !thisWeek.sessions)}
-      ${stat(countUpHTML(thisWeek.minutes,"min","recap_min"), "durée", formatMinutesShort(lastWeek.minutes), !thisWeek.minutes)}
+      ${stat(countUpHTML(thisWeek.km,"km","recap_km"), "distance", !thisWeek.km)}
+      ${stat(countUpHTML(thisWeek.sessions,"int","recap_n"), thisWeek.sessions>1?"courses":"course", !thisWeek.sessions)}
+      ${stat(countUpHTML(thisWeek.minutes,"min","recap_min"), "durée", !thisWeek.minutes)}
     </div>
     <div class="wk-days">${days.map(weekTileHTML).join("")}</div>
-    <div class="wk-legend">
-      <span><i style="background:var(--text-muted)"></i>fait</span>
-      <span><i style="border:1.5px solid var(--text-muted)"></i>prévu</span>
-      <span style="color:var(--attention)"><i style="border:1.5px dashed var(--attention)"></i>à replacer</span>
-      <span><i style="border:1.5px dashed var(--line-field)"></i>repos</span>
-      <span><span class="plus">+</span>2e séance (plein = faite)</span>
-    </div>
-    <div class="wk-msg" role="status">${msg.kind==="missed" ? `<span class="bang" aria-hidden="true">!</span>` : icon("sparkle",16)}<span>${escHtml(msg.text)}</span></div>
-    <button type="button" class="wk-charge" onclick="openChargeSheet()" aria-label="Charge d'entraînement : ${escHtml(ci.label)}${ci.value?", "+ci.value:""}">
-      <span style="color:var(--text-muted)">Charge d'entraînement</span>
-      <span class="r"><b style="color:${ci.color}">${escHtml(ci.label)}</b>${ci.value?`<span>· ${ci.value}</span>`:""}${icon("chevronRight",16)}</span>
-    </button>
+    ${msg.kind==="missed" ? `<div class="wk-msg" role="status"><span class="bang" aria-hidden="true">!</span><span>${escHtml(msg.text)}</span></div>` : ""}
   </div>`;
-}
-// Message de jour de repos (4.8.e). La citation de Hal Higdon est tirée de
-// son plan semi-marathon Novice 1 (halhigdon.com), vérifiée le 02/10/2026 ;
-// la première phrase est notre formulation du principe général d'adaptation
-// (sans chiffre), pas une citation.
-function restDayMessageHTML(){
-  return `<div style="font-weight:600;margin-bottom:6px">Jour de repos</div>
-    <div style="font-size:13px;line-height:1.55">C'est pendant le repos que ton corps répare et renforce ce que tes séances ont sollicité. Hal Higdon, coach de référence, le résume ainsi : « Le repos est une partie aussi importante de ton entraînement que les sorties. » Profite-en pour bien dormir et manger, et marche tranquillement si tu en as envie.</div>
-    <div style="font-size:11px;color:var(--text-faint);margin-top:8px">Source : halhigdon.com</div>`;
 }
 // ---------- Aujourd'hui : bandeau coach, alerte douleur forte, carte « Hier », carte d'action unique ----------
 // (D52, D53, D11, D12 ; journal 9 et 10). Les anciennes cartes séparées (célébration, notation,
@@ -5824,7 +5887,8 @@ function hierCardHTML(){
   const run = h.run;
   const main = h.records.length ? hierRecordInfo(h.records[0]) : (h.eff ? hierEfficiencyInfo(h.eff.pct) : null);
   const runDay = localDateStr(dateFromRun(run));
-  const dayLbl = daysBetween(runDay, localDateStr(new Date()))===1 ? "Hier" : dayLabelShort(dateFromRun(run));
+  const ago = daysBetween(runDay, localDateStr(new Date()));
+  const dayLbl = ago===1 ? "Hier" : ago===0 ? "Aujourd'hui" : dayLabelShort(dateFromRun(run));
   const c = TC[run.type]||TC.Other;
   const others = h.records.slice(1).map(r=>hierRecordInfo(r)).filter(i=>i.title);
   const effLine = h.records.length && h.eff ? hierEfficiencyInfo(h.eff.pct).title : "";
@@ -5966,19 +6030,175 @@ window.dismissHier = (runId, effFlag) => {
   }catch(e){}
   renderContent();
 };
+// ---------- Refonte d'Aujourd'hui (C27, revue d'Omar du 16/10/2026 ; maquette Claude Design « Aujourd'hui repos », 4a) ----------
+// Trois écrans selon le jour : repos (ta forme, mobilité, prochaine séance), séance du jour (la carte, avec la pastille de
+// forme), sortie faite (la sortie, puis la prochaine séance). Partout : l'alerte douleur en haut, UNE carte d'action sous le
+// bloc principal (le rappel du coach et celui des sorties à vérifier passent par cette même place), 4 blocs au plus avant
+// « Ta semaine » (un jour de repos, une carte d'action efface l'objectif et le chiffre du jour).
+let todayKind = "repos";          // repos | seance | autre | faite : sert au surtitre de l'en-tête
+let mobilityAlt = false;          // « Autres exercices » : les 3 suivants
+// La mobilité notée depuis la carte du jour reste un jour de repos (la carte passe en « faite ») : on la reconnaît à sa raison.
+const TODAY_MOBILITY_RATIONALE = "Mobilité proposée dans Aujourd'hui.";
+const isTodayMobility = (p) => p.rationale===TODAY_MOBILITY_RATIONALE;
+function todayContext(){
+  const todayStr = localDateStr(new Date());
+  const { acwr } = acwrAt(buildDailyLoadSeries(chargeLoadSessions()), new Date());
+  const last = runningRuns[runningRuns.length-1];
+  const daysSinceLastRun = last ? daysBetween(localDateStr(dateFromRun(last)), todayStr) : null;
+  const rated = runningRuns.map(r=>({ ts:dateFromRun(r).getTime(), ratings:r.painRatings }));
+  const forme = formeDuJour({ acwr, daysSinceLastRun, painAtLastRun: !!(last && ratingHasGene(last.painRatings)), painAlert: !!urgentAlert() });
+  return { todayStr, acwr, forme, charge: formeChargeModel(acwr),
+    chargeEmpty: acwr==null ? CHARGE_EMPTY_TEXTS[chargeEmptyReason(chargeRunsForReason(), Date.now())].tile : "",
+    rated, zone30: recentSensitiveZone(rated, Date.now(), 30), zone14: recentSensitiveZone(rated, Date.now(), 14) };
+}
+function formeCardHTML(ctx){
+  const f = ctx.forme;
+  const zoneColor = { legere:"var(--text-2)", equilibree:"var(--accent)", elevee:"var(--attention)" };
+  const charge = ctx.charge ? `<button type="button" class="fm-block" onclick="openChargeSheet()" aria-label="Charge d'entraînement : ${escHtml(ctx.charge.label)}, ${ctx.charge.value}">
+      <div class="fm-row"><span class="k">Charge d'entraînement</span><span><b style="color:${zoneColor[ctx.charge.zone]}">${escHtml(ctx.charge.label)}</b><span class="m"> · ${ctx.charge.value}</span></span></div>
+      <div class="fm-gauge" aria-hidden="true"><div class="seg"><i></i><i></i><i></i></div><span class="mk" style="left:${ctx.charge.markerPct}%"></span></div>
+      <div class="fm-seglbl" aria-hidden="true">${["legere","equilibree","elevee"].map(z=>`<span${z===ctx.charge.zone?' class="on"':""}>${{legere:"Légère",equilibree:"Équilibrée",elevee:"Élevée"}[z]}</span>`).join("")}</div>
+      <div class="fm-tx">${escHtml(ctx.charge.sentence)}</div>
+    </button>`
+    : `<div class="fm-block"><div class="fm-row"><span class="k">Charge d'entraînement</span></div><div class="fm-tx">${escHtml(ctx.chargeEmpty)}</div></div>`;
+  let zone = "";
+  if(ctx.zone30){
+    const dots = zoneDots(ctx.rated, ctx.zone30.zone, 8);
+    const head = zoneDotsHeadline(dots);
+    zone = `<div class="fm-block">
+      <div class="fm-row"><span class="k">${escHtml(zoneSideLabel(ctx.zone30.zone, ZONE_SHORT_LABEL))}</span><b${head.attention?' class="att"':""}>${escHtml(head.text)}</b></div>
+      <div class="fm-dots" aria-hidden="true">${dots.map(d=>`<i class="${d}"></i>`).join("")}</div>
+      <div class="fm-tx">Tes ${dots.length} dernières sorties, de la plus ancienne à la plus récente.</div>
+    </div>`;
+  }
+  return `<section class="fm-card ${f.state}">
+    <div class="fm-over">Ta forme du jour</div>
+    <div class="fm-state">${escHtml(f.label)}</div>
+    <div class="fm-phrase">${escHtml(f.phrase)}</div>
+    ${charge}${zone}
+  </section>`;
+}
+function todayMobility(ctx){
+  return mobilityProposal({ zoneKey: ctx.zone14 ? ctx.zone14.zone : null, niveau: goals.niveau, objectif: goals.principal?.objectifPrincipal,
+    pausedZoneKeys: suspendedZones.map(z=>z.zone), seed: dayIndexOf(ctx.todayStr), alt: mobilityAlt });
+}
+function mobilityCardHTML(ctx){
+  const done = plannedSessions.some(p=>p.planned_date===ctx.todayStr && p.status==="done" && isTodayMobility(p));
+  if(done) return `<div class="mb-card mb-done"><span class="mb-ic">${icon("check",18)}</span><span>Mobilité du jour faite, bravo.</span></div>`;
+  const m = todayMobility(ctx);
+  if(!m) return "";
+  const z = m.kind==="zone" && ctx.zone14 ? ctx.zone14 : null;
+  const ago = z ? daysBetween(localDateStr(new Date(z.ts)), ctx.todayStr) : 0;
+  const when = !z ? "" : z.runsAgo===0 ? "à ta dernière sortie" : ago===1 ? "hier" : `il y a ${ago} jours`;
+  const title = z ? `Mobilité pour ${zonePossessive(z.zone, ZONE_SHORT_LABEL)}` : "Mobilité pour ta foulée";
+  const why = z ? `Tu as noté une gêne ${when}. Ces exercices travaillent la zone autour.`
+    : ctx.zone14 ? "Ces exercices assouplissent hanches et chevilles." : "Pas de gêne notée ces 14 derniers jours. Ces exercices assouplissent hanches et chevilles.";
+  const rows = m.exercises.map((ex, i)=>`<button type="button" class="mb-ex" onclick="openMobilityExercise(${i})">
+      <img src="${ex.visuel}" alt="" width="44" height="44" loading="lazy"><span class="t"><span class="n">${escHtml(ex.name)}</span><span class="f">${escHtml(ex.format)}</span></span>${icon("chevronRight",16)}</button>`).join("");
+  return `<section class="mb-card">
+    <div class="mb-head"><span class="mb-ic">${icon(TICON["Mobilité"],18)}</span><span class="mb-hd"><span class="mb-over">Proposé aujourd'hui · ${m.durationMin} min</span><span class="mb-title">${escHtml(title)}</span><span class="mb-tx">${escHtml(why)}</span></span></div>
+    ${rows}
+    <div class="mb-help">Touche un exercice pour voir la figure.</div>
+    <div class="mb-actions"><button type="button" class="btn-primary" onclick="mobilityDone()">C'est fait</button><button type="button" class="mb-other" onclick="mobilityOther()">Autres exercices</button></div>
+  </section>`;
+}
+window.mobilityOther = () => { mobilityAlt = !mobilityAlt; renderContent(); };
+window.openMobilityExercise = (i) => { exerciseSheet = { mobility:true, index:i, mode:"detail" }; renderExerciseSheet(); };
+// « C'est fait » : une séance de mobilité faite aujourd'hui, avec ses 3 exercices (même enregistrement que « C'est fait » sur une
+// séance du programme, « Annuler » quelques secondes, qui retire aussi la séance).
+window.mobilityDone = async () => {
+  const ctx = todayContext(), m = todayMobility(ctx);
+  if(!m) return;
+  const { data:{user} } = await supa.auth.getUser();
+  if(!user){ toast("Tu n'es plus connecté : reconnecte-toi."); return; }
+  const row = { user_id:user.id, planned_date:ctx.todayStr, week_start_date:localDateStr(mondayOf(new Date())), type:"Mobilité", pace_zone:null, title:"Mobilité",
+    description:formatExerciseList(m.exercises), target_duration_min:m.durationMin, rationale:TODAY_MOBILITY_RATIONALE, status:"planned", source:"manual_add" };
+  const { data, error } = await supa.from("planned_sessions").insert(row).select("id").single();
+  if(error || !data){ toast("Pas enregistré, vérifie ta connexion."); return; }
+  plannedSessions.push({ id:data.id, ...row });
+  await markSessionDone(data.id, "Mobilité notée, bravo !", async () => { await supa.from("planned_sessions").delete().eq("id", data.id); });
+};
+// Prochaine séance du programme (repos, sortie faite) ; sans programme, l'invitation à le créer.
+function nextSessionTileHTML(ctx, hasProgram){
+  if(!hasProgram) return `<button type="button" class="nx-tile" onclick="goToProgramme()"><i class="bar" style="background:var(--text-faint)"></i>
+      <span class="t"><span class="ov">Ton programme</span><span class="ti">Créer mon programme</span><span class="ln">Tes séances de la semaine, à ton rythme.</span></span>${icon("chevronRight",18)}</button>`;
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  const tomorrowStr = localDateStr(tomorrow);
+  const s = nextPlannedSession(plannedSessions, tomorrowStr);
+  if(!s) return "";
+  const d = new Date(s.planned_date+"T00:00:00");
+  const over = s.planned_date===tomorrowStr ? `Demain · ${d.toLocaleDateString("fr-FR",{weekday:"long"})}` : d.toLocaleDateString("fr-FR",{weekday:"long", day:"numeric", month:"short"});
+  const disp = sessionDisplayTitle(s);
+  const title = disp.title==="EF" ? "Endurance fondamentale" : disp.title;
+  const h = sessionHeadline(s, sessionStructureSegments(s));
+  const parts = [];
+  if(h.big) parts.push(`<b>${escHtml(h.big.value)} ${escHtml(h.big.unit)}</b>`);
+  h.tiles.forEach(t=>parts.push(escHtml(t.label==="Allure /km" ? `${t.value}/km` : t.value)));
+  const isRun = isRunningRunType(s.type);
+  const advice = nextSessionAdvice(ctx.forme, ctx.acwr, isRun, ctx.zone30 ? zonePossessive(ctx.zone30.zone, ZONE_SHORT_LABEL) : "");
+  return `<button type="button" class="nx-tile" onclick="openProgramDay('${s.planned_date}')"><i class="bar" style="background:${TC[s.type]||TC.Other}"></i>
+    <span class="t"><span class="ov">${escHtml(over)}</span><span class="ti">${escHtml(title)}</span>${parts.length?`<span class="ln">${parts.join(" · ")}</span>`:""}${advice?`<span class="ad">${escHtml(advice)}</span>`:""}</span>${icon("chevronRight",18)}</button>`;
+}
+// Sortie reçue aujourd'hui sans séance prévue ce jour-là.
+function todayRunCardHTML(run){
+  const parts = [run.allure ? `${fmtA(run.allure)} /km` : "", run.durationSec ? formatMinutesShort(run.durationSec/60) : ""].filter(Boolean);
+  return `<button type="button" class="nx-tile td-run" onclick="openRunSheet('${run.id}')"><i class="bar" style="background:${TC[run.type]||TC.Other}"></i>
+    <span class="t"><span class="ov">Ta sortie du jour · faite</span><span class="ti">${escHtml(sessionTypeLabel(run.type))}${run.dist>0?` · ${fmtDec(run.dist,1)} km`:""}</span>${parts.length?`<span class="ln">${escHtml(parts.join(" · "))}</span>`:""}</span>${icon("chevronRight",18)}</button>`;
+}
+// Tuile Objectif (point 6) : les mêmes chiffres que la carte « Objectif principal » de Progression, en plus court.
+// Un progrès en citron, un recul en blanc (jamais de rouge). `key` : le fait déjà montré, que le chiffre du jour évite.
+function objectiveTileModel(){
+  const slot = goals.principal || {}, type = slot.objectifPrincipal;
+  if(!type) return { over:"Objectif", big:"", sub:"Choisis ton objectif : ton programme s'y adapte.", key:null, go:"goToObjectifs()" };
+  const todayStr = localDateStr(new Date()), todayTs = Date.now();
+  const variant = objectiveVariant(type), start = programStartMonday(plannedSessions);
+  const go = "openProgressionCard('progObjective')";
+  if(variant==="race"){
+    const rp = raceProgress(start, slot.dateCible, todayStr);
+    const dist = (slot.distanceCourse||"").replace(/(\d)km$/, "$1 km");
+    const dateTxt = slot.dateCible ? parseDay(slot.dateCible).toLocaleDateString("fr-FR", { day:"numeric", month:"short" }) : "";
+    if(rp && rp.past) return { over:"Objectif · course", big:"", sub:"La date de ta course est passée.", key:null, go };
+    return { over:"Objectif · course", big: rp ? (rp.daysLeft===0 ? "Jour J" : `J-${rp.daysLeft}`) : "",
+      sub: [[dist, dateTxt].filter(Boolean).join(" · "), rp && rp.totalWeeks ? `semaine ${rp.week} sur ${rp.totalWeeks}` : ""].filter(Boolean).join(", ") + ".", key:null, go };
+  }
+  if(variant==="pace"){
+    const p = efPaceSinceStart(efRuns.filter(r=>r.allure).map(r=>({ ts:dateFromRun(r).getTime(), value:r.allure })), start, todayTs);
+    if(p.status!=="ok") return { over:"Objectif · allure", big:"Bientôt", soon:true, sub:"Encore quelques EF pour mesurer ta progression.", key:null, go };
+    const delta = Math.round(p.firstAvg - p.lastAvg);
+    return { over:"Objectif · allure", big:fmtA(Math.round(p.lastAvg)), delta: delta>0 ? `−${delta} s` : delta<0 ? `+${-delta} s` : "", better: delta>0,
+      sub:`/km en EF. Au départ : ${fmtA(Math.round(p.firstAvg))}.`, key:null, go };
+  }
+  if(type==="Rester en forme" && goals.kmMensuel){
+    const km = Math.round(periodStats("monthly").dist);
+    return { over:"Objectif · forme", big:`${km} km`, sub:`sur ${goals.kmMensuel} ce mois-ci.`, key:null, go };
+  }
+  const st = weeklyStreak(runningRuns.map(r=>localDateStr(dateFromRun(r))), todayStr, 8);
+  return { over: type==="Rester en forme" ? "Objectif · forme" : "Objectif · régularité", big:String(st.streak),
+    sub: st.streak>0 ? `semaine${st.streak>1?"s":""} d'affilée avec une course.` : "Une course cette semaine pour démarrer ta série.", key:"streak", go };
+}
+window.openProgressionCard = (id) => { activeTab = "progression"; persistActiveTab(); renderTabs(); renderContent(); setTimeout(()=>scrollToCard(id), 60); };
+function objectiveFigureRowHTML(){
+  const o = objectiveTileModel();
+  const obj = `<button type="button" class="tf-tile" onclick="${o.go}"><span class="tf-over">${escHtml(o.over)}</span>
+    ${o.big ? `<span class="tf-big${o.soon?" soon":""}">${escHtml(o.big)}${o.delta?`<em class="${o.better?"up":""}">${escHtml(o.delta)}</em>`:""}</span>` : ""}
+    <span class="tf-sub">${escHtml(o.sub)}</span></button>`;
+  const todayStr = localDateStr(new Date());
+  const runs = runningRuns.map(r=>({ date:localDateStr(dateFromRun(r)), distKm:r.dist||0, durationSec:r.durationSec||0, type:r.type, cadence:r.cad }));
+  const holders = recordHolders(recordRuns().map(runAsRecord));
+  const best = holders.distances["10k"] ? { label:"10 km", timeSec:holders.distances["10k"].timeSec } : holders.distances["5k"] ? { label:"5 km", timeSec:holders.distances["5k"].timeSec } : null;
+  const c = pickDailyFigure(dailyFigureCandidates({ runs, todayStr, restingHr, bestTime:best }), dayIndexOf(todayStr), o.key);
+  const fig = c ? `<button type="button" class="tf-tile" onclick="openProgressionCard('progIndicators')"><span class="tf-over">Chiffre du jour</span>
+    <span class="tf-big fig">${escHtml(c.value)}</span><span class="tf-sub">${escHtml(c.text)}</span></button>` : "";
+  return `<div class="tf-row${fig?"":" one"}">${obj}${fig}</div>`;
+}
 function todayScreenHTML(){
   const todayStr = localDateStr(new Date());
   const date = new Date(todayStr+"T00:00:00");
-  const todaySessions = plannedSessions.filter(p=>p.planned_date===todayStr && (p.status==="planned"||p.status==="done"));
+  const todaySessions = plannedSessions.filter(p=>p.planned_date===todayStr && (p.status==="planned"||p.status==="done") && !isTodayMobility(p));
   const hasProgram = plannedSessions.some(p=>p.status==="planned"||p.status==="done");
-  let body, framed = true;
-  if(todaySessions.length){ body = todaySessions.map(s=>programSessionCardHTML(s,date)).join(""); framed = false; }
-  else if(!hasProgram) body = `<div class="ec-row"><div class="ec-ic">${icon("calendarPlus",18)}</div><div class="ec-t">Tu n'as pas encore de programme.</div></div>
-    <button class="btn-primary" style="margin-top:14px" onclick="goToProgramme()">Créer mon programme</button>`;
-  else if(runningRuns.some(r=>localDateStr(dateFromRun(r))===todayStr)) body = `<div class="chart-hint" style="margin-top:0">Aucune séance n'était planifiée aujourd'hui, mais tu as couru : bravo !</div>`;
-  else body = restDayMessageHTML();
-  // Une seule carte d'action sous la séance du jour (D11) ; le bandeau coach laisse la place aux
-  // rappels de niveau quand la carte « Ton niveau » est déjà affichée (D53).
+  const ctx = todayContext();
+  // La carte d'action unique (D11) ; sans carte, le rappel du coach prend sa place (revue du 16/10). « Vérifions N sorties »
+  // a sa place dans l'ordre des cartes : son rappel ne s'ajoute plus sous une autre carte.
   const cards = { merge_ask: mergeAskCardHTML(), attach: attachCardHTML(), hier: hierCardHTML(), verifier: verifyCardHTML(), objectif: objectiveChangedCardHTML(true), niveau: levelCardHTML() };
   const picked = pickTodayActionCard({ merge_ask:!!cards.merge_ask, attach:!!cards.attach, hier:!!cards.hier, verifier:!!cards.verifier, objectif:!!cards.objectif, niveau:!!cards.niveau });
   const need = levelNeed();
@@ -5987,11 +6207,18 @@ function todayScreenHTML(){
     graduation: need==="graduation", guidedTestPending: need==="guided_test", levelCardShown: picked==="niveau",
     daysSinceRun: last ? Math.floor((new Date() - dateFromRun(last)) / 86400000) : null,
   });
-  return coachBannerHTML(reminder) + urgentTodayHTML() + mergeNoticeCardHTML() + (framed ? `<div class="card">
-    <div class="stitle" style="margin-bottom:8px">Aujourd'hui</div>
-    ${body}
-  </div>` : body) + (picked ? cards[picked] : "")
-    + (picked && picked!=="verifier" && cards.verifier ? (verifyOpened ? cards.verifier : verifyReminderHTML()) : "") + weekRecapCardHTML();
+  const action = picked ? cards[picked] : coachBannerHTML(reminder);
+  const top = urgentTodayHTML() + mergeNoticeCardHTML();
+  const week = weekRecapCardHTML();
+  const runSessions = todaySessions.filter(s=>isRunningRunType(s.type));
+  const ranToday = runningRuns.filter(r=>localDateStr(dateFromRun(r))===todayStr);
+  todayKind = todaySessions.length ? (runSessions.length && runSessions.every(s=>s.status==="done") ? "faite" : runSessions.length ? "seance" : "autre")
+    : ranToday.length ? "faite" : "repos";
+  const cardsOf = (list) => list.map(s=>programSessionCardHTML(s, date, isRunningRunType(s.type) && s.status!=="done" ? ctx.forme : null)).join("");
+  if(todayKind==="repos") return top + formeCardHTML(ctx) + action + mobilityCardHTML(ctx) + nextSessionTileHTML(ctx, hasProgram) + (action ? "" : objectiveFigureRowHTML()) + week;
+  if(todayKind==="seance") return top + cardsOf(todaySessions) + action + objectiveFigureRowHTML() + week;
+  const main = todaySessions.length ? cardsOf(todaySessions) : ranToday.map(todayRunCardHTML).join("");
+  return top + main + action + nextSessionTileHTML(ctx, hasProgram) + objectiveFigureRowHTML() + week;
 }
 // Carte de séance (design 2d, V1 à V7). Même carte sur Aujourd'hui et, pour le jour choisi, dans Programme.
 // États : prévue, faite (reçue d'Apple Santé ou saisie à la main : chiffres réels + détail cardio ouvert),
@@ -6065,7 +6292,8 @@ function sessionMenuHTML(session, todayStr){
   return `<div class="menu-wrap"><button type="button" class="sc-menu" aria-label="Plus d'actions" aria-haspopup="menu" aria-expanded="${open}" onclick="toggleSessionMenu('${session.id}')">${icon("more",20)}</button>
     ${open?`<div class="menu-pop" role="menu">${items.map(([label,call,cls])=>`<button type="button" role="menuitem" class="${cls}" onclick="closeSessionMenu();renderContent();${call}">${escHtml(label)}</button>`).join("")}</div>`:""}</div>`;
 }
-function programSessionCardHTML(session, date){
+// `forme` (Aujourd'hui seulement, séance de course à faire) : la pastille « Feu vert / Forme normale / À ménager » (revue du 16/10).
+function programSessionCardHTML(session, date, forme){
   const todayStr = localDateStr(new Date());
   const state = sessionCardState(session, todayStr);
   const c = TC[session.type]||TC.Other;
@@ -6112,7 +6340,7 @@ function programSessionCardHTML(session, date){
     <div class="sc-head">
       <div class="sc-icon" style="background:${c}22;color:${c}">${icon(TICON[session.type]||"activity",18)}</div>
       <div class="sc-overline">${escHtml(dayTxt)}${run&&run.time?" · "+escHtml(run.time):""}</div>
-      ${state==="done" ? `<span class="sc-done">${icon("check",14)} Fait</span>` : ""}
+      ${state==="done" ? `<span class="sc-done">${icon("check",14)} Fait</span>` : forme ? `<span class="fm-pill ${forme.state}">${escHtml(forme.pill)}</span>` : ""}
     </div>
     <div class="sc-title">${escHtml(title)}</div>
     ${subtitle?`<div class="sc-sub">${escHtml(subtitle)}</div>`:""}
@@ -6462,7 +6690,8 @@ function setPageTitle(){
   if(!el) return;
   const names = { programme:"Programme", progression:"Progression", profil:"Profil" };
   if(activeTab==="progression" && historyOpen) el.innerHTML = `<button type="button" class="page-back" aria-label="Retour à Progression" onclick="closeHistory()">${icon("chevronLeft",24)}</button>Historique`;
-  else el.textContent = activeTab==="aujourdhui" ? dayLabelShort(new Date()) : (names[activeTab]||"");
+  else if(activeTab==="aujourdhui") el.innerHTML = `<span class="pt-over">${todayKind==="repos" ? "Aujourd'hui · jour de repos" : "Aujourd'hui"}</span>${escHtml(dayLabelShort(new Date()))}`;
+  else el.textContent = names[activeTab]||"";
   const act = document.getElementById("pageAction");
   // Revue d'Omar du 09/10/2026 : les boutons d'ajout en citron sur tous les onglets ; sur Aujourd'hui, « Ajouter une séance »
   // ouvre la saisie d'une séance faite, comme « Séance réalisée » dans l'Historique.

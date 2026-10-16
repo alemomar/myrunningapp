@@ -196,7 +196,7 @@
   if(/^hier_verifier/.test(scen)){ push({start_date:startOf(6).toISOString(), type:"EF", distance_km:1.7, duration_sec:610, avg_hr:138}); push({start_date:startOf(9).toISOString(), type:"EF", distance_km:1.9, duration_sec:700, avg_hr:141}); }   // E5 : 2 sorties très courtes à vérifier
   if(scen==='q1') push({start_date:new Date().toISOString(), type:'EF', distance_km:7.6, duration_sec:2700, avg_hr:148});
   let todayRunRow = null;
-  if(scen==="seance_faite"){ const d=new Date(); d.setHours(7,33,0,0); todayRunRow = push({start_date:d.toISOString(), type:"EF", distance_km:8.1, duration_sec:2778, avg_hr:148, hr_series:genHr(2778,148,"ef"), calories:500}); todayRunRow.peak_hr=Math.max(...todayRunRow.hr_series.map(x=>x.hr)); todayRunRow.pain_ratings={rpe:5,note:4,gene:false,fatigue:3,mental:2,respiration:2}; }
+  if(scen==="seance_faite" || scen==="aujourdhui_couru"){ const d=new Date(); d.setHours(7,33,0,0); todayRunRow = push({start_date:d.toISOString(), type:"EF", distance_km:8.1, duration_sec:2778, avg_hr:148, hr_series:genHr(2778,148,"ef"), calories:500}); todayRunRow.peak_hr=Math.max(...todayRunRow.hr_series.map(x=>x.hr)); todayRunRow.pain_ratings={rpe:5,note:4,gene:false,fatigue:3,mental:2,respiration:2}; }
   if(scen==="verifier_sorties"){
     push({start_date:startOf(12).toISOString(), type:"Long", distance_km:10.03, duration_sec:3010, avg_hr:176});   // 5'00/km : une course
     push({start_date:startOf(19).toISOString(), type:"EF", distance_km:8.05, duration_sec:2500, avg_hr:166});     // 5'11/km
@@ -359,6 +359,13 @@
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayRenfo, ...future]; openLearnMore=new Set([todayRenfo.id]); show("aujourdhui");
   } else if(scen==="aujourdhui_repos"){
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, ...future]; show("aujourdhui");
+  } else if(scen==="aujourdhui_repos_simple" || scen==="aujourdhui_gene" || scen==="aujourdhui_couru"){
+    // Refonte d'Aujourd'hui (C27) : jour de repos sans carte d'action (objectif et chiffre du jour visibles) ; « gene » : gêne au
+    // genou droit notée hier (À ménager, zone sensible, mobilité ciblée) ; « couru » : sortie reçue aujourd'hui sans séance prévue.
+    try{ localStorage.setItem("mra_notLinked", JSON.stringify(rows.map(r=>r.id))); }catch(e){}
+    celebrationOff(); rateYesterday();
+    if(scen==="aujourdhui_gene"){ const r=runningRuns.find(x=>x.id===yest.id); r.painRatings={ ...r.painRatings, gene:true, genoux_d:5 }; const r2=runningRuns[runningRuns.length-4]; if(r2) r2.painRatings={ ...(r2.painRatings||{}), genoux_d:2 }; }
+    plannedSessions=[...wkSessions, ...future]; show("aujourdhui");
   } else if(scen==="programme_semaine" || scen==="programme_mois"){
     celebrationOff(); rateYesterday();
     // douleur répétée (genou, intensité 6) pour montrer la bannière d'adaptation

@@ -3599,3 +3599,187 @@ function pendingAuthFrom(raw, now){
   if(!sentAt || now - sentAt > AUTH_PENDING_MAX_AGE_MS || sentAt - now > 60000) return null;
   return { step:p.step, email:String(p.email).trim(), sentAt };
 }
+
+/* ---------- Refonte d'Aujourd'hui (C27, revue d'Omar du 16/10/2026) ----------
+   Maquette Claude Design « Aujourd'hui repos » (variante 4a, 13/10) et décisions de la revue point par point :
+   trois écrans selon le jour (repos, séance, sortie faite), une seule carte d'action, ta forme du jour, la mobilité
+   proposée, la prochaine séance, l'objectif et le chiffre du jour, « Ta semaine » allégée. */
+
+// Ta forme du jour (point 4). La charge déjà calculée (acwrAt) donne le niveau : Frais jusqu'à 1,3, Normal de 1,3 à 1,5,
+// À ménager au-delà. Chaque tranche de 2 jours sans courir fait baisser d'un cran : sans cela, une grosse séance laissait
+// « À ménager » 7 jours entiers (Omar le 16/10 : 1,52 après 5 jours sans courir). Une gêne notée à la dernière sortie ou
+// l'alerte douleur active donnent toujours « À ménager ». Sans charge (pas assez de recul), seule la gêne compte.
+// Pastille d'un jour de séance : « Feu vert » plutôt que « Tu es frais » de la maquette (le genre est inconnu pour 14 profils
+// sur 16).
+const FORME_STATES = ["frais", "normal", "menager"];
+function formeDuJour({ acwr, daysSinceLastRun, painAtLastRun, painAlert }){
+  const chargeLevel = acwr==null ? 0 : acwr>1.5 ? 2 : acwr>1.3 ? 1 : 0;
+  const drop = daysSinceLastRun>0 ? Math.floor(daysSinceLastRun/2) : 0;
+  let level = Math.max(0, chargeLevel - drop), cause = level>0 ? "charge" : null;
+  if(painAlert){ level = 2; cause = "alerte"; }
+  else if(painAtLastRun){ level = 2; cause = "gene"; }
+  const state = FORME_STATES[level];
+  const phrase = state==="menager" ? "Va doucement : raccourcis ta prochaine séance si besoin."
+    : state==="normal" ? "Tu peux faire ta prochaine séance, à allure facile."
+    : acwr!=null && acwr<0.8 ? "Feu vert, tu peux même en faire un peu plus." : "Feu vert pour ta prochaine séance.";
+  return { state, level, cause, phrase,
+    label: { frais:"Frais", normal:"Normal", menager:"À ménager" }[state],
+    pill: { frais:"Feu vert", normal:"Forme normale", menager:"À ménager" }[state] };
+}
+// Jauge de la charge dans « Ta forme du jour » : 3 segments (Légère < 0,8, Équilibrée jusqu'à 1,3, Élevée au-delà), largeurs
+// 40 / 25 / 35 de la maquette, soit une échelle de 0 à 2. La phrase suit toujours la zone de la jauge (en km, comme dans la
+// maquette, elle la contredirait : une séance de seuil pèse plus qu'une EF) ; « environ N fois ta semaine habituelle » (formule
+// validée le 13/10) au-delà de 1,5 seulement, car l'arrondi à la demi-unité donnait « 1,5 fois » pour 1,29, en zone équilibrée.
+function formeChargeModel(acwr){
+  if(acwr==null) return null;
+  const zone = acwr<0.8 ? "legere" : acwr<=1.3 ? "equilibree" : "elevee";
+  const sentence = acwr<0.8 ? "Ces 7 derniers jours : moins que ta semaine habituelle. Tu as de la marge."
+    : acwr<=1.3 ? "Ces 7 derniers jours : à peu près ta semaine habituelle. Tu es dans ta zone habituelle."
+    : acwr<=1.5 ? "Ces 7 derniers jours : un peu plus que ta semaine habituelle. Garde une allure facile."
+    : `Ces 7 derniers jours : environ ${chargeTimesText(acwr)} fois ta semaine habituelle. Bien plus que d'habitude.`;
+  return { zone, label:{ legere:"Légère", equilibree:"Équilibrée", elevee:"Élevée" }[zone],
+    value: Number(acwr).toFixed(2).replace(".", ","), markerPct: Math.round(Math.min(Math.max(acwr, 0), 2)/2*1000)/10, sentence };
+}
+
+// Zone sensible (point 4) : les notes de gêne sont dans les ressentis (`pain_ratings`) à côté de valeurs qui n'en sont pas.
+// Anciennes clés (avant la carte du corps) : genou_g, tendon_d… ramenées aux clés actuelles.
+const RATING_NON_ZONE_KEYS = ["rpe", "note", "gene", "fatigue", "mental", "respiration"];
+const LEGACY_ZONE_KEYS = { genou_g:"genoux_g", genou_d:"genoux_d", tendon_g:"tendons_g", tendon_d:"tendons_d" };
+function normalizeZoneKey(key){ return LEGACY_ZONE_KEYS[key] || key; }
+function ratingZones(ratings){
+  const out = {};
+  Object.entries(ratings||{}).forEach(([k, v])=>{
+    if(RATING_NON_ZONE_KEYS.includes(k) || /_moment$/.test(k) || !(Number(v)>0)) return;
+    const z = normalizeZoneKey(k);
+    out[z] = Math.max(out[z]||0, Number(v));
+  });
+  return out;
+}
+function ratingHasGene(ratings){ return !!ratings && (ratings.gene===true || Object.keys(ratingZones(ratings)).length>0); }
+// Nom affiché : « Genou droit », « Cuisse gauche », « Dos ». `shortLabels` : ZONE_SHORT_LABEL (index.html).
+const ZONE_FEMININE = ["cuisse", "epaules"];
+function zoneSideLabel(key, shortLabels){
+  const k = normalizeZoneKey(key), fam = zoneFamily(k);
+  const base = (shortLabels && shortLabels[k]) || (fam.charAt(0).toUpperCase() + fam.slice(1));
+  const fem = ZONE_FEMININE.includes(fam);
+  return /_d$/.test(k) ? `${base} ${fem?"droite":"droit"}` : /_g$/.test(k) ? `${base} gauche` : base;
+}
+// « ton genou droit », « ta cuisse gauche », « tes abdos », pour les phrases.
+function zonePossessive(key, shortLabels){
+  const fam = zoneFamily(normalizeZoneKey(key)), label = zoneSideLabel(key, shortLabels).toLowerCase();
+  return fam==="abdos" ? `tes ${label}` : ZONE_FEMININE.includes(fam) ? `ta ${label}` : `ton ${label}`;
+}
+// La zone notée le plus récemment dans les `days` derniers jours (la plus forte de cette sortie). `runs` : [{ ts, ratings }],
+// de la plus ancienne à la plus récente. `runsAgo` : nombre de sorties faites depuis (0 = la dernière).
+function recentSensitiveZone(runs, todayTs, days){
+  const list = runs||[];
+  for(let i=list.length-1; i>=0; i--){
+    const r = list[i];
+    if(todayTs - r.ts > days*DAY_MS) break;
+    const zones = ratingZones(r.ratings);
+    const keys = Object.keys(zones);
+    if(!keys.length) continue;
+    const zone = keys.sort((a,b)=>zones[b]-zones[a] || a.localeCompare(b))[0];
+    return { zone, value:zones[zone], ts:r.ts, runsAgo:list.length-1-i };
+  }
+  return null;
+}
+// Les `n` dernières sorties pour cette zone, de la plus ancienne à la plus récente : « ok » (notée, sans gêne ici),
+// « gene » (gêne de 4 et plus), « legere » (1 à 3), « none » (pas notée).
+function zoneDots(runs, zoneKey, n){
+  const z = normalizeZoneKey(zoneKey);
+  return (runs||[]).slice(-(n||8)).map(r=>{
+    if(!r.ratings) return "none";
+    const v = ratingZones(r.ratings)[z] || 0;
+    return v>=4 ? "gene" : v>0 ? "legere" : "ok";
+  });
+}
+// Titre à droite du bloc : « Gêne notée à ta dernière sortie » (violet) ou « N sorties sans gêne » (notées depuis la dernière gêne).
+function zoneDotsHeadline(dots){
+  const last = dots[dots.length-1];
+  if(last==="gene" || last==="legere") return { text:"Gêne notée à ta dernière sortie", attention:true };
+  let i = dots.length-1, n = 0;
+  for(; i>=0 && dots[i]!=="gene" && dots[i]!=="legere"; i--) if(dots[i]==="ok") n++;
+  return n>0 ? { text:`${n} sortie${n>1?"s":""} sans gêne`, attention:false } : { text:"Pas notée depuis", attention:false };
+}
+
+// Mobilité proposée un jour de repos (point 5) : 3 exercices de mobilité de la bibliothèque. Gêne notée dans les 14 derniers
+// jours : d'abord ceux de cette zone, complétés par d'autres ; sinon « pour ta foulée », hanches et chevilles d'abord. Niveau
+// respecté, zones en pause exclues. La liste tourne d'un jour à l'autre ; « Autres exercices » (`alt`) montre les 3 suivants.
+const MOBILITY_PER_DAY = 3;
+const MOBILITY_STRIDE_RX = /hanche|cheville|mollet|psoas/i;
+function mobilityProposal({ library, zoneKey, niveau, objectif, pausedZoneKeys, seed, alt }){
+  const lib = library || EXERCISE_LIBRARY;
+  const rank = RUNNER_LEVEL_RANK[niveau] ?? 0;
+  const paused = (pausedZoneKeys||[]).map(z=>zoneFamily(normalizeZoneKey(z)));
+  const pool = lib.filter(ex => ex.type==="Mobilité"
+    && (EXERCISE_LEVEL_RANK[ex.niveau] ?? 0) <= rank
+    && (ex.objectifs==="Tous" || (objectif && ex.objectifs.includes(objectif)))
+    && !ex.zonesDouleur.some(z=>paused.includes(z)));
+  if(!pool.length) return null;
+  const fam = zoneKey ? zoneFamily(normalizeZoneKey(zoneKey)) : null;
+  const day = Math.abs(Math.round(seed||0));
+  const rotate = (list, k) => list.map((_, i)=>list[(i + k) % list.length]);
+  const targeted = fam ? pool.filter(ex=>ex.zonesDouleur.includes(fam)) : [];
+  const stride = pool.filter(ex=>!targeted.includes(ex) && MOBILITY_STRIDE_RX.test(ex.zoneTravaillee));
+  const rest = pool.filter(ex=>!targeted.includes(ex) && !stride.includes(ex));
+  const ordered = [...(targeted.length ? rotate(targeted, day) : []), ...(stride.length ? rotate(stride, day) : []), ...rest];
+  const start = alt ? MOBILITY_PER_DAY : 0;
+  const count = Math.min(MOBILITY_PER_DAY, ordered.length);
+  const exercises = Array.from({ length:count }, (_, i)=>ordered[(start + i) % ordered.length]);
+  return { kind: targeted.length ? "zone" : "foulee", zone: targeted.length ? zoneKey : null, exercises,
+    durationMin: Math.ceil(exercises.length*3/5)*5 };
+}
+
+// Prochaine séance (tuile des jours de repos et des sorties faites) : nextPlannedSession (D108) appelée avec la date de demain.
+// Ligne de conseil de la tuile, selon ta forme (maquette) ; seulement pour une course.
+function nextSessionAdvice(forme, acwr, isRun, zonePhrase){
+  if(!isRun || !forme) return "";
+  if(forme.state==="menager") return zonePhrase ? `Si ${zonePhrase} se manifeste, raccourcis la séance.` : "Raccourcis la séance si besoin.";
+  if(forme.state==="normal") return "Garde l'allure facile, sans forcer.";
+  if(acwr!=null && acwr<0.8) return "Charge légère : tu peux rallonger de 1 à 2 km.";
+  return "";
+}
+
+// Chiffre du jour (point 6) : un fait tiré de tes courses, positif ou neutre, jamais une comparaison qui décourage. Un fait
+// par jour, dans cet ordre, parmi ceux que tes données permettent : avec 7 faits ou plus, jamais le même deux fois en 7 jours.
+// Le fait déjà montré par la tuile Objectif (`excludeKey`) est écarté. `runs` : courses comptées, [{ date:"AAAA-MM-JJ",
+// distKm, durationSec, type, cadence }].
+const DAILY_FIGURE_ORDER = ["weekend", "kmYear", "longest", "streak", "monthRuns", "monthHours", "bestTime", "cadence", "restingHr"];
+const DAILY_FIGURE_MIN_RUNS_WEEKEND = 8, DAILY_FIGURE_MIN_CADENCE = 3;
+function dailyFigureCandidates({ runs, todayStr, restingHr, bestTime }){
+  const list = (runs||[]).filter(r=>r && r.date && r.date<=todayStr);
+  const out = [];
+  const fmtKmShort = (km) => km>=100 ? String(Math.round(km)) : String(Math.round(km*10)/10).replace(".", ",");
+  if(list.length>=DAILY_FIGURE_MIN_RUNS_WEEKEND){
+    const we = list.filter(r=>{ const d = parseDay(r.date).getDay(); return d===0 || d===6; }).length;
+    out.push({ key:"weekend", value:`${Math.round(we/list.length*100)} %`, text:"de tes sorties : samedi ou dimanche." });
+  }
+  const year = todayStr.slice(0,4), month = todayStr.slice(0,7);
+  const kmYear = list.filter(r=>r.date.slice(0,4)===year).reduce((a,r)=>a+(r.distKm||0), 0);
+  if(kmYear>=1) out.push({ key:"kmYear", value:`${fmtKmShort(kmYear)} km`, text:"depuis le 1er janvier." });
+  const longest = list.reduce((m, r)=>(r.distKm||0)>((m&&m.distKm)||0) ? r : m, null);
+  if(longest && longest.distKm>0) out.push({ key:"longest", value:`${fmtKmShort(longest.distKm)} km`, text:`ta plus longue sortie, le ${shortDateFr(parseDay(longest.date).getTime()).replace(/\.?$/, ".")}` });
+  const st = weeklyStreak(list.map(r=>r.date), todayStr, 52);
+  if(st.streak>=2) out.push({ key:"streak", value:String(st.streak), text:"semaines d'affilée avec au moins une course." });
+  const monthName = parseDay(todayStr).toLocaleDateString("fr-FR", { month:"long" });
+  const inMonth = list.filter(r=>r.date.slice(0,7)===month);
+  if(inMonth.length) out.push({ key:"monthRuns", value:String(inMonth.length), text:`sortie${inMonth.length>1?"s":""} en ${monthName}.` });
+  const minutes = inMonth.reduce((a,r)=>a+(r.durationSec||0), 0)/60;
+  if(minutes>=30) out.push({ key:"monthHours", value:formatMinutesShort(minutes), text:`de course en ${monthName}.` });
+  if(bestTime && bestTime.timeSec>0) out.push({ key:"bestTime", value:fmtDur(bestTime.timeSec), text:`ton meilleur temps sur ${bestTime.label}.` });
+  const from = localDateStrLogic(new Date(parseDay(todayStr).getTime() - 56*DAY_MS));
+  const cad = list.filter(r=>r.type==="EF" && r.date>=from && r.cadence>=100 && r.cadence<=220).map(r=>r.cadence).sort((a,b)=>a-b);
+  if(cad.length>=DAILY_FIGURE_MIN_CADENCE) out.push({ key:"cadence", value:String(Math.round(cad[Math.floor((cad.length-1)/2)])), text:"pas par minute en EF, d'habitude." });
+  if(restingHr>0) out.push({ key:"restingHr", value:String(Math.round(restingHr)), text:"battements par minute : ton cœur au repos." });
+  return out;
+}
+function localDateStrLogic(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+// `dayIndex` : numéro du jour (jours depuis le 1er janvier 1970, heure locale).
+function pickDailyFigure(candidates, dayIndex, excludeKey){
+  const list = DAILY_FIGURE_ORDER.map(k=>(candidates||[]).find(c=>c.key===k)).filter(c=>c && c.key!==excludeKey);
+  if(!list.length) return null;
+  const n = list.length, i = ((Math.round(dayIndex||0) % n) + n) % n;
+  return list[i];
+}
+function dayIndexOf(todayStr){ const d = parseDay(todayStr); return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())/DAY_MS); }

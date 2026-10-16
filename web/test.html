@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=101"></script>
+<script src="logic.js?v=103"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -2170,6 +2170,92 @@ try {
   assertEqual("E2 : un ressenti récent sans douleur coupe la série", recentPainAlert([r("a",12,4), r("b",8,4), r("c",6,4), r("d",1,0)], zk, now), null);
   assertEqual("E2 : douleur très forte (8) sur le dernier ressenti -> sa seule note est montrée", recentPainAlert([r("a",30,2), r("b",1,8)], zk, now).history, [{ts:now-day,value:8}]);
   assertEqual("E2 : seulement 2 ressentis dans les 21 jours -> pas d'alerte « revient »", recentPainAlert([r("a",30,4), r("b",10,4), r("c",2,4)], zk, now), null);
+}
+
+// --- Refonte d'Aujourd'hui (C27, revue d'Omar du 16/10/2026) ---
+{
+  // Point 4 : ta forme du jour
+  const f = (o) => formeDuJour({ acwr:null, daysSinceLastRun:1, painAtLastRun:false, painAlert:false, ...o }).state;
+  assertEqual("forme : charge 1,1 -> Frais", f({ acwr:1.1 }), "frais");
+  assertEqual("forme : charge 1,4 la veille -> Normal", f({ acwr:1.4 }), "normal");
+  assertEqual("forme : charge 1,6 la veille -> À ménager", f({ acwr:1.6 }), "menager");
+  assertEqual("forme : 2 jours sans courir font baisser d'un cran (1,6 -> Normal)", f({ acwr:1.6, daysSinceLastRun:2 }), "normal");
+  assertEqual("forme : cas d'Omar du 16/10, 1,52 après 5 jours sans courir -> Frais", f({ acwr:1.52, daysSinceLastRun:5 }), "frais");
+  assertEqual("forme : gêne à la dernière sortie -> À ménager, même reposé", f({ acwr:0.9, daysSinceLastRun:6, painAtLastRun:true }), "menager");
+  assertEqual("forme : alerte douleur active -> À ménager", f({ painAlert:true }), "menager");
+  assertEqual("forme : sans charge (pas assez de recul) ni gêne -> Frais", f({ acwr:null }), "frais");
+  assertEqual("forme : charge légère -> phrase « tu peux même en faire un peu plus »", formeDuJour({ acwr:0.6, daysSinceLastRun:1 }).phrase, "Feu vert, tu peux même en faire un peu plus.");
+  assertEqual("forme : pastille neutre (genre inconnu)", formeDuJour({ acwr:1, daysSinceLastRun:1 }).pill, "Feu vert");
+  assertEqual("jauge : 1,1 -> Équilibrée, repère à 55 %", (({label, markerPct}) => ({label, markerPct}))(formeChargeModel(1.1)), { label:"Équilibrée", markerPct:55 });
+  assertEqual("jauge : 1,1 -> « à peu près ta semaine habituelle »", formeChargeModel(1.1).sentence, "Ces 7 derniers jours : à peu près ta semaine habituelle. Tu es dans ta zone habituelle.");
+  assertEqual("jauge : 1,52 -> « environ 1,5 fois »", formeChargeModel(1.52).sentence, "Ces 7 derniers jours : environ 1,5 fois ta semaine habituelle. Bien plus que d'habitude.");
+  assertEqual("jauge : 1,29 reste « à peu près ta semaine habituelle » (pas « 1,5 fois »)", formeChargeModel(1.29).sentence, "Ces 7 derniers jours : à peu près ta semaine habituelle. Tu es dans ta zone habituelle.");
+  assertEqual("jauge : 0,6 -> « moins que ta semaine habituelle »", formeChargeModel(0.6).sentence, "Ces 7 derniers jours : moins que ta semaine habituelle. Tu as de la marge.");
+  assertEqual("jauge : 1,4 -> « un peu plus »", formeChargeModel(1.4).sentence, "Ces 7 derniers jours : un peu plus que ta semaine habituelle. Garde une allure facile.");
+  assertEqual("jauge : au-delà de 2, repère au bout", formeChargeModel(3.9).markerPct, 100);
+  assertEqual("jauge : pas de charge -> rien", formeChargeModel(null), null);
+
+  // Zone sensible
+  const ZONE_LABELS_TEST = { genoux_d:"Genou", genoux_g:"Genou", cuisse_g:"Cuisse", cuisse_d:"Cuisse", dos:"Dos", abdos:"Abdos" };
+  const day = 86400000, now = new Date(2026,9,16,12).getTime();
+  const runs = [
+    { ts:now-20*day, ratings:{ rpe:5, genoux_d:5, fatigue:4 } },
+    { ts:now-15*day, ratings:null },
+    { ts:now-10*day, ratings:{ rpe:4, genoux_d:0, respiration:3 } },
+    { ts:now-5*day, ratings:{ rpe:6, genou_d:0, mental:2 } },
+  ];
+  assertEqual("zone : respiration, fatigue, mental ne sont pas des zones", ratingZones({ rpe:7, fatigue:6, mental:5, respiration:4, genoux_d:2, genoux_d_moment:["pendant"] }), { genoux_d:2 });
+  assertEqual("zone : anciennes clés ramenées aux nouvelles", ratingZones({ genou_g:3, tendon_d:2 }), { genoux_g:3, tendons_d:2 });
+  assertEqual("zone : gêne notée il y a 20 jours -> zone sensible (30 jours)", recentSensitiveZone(runs, now, 30).zone, "genoux_d");
+  assertEqual("zone : au-delà de 14 jours -> pas de mobilité ciblée", recentSensitiveZone(runs, now, 14), null);
+  assertEqual("zone : pastilles (notée sans gêne, non notée, gêne)", zoneDots(runs, "genoux_d", 8), ["gene","none","ok","ok"]);
+  assertEqual("zone : « 2 sorties sans gêne »", zoneDotsHeadline(zoneDots(runs, "genoux_d", 8)).text, "2 sorties sans gêne");
+  assertEqual("zone : gêne à la dernière sortie", zoneDotsHeadline(["ok","legere"]), { text:"Gêne notée à ta dernière sortie", attention:true });
+  assertEqual("zone : noms affichés", [zoneSideLabel("genoux_d", ZONE_LABELS_TEST), zoneSideLabel("cuisse_g", ZONE_LABELS_TEST), zoneSideLabel("dos", ZONE_LABELS_TEST), zoneSideLabel("genou_d", ZONE_LABELS_TEST)],
+    ["Genou droit", "Cuisse gauche", "Dos", "Genou droit"]);
+  assertEqual("zone : dans une phrase", [zonePossessive("genoux_d", ZONE_LABELS_TEST), zonePossessive("cuisse_d", ZONE_LABELS_TEST), zonePossessive("abdos", ZONE_LABELS_TEST)],
+    ["ton genou droit", "ta cuisse droite", "tes abdos"]);
+  assertEqual("gêne à la dernière sortie : case « gêne » cochée sans zone", ratingHasGene({ rpe:5, gene:true }), true);
+
+  // Point 5 : mobilité proposée
+  const names = (p) => p.exercises.map(e=>e.id);
+  const genou = mobilityProposal({ zoneKey:"genoux_d", niveau:"Intermédiaire", objectif:"Améliorer mon allure", pausedZoneKeys:[], seed:0 });
+  assertEqual("mobilité : gêne au genou -> ses 2 exercices d'abord, puis un autre", [genou.kind, names(genou).slice(0,2).sort().join(",")], ["zone", "18,19"]);
+  assertEqual("mobilité : 3 exercices, 10 min", [genou.exercises.length, genou.durationMin], [3, 10]);
+  const foulee = mobilityProposal({ zoneKey:null, niveau:"Débutant", objectif:"Rester en forme", pausedZoneKeys:[], seed:0 });
+  assertEqual("mobilité : sans gêne -> « pour ta foulée », hanches et chevilles d'abord ; débutant : pas de 90/90", [foulee.kind, names(foulee).every(id=>[15,16,17].includes(id)), names(foulee).includes(18)], ["foulee", true, false]);
+  const autres = mobilityProposal({ zoneKey:null, niveau:"Débutant", objectif:"Rester en forme", pausedZoneKeys:[], seed:0, alt:true });
+  assertEqual("mobilité : « Autres exercices » -> d'autres exercices", names(autres).some(id=>!names(foulee).includes(id)), true);
+  const jour0 = names(mobilityProposal({ zoneKey:null, niveau:"Intermédiaire", objectif:"Améliorer mon allure", seed:0 })).join();
+  const jour1 = names(mobilityProposal({ zoneKey:null, niveau:"Intermédiaire", objectif:"Améliorer mon allure", seed:1 })).join();
+  assertEqual("mobilité : la liste change d'un jour à l'autre", [jour0, jour1], ["15,16,17", "16,17,18"]);
+  assertEqual("mobilité : zone du pied en pause -> pas d'auto-massage plantaire", names(mobilityProposal({ zoneKey:null, niveau:"Débutant", objectif:"Rester en forme", pausedZoneKeys:["pied_g"], seed:0, alt:true })).includes(20), false);
+
+  // Prochaine séance
+  const S = (d, type, status) => ({ planned_date:d, type, status:status||"planned" });
+  assertEqual("prochaine séance : la première à partir de demain, la course avant le renfo le même jour",
+    nextPlannedSession([S("2026-10-16","EF"), S("2026-10-18","Renfo"), S("2026-10-18","Long"), S("2026-10-17","EF","skipped")], "2026-10-17").type, "Long");
+  const fr = formeDuJour({ acwr:0.6, daysSinceLastRun:1 }), mg = formeDuJour({ acwr:1, daysSinceLastRun:1, painAtLastRun:true });
+  assertEqual("conseil : charge légère -> rallonger", nextSessionAdvice(fr, 0.6, true, ""), "Charge légère : tu peux rallonger de 1 à 2 km.");
+  assertEqual("conseil : à ménager avec une zone", nextSessionAdvice(mg, 1, true, "ton genou droit"), "Si ton genou droit se manifeste, raccourcis la séance.");
+  assertEqual("conseil : rien pour un renfo", nextSessionAdvice(mg, 1, false, ""), "");
+
+  // Point 6 : chiffre du jour
+  const R = (date, km, min, extra) => ({ date, distKm:km, durationSec:min*60, type:"EF", ...(extra||{}) });
+  const runs6 = [R("2026-01-10",8,50), R("2026-09-05",10,60), R("2026-09-12",12,75), R("2026-09-19",6,40), R("2026-09-26",8,50, {cadence:168}),
+    R("2026-10-03",20,130, {cadence:170}), R("2026-10-06",7,45, {cadence:166}), R("2026-10-11",9,55, {cadence:999})];
+  const c6 = dailyFigureCandidates({ runs:runs6, todayStr:"2026-10-16", restingHr:58, bestTime:{ label:"10 km", timeSec:3000 } });
+  const byKey = Object.fromEntries(c6.map(c=>[c.key, c.value+" "+c.text]));
+  assertEqual("chiffre : % le week-end (8 sorties, 7 le samedi ou le dimanche)", byKey.weekend, "88 % de tes sorties : samedi ou dimanche.");
+  assertEqual("chiffre : km depuis janvier", byKey.kmYear, "80 km depuis le 1er janvier.");
+  assertEqual("chiffre : plus longue sortie", byKey.longest, "20 km ta plus longue sortie, le 3 oct.");
+  assertEqual("chiffre : sorties et heures du mois", [byKey.monthRuns, byKey.monthHours], ["3 sorties en octobre.", "3 h 50 de course en octobre."]);
+  assertEqual("chiffre : cadence en EF (hors valeurs aberrantes)", byKey.cadence, "168 pas par minute en EF, d'habitude.");
+  assertEqual("chiffre : cœur au repos et meilleur temps", [byKey.restingHr, byKey.bestTime], ["58 battements par minute : ton cœur au repos.", "50:00 ton meilleur temps sur 10 km."]);
+  const seen = Array.from({length:7}, (_,i)=>pickDailyFigure(c6, 100+i).key);
+  assertEqual("chiffre : jamais le même deux fois en 7 jours (7 faits ou plus)", new Set(seen).size, 7);
+  assertEqual("chiffre : le fait de la tuile Objectif est écarté", Array.from({length:9}, (_,i)=>pickDailyFigure(c6, i, "streak")?.key).includes("streak"), false);
+  assertEqual("chiffre : sans course -> rien", pickDailyFigure(dailyFigureCandidates({ runs:[], todayStr:"2026-10-16" }), 3), null);
 }
 
 document.getElementById("summary").innerHTML =
