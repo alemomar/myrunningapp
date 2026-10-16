@@ -831,6 +831,8 @@ button.fm-block{cursor:pointer}
 .tf-big.fig{color:var(--accent)}
 .tf-big.soon{font-size:30px;color:var(--text-2)}
 .tf-sub{font-size:12.5px;line-height:1.4;color:var(--text-3)}
+.tf-bar{display:block;width:100%;height:6px;margin:4px 0 2px;border-radius:3px;background:var(--line);overflow:hidden}
+.tf-bar>i{display:block;height:100%;min-width:2px;border-radius:3px;background:var(--accent)}
 .ac-card{background:var(--surface);border-radius:var(--r-xl);padding:18px 16px 16px;margin-bottom:14px;display:flex;flex-direction:column;gap:14px}
 .vf-remind{display:flex;align-items:center;gap:10px;width:100%;min-height:var(--tap-min);margin:0 0 14px;padding:10px 14px;border:1px solid var(--line);border-radius:var(--r-lg);background:none;color:var(--text-2);font:inherit;font-size:14px;text-align:left;cursor:pointer}
 .vf-remind .ic{display:flex;color:var(--accent)}
@@ -1321,7 +1323,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=105"></script>
+<script src="logic.js?v=106"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -2866,11 +2868,13 @@ function objectiveCardHTML(){
     else if(rp) block = `<div class="pg-sub"><span>${rp.daysLeft===0?"Jour J":"J-"+rp.daysLeft}</span></div>`;
     else if(since) block = `<div class="pg-sub"><span>${escHtml(since)}</span></div>`;
   } else if(variant==="pace"){
-    const efPts = efRuns.filter(r=>r.allure).map(r=>({ ts:dateFromRun(r).getTime(), value:r.allure }));
-    const p = efPaceSinceStart(efPts, start, todayTs);
-    block = p.status==="ok"
-      ? `<div class="pg-block"><div class="pg-pace"><span class="a">${fmtA(Math.round(p.firstAvg))}</span>${icon("arrowRight",16)}<span class="b">${fmtA(Math.round(p.lastAvg))}</span><small>/km en EF</small></div><div class="pg-sub"><span>Départ → 4 dernières semaines${since?" · "+escHtml(since):""}</span></div></div>`
-      : `<div class="pg-block"><div class="pg-sub"><span>Pas encore assez de recul pour comparer ton allure EF.${since?" "+escHtml(since)+".":""}</span></div></div>`;
+    // Même calcul que la tuile d'Aujourd'hui (revue d'Omar du 16/10) : ton allure EF actuelle, ton allure visée, le chemin fait.
+    const m = paceObjectiveModel({ efPoints: efRuns.filter(r=>r.allure).map(r=>({ ts:dateFromRun(r).getTime(), value:r.allure })), todayTs, targetSec: slot.allureEfVisee });
+    const evo = m.delta!=null ? `${m.delta===0 ? "Stable" : paceDeltaShort(m.delta)} en 3 mois (${fmtA(m.start)} il y a 3 mois)` : "Pas encore de comparaison sur 3 mois";
+    block = m.current==null ? `<div class="pg-block"><div class="pg-sub"><span>Cours une EF pour voir ton allure du moment.</span></div></div>`
+      : `<div class="pg-block"><div class="pg-pace"><span class="b">${fmtA(m.current)}</span><small>/km en EF</small>${m.target?`${icon("arrowRight",16)}<span class="a">${fmtA(m.target)}</span><small>visée</small>`:""}</div>
+        ${m.pct!=null?`<div class="pg-bar${animate?" anim":""}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(m.pct*100)}" aria-label="Chemin fait vers ton allure visée"><i style="width:${Math.max(1,Math.round(m.pct*100))}%"></i></div>`:""}
+        <div class="pg-sub"><span>${escHtml(evo)}${m.target ? "" : " · fixe ton allure visée dans Objectifs"}</span></div></div>`;
   } else if(variant==="streak"){
     const st = weeklyStreak(runningRuns.map(r=>localDateStr(dateFromRun(r))), todayStr, 8);
     const msg = st.streak>0 ? `<b>${st.streak} semaine${st.streak>1?"s":""} d'affilée</b> avec au moins une course` : "Une course cette semaine pour démarrer ta série";
@@ -6230,11 +6234,14 @@ function objectiveTileModel(){
       sub: [[dist, dateTxt].filter(Boolean).join(" · "), rp && rp.totalWeeks ? `semaine ${rp.week} sur ${rp.totalWeeks}` : ""].filter(Boolean).join(", ") + ".", key:null, go };
   }
   if(variant==="pace"){
-    const p = efPaceSinceStart(efRuns.filter(r=>r.allure).map(r=>({ ts:dateFromRun(r).getTime(), value:r.allure })), start, todayTs);
-    if(p.status!=="ok") return { over:"Objectif · allure", big:"Bientôt", soon:true, sub:"Encore quelques EF pour mesurer ta progression.", key:null, go };
-    const delta = Math.round(p.firstAvg - p.lastAvg);
-    return { over:"Objectif · allure", big:fmtA(Math.round(p.lastAvg)), delta: delta>0 ? `−${delta} s` : delta<0 ? `+${-delta} s` : "", better: delta>0,
-      sub:`/km en EF. Au départ : ${fmtA(Math.round(p.firstAvg))}.`, key:null, go };
+    // Où j'en suis (revue d'Omar du 16/10) : allure EF actuelle, allure visée, chemin fait, évolution sur 3 mois.
+    const m = paceObjectiveModel({ efPoints: efRuns.filter(r=>r.allure).map(r=>({ ts:dateFromRun(r).getTime(), value:r.allure })), todayTs, targetSec: slot.allureEfVisee });
+    if(m.current==null) return { over:"Objectif · allure", big:"Bientôt", soon:true, sub:"Cours une EF pour voir ton allure du moment.", key:null, go };
+    const a = (v) => fmtA(v).replace(/"$/, "");
+    const evo = m.delta!=null ? " Évolution sur 3 mois." : "";
+    return { over:"Objectif · allure", big:a(m.current), delta:paceDeltaShort(m.delta), better: m.delta!=null && m.delta<0,
+      sub: m.target ? (m.reached ? `/km en EF : objectif ${a(m.target)} atteint !${evo}` : `/km en EF. Objectif : ${a(m.target)}.${evo}`) : `/km en EF.${evo} Fixe ton allure visée ›`,
+      bar: m.target ? m.pct : null, key:null, go: m.target ? go : "goToObjectifs()" };
   }
   if(type==="Rester en forme" && goals.kmMensuel){
     const km = Math.round(periodStats("monthly").dist);
@@ -6249,6 +6256,7 @@ function objectiveFigureRowHTML(){
   const o = objectiveTileModel();
   const obj = `<button type="button" class="tf-tile" onclick="${o.go}"><span class="tf-over">${escHtml(o.over)}</span>
     ${o.big ? `<span class="tf-big${o.soon?" soon":""}">${escHtml(o.big)}${o.delta?`<em class="${o.better?"up":""}">${escHtml(o.delta)}</em>`:""}</span>` : ""}
+    ${o.bar!=null ? `<span class="tf-bar" aria-hidden="true"><i style="width:${Math.round(o.bar*100)}%"></i></span>` : ""}
     <span class="tf-sub">${escHtml(o.sub)}</span></button>`;
   const todayStr = localDateStr(new Date());
   const runs = runningRuns.map(r=>({ date:localDateStr(dateFromRun(r)), distKm:r.dist||0, durationSec:r.durationSec||0, type:r.type, cadence:r.cad }));

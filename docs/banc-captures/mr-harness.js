@@ -359,6 +359,18 @@
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayRenfo, ...future]; openLearnMore=new Set([todayRenfo.id]); show("aujourdhui");
   } else if(scen==="aujourdhui_repos"){
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, ...future]; show("aujourdhui");
+  } else if(scen==="objectif_allure" || scen==="objectif_allure_prog" || scen==="objectif_allure_sans"){
+    // Objectif « Améliorer mon allure » (revue d'Omar du 16/10) : allure EF actuelle face à l'allure visée (5'30), évolution sur
+    // 3 mois ; « _prog » : la carte de Progression ; « _sans » : sans allure visée.
+    try{ localStorage.setItem("mra_notLinked", JSON.stringify(rows.map(r=>r.id))); }catch(e){}
+    celebrationOff(); rateYesterday();
+    goals.principal = { objectifPrincipal:"Améliorer mon allure", ...(scen==="objectif_allure_sans" ? {} : { allureEfVisee:"330" }) };
+    programSettings = { ...programSettings, programSignature:programSignature(goals) };   // pas de carte « Ton objectif a changé »
+    // 4 EF il y a 3 à 4 mois, plus lentes (6'25), pour la comparaison sur 3 mois
+    [100,107,114,121].forEach(n=>rows.push({ id:"old"+n, apple_type:"Running", include_in_stats:true, start_date:startOf(n).toISOString(), type:"EF", distance_km:7, duration_sec:7*385, avg_hr:150 }));
+    rows.sort((a,b)=>new Date(a.start_date)-new Date(b.start_date)); await loadData(); rateYesterday();
+    plannedSessions=[...wkSessions, ...future];
+    if(scen==="objectif_allure_prog"){ show("progression"); scrollToCard("progObjective"); } else show("aujourdhui");
   } else if(scen==="aujourdhui_repos_simple" || scen==="aujourdhui_gene" || scen==="aujourdhui_couru"){
     // Refonte d'Aujourd'hui (C27) : jour de repos sans carte d'action (objectif et chiffre du jour visibles) ; « gene » : gêne au
     // genou droit notée hier (À ménager, zone sensible, mobilité ciblée) ; « couru » : sortie reçue aujourd'hui sans séance prévue.

@@ -3997,3 +3997,26 @@ function defaultPlanWhy(plan){
     : `Pourquoi : on n'a pas encore tes courses, on part de ${plan.monthlyKm} km par mois en attendant les premières.`;
 }
 function defaultPlanAllowsQuality(plan){ return !!plan && plan.weeklyKm>=DEFAULT_QUALITY_MIN_WEEKLY_KM; }
+
+/* ---------- Objectif « Améliorer mon allure » (revue d'Omar du 16/10/2026) ----------
+   La tuile d'Aujourd'hui et la carte « Objectif principal » de Progression répondent à « Où j'en suis de mon objectif ? » :
+   ton allure EF actuelle (médiane de tes EF des 8 dernières semaines) face à ton allure visée (Profil › Objectifs), le chemin
+   fait depuis ton point de départ (médiane des mêmes 8 semaines il y a 3 mois, la règle des indicateurs validée le 14/10) et
+   l'évolution sur ces 3 mois. Il faut au moins 3 EF de chaque côté pour comparer (règle validée pour la dérive, C3).
+   Avant : l'allure du début du programme contre les 4 dernières semaines, souvent « Bientôt » (Omar : aucune EF du 21/09 au
+   03/10, 45 EF depuis janvier). `efPoints` : [{ ts, value (s/km) }] ; `targetSec` : l'allure EF visée (s/km), facultative. */
+const PACE_OBJ_WINDOW_DAYS = 56, PACE_OBJ_SHIFT_DAYS = 91, PACE_OBJ_MIN_POINTS = 3;
+function paceObjectiveModel({ efPoints, todayTs, targetSec }){
+  const t = new Date(todayTs), end = new Date(t.getFullYear(), t.getMonth(), t.getDate()+1).getTime();
+  const inWindow = (from, to) => (efPoints||[]).filter(p=>p && p.value>0 && p.ts>=from && p.ts<to).map(p=>p.value);
+  const now = inWindow(end - PACE_OBJ_WINDOW_DAYS*DAY_MS, end);
+  const before = inWindow(end - (PACE_OBJ_WINDOW_DAYS+PACE_OBJ_SHIFT_DAYS)*DAY_MS, end - PACE_OBJ_SHIFT_DAYS*DAY_MS);
+  const current = now.length ? Math.round(medianOf(now)) : null;
+  const start = before.length>=PACE_OBJ_MIN_POINTS ? Math.round(medianOf(before)) : null;
+  const delta = current!=null && start!=null && now.length>=PACE_OBJ_MIN_POINTS ? current - start : null;   // > 0 : plus lent
+  const target = Number(targetSec)>0 ? Number(targetSec) : null;
+  const pct = target && start!=null && current!=null && start>target ? Math.max(0, Math.min(1, (start-current)/(start-target))) : null;
+  return { current, start, delta, target, pct, nowCount:now.length, beforeCount:before.length, reached: target!=null && current!=null && current<=target };
+}
+// « −10 s » quand tu vas plus vite, « +8 s » quand tu ralentis, rien si c'est pareil ou s'il n'y a pas de quoi comparer.
+function paceDeltaShort(delta){ return delta==null || delta===0 ? "" : delta<0 ? `−${-delta} s` : `+${delta} s`; }

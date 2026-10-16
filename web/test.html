@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=105"></script>
+<script src="logic.js?v=106"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -2327,6 +2327,24 @@ try {
   const rows = realRunsExplainRows(pO, { z2Max:149, maxHr:188, restingHr:58, forme:{ label:"Frais", cause:null }, charge:{ acwr:0.81, acute:235, chronic:290, label:"Équilibrée" } });
   assertEqual("comment on l'a choisie : les lignes, avec la charge expliquée", rows.map(r=>r.k), ["Ton rythme", "Ta durée habituelle en EF", "Ton allure en EF", "Tes km par semaine", "Ta zone 2", "Facile / soutenu, 4 semaines", "Ta charge", "Ta forme"]);
   assertEqual("comment on l'a choisie : la charge détaillée", [rows[6].v, rows[6].s], ["0,81 · équilibrée", "Tes derniers jours (235) comparés à ta semaine habituelle (290, sur 12 semaines). Chaque jour sans courir, elle baisse."]);
+}
+
+// --- Objectif « Améliorer mon allure » : où j'en suis (revue d'Omar du 16/10/2026) ---
+{
+  const T = new Date(2026,9,16,12).getTime(), D = 86400000;
+  const pt = (daysAgo, v) => ({ ts:T-daysAgo*D, value:v });
+  // Cas d'Omar : 5 EF ces 8 semaines (médiane 6'53), 7 EF les mêmes 8 semaines il y a 3 mois (médiane 6'45), visée 5'00
+  const omar = [pt(8,401), pt(27,413), pt(45,437), pt(10,413), pt(39,423), pt(138,396), pt(128,400), pt(145,426), pt(108,402), pt(103,422), pt(94,434), pt(136,405)];
+  const m = paceObjectiveModel({ efPoints:omar, todayTs:T, targetSec:300 });
+  assertEqual("objectif allure : allure actuelle, départ il y a 3 mois, évolution (Omar)", [m.current, m.start, m.delta, m.nowCount, m.beforeCount], [413, 405, 8, 5, 7]);
+  assertEqual("objectif allure : il ralentit -> barre à 0 (jamais négative), objectif pas atteint", [m.pct, m.reached], [0, false]);
+  assertEqual("objectif allure : « +8 s » et « −10 s »", [paceDeltaShort(8), paceDeltaShort(-10), paceDeltaShort(0), paceDeltaShort(null)], ["+8 s", "−10 s", "", ""]);
+  const prog = paceObjectiveModel({ efPoints:[pt(5,400), pt(12,400), pt(20,400), pt(100,420), pt(110,420), pt(120,420)], todayTs:T, targetSec:360 });
+  assertEqual("objectif allure : de 7'00 à 6'40 pour viser 6'00 -> un tiers du chemin", Math.round(prog.pct*100), 33);
+  assertEqual("objectif allure : moins de 3 EF il y a 3 mois -> pas de comparaison", paceObjectiveModel({ efPoints:[pt(5,400), pt(12,400), pt(20,400), pt(100,420)], todayTs:T }).delta, null);
+  assertEqual("objectif allure : aucune EF en 8 semaines -> pas d'allure actuelle", paceObjectiveModel({ efPoints:[pt(100,420)], todayTs:T }).current, null);
+  assertEqual("objectif allure : sans allure visée -> pas de barre", paceObjectiveModel({ efPoints:omar, todayTs:T }).pct, null);
+  assertEqual("objectif allure : visée atteinte", paceObjectiveModel({ efPoints:omar, todayTs:T, targetSec:420 }).reached, true);
 }
 
 document.getElementById("summary").innerHTML =
