@@ -731,6 +731,25 @@ button.pg-rec-row{cursor:pointer}
 .cd-alert .bang{flex:none;width:20px;height:20px;border-radius:50%;background:var(--attention);color:var(--on-accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .btn-ghost{width:100%;height:48px;margin-top:6px;border:none;border-radius:24px;background:none;color:var(--text-2);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
 /* Refonte d'Aujourd'hui (C27, revue du 16/10/2026 ; maquette Claude Design « Aujourd'hui repos », 4a) */
+.fm-card.fm-compact{gap:10px;padding:14px 16px}
+.fmc-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.fmc-state{font:700 24px/1 var(--font-display);text-transform:uppercase;color:var(--fm-color)}
+.fmc-cause{font-size:14.5px;font-weight:600;line-height:1.35}
+.mg-empty{font-size:13px;color:var(--text-3)}
+.fm-compact .mg{margin:0}
+.mg{display:flex;flex-direction:column;gap:7px;width:100%;margin:12px 0 4px;padding:10px 12px;border:none;border-radius:var(--r-md);background:var(--surface-sunken);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.mg-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
+.mg-row .k{color:var(--text-3)}
+.mg-row .m{color:var(--text-muted)}
+.mg-row svg{color:var(--text-muted);vertical-align:-2px;margin-left:4px}
+.mg-bar{position:relative;display:block;padding:3px 0}
+.mg-bar .mg-seg{display:grid;grid-template-columns:40fr 25fr 35fr;gap:3px}
+.mg-bar .mg-seg i{height:6px;border-radius:3px}
+.mg-bar .mg-seg i:nth-child(1){background:var(--grabber)}
+.mg-bar .mg-seg i:nth-child(2){background:var(--accent)}
+.mg-bar .mg-seg i:nth-child(3){background:oklch(0.72 0.17 300 / .55)}
+.mg-bar .mk{position:absolute;top:0;width:3px;height:12px;margin-left:-1.5px;border-radius:2px;background:var(--text)}
+.mg-cause{font-size:13px;line-height:1.4;color:var(--text-2)}
 .sc-hint{display:flex;align-items:flex-start;gap:8px;margin-top:12px;padding:10px 12px;border-radius:var(--r-md);background:var(--attention-bg);color:var(--text);font-size:13.5px;line-height:1.4}
 .sc-hint svg{flex:none;color:var(--attention);margin-top:1px}
 .ch-box{display:flex;flex-direction:column;margin-top:10px;padding:4px 14px 14px;border-radius:var(--r-md);background:var(--surface-sunken)}
@@ -762,13 +781,13 @@ button.fm-block{cursor:pointer}
 .fm-row .m{color:var(--text-muted)}
 .fm-row b.att{color:var(--attention)}
 .fm-gauge{position:relative;padding:4px 0}
-.fm-gauge .seg,.fm-seglbl{display:grid;grid-template-columns:40fr 25fr 35fr;gap:3px}
-.fm-gauge .seg i{height:8px;border-radius:4px}
-.fm-gauge .seg i:nth-child(1){background:var(--grabber)}
-.fm-gauge .seg i:nth-child(2){background:var(--accent)}
-.fm-gauge .seg i:nth-child(3){background:oklch(0.72 0.17 300 / .55)}
+.fm-gauge .fm-seg,.fm-seglbl{display:grid;grid-template-columns:40fr 25fr 35fr;gap:3px}
+.fm-gauge .fm-seg i{height:8px;border-radius:4px}
+.fm-gauge .fm-seg i:nth-child(1){background:var(--grabber)}
+.fm-gauge .fm-seg i:nth-child(2){background:var(--accent)}
+.fm-gauge .fm-seg i:nth-child(3){background:oklch(0.72 0.17 300 / .55)}
 .fm-gauge .mk{position:absolute;top:0;width:3px;height:16px;margin-left:-1.5px;border-radius:2px;background:var(--text)}
-.fm-seglbl{margin-top:-6px;font-size:11.5px;color:var(--text-muted)}
+.fm-seglbl{font-size:11.5px;color:var(--text-muted)}
 .fm-seglbl .on{color:var(--text-2);font-weight:600}
 .fm-tx{font-size:13px;line-height:1.45;color:var(--text-3)}
 .fm-dots{display:flex;gap:6px}
@@ -776,9 +795,6 @@ button.fm-block{cursor:pointer}
 .fm-dots i.ok{background:var(--accent)}
 .fm-dots i.gene{background:var(--attention)}
 .fm-dots i.legere{background:oklch(0.72 0.17 300 / .5)}
-.fm-pill{flex:none;font:700 13px/1 var(--font-display);letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;border-radius:var(--r-pill);background:var(--accent-soft);color:var(--accent)}
-.fm-pill.normal{background:var(--select-soft);color:var(--text)}
-.fm-pill.menager{background:var(--attention-bg-strong);color:var(--attention)}
 .mb-card{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;padding:16px;border-radius:var(--r-xl);background:var(--surface)}
 .mb-card.mb-done{flex-direction:row;align-items:center;gap:12px;font-size:15px;color:var(--text-2)}
 .mb-head{display:flex;align-items:flex-start;gap:12px}
@@ -6108,7 +6124,7 @@ function formeCardHTML(ctx){
   const zoneColor = { legere:"var(--text-2)", equilibree:"var(--accent)", elevee:"var(--attention)" };
   const charge = ctx.charge ? `<button type="button" class="fm-block" onclick="openChargeSheet()" aria-label="Charge d'entraînement : ${escHtml(ctx.charge.label)}, ${ctx.charge.value}">
       <div class="fm-row"><span class="k">Charge d'entraînement</span><span><b style="color:${zoneColor[ctx.charge.zone]}">${escHtml(ctx.charge.label)}</b><span class="m"> · ${ctx.charge.value}</span></span></div>
-      <div class="fm-gauge" aria-hidden="true"><div class="seg"><i></i><i></i><i></i></div><span class="mk" style="left:${ctx.charge.markerPct}%"></span></div>
+      <div class="fm-gauge" aria-hidden="true"><div class="fm-seg"><i></i><i></i><i></i></div><span class="mk" style="left:${ctx.charge.markerPct}%"></span></div>
       <div class="fm-seglbl" aria-hidden="true">${["legere","equilibree","elevee"].map(z=>`<span${z===ctx.charge.zone?' class="on"':""}>${{legere:"Légère",equilibree:"Équilibrée",elevee:"Élevée"}[z]}</span>`).join("")}</div>
       <div class="fm-tx">${escHtml(ctx.charge.sentence)}</div>
     </button>`
@@ -6270,11 +6286,14 @@ function todayScreenHTML(){
   const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
   const ranYesterday = runningRuns.some(r=>localDateStr(dateFromRun(r))===localDateStr(yesterday));
   const hint = ranYesterday && (Number(goals.frequence)||3)<4 ? "Tu as couru hier : si tu peux, décale cette séance à demain." : "";
-  const cardsOf = (list) => list.map(s=>programSessionCardHTML(s, date, isRunningRunType(s.type) && s.status!=="done" ? { forme:ctx.forme, hint } : null)).join("");
-  if(todayKind==="repos") return top + formeCardHTML(ctx) + action + mobilityCardHTML(ctx) + nextSessionTileHTML(ctx, hasProgram) + (action ? "" : objectiveFigureRowHTML()) + week;
-  if(todayKind==="seance") return top + cardsOf(todaySessions) + action + objectiveFigureRowHTML() + week;
+  const cardsOf = (list) => list.map(s=>programSessionCardHTML(s, date, isRunningRunType(s.type) && s.status!=="done" ? { hint } : null)).join("");
+  // Ta forme du jour toujours en haut, au même endroit (Omar, 16/10) : la carte complète un jour de repos, la version courte
+  // (état, cause, jauge) les autres jours. Une carte d'action efface l'objectif et le chiffre du jour (4 blocs au plus).
+  const objFig = action ? "" : objectiveFigureRowHTML();
+  if(todayKind==="repos") return top + formeCardHTML(ctx) + action + mobilityCardHTML(ctx) + nextSessionTileHTML(ctx, hasProgram) + objFig + week;
+  if(todayKind==="seance") return top + formeCompactHTML(ctx) + cardsOf(todaySessions) + action + objFig + week;
   const main = todaySessions.length ? cardsOf(todaySessions) : ranToday.map(todayRunCardHTML).join("");
-  return top + main + action + nextSessionTileHTML(ctx, hasProgram) + objectiveFigureRowHTML() + week;
+  return top + formeCompactHTML(ctx) + main + action + nextSessionTileHTML(ctx, hasProgram) + objFig + week;
 }
 // Carte de séance (design 2d, V1 à V7). Même carte sur Aujourd'hui et, pour le jour choisi, dans Programme.
 // États : prévue, faite (reçue d'Apple Santé ou saisie à la main : chiffres réels + détail cardio ouvert),
@@ -6390,10 +6409,31 @@ function renderRulesSheet(){
   </div></div>`;
   return true;
 }
-// `today` (Aujourd'hui seulement, séance de course à faire) : { forme, hint } : la pastille « Feu vert / Forme normale /
-// À ménager » (revue du 16/10) et le rappel des 2 jours (lot B).
+// « Ta forme du jour » en version courte, en haut d'Aujourd'hui les jours de séance et de sortie faite (Omar, 16/10 : la jauge
+// au même endroit tous les jours) : l'état, la phrase de la cause s'il y en a une, et la mini-jauge (la toucher ouvre la fiche
+// de la charge).
+function formeCompactHTML(ctx){
+  const f = ctx.forme;
+  const gauge = ctx.charge ? miniChargeGaugeHTML(ctx.charge) : `<div class="mg-empty">${escHtml(ctx.chargeEmpty)}</div>`;
+  return `<section class="fm-card fm-compact ${f.state}">
+    <div class="fmc-top"><span class="fm-over">Ta forme du jour</span><span class="fmc-state">${escHtml(f.label)}</span></div>
+    ${f.cause ? `<div class="fmc-cause">${escHtml(f.phrase)}</div>` : ""}
+    ${gauge}
+  </section>`;
+}
+// Mini-jauge de la charge : les 3 segments de « Ta forme du jour » ; la toucher ouvre la fiche de la charge.
+function miniChargeGaugeHTML(charge){
+  const color = { legere:"var(--text-2)", equilibree:"var(--accent)", elevee:"var(--attention)" }[charge.zone];
+  const cause = "";
+  return `<button type="button" class="mg" onclick="openChargeSheet()" aria-label="Charge d'entraînement : ${escHtml(charge.label)}, ${charge.value}">
+    <span class="mg-row"><span class="k">Charge d'entraînement</span><span><b style="color:${color}">${escHtml(charge.label)}</b><span class="m"> · ${charge.value}</span>${icon("chevronRight",14)}</span></span>
+    <span class="mg-bar" aria-hidden="true"><span class="mg-seg"><i></i><i></i><i></i></span><span class="mk" style="left:${charge.markerPct}%"></span></span>
+    ${cause}
+  </button>`;
+}
+// `today` (Aujourd'hui seulement, séance de course à faire) : { hint } : le rappel des 2 jours (lot B). La forme et la jauge
+// sont en haut de l'écran (formeCompactHTML).
 function programSessionCardHTML(session, date, today){
-  const forme = today && today.forme;
   const todayStr = localDateStr(new Date());
   const state = sessionCardState(session, todayStr);
   const c = TC[session.type]||TC.Other;
@@ -6440,7 +6480,7 @@ function programSessionCardHTML(session, date, today){
     <div class="sc-head">
       <div class="sc-icon" style="background:${c}22;color:${c}">${icon(TICON[session.type]||"activity",18)}</div>
       <div class="sc-overline">${escHtml(dayTxt)}${run&&run.time?" · "+escHtml(run.time):""}</div>
-      ${state==="done" ? `<span class="sc-done">${icon("check",14)} Fait</span>` : forme ? `<span class="fm-pill ${forme.state}">${escHtml(forme.pill)}</span>` : ""}
+      ${state==="done" ? `<span class="sc-done">${icon("check",14)} Fait</span>` : ""}
     </div>
     <div class="sc-title">${escHtml(title)}</div>
     ${subtitle?`<div class="sc-sub">${escHtml(subtitle)}</div>`:""}
