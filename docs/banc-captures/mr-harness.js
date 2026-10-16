@@ -368,6 +368,8 @@
     programSettings = { ...programSettings, programSignature:programSignature(goals) };   // pas de carte « Ton objectif a changé »
     // 4 EF il y a 3 à 4 mois, plus lentes (6'25), pour la comparaison sur 3 mois
     [100,107,114,121].forEach(n=>rows.push({ id:"old"+n, apple_type:"Running", include_in_stats:true, start_date:startOf(n).toISOString(), type:"EF", distance_km:7, duration_sec:7*385, avg_hr:150 }));
+    // 4 EF il y a 6 à 7 mois, encore plus lentes (6'50), pour le départ à 6 mois (retour d'Omar du 16/10)
+    [190,200,210,220].forEach(n=>rows.push({ id:"old"+n, apple_type:"Running", include_in_stats:true, start_date:startOf(n).toISOString(), type:"EF", distance_km:7, duration_sec:7*410, avg_hr:152 }));
     rows.sort((a,b)=>new Date(a.start_date)-new Date(b.start_date)); await loadData(); rateYesterday();
     plannedSessions=[...wkSessions, ...future];
     if(scen==="objectif_allure_prog"){ show("progression"); scrollToCard("progObjective"); } else show("aujourdhui");
@@ -597,9 +599,10 @@
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayEasy, ...future];
     if(scen==="nouveaute_reprise") programSettings = { refDistanceKm:10, refTimeSec:3600 };      // un temps sans date, comme les comptes d'avant la refonte
     show("aujourdhui"); if(typeof maybeShowNews==="function") maybeShowNews();
-  } else if(scen==="jauge_charge" || scen==="jauge_info"){
+  } else if(scen==="jauge_charge" || scen==="jauge_info" || scen==="jauge_calcul"){
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; openMonths=null; openManageRow=new Set(); show("progression");
     openChargeSheet(); if(scen==="jauge_info") toggleChargeInfo();
+    if(scen==="jauge_calcul") toggleChargeCalc();   // « Comment on la calcule » déplié (retour d'Omar du 16/10)
   } else if(/^charge_bientot/.test(scen)){
     // nouveau testeur (E8) : historique Apple Santé sans ressenti, une seule sortie notée -> « Bientôt », 4 séances notées sur 3 semaines
     celebrationOff(); plannedSessions=[...wkSessions, ...future];

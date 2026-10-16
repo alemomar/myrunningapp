@@ -4004,19 +4004,64 @@ function defaultPlanAllowsQuality(plan){ return !!plan && plan.weeklyKm>=DEFAULT
    fait depuis ton point de départ (médiane des mêmes 8 semaines il y a 3 mois, la règle des indicateurs validée le 14/10) et
    l'évolution sur ces 3 mois. Il faut au moins 3 EF de chaque côté pour comparer (règle validée pour la dérive, C3).
    Avant : l'allure du début du programme contre les 4 dernières semaines, souvent « Bientôt » (Omar : aucune EF du 21/09 au
-   03/10, 45 EF depuis janvier). `efPoints` : [{ ts, value (s/km) }] ; `targetSec` : l'allure EF visée (s/km), facultative. */
-const PACE_OBJ_WINDOW_DAYS = 56, PACE_OBJ_SHIFT_DAYS = 91, PACE_OBJ_MIN_POINTS = 3;
+   03/10, 45 EF depuis janvier). `efPoints` : [{ ts, value (s/km) }] ; `targetSec` : l'allure EF visée (s/km), facultative.
+   Départ il y a 6 mois (retour d'Omar du 16/10/2026, « ça motive ») : les mêmes 8 semaines il y a 6 mois quand il y a au moins
+   3 EF, sinon il y a 3 mois ; `months` dit lequel. Avec un départ à 6 mois, l'évolution des 3 derniers mois reste donnée
+   (`delta3`) pour ne pas cacher un recul récent. Omar : 7'41 il y a 6 mois, 6'45 il y a 3 mois, 6'53 maintenant. */
+const PACE_OBJ_WINDOW_DAYS = 56, PACE_OBJ_SHIFT_DAYS = 91, PACE_OBJ_LONG_SHIFT_DAYS = 182, PACE_OBJ_MIN_POINTS = 3;
 function paceObjectiveModel({ efPoints, todayTs, targetSec }){
   const t = new Date(todayTs), end = new Date(t.getFullYear(), t.getMonth(), t.getDate()+1).getTime();
   const inWindow = (from, to) => (efPoints||[]).filter(p=>p && p.value>0 && p.ts>=from && p.ts<to).map(p=>p.value);
+  const shifted = (days) => inWindow(end - (PACE_OBJ_WINDOW_DAYS+days)*DAY_MS, end - days*DAY_MS);
+  const ref = (vals) => vals.length>=PACE_OBJ_MIN_POINTS ? Math.round(medianOf(vals)) : null;
   const now = inWindow(end - PACE_OBJ_WINDOW_DAYS*DAY_MS, end);
-  const before = inWindow(end - (PACE_OBJ_WINDOW_DAYS+PACE_OBJ_SHIFT_DAYS)*DAY_MS, end - PACE_OBJ_SHIFT_DAYS*DAY_MS);
+  const before3 = shifted(PACE_OBJ_SHIFT_DAYS), before6 = shifted(PACE_OBJ_LONG_SHIFT_DAYS);
+  const start3 = ref(before3), start6 = ref(before6);
+  const months = start6!=null ? 6 : 3;
+  const start = months===6 ? start6 : start3, before = months===6 ? before6 : before3;
   const current = now.length ? Math.round(medianOf(now)) : null;
-  const start = before.length>=PACE_OBJ_MIN_POINTS ? Math.round(medianOf(before)) : null;
-  const delta = current!=null && start!=null && now.length>=PACE_OBJ_MIN_POINTS ? current - start : null;   // > 0 : plus lent
+  const comparable = current!=null && now.length>=PACE_OBJ_MIN_POINTS;
+  const delta = comparable && start!=null ? current - start : null;   // > 0 : plus lent
+  const delta3 = months===6 && comparable && start3!=null ? current - start3 : null;
   const target = Number(targetSec)>0 ? Number(targetSec) : null;
   const pct = target && start!=null && current!=null && start>target ? Math.max(0, Math.min(1, (start-current)/(start-target))) : null;
-  return { current, start, delta, target, pct, nowCount:now.length, beforeCount:before.length, reached: target!=null && current!=null && current<=target };
+  return { current, start, delta, months, start3, delta3, target, pct, nowCount:now.length, beforeCount:before.length, reached: target!=null && current!=null && current<=target };
 }
 // « −10 s » quand tu vas plus vite, « +8 s » quand tu ralentis, rien si c'est pareil ou s'il n'y a pas de quoi comparer.
 function paceDeltaShort(delta){ return delta==null || delta===0 ? "" : delta<0 ? `−${-delta} s` : `+${delta} s`; }
+
+/* ---------- « Ton calcul » de la charge (retour d'Omar du 16/10/2026) ----------
+   La fiche de la charge donnait le chiffre sans dire d'où il vient (l'explication était derrière le « i »). Elle montre
+   maintenant le calcul avec tes vrais chiffres : ta dernière course (durée × difficulté), ta charge des derniers jours,
+   ta semaine habituelle et la division. Les minutes sont arrondies AVANT de multiplier, pour que l'opération affichée
+   tombe juste (Omar, 11/10 : 73 min × 6 = 438, la charge exacte compte 73,3 min). `sessions` : chargeSessionsWithEstimates ;
+   `ac` : acwrAt. */
+function chargeCalcModel({ sessions, ac, todayTs }){
+  if(!ac || ac.acwr==null) return null;
+  const t = new Date(todayTs), day0 = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const today0 = day0(t);
+  const last = (sessions||[]).filter(s=>s && s.date && s.rpe!=null && s.durationMin>0 && day0(s.date)<=today0).sort((a,b)=>b.date-a.date)[0] || null;
+  let example = null;
+  if(last){
+    const min = Math.round(last.durationMin), rpe = Math.round(Number(last.rpe)*10)/10;
+    example = { date:last.date, min, rpe, estimated:!!last.estimated, load:Math.round(min*rpe), daysAgo:Math.round((today0-day0(last.date))/DAY_MS) };
+  }
+  return { example, recent:Math.round(ac.acute), usual:Math.round(ac.chronic), weeks:Math.max(1, Math.round(ac.baselineWeeks)), acwr:ac.acwr };
+}
+function chargeCalcRows(model){
+  if(!model) return [];
+  const dd = (d) => String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0");
+  const dec = (v) => String(v).replace(".",",");
+  const n = (v) => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0");   // 1 023 (l'espace fin \u202f fait 1,3 px en Barlow : invisible)
+  const ex = model.example, a = model.acwr;
+  const zone = a<0.8 ? "En dessous de 0,8 : tu peux en faire un peu plus." : a<=1.3 ? "Entre 0,8 et 1,3 : zone idéale."
+    : a<=1.5 ? "Au-dessus de 1,3 : ta charge monte vite, écoute ton corps." : "Au-dessus de 1,5 : grosse semaine, n'augmente pas la semaine suivante.";
+  return [
+    { k:"Une course", v:"durée × difficulté", s: ex ? `Ta course du ${dd(ex.date)} : ${ex.min} min × ${dec(ex.rpe)} = ${n(ex.load)} points.${ex.estimated?" Difficulté estimée : tu ne l'avais pas notée.":""}` : "" },
+    { k:"Tes derniers jours", v:`${n(model.recent)} points`, s: ex && ex.daysAgo>=1
+      ? `Ta course du ${dd(ex.date)} comptait ${n(ex.load)} : chaque jour sans courir, elle perd environ un quart de son poids.`
+      : "Une course compte à plein le jour même, puis perd environ un quart de son poids chaque jour sans courir." },
+    { k:"Ta semaine habituelle", v:`${n(model.usual)} points`, s:`Ta moyenne sur ${model.weeks} semaine${model.weeks>1?"s":""}.` },
+    { k:"Ta charge", v:`${n(model.recent)} ÷ ${n(model.usual)} = ${dec(a.toFixed(2))}`, s: zone },
+  ];
+}

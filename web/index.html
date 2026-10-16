@@ -552,11 +552,15 @@ input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);cursor:
 .pg-sub{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--text-muted)}
 .pg-sub b{color:var(--text);font-weight:600}
 .pg-sep{height:1px;background:var(--line)}
-.pg-pace{display:flex;align-items:baseline;gap:10px;font:700 22px/1 var(--font-display)}
-.pg-pace .a{color:var(--text-2)}
-.pg-pace .b{color:var(--accent)}
-.pg-pace svg{color:var(--text-muted);align-self:center}
-.pg-pace small{font:500 12px var(--font-text);color:var(--text-muted)}
+.pg-pace-cap{font-size:12px;color:var(--text-muted);margin-bottom:8px}
+.pg-pace{display:flex;align-items:flex-start;gap:10px}
+.pg-pace .c{display:flex;flex-direction:column;gap:5px}
+.pg-pace .c b{font:700 22px/1 var(--font-display)}
+.pg-pace .s b{color:var(--text-muted)}
+.pg-pace .a b{color:var(--text-2)}
+.pg-pace .b b{color:var(--accent)}
+.pg-pace svg{color:var(--text-muted);flex:none;margin-top:3px}
+.pg-pace small{font:500 11.5px var(--font-text);color:var(--text-muted)}
 .pg-dots{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
 .pg-dots i{height:14px;border-radius:4px;background:var(--accent)}
 .pg-dots i.off{background:none;box-shadow:inset 0 0 0 1.5px var(--line-empty)}
@@ -606,7 +610,6 @@ button.pg-rec-row{cursor:pointer}
 /* Feuille de la jauge de charge (4c) */
 .cg-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px}
 .cg-top .btns{display:flex;gap:8px;align-items:center}
-.cg-info{width:36px;height:36px;border:none;border-radius:50%;background:var(--line-field);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer}
 .cg-zone{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:18px}
 .cg-zone .z{font:700 28px/1.05 var(--font-display);text-transform:uppercase}
 .cg-zone .n{font:700 28px/1 var(--font-display);flex:none}
@@ -634,13 +637,16 @@ button.pg-rec-row{cursor:pointer}
 @media (prefers-reduced-motion: no-preference){
   .pg-bar.anim>i{animation:pgBar .8s ease-out both}
   .pg-ring.anim circle.fg{animation:ringFill .8s ease-out both}
-  .cg-bar.anim .cg-mark{animation:cgMark .6s ease-out both}
-  .cg-curve.anim .reveal{animation:cgReveal .6s ease-out both}
+  /* Plus lent (retour d'Omar du 16/10) : la courbe se dessine en 1,8 s, le repère glisse en 1,2 s, le point de fin s'allume à l'arrivée. */
+  .cg-bar.anim .cg-mark{animation:cgMark 1.2s cubic-bezier(.45,0,.25,1) both}
+  .cg-curve.anim .reveal{animation:cgReveal 1.8s cubic-bezier(.45,0,.25,1) both}
+  .cg-curve.anim .dot{animation:cgDot .35s ease-out 1.65s both}
 }
 @keyframes pgBar{from{width:0}}
 @keyframes ringFill{from{stroke-dasharray:0 100}}
 @keyframes cgMark{from{left:0}}
 @keyframes cgReveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes cgDot{from{opacity:0;transform:scale(.3)}}
 /* Feuille de détail d'une séance (S7, design 7s) et Détail cardio V2 */
 .rs-card{background:var(--surface);border-radius:var(--r-lg);padding:14px 16px;margin:14px 0}
 .rs-card .sc-metrics{margin:0}
@@ -1323,7 +1329,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=106"></script>
+<script src="logic.js?v=107"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -2869,10 +2875,12 @@ function objectiveCardHTML(){
     else if(since) block = `<div class="pg-sub"><span>${escHtml(since)}</span></div>`;
   } else if(variant==="pace"){
     // Même calcul que la tuile d'Aujourd'hui (revue d'Omar du 16/10) : ton allure EF actuelle, ton allure visée, le chemin fait.
+    // Sur la même ligne, ton allure d'il y a 6 mois (3 à défaut) : « 7'41 → 6'53 → 5'00 » (retour d'Omar du 16/10, « ça motive »).
     const m = paceObjectiveModel({ efPoints: efRuns.filter(r=>r.allure).map(r=>({ ts:dateFromRun(r).getTime(), value:r.allure })), todayTs, targetSec: slot.allureEfVisee });
-    const evo = m.delta!=null ? `${m.delta===0 ? "Stable" : paceDeltaShort(m.delta)} en 3 mois (${fmtA(m.start)} il y a 3 mois)` : "Pas encore de comparaison sur 3 mois";
+    const evo = m.delta!=null ? `${m.delta===0 ? "Stable" : paceDeltaShort(m.delta)} en ${m.months} mois${m.delta3!=null ? ` · ${m.delta3===0 ? "stable" : paceDeltaShort(m.delta3)} sur les 3 derniers mois` : ""}` : "Pas encore de comparaison sur 3 mois";
+    const arrow = icon("arrowRight",16);
     block = m.current==null ? `<div class="pg-block"><div class="pg-sub"><span>Cours une EF pour voir ton allure du moment.</span></div></div>`
-      : `<div class="pg-block"><div class="pg-pace"><span class="b">${fmtA(m.current)}</span><small>/km en EF</small>${m.target?`${icon("arrowRight",16)}<span class="a">${fmtA(m.target)}</span><small>visée</small>`:""}</div>
+      : `<div class="pg-block"><div class="pg-pace-cap">Ton allure en EF, au km</div><div class="pg-pace">${m.start!=null?`<div class="c s"><b>${fmtA(m.start)}</b><small>il y a ${m.months} mois</small></div>${arrow}`:""}<div class="c b"><b>${fmtA(m.current)}</b><small>maintenant</small></div>${m.target?`${arrow}<div class="c a"><b>${fmtA(m.target)}</b><small>visée</small></div>`:""}</div>
         ${m.pct!=null?`<div class="pg-bar${animate?" anim":""}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(m.pct*100)}" aria-label="Chemin fait vers ton allure visée"><i style="width:${Math.max(1,Math.round(m.pct*100))}%"></i></div>`:""}
         <div class="pg-sub"><span>${escHtml(evo)}${m.target ? "" : " · fixe ton allure visée dans Objectifs"}</span></div></div>`;
   } else if(variant==="streak"){
@@ -4272,7 +4280,9 @@ window.saveRestingHrField = async (el) => {
 
 // Feuille de la jauge de charge (4c) : barre à 3 zones, courbe des 8 dernières semaines, ligne du coach ; le « i » ouvre l'explication (D22, A7).
 let chargeSheet = null; // "gauge" | "info"
-window.openChargeSheet = () => { chargeSheet = "gauge"; playedChargeSheet = false; refreshSheet(); };
+window.openChargeSheet = () => { chargeSheet = "gauge"; playedChargeSheet = false; chargeCalcOpen = false; refreshSheet(); };
+let chargeCalcOpen = false;   // « Comment on la calcule » replié d'office
+window.toggleChargeCalc = () => { chargeCalcOpen = !chargeCalcOpen; refreshSheet(); };
 window.closeChargeSheet = () => { chargeSheet = null; refreshSheet(); };
 window.toggleChargeInfo = () => { chargeSheet = chargeSheet==="info" ? "gauge" : "info"; refreshSheet(); };
 let playedChargeSheet = false;
@@ -4308,6 +4318,10 @@ function renderChargeSheet(){
     const dailySeries = buildDailyLoadSeries(loadSessions);
     const inBaseline = loadSessions.filter(x=>x.date.getTime()>=Date.now()-CHARGE_BASELINE_WEEKS*7*DAY_MS);
     const estNote = pos!=null ? chargeEstimatedNote(inBaseline.filter(x=>x.estimated).length, inBaseline.length) : "";
+    // « Comment on la calcule » (retours d'Omar du 16/10) : le chiffre expliqué avec ses vraies courses, au lieu d'un « i » qu'on ne
+    // voit pas ; replié d'office, il s'ouvre d'un geste (même bouton que « Comment on l'a choisie » de la séance).
+    const calcRows = pos!=null ? chargeCalcRows(chargeCalcModel({ sessions: loadSessions, ac: acwrAt(dailySeries, new Date()), todayTs: Date.now() })) : [];
+    const calcBox = calcRows.length ? `<button type="button" class="flt" style="margin-top:16px;gap:6px" onclick="toggleChargeCalc()" aria-expanded="${chargeCalcOpen}">Comment on la calcule ${icon(chargeCalcOpen?"chevronUp":"chevronDown",14)}</button>${chargeCalcOpen ? `<div class="ch-box">${calcRows.map(r=>`<div class="ch-row bar"><div class="ch-l"><span>${escHtml(r.k)}</span><b>${escHtml(r.v)}</b></div>${r.s?`<div class="ch-s">${escHtml(r.s)}</div>`:""}</div>`).join("")}</div>` : ""}` : "";
     const curve = chargeCurve(chargeWeeklySeries(dailySeries, new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()), 8), 280, 80);
     const barColors = ["var(--text-faint)", "var(--accent)", "var(--attention)"];
     const bar = [seg.low, seg.ideal, seg.high].map((w,i)=>`<i style="flex:${w};background:${pos==null?"var(--line-field)":barColors[i]}"></i>`).join("");
@@ -4319,14 +4333,16 @@ function renderChargeSheet(){
         ${curve.last?`<div class="dot" style="right:0;top:${curve.last.y}px;background:${lastColor}"></div>`:""}
       </div>
       <div class="cg-legend"><span>il y a 8 sem.</span><span>bande = zone idéale</span><span>cette sem.</span></div>` : "";
-    body = `<div class="cg-top"><span class="pg-over">Charge d'entraînement</span><div class="btns"><button type="button" class="cg-info" aria-label="Comprendre la charge d'entraînement" onclick="toggleChargeInfo()">${icon("info",16)}</button><button class="sheet-close" type="button" aria-label="Fermer" onclick="closeChargeSheet()">${icon("x",16)}</button></div></div>
+    body = `<div class="cg-top"><span class="pg-over">Charge d'entraînement</span><div class="btns"><button class="sheet-close" type="button" aria-label="Fermer" onclick="closeChargeSheet()">${icon("x",16)}</button></div></div>
       <div role="group" aria-label="${escHtml(chargeAriaLabel(gauge, acwr))}">
         <div class="cg-zone"><span class="z" style="color:${gauge.zone==="sous-charge"?"var(--text-muted)":gauge.color}">${escHtml(ci.label)}</span>${ci.value?`<span class="n">${ci.value}</span>`:""}</div>
         <div class="cg-bar${animate?" anim":""}">${bar}${pos!=null?`<span class="cg-mark" style="left:${pos*100}%"></span>`:""}</div>
         <div class="cg-ticks" aria-hidden="true">${tick(CHARGE_LOW)}${tick(CHARGE_HIGH)}</div>
         ${graph}
         <div class="cg-coach">${icon("sparkle",13)}<span>${escHtml(pos!=null ? gauge.phrase : (emptyReason ? CHARGE_EMPTY_TEXTS[emptyReason].sheet : gauge.phrase))}</span></div>
+        ${calcBox}
         ${estNote ? `<div class="cg-text" style="margin-top:10px">${escHtml(estNote)}</div>` : ""}
+        <button type="button" class="ch-rules" onclick="toggleChargeInfo()">Les repères et les sources ›</button>
         ${chargeRunsForReason().some(x=>x.ts>=Date.now()-28*DAY_MS && x.rpe==null) ? `<button type="button" class="btn-primary" style="margin-top:14px" onclick="rateLatestUnrated()">Noter mon ressenti</button>` : ""}
       </div>`;
   }
@@ -6234,11 +6250,11 @@ function objectiveTileModel(){
       sub: [[dist, dateTxt].filter(Boolean).join(" · "), rp && rp.totalWeeks ? `semaine ${rp.week} sur ${rp.totalWeeks}` : ""].filter(Boolean).join(", ") + ".", key:null, go };
   }
   if(variant==="pace"){
-    // Où j'en suis (revue d'Omar du 16/10) : allure EF actuelle, allure visée, chemin fait, évolution sur 3 mois.
+    // Où j'en suis (revue d'Omar du 16/10) : allure EF actuelle, allure visée, chemin fait, évolution depuis 6 mois (3 à défaut).
     const m = paceObjectiveModel({ efPoints: efRuns.filter(r=>r.allure).map(r=>({ ts:dateFromRun(r).getTime(), value:r.allure })), todayTs, targetSec: slot.allureEfVisee });
     if(m.current==null) return { over:"Objectif · allure", big:"Bientôt", soon:true, sub:"Cours une EF pour voir ton allure du moment.", key:null, go };
     const a = (v) => fmtA(v).replace(/"$/, "");
-    const evo = m.delta!=null ? " Évolution sur 3 mois." : "";
+    const evo = m.delta!=null ? ` Évolution sur ${m.months} mois.` : "";
     return { over:"Objectif · allure", big:a(m.current), delta:paceDeltaShort(m.delta), better: m.delta!=null && m.delta<0,
       sub: m.target ? (m.reached ? `/km en EF : objectif ${a(m.target)} atteint !${evo}` : `/km en EF. Objectif : ${a(m.target)}.${evo}`) : `/km en EF.${evo} Fixe ton allure visée ›`,
       bar: m.target ? m.pct : null, key:null, go: m.target ? go : "goToObjectifs()" };

@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=106"></script>
+<script src="logic.js?v=107"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -2345,6 +2345,29 @@ try {
   assertEqual("objectif allure : aucune EF en 8 semaines -> pas d'allure actuelle", paceObjectiveModel({ efPoints:[pt(100,420)], todayTs:T }).current, null);
   assertEqual("objectif allure : sans allure visée -> pas de barre", paceObjectiveModel({ efPoints:omar, todayTs:T }).pct, null);
   assertEqual("objectif allure : visée atteinte", paceObjectiveModel({ efPoints:omar, todayTs:T, targetSec:420 }).reached, true);
+  assertEqual("objectif allure : sans EF il y a 6 mois -> départ il y a 3 mois", [m.months, m.delta3], [3, null]);
+  // Départ il y a 6 mois (retour d'Omar du 16/10) : 13 EF les mêmes 8 semaines il y a 6 mois, médiane 7'41
+  const omar6 = omar.concat([185,188,192,196,199,203,207,210,214,218,224,229,235].map((d,i)=>pt(d, [455,470,461,448,466,461,452,480,461,458,463,445,475][i])));
+  const m6 = paceObjectiveModel({ efPoints:omar6, todayTs:T, targetSec:300 });
+  assertEqual("objectif allure 6 mois : départ 7'41, −48 s en 6 mois, +8 s sur les 3 derniers mois", [m6.months, m6.start, m6.delta, m6.start3, m6.delta3, m6.beforeCount], [6, 461, -48, 405, 8, 13]);
+  assertEqual("objectif allure 6 mois : 30 % du chemin de 7'41 à 5'00", Math.round(m6.pct*100), 30);
+  assertEqual("objectif allure 6 mois : moins de 3 EF il y a 6 mois -> on reste sur 3 mois", paceObjectiveModel({ efPoints:omar.concat([pt(190,470), pt(200,470)]), todayTs:T, targetSec:300 }).months, 3);
+}
+
+// --- Charge : « Ton calcul » dans la fiche (retour d'Omar du 16/10/2026) ---
+{
+  const T = new Date(2026,9,16,20).getTime();
+  const ac = { acute:235.22, chronic:290.01, baselineWeeks:12, acwr:235.22/290.01 };
+  const sess = [{ date:new Date(2026,9,6,8), durationMin:28, rpe:4, estimated:false }, { date:new Date(2026,9,11,9), durationMin:73.3, rpe:6, estimated:false }, { date:new Date(2026,9,8,8), durationMin:39, rpe:6, estimated:false }];
+  const rows = chargeCalcRows(chargeCalcModel({ sessions:sess, ac, todayTs:T }));
+  assertEqual("ton calcul : les 4 lignes (Omar, 16/10)", rows.map(r=>[r.k, r.v]), [["Une course","durée × difficulté"], ["Tes derniers jours","235 points"], ["Ta semaine habituelle","290 points"], ["Ta charge","235 ÷ 290 = 0,81"]]);
+  assertEqual("ton calcul : l'exemple de sa dernière course, minutes arrondies avant de multiplier", rows[0].s, "Ta course du 11/10 : 73 min × 6 = 438 points.");
+  assertEqual("ton calcul : la course perd un quart de son poids chaque jour", rows[1].s, "Ta course du 11/10 comptait 438 : chaque jour sans courir, elle perd environ un quart de son poids.");
+  assertEqual("ton calcul : semaine habituelle et zone", [rows[2].s, rows[3].s], ["Ta moyenne sur 12 semaines.", "Entre 0,8 et 1,3 : zone idéale."]);
+  const est = chargeCalcRows(chargeCalcModel({ sessions:[{ date:new Date(2026,9,16,7), durationMin:40.4, rpe:4.333, estimated:true }], ac:{ ...ac, acwr:1.6 }, todayTs:T }));
+  assertEqual("ton calcul : course du jour non notée, grosse semaine", [est[0].s, est[1].s, est[3].s], ["Ta course du 16/10 : 40 min × 4,3 = 172 points. Difficulté estimée : tu ne l'avais pas notée.", "Une course compte à plein le jour même, puis perd environ un quart de son poids chaque jour sans courir.", "Au-dessus de 1,5 : grosse semaine, n'augmente pas la semaine suivante."]);
+  assertEqual("ton calcul : 1 023 points, à la française", chargeCalcRows(chargeCalcModel({ sessions:sess, ac:{ acute:966.2, chronic:1023.4, baselineWeeks:12, acwr:966.2/1023.4 }, todayTs:T }))[3].v, "966 ÷ 1\u00a0023 = 0,94");
+  assertEqual("ton calcul : pas de charge -> pas d'encadré", [chargeCalcModel({ sessions:sess, ac:{ ...ac, acwr:null }, todayTs:T }), chargeCalcRows(null).length], [null, 0]);
 }
 
 document.getElementById("summary").innerHTML =
