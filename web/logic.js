@@ -1640,6 +1640,15 @@ function sessionHeadline(session, segments){
   if(!minutes && dist>0 && pace>0) minutes = Math.round(dist*pace/60);
   const tiles = [], structure = [];
   let big = null;
+  // Programme sur les vraies courses (lot B, 16/10) : une EF ou une sortie longue se donne en minutes, avec une fourchette
+  // d'allure (5 s plus rapide à 10 s plus lente que l'allure visée) et la distance indicative.
+  if(session.generation_reason==="real_runs" && session.pace_zone==="easy" && minutes>0){
+    const a = (v) => fmtA(v).replace(/"$/, "");
+    big = { value:String(minutes), unit:"min", note:"" };
+    if(pace>0) tiles.push({ label:"Allure /km", value:`${a(pace-5)} à ${a(pace+10)}` });
+    if(dist>0) tiles.push({ label:"Distance", value:`≈ ${String(dist).replace(".",",")} km` });
+    return { big, tiles, structure };
+  }
   if(dist>0){
     big = { value:String(dist).replace(".",","), unit:"km", note:"" };
     if(pace>0) tiles.push({ label:"Allure /km", value:fmtA(pace) });
@@ -3783,3 +3792,187 @@ function pickDailyFigure(candidates, dayIndex, excludeKey){
   return list[i];
 }
 function dayIndexOf(todayStr){ const d = parseDay(todayStr); return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())/DAY_MS); }
+
+/* ---------- Programme construit sur les vraies courses (C24.1 + C30, lot B, revue d'Omar du 16/10/2026) ----------
+   Un seul calcul pour le programme et Aujourd'hui. Volume, par ordre de priorité (Omar, 16/10) : les vraies courses (au
+   moins 3 courses sur 8 semaines), sinon l'objectif de km par mois s'il est rempli, sinon 40 km par mois.
+   Avec les vraies courses :
+   - EF : ta durée habituelle = médiane de tes EF des 8 dernières semaines (de toutes tes courses s'il y a moins de 2 EF),
+     arrondie à 5 min, entre 20 et 60 min ; un tiers de moins après 2 semaines sans courir ; allure = médiane de tes EF,
+     fourchette de 5 s plus rapide à 10 s plus lente ;
+   - semaine plafonnée à ta moyenne +10 % (moyenne des semaines où tu as couru, sur 4 semaines : une pause ne la fait pas
+     chuter) ;
+   - sortie longue, une par semaine, si tu cours 3 fois par semaine ou plus, ou si tu prépares une course de 10 km et plus :
+     ta plus longue sortie des 4 dernières semaines +10 % au plus, en distance (en durée, une sortie lente la gonflait), 2 h
+     au plus ; le week-end si c'est un de tes jours ; si la semaine dépasse encore son plafond une fois les EF raccourcies,
+     la longue raccourcit aussi ;
+   - séance d'allure, une par semaine, si ton objectif est l'allure ou une course, 3 sorties par semaine ou plus, et si le
+     80/20 le permet : le temps soutenu (zones 4 et 5 ; sans cœur détaillé, toute la durée des séances d'allure et des
+     courses) reste à 20 % ou moins sur 4 semaines en comptant la séance ; cette semaine, il faut aussi être en forme et sans
+     gêne depuis 14 jours ; jamais la veille ni le lendemain de la sortie longue.
+   Sans vraies courses (objectif ou 40 km par mois) : le générateur de semaines habituel (generateWeekSessions), sans séance
+   d'allure sous 15 km par semaine (elle tombait à moins de 2 km). */
+const REAL_PLAN_MIN_RUNS = 3, REAL_PLAN_MIN_KM = 1, DEFAULT_MONTHLY_KM = 40, DEFAULT_QUALITY_MIN_WEEKLY_KM = 15;
+// Version du calcul du programme : un compte en dessous voit ses séances générées à venir recalculées une fois (index.html).
+const PROGRAM_ENGINE_VERSION = 2;
+const EF_MIN_MINUTES = 20, EF_MAX_MINUTES = 60, LONG_MAX_MINUTES = 120;
+const INTENSITY_MAX_SHARE = 0.20, QUALITY_WORK_MINUTES = 20;
+const INTENSE_RUN_TYPES = ["Seuil", "Fractionné", "Course"];
+const QUALITY_OBJECTIVES = ["Améliorer mon allure", "Préparer une course"];
+const round5 = (m) => Math.round(m/5)*5;
+function medianOf(list){ const s = (list||[]).filter(v=>v>0).sort((a,b)=>a-b); return s.length ? (s.length%2 ? s[(s.length-1)/2] : (s[s.length/2-1]+s[s.length/2])/2) : null; }
+function addDaysIso(dateStr, n){ const d = parseDay(dateStr); d.setDate(d.getDate()+n); return localDateStrLogic(d); }
+// Part du temps soutenu sur les 28 derniers jours. `z4Bpm` : début de la zone 4 (null si FC max inconnue).
+function intensityShare(runs, todayStr, z4Bpm){
+  const from = addDaysIso(todayStr, -27);
+  let totalMin = 0, intenseMin = 0;
+  (runs||[]).filter(r=>r.date>=from && r.date<=todayStr && r.durationSec>0).forEach(r=>{
+    const dur = r.durationSec/60;
+    totalMin += dur;
+    if(z4Bpm && !hrSeriesIncomplete(r.hrSeries, r.durationSec)){
+      const pts = r.hrSeries.filter(p=>p && p.hr>0).sort((a,b)=>a.t-b.t);
+      let sec = 0;
+      for(let i=1;i<pts.length;i++) if(pts[i].hr>=z4Bpm) sec += Math.min(pts[i].t-pts[i-1].t, 60);   // une mesure par minute au moins (série complète)
+      intenseMin += sec/60;
+    } else if(INTENSE_RUN_TYPES.includes(r.type)) intenseMin += dur;
+  });
+  return { totalMin, intenseMin, share: totalMin>0 ? intenseMin/totalMin : 0 };
+}
+// `runs` : courses comptées [{ date, type, durationSec, distKm, hrSeries }] ; `goals` : objectif, fréquence, km par mois,
+// distance de course ; `z4Bpm` : début de la zone 4 ; `forme` : formeDuJour ; `recentPain` : gêne notée depuis 14 jours.
+function realRunsPlan({ runs, todayStr, goals, z4Bpm, forme, recentPain }){
+  const g = goals || {};
+  const frequency = Number(g.frequence) || 3;
+  const objectif = g.principal?.objectifPrincipal || null;
+  const raceKm = RACE_KM_FOR_PLAN[g.principal?.distanceCourse] || 0;
+  // Moins de 1 km : une montre lancée par erreur (200 m en 2 min chez une testeuse), jamais une vraie sortie.
+  const list = (runs||[]).filter(r=>r && r.date && r.date<=todayStr && r.durationSec>0 && (r.distKm||0)>=REAL_PLAN_MIN_KM).sort((a,b)=>a.date.localeCompare(b.date));
+  const recent = list.filter(r=>r.date>=addDaysIso(todayStr, -55));
+  const kmGoal = Number(g.kmMensuel) || 0;
+  const source = recent.length>=REAL_PLAN_MIN_RUNS ? "courses" : kmGoal>0 ? "objectif" : "defaut";
+  const monthlyKm = source==="objectif" ? kmGoal : DEFAULT_MONTHLY_KM;
+  const base = { source, frequency, objectif, monthlyKm, weeklyKm: monthlyKm/4.33, runs8: recent.length };
+  if(source!=="courses") return base;
+  const ef = recent.filter(r=>r.type==="EF" && r.distKm>0);
+  const efMinRaw = ef.length>=2 ? medianOf(ef.map(r=>r.durationSec/60)) : medianOf(recent.map(r=>r.durationSec/60));
+  const last = list[list.length-1];
+  const gapDays = last ? daysBetween(last.date, todayStr) : null;
+  const breakApplied = gapDays!=null && gapDays>=14;
+  let efMin = Math.min(EF_MAX_MINUTES, Math.max(EF_MIN_MINUTES, round5(efMinRaw)));
+  if(breakApplied) efMin = Math.max(EF_MIN_MINUTES, round5(efMin*2/3));
+  const efPace = ef.length>=2 ? Math.round(medianOf(ef.map(r=>r.durationSec/r.distKm))) : null;
+  const last28 = list.filter(r=>r.date>=addDaysIso(todayStr, -27));
+  const weeksRun = new Set(last28.map(r=>localDateStrLogic(mondayOfLogic(parseDay(r.date))))).size;
+  const avgWeekKm = weeksRun ? last28.reduce((a,r)=>a+(r.distKm||0), 0)/weeksRun : 0;
+  const longest = last28.reduce((m, r)=>(r.distKm||0)>((m&&m.distKm)||0) ? r : m, null);
+  const longest28 = longest ? longest.durationSec/60 : efMin, maxKm28 = longest ? longest.distKm : 0;
+  const longPace = efPace ? efPace+10 : (longest && longest.distKm>0 ? longest.durationSec/longest.distKm : null);
+  let longKm = Math.floor(maxKm28*1.1*10)/10;
+  if(longPace && longKm*longPace/60>LONG_MAX_MINUTES) longKm = Math.floor(LONG_MAX_MINUTES*60/longPace*10)/10;
+  const longMin = longPace ? Math.max(efMin, round5(longKm*longPace/60)) : Math.max(efMin, Math.min(LONG_MAX_MINUTES, Math.floor(longest28*1.1/5)*5));
+  const longAllowed = frequency>=3 || (objectif==="Préparer une course" && raceKm>=10);
+  const intensity = intensityShare(list, todayStr, z4Bpm);
+  const weekMin = frequency*efMin;
+  const projected = (intensity.intenseMin + QUALITY_WORK_MINUTES) / (intensity.totalMin + weekMin);
+  const wantsQuality = frequency>=3 && QUALITY_OBJECTIVES.includes(objectif);
+  const room8020 = projected<=INTENSITY_MAX_SHARE;
+  const fitNow = (!forme || forme.state==="frais") && !recentPain;
+  return { ...base, efMin, efMinRaw, efCount:ef.length, efPace, efPaceLo: efPace ? efPace-5 : null, efPaceHi: efPace ? efPace+10 : null,
+    gapDays, breakApplied, avgWeekKm, weeksRun, capWeekKm: avgWeekKm*1.1, longest28, maxKm28, longKm, longPace, longMin, longAllowed,
+    intensity, wantsQuality, room8020, fitNow, qualityAllowedLater: wantsQuality && room8020, qualityAllowedNow: wantsQuality && room8020 && fitNow };
+}
+const RACE_KM_FOR_PLAN = { "5km":5, "10km":10, "15km":15, "Semi":21.0975, "Marathon":42.195 };
+function mondayOfLogic(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay()+6)%7)); return x; }
+const fmtMinutesFr = (m) => m>=60 ? `${Math.floor(m/60)} h${m%60 ? " "+String(m%60).padStart(2,"0") : ""}` : `${m} min`;
+// Les séances de course d'une semaine, avec les vraies courses. `days` : jours de course (0 = lundi), déjà choisis par
+// l'appelant ; `zones` : allures du programme (VDOT) pour la séance d'allure ; `currentWeek` : la forme et la gêne ne
+// comptent que pour la semaine en cours.
+function realRunsWeekSessions({ plan, days, zones, currentWeek, weekIndex, structure }){
+  const n = (days||[]).length;
+  if(!plan || plan.source!=="courses" || !n) return [];
+  const sorted = days.slice().sort((a,b)=>a-b);
+  const longDay = plan.longAllowed && n>=2 ? (sorted.includes(6) ? 6 : sorted.includes(5) ? 5 : sorted[n-1]) : null;
+  const qualityOk = (currentWeek ? plan.qualityAllowedNow : plan.qualityAllowedLater) && zones && n>=3;
+  // Séance d'allure : le jour le plus éloigné de la sortie longue, jamais la veille ni le lendemain.
+  const qualityCandidates = sorted.filter(d=>d!==longDay && (longDay==null || Math.abs(d-longDay)>1));
+  const qualityDay = qualityOk && qualityCandidates.length ? qualityCandidates.sort((a,b)=>(longDay==null?0:Math.abs(b-longDay)-Math.abs(a-longDay)) || a-b)[0] : null;
+  const efPace = plan.efPace || (zones ? zones.easy : null);
+  const kmFor = (min, pace) => pace ? Math.round(min*60/pace*10)/10 : null;
+  const efWhy = plan.breakApplied ? `Pourquoi : ${plan.gapDays} jours sans courir, une EF plus courte que d'habitude pour reprendre.`
+    : `Pourquoi : ${plan.efMin} minutes, c'est ta durée habituelle en EF, à ton allure réelle.`;
+  const blockedWhy = plan.wantsQuality && !plan.room8020 ? `Pourquoi : ces 4 dernières semaines, ${Math.round(plan.intensity.share*100)} % de ton temps était soutenu ; on garde au moins 80 % de facile, donc une EF à la place d'une séance d'allure.`
+    : plan.wantsQuality && currentWeek && !plan.fitNow ? "Pourquoi : cette semaine, ta forme demande de ménager : une EF à la place d'une séance d'allure."
+    : null;
+  const out = sorted.map(dayIndex=>{
+    if(dayIndex===longDay){
+      return { dayIndex, type:"Long", runType:"Long", paceZone:"easy", durationMin:plan.longMin, distanceKm:plan.longKm, targetPaceSecPerKm:plan.longPace ? Math.round(plan.longPace) : null,
+        rationale:`Pourquoi : ta sortie longue de la semaine, au plus 10 % de plus que ta plus longue sortie récente (${String(Math.round(plan.maxKm28*10)/10).replace(".",",")} km). Elle se court à allure facile, en parlant sans être essoufflé.` };
+    }
+    if(dayIndex===qualityDay){
+      const zoneKey = qualityZoneForSlot(structure||{ priorities:[] }, 0, 1, weekIndex);
+      const zf = ZONE_FRIENDLY[zoneKey];
+      const km = Math.round(Math.min(Math.max(plan.avgWeekKm*0.20, 5), 12)*10)/10;
+      return { dayIndex, type:"Qualité", runType: zoneKey==="threshold" ? "Seuil" : "Fractionné", paceZone:zoneKey, durationMin:null, distanceKm:km, targetPaceSecPerKm:zones[zoneKey],
+        rationale:`Pourquoi : une séance d'allure par semaine pour ton objectif, et ton équilibre le permet (${Math.round(plan.intensity.share*100)} % de temps soutenu sur 4 semaines). Cette séance est en ${zf.name} : ${zf.what}.` };
+    }
+    return { dayIndex, type:"Easy", runType:"EF", paceZone:"easy", durationMin:plan.efMin, distanceKm:kmFor(plan.efMin, efPace), targetPaceSecPerKm:efPace,
+      rationale: (qualityOk || !blockedWhy || dayIndex!==sorted.filter(d=>d!==longDay)[0]) ? efWhy : blockedWhy };
+  });
+  // Semaine plafonnée à ta moyenne +10 % : les EF raccourcissent d'abord (20 min au plus court), puis la sortie longue.
+  const capText = String(Math.round(plan.capWeekKm*10)/10).replace(".",",");
+  const total = out.reduce((a,s)=>a+(s.distanceKm||0), 0);
+  if(plan.capWeekKm>0 && total>plan.capWeekKm){
+    const easy = out.filter(s=>s.type==="Easy");
+    const others = total - easy.reduce((a,s)=>a+(s.distanceKm||0), 0);
+    const room = Math.max(0, plan.capWeekKm - others);
+    const each = easy.length ? room/easy.length : 0;
+    easy.forEach(s=>{
+      const min = Math.max(EF_MIN_MINUTES, Math.min(s.durationMin, round5(each*(efPace||360)/60)));
+      if(min<s.durationMin){ s.durationMin = min; s.distanceKm = kmFor(min, efPace);
+        if(s.rationale===efWhy) s.rationale = `Pourquoi : on ne dépasse pas ta semaine habituelle de plus de 10 % (${capText} km), donc une EF de ${min} minutes.`; }
+    });
+    const long = out.find(s=>s.type==="Long");
+    const after = out.reduce((a,s)=>a+(s.distanceKm||0), 0);
+    if(long && after>plan.capWeekKm){
+      const efKm = kmFor(plan.efMin, efPace) || 0;
+      const km = Math.max(efKm, Math.floor((long.distanceKm - (after - plan.capWeekKm))*10)/10);
+      if(km<long.distanceKm){ long.distanceKm = km; long.durationMin = long.targetPaceSecPerKm ? Math.max(plan.efMin, round5(km*long.targetPaceSecPerKm/60)) : long.durationMin;
+        long.rationale = `Pourquoi : ta sortie longue de la semaine, raccourcie pour ne pas dépasser ta semaine habituelle de plus de 10 % (${capText} km). Elle se court à allure facile.`; }
+    }
+  }
+  return out;
+}
+// Ce que montre « Comment on l'a choisie » (C30, point 2 de la revue) : les chiffres qui ont servi au calcul.
+function realRunsExplainRows(plan, { z2Max, maxHr, restingHr, forme, chargeZoneLabel }){
+  if(!plan) return [];
+  const rows = [];
+  if(plan.source!=="courses"){
+    rows.push({ k:"Ton volume", v:`${plan.monthlyKm} km par mois`, s: plan.source==="objectif" ? "ton objectif, en attendant tes courses" : "par défaut, en attendant tes courses" });
+  } else {
+    rows.push({ k:"Ton rythme", v:`${plan.runs8} sortie${plan.runs8>1?"s":""}`, s:"ces 8 dernières semaines" });
+    rows.push({ k:"Ta durée habituelle en EF", v:`${plan.efMin} min`, s: plan.efCount>=2 ? `médiane de tes ${plan.efCount} EF` : "médiane de tes sorties" });
+    if(plan.efPace) rows.push({ k:"Ton allure en EF", v:`${fmtA(plan.efPace)} /km`, s:"médiane sur 8 semaines" });
+    rows.push({ k:"Ta semaine habituelle", v:`${String(Math.round(plan.avgWeekKm*10)/10).replace(".",",")} km`, s:"+10 % au plus" });
+  }
+  if(z2Max) rows.push({ k:"Ta zone 2", v:`sous ${z2Max} bpm`, s: restingHr ? `FC max ${maxHr}, au repos ${restingHr}` : `FC max ${maxHr}` });
+  if(plan.intensity) rows.push({ k:"Facile / soutenu, 4 semaines", v:`${100-Math.round(plan.intensity.share*100)} % / ${Math.round(plan.intensity.share*100)} %`, bar: plan.intensity.share,
+    s: plan.room8020 ? "Règle : 80 % facile au moins. Tu as de la marge pour une séance d'allure." : "Règle : 80 % facile au moins. Pas de séance d'allure tant que ça ne s'équilibre pas." });
+  if(forme) rows.push({ k:"Ta forme", v:forme.label, s: chargeZoneLabel ? `charge ${chargeZoneLabel.toLowerCase()}` : "" });
+  return rows;
+}
+// Jours de course d'une semaine, répartis au mieux parmi les jours disponibles (même règle que generateWeekSessions).
+function pickRunDays(availableDayIndexes, n){
+  const days = (availableDayIndexes && availableDayIndexes.length ? availableDayIndexes : [0,1,2,3,4,5,6]).slice().sort((a,b)=>a-b);
+  const k = Math.min(n, days.length);
+  if(k<1) return [];
+  const spread = [...new Set(Array.from({length:k}, (_,i) => days[Math.round(i*(days.length-1)/Math.max(1,k-1))]))];
+  while(spread.length<k){ for(const d of days){ if(!spread.includes(d)){ spread.push(d); break; } } }
+  return spread.sort((a,b)=>a-b);
+}
+// Phrase « pourquoi » des séances sans vraies courses (objectif de km ou 40 km par mois).
+function defaultPlanWhy(plan){
+  if(!plan || plan.source==="courses") return "";
+  return plan.source==="objectif" ? `Pourquoi : on n'a pas encore tes courses, on part de ton objectif de ${plan.monthlyKm} km par mois.`
+    : `Pourquoi : on n'a pas encore tes courses, on part de ${plan.monthlyKm} km par mois en attendant les premières.`;
+}
+function defaultPlanAllowsQuality(plan){ return !!plan && plan.weeklyKm>=DEFAULT_QUALITY_MIN_WEEKLY_KM; }

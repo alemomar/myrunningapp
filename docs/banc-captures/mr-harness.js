@@ -413,6 +413,38 @@
     const runDays = new Set(RUNS.map(r=>localDateStr(dateFromRun(r))));
     let k=2; while(k<14 && runDays.has(localDateStr(at(-k)))) k++;
     openAddSheet(scen==="ajout_choix" ? localDateStr(today) : localDateStr(at(-k)));
+  } else if(/^lotb_/.test(scen)){
+    // Lot B (16/10) : programme construit sur les vraies courses. « lotb_programme » : la semaine prochaine dans Programme ;
+    // « lotb_aujourdhui » : Aujourd'hui avec « Comment on l'a choisie » ouvert ; « lotb_regles » : la page des règles ;
+    // « lotb_recalcul » : un ancien programme recalculé une fois (résultat dans window.__lotb et le titre de la page).
+    celebrationOff(); rateYesterday();
+    const insertedSince = (k) => window.__calls.slice(k).filter(c=>c[0]==="insert" && c[1]==="planned_sessions").flatMap(c=>c[2]);
+    if(scen==="lotb_recalcul"){
+      plannedSessions=[...wkSessions, todayEasy, ...future]; delete programSettings.programEngine;
+      const before = plannedSessions.filter(p=>p.status==="planned" && p.planned_date>=localDateStr(today)).length;
+      const k = window.__calls.length; programAdjustmentChecked = false;
+      await applyProgramAdjustments();
+      const replaced = window.__calls.slice(k).filter(c=>c[0]==="update" && c[1]==="planned_sessions" && c[2].status==="replaced");
+      const added = insertedSince(k).filter(r=>r.pace_zone);
+      window.__lotb = { before, replacedCalls:replaced.length, added:added.map(r=>[r.planned_date, r.type, r.target_duration_min, r.generation_reason]), engine:programSettings.programEngine };
+      document.title = "LOTB " + (replaced.length && added.length && programSettings.programEngine===PROGRAM_ENGINE_VERSION ? "OK" : "KO");
+      plannedSessions = [...plannedSessions.filter(p=>p.status!=="replaced"), ...added.map((r,i)=>({ id:"n"+i, ...r }))];
+      show("aujourdhui");
+    } else {
+      plannedSessions=[]; programSettings.programEngine = PROGRAM_ENGINE_VERSION;
+      const k = window.__calls.length; programAdjustmentChecked = false;
+      await applyProgramAdjustments();
+      plannedSessions = insertedSince(k).map((r,i)=>({ id:"g"+i, ...r }));
+      if(scen==="lotb_programme"){ programViewMode="week"; programWeekOffset=1; programSelectedDate=localDateStr(at(7-((today.getDay()+6)%7)+3)); show("programme"); }
+      else {
+        const todayRun = plannedSessions.find(p=>p.planned_date===localDateStr(today) && p.pace_zone);
+        if(!todayRun){ const s = plannedSessions.filter(p=>p.pace_zone && p.planned_date>localDateStr(today)).sort((a,b)=>a.planned_date.localeCompare(b.planned_date))[0]; if(s) s.planned_date = localDateStr(today); }
+        const t = plannedSessions.find(p=>p.planned_date===localDateStr(today) && p.pace_zone);
+        if(t) openChoice = new Set([t.id]);
+        show("aujourdhui");
+        if(scen==="lotb_regles") openProgramRules();
+      }
+    }
   } else if(scen==="programme_creation"){
     // R26 : programme créé à la fin du parcours, en milieu de semaine : rien dans les jours déjà passés, à partir de demain
     celebrationOff(); rateYesterday(); plannedSessions=[];

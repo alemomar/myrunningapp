@@ -731,6 +731,22 @@ button.pg-rec-row{cursor:pointer}
 .cd-alert .bang{flex:none;width:20px;height:20px;border-radius:50%;background:var(--attention);color:var(--on-accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .btn-ghost{width:100%;height:48px;margin-top:6px;border:none;border-radius:24px;background:none;color:var(--text-2);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
 /* Refonte d'Aujourd'hui (C27, revue du 16/10/2026 ; maquette Claude Design « Aujourd'hui repos », 4a) */
+.sc-hint{display:flex;align-items:flex-start;gap:8px;margin-top:12px;padding:10px 12px;border-radius:var(--r-md);background:var(--attention-bg);color:var(--text);font-size:13.5px;line-height:1.4}
+.sc-hint svg{flex:none;color:var(--attention);margin-top:1px}
+.ch-box{display:flex;flex-direction:column;margin-top:10px;padding:4px 14px 14px;border-radius:var(--r-md);background:var(--surface-sunken)}
+.ch-row{padding:9px 0;border-bottom:1px solid var(--line)}
+.ch-l{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:13.5px}
+.ch-l span{color:var(--text-3)}
+.ch-l b{font-weight:600;text-align:right}
+.ch-s{margin-top:2px;font-size:12px;color:var(--text-muted);text-align:right}
+.ch-row.bar .ch-s{text-align:left}
+.ch-split{display:flex;height:8px;margin-top:7px;border-radius:4px;overflow:hidden}
+.ch-split i:first-child{background:var(--accent)}
+.ch-split i:last-child{background:var(--attention)}
+.ch-rules{align-self:flex-start;margin-top:12px;padding:0;border:none;background:none;color:var(--text);font:inherit;font-size:13.5px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.ru-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.ru{display:flex;flex-direction:column;gap:3px;padding:12px;border-radius:var(--r-md);background:var(--surface-sunken);font-size:13.5px;line-height:1.45;color:var(--text-2)}
+.ru b{color:var(--text);font-weight:600}
 .topbar-title .pt-over{display:block;font:600 11px/1.4 var(--font-text);letter-spacing:.14em;color:var(--text-muted)}
 .fm-card{display:flex;flex-direction:column;gap:14px;margin-bottom:14px;padding:18px 16px;border-radius:var(--r-xl);background:linear-gradient(180deg,var(--fm-tint),var(--surface) 55%)}
 .fm-card.frais{--fm-tint:rgba(198,244,50,.13);--fm-color:var(--accent)}
@@ -1289,7 +1305,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=103"></script>
+<script src="logic.js?v=104"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -3576,13 +3592,14 @@ function profilObjectifsHTML(){
         <div class="pf-group" style="--dot:var(--data-cyan)"><label class="pf-lbl" for="goal_kmMensuel">Objectif km par mois</label><div class="pf-row stack"><input type="number" inputmode="numeric" min="1" max="1000" id="goal_kmMensuel" value="${goals.kmMensuel||""}" oninput="syncKmGoal('mensuel')" onchange="saveVolumeGoal()"><span class="u">km</span></div><div class="pf-slot"></div></div>
         <div class="pf-group" style="--dot:var(--data-cyan)"><label class="pf-lbl" for="goal_kmAnnuel">Objectif km par an</label><div class="pf-row stack"><input type="number" inputmode="numeric" min="1" max="12000" id="goal_kmAnnuel" value="${kmAn}" oninput="syncKmGoal('annuel')" onchange="saveVolumeGoal()"><span class="u">km</span></div></div>
       </div>
-      <div class="pf-hint" style="margin-top:-6px">Facultatif, alimente tes anneaux dans Progression.</div>
+      <div class="pf-hint" style="margin-top:-6px">Facultatif. Sert à ton programme tant que l'app n'a pas tes courses (40 km par mois sinon), et à tes anneaux dans Progression.</div>
       <div class="pf-group" style="--dot:var(--type-seuil)"><div class="pf-lbl">Terrain habituel</div>${chips("terrain", TERRAIN_OPTIONS, (o)=>o===goals.terrain, "saveTerrain")}<div class="pf-slot"></div></div>
       <div class="pf-group" style="--dot:var(--type-souple)"><div class="pf-lbl">Équipement connecté</div>${chips("equipement", EQUIPEMENT_OPTIONS, (o)=>sel(goals.equipement,o), "saveEquipement")}<div class="pf-slot"></div></div>
       <div class="pf-group" style="--dot:var(--type-long)"><div class="pf-lbl">Jours indisponibles pour courir</div>${chips("joursIndisponibles", JOURS_OPTIONS, (o,i)=>sel(goals.joursIndisponibles,String(i)), "saveJoursIndisponibles", (o,i)=>String(i))}<div class="pf-slot"></div></div>
       <div class="pf-group" style="--dot:var(--data-neutral)"><label class="pf-lbl" for="goal_autre">Autre chose à préciser</label><textarea class="pf-ta" id="goal_autre" placeholder="Préférences d'entraînement, contexte particulier…" onchange="saveAutre(this)">${escHtml(goals.autre||"")}</textarea><div class="pf-slot"></div></div>
     </div>
-    <button type="button" class="pf-lvl" onclick="openLevelSheet()"><span class="k">Ton niveau</span><span class="r"><span class="v">${escHtml(goals.niveau||"à choisir")}</span>${icon("chevronRight",16)}</span></button>`;
+    <button type="button" class="pf-lvl" onclick="openLevelSheet()"><span class="k">Ton niveau</span><span class="r"><span class="v">${escHtml(goals.niveau||"à choisir")}</span>${icon("chevronRight",16)}</span></button>
+    <button type="button" class="pf-lvl" onclick="openProgramRules()"><span class="k">Comment est construit ton programme</span><span class="r">${icon("chevronRight",16)}</span></button>`;
 }
 // ---------- Ton niveau (S8, journal 12b et A10) ----------
 // Un seul écran, ouvert depuis le Profil, Aujourd'hui et le démarrage. Source UNIQUE des allures conseillées (D76) :
@@ -4532,7 +4549,8 @@ function programPaceExplanationHTML(session){
   if(!zf) return "";
   const profile = runnerProfile();
   const srcLabel = programProfileSourceLabel(profile);
-  const pareseLabel = srcLabel ? `, calculée à partir de ${srcLabel}` : "";
+  // Lot B : l'allure d'une EF ou d'une sortie longue vient de tes EF récentes, plus de ton chrono.
+  const pareseLabel = session.generation_reason==="real_runs" && session.pace_zone==="easy" ? ", tirée de tes EF récentes" : srcLabel ? `, calculée à partir de ${srcLabel}` : "";
   const effMaxHr = maxHr || estimatedMaxHr();
   const guidance = programIntensityGuidance(session.pace_zone, effMaxHr, restingHr);
   const paceLine = `Ton allure ${zf.name} correspond à ${zf.what}${pareseLabel}.`;
@@ -4694,6 +4712,16 @@ function currentWeekHasRoom(mondayDate){
   const taken = new Set(existing.filter(p=>sessionCategory(p)!=="run").map(p=>dayIndexOf(p.planned_date)));
   return [0,1,2,3,4,5,6].some(d=>d>=todayIdx && !avoid.has(d) && !taken.has(d));
 }
+// Calcul du programme sur les vraies courses (lot B, revue d'Omar du 16/10/2026) : courses comptées, objectif, zone 4,
+// forme du jour et gêne notée depuis 14 jours.
+function programPlan(){
+  const todayStr = localDateStr(new Date());
+  const runs = runningRuns.map(r=>({ date:localDateStr(dateFromRun(r)), type:r.type, durationSec:r.durationSec||0, distKm:r.dist||0, hrSeries:r.hrSeries }));
+  const mx = maxHr || estimatedMaxHr();
+  const zones = mx ? hrZoneDefs(mx, restingHr||null) : null;
+  const ctx = todayContext();
+  return realRunsPlan({ runs, todayStr, goals, z4Bpm: zones ? zones[2].max+1 : null, forme:ctx.forme, recentPain: !!ctx.zone14 });
+}
 window.generateProgram = async (mondayDate, opts) => {
   opts = opts || {};
   const mondayStr = localDateStr(mondayDate);
@@ -4729,7 +4757,9 @@ window.generateProgram = async (mondayDate, opts) => {
   if(missingRunning<=0 && missingCross<=0){ if(!opts.silent) toast("Cette semaine a déjà un programme complet. Supprime une séance si tu veux en générer une nouvelle."); return; }
 
   const { structure, avoidQualityReason } = computeProgramInputs();
-  const weeklyKm = goals.kmMensuel ? Number(goals.kmMensuel)/4.33 : 20;
+  // Lot B (16/10) : volume tiré des vraies courses, sinon de l'objectif de km par mois, sinon 40 km par mois.
+  const plan = programPlan();
+  const weeklyKm = plan.weeklyKm || DEFAULT_MONTHLY_KM/4.33;
   // Semaines consécutives -> weekIndex consécutifs (mondayDate est toujours
   // un lundi minuit local, l'écart est exactement 7j en ms) : sert à
   // alterner Seuil/Fractionné d'une semaine sur l'autre, voir
@@ -4760,20 +4790,30 @@ window.generateProgram = async (mondayDate, opts) => {
       }));
     } else {
     const runDays = partialWeek ? pickNonConsecutiveDays(availableDayIndexes, missingRunning) : availableDayIndexes;
-    generated = (partialWeek && !runDays.length) ? [] :
-      generateWeekSessions({ profile, structure, weeklyKm, frequency: partialWeek ? runDays.length : missingRunning, availableDayIndexes: runDays, avoidQualityReason, weekIndex });
+    if(partialWeek && !runDays.length) generated = [];
+    else if(plan.source==="courses"){
+      // Une raison d'éviter l'intensité (douleur répétée, charge, fatigue) retire aussi la séance d'allure.
+      const p = avoidQualityReason ? { ...plan, qualityAllowedNow:false, qualityAllowedLater:false } : plan;
+      generated = realRunsWeekSessions({ plan:p, days: partialWeek ? runDays : pickRunDays(runDays, missingRunning),
+        zones: paceZonesFromVdot(computeVdot(profile.distanceKm, profile.timeSec)), currentWeek:isThisWeek, weekIndex, structure });
+    } else {
+      const st = defaultPlanAllowsQuality(plan) ? structure : { ...structure, qualityPct:0 };
+      generated = generateWeekSessions({ profile, structure:st, weeklyKm, frequency: partialWeek ? runDays.length : missingRunning, availableDayIndexes: runDays, avoidQualityReason, weekIndex })
+        .map(s => ({ ...s, rationale: `${defaultPlanWhy(plan)} ${s.rationale}` }));
+    }
     runningRows = generated.map(s => ({
       user_id:user.id,
       planned_date: addDaysStr(mondayDate, s.dayIndex),
       week_start_date: mondayStr,
-      type: sessionRunType(s.paceZone),
+      type: s.runType || sessionRunType(s.paceZone),
       pace_zone: s.paceZone,
-      title: s.type==="Qualité" ? "Séance qualité" : "Sortie easy",
+      title: s.type==="Qualité" ? "Séance qualité" : s.type==="Long" ? "Sortie longue" : "Sortie easy",
       target_distance_km: s.distanceKm,
+      target_duration_min: s.durationMin || null,
       target_pace_sec_per_km: s.targetPaceSecPerKm,
       rationale: s.rationale + dayPlacementNote(s.dayIndex, s.type==="Qualité", false),
       status:"planned", source:"generated",
-      generation_reason: avoidQualityReason ? "pain_repeat_or_wellbeing" : (structure.reason||null),
+      generation_reason: avoidQualityReason ? "pain_repeat_or_wellbeing" : plan.source==="courses" ? "real_runs" : (structure.reason||null),
     }));
     }
   }
@@ -5436,6 +5476,16 @@ async function applyProgramAdjustments(){
   // Compte existant sans mémoire de ses réglages (avant S8) : on suppose que son programme correspond aux réglages actuels ;
   // à partir de là, tout changement d'objectif, de séances, de renfo, de jours ou de niveau sera signalé (D62).
   if(!programSettings?.programSignature && plannedSessions.some(p=>p.source==="generated" && p.status!=="replaced")) await saveProgramSignature();
+  // Lot B (16/10) : une seule fois par compte, les séances générées à venir sont recalculées sur les vraies courses (le
+  // passé, les séances faites et celles ajoutées ou modifiées à la main ne bougent pas), avec un message pour le dire.
+  if((Number(programSettings?.programEngine)||1) < PROGRAM_ENGINE_VERSION){
+    const had = recalculableSessions(plannedSessions, localDateStr(new Date())).length>0;
+    if(!had || await recalculateProgram()){
+      const ps = { ...programSettings, programEngine: PROGRAM_ENGINE_VERSION };
+      if(await upsertProfile({ program_settings: ps })) programSettings = ps;
+      if(had){ renderContent(); toast("Ton programme part maintenant de tes vraies courses.", { icon:"check", ms:6000 }); }
+    }
+  }
 
   const todayStr = localDateStr(new Date());
   // pace_zone truthy uniquement : les séances complémentaires (renfo/
@@ -6214,7 +6264,11 @@ function todayScreenHTML(){
   const ranToday = runningRuns.filter(r=>localDateStr(dateFromRun(r))===todayStr);
   todayKind = todaySessions.length ? (runSessions.length && runSessions.every(s=>s.status==="done") ? "faite" : runSessions.length ? "seance" : "autre")
     : ranToday.length ? "faite" : "repos";
-  const cardsOf = (list) => list.map(s=>programSessionCardHTML(s, date, isRunningRunType(s.type) && s.status!=="done" ? ctx.forme : null)).join("");
+  // Règle des 2 jours (lot B) : une séance de course le lendemain d'une sortie, pour qui court moins de 4 fois par semaine.
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+  const ranYesterday = runningRuns.some(r=>localDateStr(dateFromRun(r))===localDateStr(yesterday));
+  const hint = ranYesterday && (Number(goals.frequence)||3)<4 ? "Tu as couru hier : si tu peux, décale cette séance à demain." : "";
+  const cardsOf = (list) => list.map(s=>programSessionCardHTML(s, date, isRunningRunType(s.type) && s.status!=="done" ? { forme:ctx.forme, hint } : null)).join("");
   if(todayKind==="repos") return top + formeCardHTML(ctx) + action + mobilityCardHTML(ctx) + nextSessionTileHTML(ctx, hasProgram) + (action ? "" : objectiveFigureRowHTML()) + week;
   if(todayKind==="seance") return top + cardsOf(todaySessions) + action + objectiveFigureRowHTML() + week;
   const main = todaySessions.length ? cardsOf(todaySessions) : ranToday.map(todayRunCardHTML).join("");
@@ -6232,7 +6286,7 @@ document.addEventListener("click", (e) => {
 });
 // Valeur d'une tuile : chiffres et unités en majuscules (« 45 MIN »), texte tel quel (« Élastique »).
 function scTile(label, value, color){
-  const v = String(value), isText = /[a-zA-ZÀ-ÿ]{4,}/.test(v.replace(/\b(min|km)\b/gi,""));
+  const v = String(value), isText = / à /.test(v) || /[a-zA-ZÀ-ÿ]{4,}/.test(v.replace(/\b(min|km)\b/gi,""));
   return `<div class="sc-tile"><div class="l">${color?`<i style="background:${color}"></i>`:""}${escHtml(label)}</div><div class="v${isText?" t":""}">${escHtml(isText ? v : v.toUpperCase())}</div></div>`;
 }
 function scMetricsHTML(big, tiles){
@@ -6251,7 +6305,9 @@ function sessionActionsHTML(session, todayStr, state){
   const showDone = canDo && !hasExercises && (!running || !receivedRuns().length || state==="late");
   const done = showDone ? `<button type="button" class="btn-primary sc-do" onclick="${running?`openManualRun('${session.id}')`:`quickMarkDone('${session.id}')`}">${icon("check",18)}C'est fait</button>` : "";
   const easy = session.pace_zone && session.pace_zone!=="easy" ? `<button type="button" class="sc-link" onclick="replaceWithEasy('${session.id}')">${icon("refresh",15)}Remplacer par une EF</button>` : "";
-  return `<div class="sc-actions">${done}<div class="sc-links"><button type="button" class="sc-link" onclick="openEditSheet('${session.id}')">${icon("pencil",15)}${hasExercises?"Modifier la séance":"Modifier"}</button>${easy}<button type="button" class="sc-link" onclick="askDeleteSession('${session.id}')">${icon("trash",15)}Supprimer</button></div></div>`;
+  // Lot B : une sortie faite mais pas encore arrivée d'Apple Santé (une Garmin peut mettre des heures) se saisit ici.
+  const already = running && canDo && !showDone && session.planned_date===todayStr ? `<button type="button" class="sc-link" onclick="openManualRun('${session.id}')">${icon("check",15)}Déjà couru ?</button>` : "";
+  return `<div class="sc-actions">${done}<div class="sc-links">${already}<button type="button" class="sc-link" onclick="openEditSheet('${session.id}')">${icon("pencil",15)}${hasExercises?"Modifier la séance":"Modifier"}</button>${easy}<button type="button" class="sc-link" onclick="askDeleteSession('${session.id}')">${icon("trash",15)}Supprimer</button></div></div>`;
 }
 window.quickMarkDone = (id) => markSessionDone(id, "Séance notée.");
 window.saveKineNotes = async (id, value) => {
@@ -6292,8 +6348,49 @@ function sessionMenuHTML(session, todayStr){
   return `<div class="menu-wrap"><button type="button" class="sc-menu" aria-label="Plus d'actions" aria-haspopup="menu" aria-expanded="${open}" onclick="toggleSessionMenu('${session.id}')">${icon("more",20)}</button>
     ${open?`<div class="menu-pop" role="menu">${items.map(([label,call,cls])=>`<button type="button" role="menuitem" class="${cls}" onclick="closeSessionMenu();renderContent();${call}">${escHtml(label)}</button>`).join("")}</div>`:""}</div>`;
 }
-// `forme` (Aujourd'hui seulement, séance de course à faire) : la pastille « Feu vert / Forme normale / À ménager » (revue du 16/10).
-function programSessionCardHTML(session, date, forme){
+// « Comment on l'a choisie » (C30, lot B) : les chiffres qui ont servi au calcul, sur une séance de course générée à faire.
+let openChoice = new Set();
+window.toggleChoice = (id) => { if(openChoice.has(id)) openChoice.delete(id); else openChoice.add(id); renderContent(); };
+function choiceBlockHTML(session, state){
+  if(state==="done" || !session.pace_zone || session.source!=="generated" || ["beginner_plan","guided_test"].includes(session.generation_reason)) return "";
+  const open = openChoice.has(session.id);
+  let body = "";
+  if(open){
+    const mx = maxHr || estimatedMaxHr();
+    const zones = mx ? hrZoneDefs(mx, restingHr||null) : null;
+    const ctx = todayContext();
+    const rows = realRunsExplainRows(programPlan(), { z2Max: zones ? zones[1].max : null, maxHr:mx, restingHr:restingHr||null, forme:ctx.forme, chargeZoneLabel: ctx.charge ? ctx.charge.label : "" });
+    body = `<div class="ch-box">${rows.map(r=>`<div class="ch-row${r.bar!=null?" bar":""}"><div class="ch-l"><span>${escHtml(r.k)}</span><b>${escHtml(r.v)}</b></div>${r.bar!=null?`<div class="ch-split" aria-hidden="true"><i style="flex:${Math.max(0,100-Math.round(r.bar*100))}"></i><i style="flex:${Math.round(r.bar*100)}"></i></div>`:""}${r.s?`<div class="ch-s">${escHtml(r.s)}</div>`:""}</div>`).join("")}
+      <button type="button" class="ch-rules" onclick="openProgramRules()">Comment est construit ton programme</button></div>`;
+  }
+  return `<button type="button" class="flt" style="margin-top:12px;gap:6px" onclick="toggleChoice('${session.id}')" aria-expanded="${open}">Comment on l'a choisie ${icon(open?"chevronUp":"chevronDown",14)}</button>${body}`;
+}
+// Page « Comment est construit ton programme » (C30, lot B) : les règles en mots simples, les mêmes pour tout le monde.
+let rulesSheetOpen = false;
+window.openProgramRules = () => { rulesSheetOpen = true; refreshSheet(); };
+window.closeProgramRules = () => { rulesSheetOpen = false; refreshSheet(); };
+const PROGRAM_RULES = [
+  ["Il part de tes vraies courses", "Ta durée habituelle et ton allure réelle, tirées de tes sorties des 8 dernières semaines. Sans courses, ton objectif de km par mois, sinon 40 km par mois, le temps que les premières arrivent."],
+  ["80 % facile, 20 % soutenu", "Le temps passé en zones 4 et 5 ne dépasse pas 20 % sur 4 semaines. Sans cœur détaillé, toute la durée des séances d'allure et des courses compte."],
+  ["Les bons jours", "Tes jours de course. Si tu as couru la veille, mieux vaut décaler (sauf si tu cours 4 fois par semaine ou plus)."],
+  ["La bonne séance", "Une sortie longue par semaine si tu cours 3 fois ou plus, ou si tu prépares une course de 10 km et plus. Une séance d'allure par semaine si ton objectif est l'allure ou une course, que tu coures 3 fois ou plus, et que tu sois en forme. Sinon, des EF."],
+  ["La bonne durée", "Ta durée habituelle en EF ; un tiers de moins après 2 semaines sans courir. Ta semaine ne dépasse pas ta moyenne de plus de 10 %. La sortie longue : ta plus longue sortie récente, +10 % au plus."],
+  ["La bonne allure", "Celle de tes EF récentes, avec la limite de ta zone 2 en battements par minute."],
+];
+function renderRulesSheet(){
+  if(!rulesSheetOpen) return false;
+  document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeProgramRules()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Comment est construit ton programme">
+    ${sheetHeadHTML("Comment est construit ton programme", "closeProgramRules()")}
+    <div class="np-intro">Il part de tes vraies courses, jamais d'un plan tout fait.</div>
+    <div class="ru-list">${PROGRAM_RULES.map(([h,p])=>`<div class="ru"><b>${escHtml(h)}</b><span>${escHtml(p)}</span></div>`).join("")}</div>
+    <button type="button" class="btn-primary" style="margin-top:14px" onclick="closeProgramRules()">Compris</button>
+  </div></div>`;
+  return true;
+}
+// `today` (Aujourd'hui seulement, séance de course à faire) : { forme, hint } : la pastille « Feu vert / Forme normale /
+// À ménager » (revue du 16/10) et le rappel des 2 jours (lot B).
+function programSessionCardHTML(session, date, today){
+  const forme = today && today.forme;
   const todayStr = localDateStr(new Date());
   const state = sessionCardState(session, todayStr);
   const c = TC[session.type]||TC.Other;
@@ -6325,7 +6422,7 @@ function programSessionCardHTML(session, date, forme){
   }
   const effMaxHr = maxHr || estimatedMaxHr();
   const detailCardio = run ? cardioDetailBlockHTML(run, effMaxHr, restingHr || null) : "";
-  const coach = state==="done" ? "" : `<div class="sc-coach">${icon("sparkle",16)}<div>${withTempoName(session.rationale)||""}${programPaceExplanationHTML(session)}</div></div>`;
+  const coach = state==="done" ? "" : `${today && today.hint ? `<div class="sc-hint">${icon("alert",15)}<span>${escHtml(today.hint)}</span></div>` : ""}<div class="sc-coach">${icon("sparkle",16)}<div>${withTempoName(session.rationale)||""}${programPaceExplanationHTML(session)}</div></div>${choiceBlockHTML(session, state)}`;
   // Kiné (point 1 du 13/10) : jamais de liste d'exercices, des notes libres à la place (enregistrées dans la description).
   const kineNotes = isKine ? `<div class="sc-sep"></div>
       <label class="sc-kine" for="kn_${session.id}">Ton kiné te donne tes exercices : note-les ici si tu veux.</label>
@@ -6518,6 +6615,7 @@ function renderSheetContent(root){
   else if(typeof renderLevelSheet==="function" && renderLevelSheet()) { /* niveau */ }
   else if(typeof renderNewPacesSheet==="function" && renderNewPacesSheet()) { /* nouvelles allures */ }
   else if(typeof renderUpdateSheet==="function" && renderUpdateSheet()) { /* mettre à jour ton programme */ }
+  else if(renderRulesSheet()) { /* comment est construit ton programme */ }
   else if(sessionSheetId) renderSessionSheet();
   else {   // fenêtre refermée : la visite guidée en attente peut commencer, un rechargement en attente (E1) se fait
     root.innerHTML = ""; maybeStartTour();

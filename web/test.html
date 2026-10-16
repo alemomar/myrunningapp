@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=103"></script>
+<script src="logic.js?v=104"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -2256,6 +2256,66 @@ try {
   assertEqual("chiffre : jamais le même deux fois en 7 jours (7 faits ou plus)", new Set(seen).size, 7);
   assertEqual("chiffre : le fait de la tuile Objectif est écarté", Array.from({length:9}, (_,i)=>pickDailyFigure(c6, i, "streak")?.key).includes("streak"), false);
   assertEqual("chiffre : sans course -> rien", pickDailyFigure(dailyFigureCandidates({ runs:[], todayStr:"2026-10-16" }), 3), null);
+}
+
+// --- Lot B : programme construit sur les vraies courses (C24.1 + C30, revue d'Omar du 16/10/2026) ---
+{
+  const T = "2026-10-16";
+  const R = (date, type, min, km, extra) => ({ date, type, durationSec:min*60, distKm:km, ...(extra||{}) });
+  const G = (o) => ({ frequence:"2", principal:{ objectifPrincipal:"Améliorer mon allure" }, ...o });
+  // Ordre de priorité du volume (Omar, 16/10)
+  assertEqual("volume : moins de 3 courses en 8 semaines et pas d'objectif -> 40 km par mois", (({source, monthlyKm}) => ({source, monthlyKm}))(realRunsPlan({ runs:[R("2026-10-10","EF",30,4)], todayStr:T, goals:G({}) })), { source:"defaut", monthlyKm:40 });
+  assertEqual("volume : pas de courses mais un objectif de 80 km -> l'objectif", realRunsPlan({ runs:[], todayStr:T, goals:G({ kmMensuel:"80" }) }).source, "objectif");
+  // Cas d'Omar du 16/10 : 5 EF de 28 à 49 min, ~6'53 ; une semaine à 2 sorties et deux semaines sans courir
+  const omar = [R("2026-08-28","EF",39,5.7), R("2026-09-05","EF",42,6.1), R("2026-09-19","EF",49,7.1), R("2026-10-06","EF",28,4.0), R("2026-10-08","EF",39,5.9), R("2026-10-11","Seuil",73,11)];
+  const pO = realRunsPlan({ runs:omar, todayStr:T, goals:G({ kmMensuel:"50" }), z4Bpm:163, forme:{ state:"frais" }, recentPain:false });
+  assertEqual("Omar : les vraies courses passent avant son objectif de 50 km", pO.source, "courses");
+  assertEqual("Omar : EF de 40 min (médiane 39), allure médiane de ses EF (6'53)", [pO.efMin, fmtA(pO.efPace)], [40, fmtA(413)]);
+  assertEqual("Omar : semaine habituelle = moyenne des 2 semaines courues sur 4 (28 km), pas des 4 semaines", Math.round(pO.avgWeekKm*10)/10, 14);
+  assertEqual("Omar : 2 sorties par semaine -> ni sortie longue ni séance d'allure", [pO.longAllowed, pO.qualityAllowedLater], [false, false]);
+  const wO = realRunsWeekSessions({ plan:pO, days:[1,4], zones:{ easy:434, threshold:330, interval:300 }, currentWeek:true, weekIndex:0 });
+  assertEqual("Omar : 2 EF de 40 min", wO.map(s=>[s.runType, s.durationMin]), [["EF",40],["EF",40]]);
+  assertEqual("Omar : la phrase « pourquoi »", wO[0].rationale, "Pourquoi : 40 minutes, c'est ta durée habituelle en EF, à ton allure réelle.");
+  // Une montre lancée par erreur (moins de 1 km) ne compte pas (revue d'Omar du 16/10)
+  const erreur = realRunsPlan({ runs:[...omar, R("2026-10-12","EF",2,0.2)], todayStr:T, goals:G({}), z4Bpm:163, forme:{ state:"frais" }, recentPain:false });
+  assertEqual("une sortie de 200 m en 2 min est ignorée", [erreur.runs8, erreur.efMin, erreur.efCount], [pO.runs8, pO.efMin, pO.efCount]);
+  // Reprise après 2 semaines sans courir : un tiers de moins
+  const pause = realRunsPlan({ runs:[R("2026-09-01","EF",45,6), R("2026-09-08","EF",45,6), R("2026-09-15","EF",45,6)], todayStr:T, goals:G({}) });
+  assertEqual("reprise : 31 jours sans courir -> 30 min au lieu de 45", [pause.breakApplied, pause.efMin], [true, 30]);
+  // 80/20 : séances d'allure sans cœur détaillé comptées entières
+  const dur = [R("2026-10-01","Seuil",60,10), R("2026-10-05","EF",40,6), R("2026-10-09","Fractionné",50,8), R("2026-10-12","EF",40,6)];
+  assertEqual("80/20 : sans cœur détaillé, toute la durée des séances d'allure compte", Math.round(intensityShare(dur, T, 160).share*100), Math.round(110/190*100));
+  const g3 = G({ frequence:"3", principal:{ objectifPrincipal:"Préparer une course", distanceCourse:"10km" } });
+  const trop = realRunsPlan({ runs:dur, todayStr:T, goals:g3, z4Bpm:160, forme:{ state:"frais" }, recentPain:false });
+  assertEqual("80/20 dépassé -> pas de séance d'allure", [trop.wantsQuality, trop.room8020], [true, false]);
+  const wT = realRunsWeekSessions({ plan:trop, days:[1,3,6], zones:{ easy:400, threshold:330, interval:300 }, currentWeek:false, weekIndex:0 });
+  assertEqual("80/20 dépassé : EF et sortie longue, avec la raison", [wT.map(s=>s.runType), /80 % de facile/.test(wT[0].rationale)], [["EF","EF","Long"], true]);
+  // Cœur détaillé : seul le temps en zones 4 et 5 compte
+  const hr = Array.from({length:61}, (_,i)=>({ t:i*60, hr: i<50 ? 140 : 170 }));
+  assertEqual("80/20 : cœur détaillé, seules les 11 dernières minutes au-dessus de la zone 4 comptent", Math.round(intensityShare([R("2026-10-10","Seuil",60,10,{ hrSeries:hr })], T, 160).intenseMin), 11);
+  // Confirmé : 5 séances voulues pour 25 km par semaine réels -> plafond +10 %
+  const conf = [];
+  for(const d of ["2026-09-21","2026-09-23","2026-09-26","2026-09-28","2026-10-01","2026-10-03","2026-10-05","2026-10-08","2026-10-10","2026-10-12","2026-10-14"]) conf.push(R(d,"EF",30,6));
+  conf.push(R("2026-10-11","Long",70,14));
+  const pC = realRunsPlan({ runs:conf, todayStr:T, goals:G({ frequence:"5", principal:{ objectifPrincipal:"Préparer une course", distanceCourse:"10km" } }), z4Bpm:170, forme:{ state:"frais" }, recentPain:false });
+  const wC = realRunsWeekSessions({ plan:pC, days:pickRunDays([0,1,2,3,4,5,6],5), zones:{ easy:300, threshold:240, interval:220 }, currentWeek:false, weekIndex:0 });
+  assertEqual("confirmé : plafond de sa moyenne +10 % (22 km) : EF ramenées à 20 min, sortie longue raccourcie à la longueur d'une EF", [wC.filter(s=>s.type==="Easy").map(s=>s.durationMin), wC.find(s=>s.runType==="Long").distanceKm], [[20,20,20], 6]);
+  assertEqual("confirmé : une sortie longue le dimanche et une séance d'allure loin d'elle", [wC.find(s=>s.runType==="Long").dayIndex, Math.abs(wC.find(s=>s.type==="Qualité").dayIndex-6)>1], [6, true]);
+  assertEqual("sortie longue : au plus 10 % de plus que la plus longue (14 km)", pC.longKm, 15.4);
+  // Forme et gêne : cette semaine seulement
+  const pG = realRunsPlan({ runs:conf, todayStr:T, goals:G({ frequence:"5", principal:{ objectifPrincipal:"Préparer une course", distanceCourse:"10km" } }), z4Bpm:170, forme:{ state:"frais" }, recentPain:true });
+  assertEqual("gêne depuis 14 jours : pas de séance d'allure cette semaine, mais les suivantes oui", [pG.qualityAllowedNow, pG.qualityAllowedLater], [false, true]);
+  // Sans vraies courses
+  assertEqual("40 km par mois : pas de séance d'allure (moins de 15 km par semaine)", defaultPlanAllowsQuality(realRunsPlan({ runs:[], todayStr:T, goals:G({}) })), false);
+  assertEqual("objectif de 80 km : séance d'allure possible", defaultPlanAllowsQuality(realRunsPlan({ runs:[], todayStr:T, goals:G({ kmMensuel:"80" }) })), true);
+  assertEqual("pourquoi sans courses", defaultPlanWhy(realRunsPlan({ runs:[], todayStr:T, goals:G({}) })), "Pourquoi : on n'a pas encore tes courses, on part de 40 km par mois en attendant les premières.");
+  assertEqual("jours répartis : 2 sur la semaine", pickRunDays([0,1,2,3,4,5,6], 2), [0,6]);
+  // Carte : une EF des vraies courses s'affiche en minutes, avec la fourchette d'allure
+  const h = sessionHeadline({ generation_reason:"real_runs", pace_zone:"easy", target_duration_min:40, target_distance_km:5.8, target_pace_sec_per_km:413 }, []);
+  assertEqual("carte : 40 min, allure 6'48 à 7'03, environ 5,8 km", [h.big.value, h.big.unit, h.tiles.map(t=>t.value)], ["40", "min", ["6'48 à 7'03", "≈ 5,8 km"]]);
+  // « Comment on l'a choisie »
+  const rows = realRunsExplainRows(pO, { z2Max:149, maxHr:188, restingHr:58, forme:{ label:"Frais" }, chargeZoneLabel:"Équilibrée" });
+  assertEqual("comment on l'a choisie : les lignes", rows.map(r=>r.k), ["Ton rythme", "Ta durée habituelle en EF", "Ton allure en EF", "Ta semaine habituelle", "Ta zone 2", "Facile / soutenu, 4 semaines", "Ta forme"]);
 }
 
 document.getElementById("summary").innerHTML =
