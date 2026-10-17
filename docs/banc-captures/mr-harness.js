@@ -357,8 +357,10 @@
     if(scen==="hier_verifier_ouvert"){ verifyOpened = true; document.getElementById("content").innerHTML = hierCardHTML() + verifyCardHTML(); }
   } else if(scen==="aujourdhui_renfo"){
     celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, todayRenfo, ...future]; openLearnMore=new Set([todayRenfo.id]); show("aujourdhui");
-  } else if(scen==="aujourdhui_repos"){
-    celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, ...future]; show("aujourdhui");
+  } else if(scen==="aujourdhui_repos" || scen==="semaine_programme"){
+    // « semaine_programme » : la même semaine dans Programme (doublon avec « Ta semaine », question d'Omar du 16/10)
+    celebrationOff(); rateYesterday(); plannedSessions=[...wkSessions, ...future];
+    if(scen==="semaine_programme"){ programViewMode="week"; programWeekOffset=0; programSelectedDate=localDateStr(new Date()); show("programme"); } else show("aujourdhui");
   } else if(scen==="objectif_allure" || scen==="objectif_allure_prog" || scen==="objectif_allure_sans"){
     // Objectif « Améliorer mon allure » (revue d'Omar du 16/10) : allure EF actuelle face à l'allure visée (5'30), évolution sur
     // 3 mois ; « _prog » : la carte de Progression ; « _sans » : sans allure visée.
