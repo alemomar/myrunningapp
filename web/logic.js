@@ -4065,3 +4065,122 @@ function chargeCalcRows(model){
     { k:"Ta charge", v:`${n(model.recent)} ÷ ${n(model.usual)} = ${dec(a.toFixed(2))}`, s: zone },
   ];
 }
+
+/* ---------- Détail d'une séance : nouveaux indicateurs, lot 1 (C25, revue d'Omar du 14/10/2026) ----------
+   Maquettes Claude Design 1a à 1c ; règles validées point par point le 14/10 (B1 à B4). */
+
+// B1 : temps par zone cardio avec le % de chaque zone et les totaux « facile » (zones 1 à 3) / « soutenu » (zones 4 et 5).
+// Les % sont arrondis pour totaliser 100 (méthode des plus forts restes).
+const HR_ZONE_NAMES = ["Très facile","Facile","Modéré","Soutenu","Maximal"];
+function roundPctTo100(values){
+  const total = (values||[]).reduce((a,v)=>a+v,0);
+  if(!(total>0)) return (values||[]).map(()=>0);
+  const raw = values.map(v=>v/total*100), out = raw.map(Math.floor);
+  let rest = 100 - out.reduce((a,v)=>a+v,0);
+  raw.map((v,i)=>({ i, r:v-out[i] })).sort((a,b)=>b.r-a.r || a.i-b.i).forEach(x=>{ if(rest>0){ out[x.i]++; rest--; } });
+  return out;
+}
+function hrZoneSummary(secs){
+  const s = [0,1,2,3,4].map(i=>Math.max(0, Number((secs||[])[i])||0));
+  const pct = roundPctTo100(s);
+  return {
+    rows: s.map((v,i)=>({ zone:i+1, name:HR_ZONE_NAMES[i], sec:v, min:Math.round(v/60), pct:pct[i] })),
+    easy: { pct:pct[0]+pct[1]+pct[2], min:Math.round((s[0]+s[1]+s[2])/60) },
+    hard: { pct:pct[3]+pct[4], min:Math.round((s[3]+s[4])/60) },
+    maxSec: Math.max(...s),
+  };
+}
+
+/* B2 : dérive cardiaque (spécifications de Claude Design, deux ajustements validés le 14/10). Sorties EF ou longues d'au moins
+   40 min, au moins une mesure de FC toutes les 30 s et une mesure d'allure par minute. On retire les 10 premières minutes ;
+   l'allure doit être régulière, jugée par tranches de 5 min (au moins 4 tranches de 3 mesures, écart type des vitesses moyennes
+   sous 8 % de leur moyenne : sur les mesures brutes, le bruit de la montre écartait toutes les sorties ; ainsi 29 sorties
+   sur 36 passent). Le reste est coupé en deux moitiés de même durée ; dérive = baisse de (vitesse moyenne ÷ FC moyenne) de la
+   1re à la 2e moitié, en %. Une valeur négative (accélération en descente, jusqu'à −16 % chez Omar) s'affiche 0 %, « Stable ».
+   États : Stable sous 5 %, Correct de 5 à 10 %, En hausse au-dessus. */
+const DRIFT_TYPES = ["EF","Long"], DRIFT_MIN_SEC = 2400, DRIFT_WARMUP_SEC = 600, DRIFT_BLOCK_SEC = 300, DRIFT_MAX_CV = 8;
+const DRIFT_LABELS = { stable:"Stable", correct:"Correct", hausse:"En hausse" };
+function cardiacDrift({ hrSeries, paceSeries, durationSec, type }){
+  if(!DRIFT_TYPES.includes(type)) return null;
+  const dur = Number(durationSec)||0;
+  if(dur < DRIFT_MIN_SEC) return null;
+  const hr = (hrSeries||[]).filter(p=>p && p.hr>0), pc = (paceSeries||[]).filter(p=>p && p.pace>0);
+  if(hr.length/dur*30 < 1 || pc.length/dur*60 < 1) return null;
+  const mean = (a) => a.length ? a.reduce((x,v)=>x+v,0)/a.length : null;
+  const blocks = new Map();
+  pc.forEach(p=>{ if(p.t>=DRIFT_WARMUP_SEC){ const k = Math.floor((p.t-DRIFT_WARMUP_SEC)/DRIFT_BLOCK_SEC); if(!blocks.has(k)) blocks.set(k, []); blocks.get(k).push(1000/p.pace); } });
+  const bm = [...blocks.values()].filter(v=>v.length>=3).map(mean);
+  if(bm.length<4) return null;
+  const m = mean(bm), sd = Math.sqrt(mean(bm.map(v=>(v-m)**2)));
+  if(sd/m*100 >= DRIFT_MAX_CV) return null;
+  const mid = DRIFT_WARMUP_SEC + (dur-DRIFT_WARMUP_SEC)/2;
+  const h1 = mean(hr.filter(p=>p.t>=DRIFT_WARMUP_SEC && p.t<mid).map(p=>p.hr)), h2 = mean(hr.filter(p=>p.t>=mid).map(p=>p.hr));
+  const s1 = mean(pc.filter(p=>p.t>=DRIFT_WARMUP_SEC && p.t<mid).map(p=>1000/p.pace)), s2 = mean(pc.filter(p=>p.t>=mid).map(p=>1000/p.pace));
+  if(!h1 || !h2 || !s1 || !s2) return null;
+  const raw = (s1/h1 - s2/h2)/(s1/h1)*100;
+  const pct = Math.max(0, Math.round(raw));
+  return { pct, raw, state: pct<5 ? "stable" : pct<=10 ? "correct" : "hausse" };
+}
+function cardiacDriftText(d){
+  if(!d) return "";
+  if(d.state==="stable") return "Ton cœur est resté stable du début à la fin : ton endurance tient sur cette durée.";
+  if(d.state==="correct") return `Ton cœur a monté de ${d.pct} % en 2e moitié. C'est normal sur une sortie de cette durée.`;
+  return `Ton cœur a monté de ${d.pct} % en 2e moitié : cette durée te demande encore un effort. La chaleur ou la fatigue peuvent aussi l'expliquer.`;
+}
+// Repère sur la jauge à 3 segments égaux : 0 à 5 %, 5 à 10 %, 10 à 15 % (au-delà, collé à droite).
+function cardiacDriftMarker(d){ return d ? Math.min(1, d.pct/15) : null; }
+
+/* B3 : allure à chaque km (sorties EF, longues et courses d'au moins 3 km, au moins une mesure d'allure par minute ; pas le
+   fractionné, découpé en blocs). Entre deux mesures, la distance parcourue est celle de l'allure de la mesure d'arrivée ; un trou
+   de plus de 2 min est une pause (ni distance ni temps). Les distances sont recalées sur la distance officielle de la séance
+   (écart médian de 1,8 % avec la somme des mesures) ; au-delà de 20 % d'écart, les mesures sont jugées fausses : pas de section.
+   Le dernier km incomplet est rendu à part s'il fait au moins 100 m. Un seul message, par priorité (spécifications). */
+const KM_SPLIT_TYPES = ["EF","Long","Course"], KM_SPLIT_MIN_KM = 3, KM_SPLIT_GAP_SEC = 120, KM_SPLIT_FOLD = 5;
+function kmSplits({ paceSeries, distanceKm, durationSec, type }){
+  if(!KM_SPLIT_TYPES.includes(type)) return null;
+  const km = Number(distanceKm)||0, dur = Number(durationSec)||0;
+  if(km < KM_SPLIT_MIN_KM || dur<=0) return null;
+  const pc = (paceSeries||[]).filter(p=>p && p.pace>0 && p.t>=0).sort((a,b)=>a.t-b.t);
+  if(pc.length/dur*60 < 1) return null;
+  const parts = []; let prevT = 0;
+  pc.forEach(p=>{ const dt = p.t - prevT; prevT = p.t; if(dt>0 && dt<=KM_SPLIT_GAP_SEC) parts.push({ dt, d:dt*1000/p.pace }); });
+  const raw = parts.reduce((a,x)=>a+x.d,0);
+  if(!(raw>0)) return null;
+  const scale = km*1000/raw;
+  if(scale<0.8 || scale>1.25) return null;
+  const total = km*1000, fullCount = Math.floor(total/1000 + 1e-9);
+  const kms = []; let d = 0, t = 0, lastCross = 0;
+  parts.forEach(x=>{
+    const dd = x.d*scale;
+    while(kms.length<fullCount && d+dd >= 1000*(kms.length+1) - 1e-6){
+      const tc = t + x.dt*((1000*(kms.length+1) - d)/dd);
+      kms.push(Math.round(tc - lastCross)); lastCross = tc;
+    }
+    d += dd; t += x.dt;
+  });
+  if(kms.length<2) return null;
+  const restM = total - kms.length*1000;
+  const partial = restM>=100 && t-lastCross>0 ? { km:Math.round(restM/10)/100, pace:Math.round((t-lastCross)/(restM/1000)) } : null;
+  const fastest = kms.indexOf(Math.min(...kms)), slowest = kms.indexOf(Math.max(...kms));
+  return { kms, partial, avg:Math.round(t/km), fastest, slowest };
+}
+function kmOrdinal(i){ return i===0 ? "1er" : `${i+1}e`; }
+function fmtKmPace(s){ return `${Math.floor(s/60)}'${String(Math.round(s%60)).padStart(2,"0")}`; }
+function kmSplitsMessage(m){
+  if(!m) return "";
+  const k = m.kms, n = k.length, mean = (a) => a.reduce((x,v)=>x+v,0)/a.length;
+  if(m.avg-k[0] > 15 && k[n-1]-m.avg > 15) return `Départ un peu rapide : ton 1er km était ${Math.round(m.avg-k[0])} s plus vite que ta moyenne, et tu as ralenti à la fin.`;
+  const h = Math.floor(n/2);
+  if(mean(k.slice(0,h)) - mean(k.slice(n-h)) > 5) return "Bien géré : tu as fini plus vite que tu as commencé.";
+  if(Math.max(...k) - Math.min(...k) < 20) return "Très régulier : tous tes km à moins de 20 s d'écart.";
+  return `Ton km le plus rapide : le ${kmOrdinal(m.fastest)} (${fmtKmPace(k[m.fastest])}). Le plus lent : le ${kmOrdinal(m.slowest)} (${fmtKmPace(k[m.slowest])}).`;
+}
+// Largeur des barres (maquette validée) : le km le plus rapide fait toute la largeur, chaque seconde de plus en retire 0,8 %.
+function kmSplitBarPct(sec, fastestSec){ return Math.max(8, Math.min(100, 100-(sec-fastestSec)*0.8)); }
+
+// B4 : cadence (pas par minute, calculée par RunSync : pas de la séance ÷ durée). Sur toute course ; cachée hors 100 à 220,
+// valeurs aberrantes vues chez les testeurs (5, 799). 100 à 120 gardé : course et marche.
+function cadenceShown(cad, type){
+  const c = Math.round(Number(cad));
+  return RUNNING_RUN_TYPES.includes(type) && c>=100 && c<=220 ? c : null;
+}

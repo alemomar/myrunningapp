@@ -686,6 +686,58 @@ button.pg-rec-row{cursor:pointer}
 .cd-note{font-size:12px;color:var(--text-muted);line-height:1.45}
 .cd-flag{padding:10px 12px;border-radius:var(--r-sm);background:var(--attention-bg);box-shadow:inset 0 0 0 1px var(--attention-line);font-size:12.5px;line-height:1.4}
 .cd-flag button{margin-top:8px}
+/* Indicateurs du détail d'une séance, lot 1 (C25 : images B1 à B4 validées le 14/10) */
+.zb{background:var(--surface-sunken);border-radius:var(--r-md);padding:14px 12px 12px}
+.zb-t,.dv-t,.km-t{font:600 12px/1.2 var(--font-display);letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+.zb-tot{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px}
+.zb-tot>div{border-radius:10px;padding:8px 10px;background:rgba(198,244,50,.08)}
+.zb-tot>div.h{background:oklch(0.7 0.19 25 / .10)}
+.zb-tot .k{font-size:12.5px;color:var(--text-3)}
+.zb-tot .v{font:700 24px/1.1 var(--font-display);color:var(--accent)}
+.zb-tot .h .v{color:var(--data-coral)}
+.zb-tot .v small{font:600 15px var(--font-text);color:var(--text-3);margin-left:6px}
+.zb-row{display:grid;grid-template-columns:24px 76px 1fr 50px 34px;align-items:center;gap:8px;height:30px}
+.zb-row .z{font:700 15px var(--font-display);color:var(--text-3)}
+.zb-row .n{font-size:14px;color:var(--text);white-space:nowrap}
+.zb-row .bar{height:9px;border-radius:5px;background:var(--line);overflow:hidden}
+.zb-row .bar i{display:block;height:100%;border-radius:5px}
+.zb-row .m{font:700 15px var(--font-display);text-align:right;white-space:nowrap}
+.zb-row .p{font-size:13px;color:var(--text-muted);text-align:right;font-variant-numeric:tabular-nums}
+.zb-leg{font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.4}
+.dv{background:var(--surface-sunken);border-radius:var(--r-md);padding:14px 14px 12px}
+.dv-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.dv-pill{font:700 14px/1 var(--font-display);letter-spacing:.06em;text-transform:uppercase;padding:6px 10px;border-radius:999px}
+.dv-pill.stable{color:var(--accent);background:rgba(198,244,50,.12)}
+.dv-pill.correct{color:var(--text);background:var(--line)}
+.dv-pill.hausse{color:var(--attention);background:var(--attention-bg-strong)}
+.dv-val{display:flex;align-items:baseline;gap:10px;margin:10px 0 12px}
+.dv-val b{font:700 30px/1 var(--font-display);white-space:nowrap}
+.dv-val span{font-size:13.5px;color:var(--text-3)}
+.dv-bar{position:relative;display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;height:6px}
+.dv-bar i{border-radius:3px}
+.dv-bar i:nth-child(1){background:var(--accent)}
+.dv-bar i:nth-child(2){background:var(--text-faint)}
+.dv-bar i:nth-child(3){background:oklch(0.72 0.17 300 / .6)}
+.dv-bar span{position:absolute;top:-4px;width:4px;height:14px;margin-left:-2px;border-radius:2px;background:var(--text);box-shadow:0 0 0 2px var(--surface-sunken)}
+.dv-txt{font-size:13.5px;line-height:1.45;color:var(--text-2);margin-top:12px}
+.km-card{background:var(--surface);border-radius:var(--r-lg);padding:16px 16px 14px;margin:14px 0}
+.km-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.km-hd .avg{font-size:13px;color:var(--text-muted)}
+.km-row{display:grid;grid-template-columns:44px 1fr 46px;gap:10px;align-items:center;height:28px}
+.km-row .k{font-size:13.5px;color:var(--text-muted);white-space:nowrap}
+.km-row .bar i{display:block;height:12px;border-radius:5px;background:var(--text-faint)}
+.km-row .p{font:700 16px var(--font-display);text-align:right;color:var(--text)}
+.km-row.fast .bar i{background:var(--accent)}.km-row.fast .p{color:var(--accent)}
+.km-row.slow .bar i{background:var(--text)}
+.km-row.part .bar i{background:var(--line-field)}.km-row.part .p{color:var(--text-muted)}
+.km-more{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:44px;margin-top:8px;border:1px solid var(--line-field);border-radius:999px;background:none;color:var(--text-2);font:inherit;font-size:14px;cursor:pointer}
+.km-leg{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--text-muted);margin:12px 0 10px}
+.km-leg span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:var(--c)}
+.km-msg{display:flex;gap:10px;padding:12px 14px;border-radius:var(--r-md);background:var(--surface-sunken);font-size:14px;line-height:1.45;color:var(--text-2)}
+.km-msg svg{flex:none;color:var(--accent);margin-top:3px}
+.cad-tile{margin:0 0 14px}
+.cad-tile .v small{font:500 14px var(--font-text);color:var(--text-3);margin-left:6px;text-transform:none}
+.cad-tile .leg{font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.4}
 .confirm-back{position:fixed;inset:0;z-index:320;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px}
 .confirm-card{width:100%;max-width:420px;background:#24272B;border-radius:var(--r-xl);padding:18px 16px 14px;box-shadow:var(--shadow-lift);display:flex;flex-direction:column;gap:14px}
 .confirm-card h2{font:700 20px/1.15 var(--font-display);text-transform:uppercase}
@@ -1331,7 +1383,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=107"></script>
+<script src="logic.js?v=108"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -3398,6 +3450,7 @@ function renderRunSheet(){
     <div class="sheet-head"><div><div class="sheet-overline">${escHtml(dayLabelShort(dateFromRun(r)))} · ${escHtml(r.time)}</div><div class="sheet-title">${escHtml(sessionTypeLabel(r.type))}</div></div>
       <div style="display:flex;gap:6px">${menu}<button class="sheet-close" type="button" aria-label="Fermer" onclick="closeRunSheet()">${icon("x",16)}</button></div></div>
     <div class="rs-card">${scMetricsHTML(big, tiles)}${cardioDetailBlockHTML(r, effMaxHr, restingHr || null)}</div>
+    ${kmSplitsCardHTML(r)}${cadenceTileHTML(r)}
     <div class="rs-field"><label class="l" for="rs_type">Type de séance</label>
       <div class="rs-select"><i style="background:${c}"></i><select id="rs_type" onchange="changeType('${r.id}', this.value)">${SESSION_TYPES_DONE.map(t=>`<option value="${t}"${t===r.type?" selected":""}>${escHtml(sessionTypeLabel(t))}</option>`).join("")}</select>${icon("chevronDown",16)}</div>
       <div class="rs-hint">${escHtml(src)}</div></div>
@@ -4531,16 +4584,29 @@ function cardioCardHTML(r, effMaxHr, effRestingHr){
   }
   if(!effMaxHr) return `<div class="cd-note">Renseigne ta FC max (Profil › Mon compte) pour voir la répartition par zones.</div>`;
   const { secs, defs } = computeHrZoneSeconds(r.hrSeries, effMaxHr, effRestingHr);
-  const total = secs.reduce((a,b)=>a+b,0)||1;
   const flagFrac = cardioTypeSuggestion(r)==="Fractionné";   // C9 : seule suggestion gardée, FC et allure qui alternent
   const ip = r.type==="Fractionné" ? getIntervalPaces(r) : null;
   const W = 320;
   const tiles = r.fc ? `<div class="sc-tiles2" style="margin:0">${scTile("FC moy.", Math.round(r.fc), "var(--data-coral)")}${r.peakHr?scTile("FC max", r.peakHr, "var(--data-coral)"):""}</div>` : "";
+  // Temps par zone (B1, C25) : totaux facile / soutenu, puis chaque zone avec ses minutes et son % ; zones 1 à 3 en citron, 4 et 5 en corail.
+  const zs = hrZoneSummary(secs);
+  const zoneColor = ["rgba(198,244,50,.40)", "rgba(198,244,50,.70)", "var(--accent)", "var(--data-coral)", "var(--data-coral)"];
+  const zones = `<div class="zb"><div class="zb-t">Temps par zone cardio</div>
+      <div class="zb-tot"><div><div class="k">Facile · zones 1 à 3</div><div class="v">${zs.easy.pct} %<small>${zs.easy.min} min</small></div></div><div class="h"><div class="k">Soutenu · zones 4 et 5</div><div class="v">${zs.hard.pct} %<small>${zs.hard.min} min</small></div></div></div>
+      ${zs.rows.map((z,i)=>`<div class="zb-row"><span class="z">Z${z.zone}</span><span class="n">${z.name}</span><span class="bar"><i style="width:${zs.maxSec ? Math.round(z.sec/zs.maxSec*100) : 0}%;background:${zoneColor[i]}"></i></span><span class="m">${z.min} min</span><span class="p">${z.pct} %</span></div>`).join("")}
+      <div class="zb-leg">${effRestingHr ? "Zones calculées à partir de ta FC max et de ta FC au repos." : "Zones calculées avec ta FC max seulement. Renseigne ta FC de repos (Profil › Mon compte) pour coller à l'app Santé."}</div></div>`;
+  // Dérive cardiaque (B2, C25) : sorties EF ou longues d'au moins 40 min, allure régulière et assez de mesures, sinon rien.
+  const drift = cardiacDrift({ hrSeries:r.hrSeries, paceSeries:r.paceSeries, durationSec:r.durationSec, type:r.type });
+  const driftColor = drift ? { stable:"var(--accent)", correct:"var(--text)", hausse:"var(--attention)" }[drift.state] : "";
+  const driftHTML = drift ? `<div class="dv"><div class="dv-top"><span class="dv-t">Dérive cardiaque</span><span class="dv-pill ${drift.state}">${DRIFT_LABELS[drift.state]}</span></div>
+      <div class="dv-val"><b style="color:${driftColor}">${drift.pct} %</b><span>de hausse du cœur en 2e moitié</span></div>
+      <div class="dv-bar" aria-hidden="true"><i></i><i></i><i></i><span style="left:${(cardiacDriftMarker(drift)*100).toFixed(1)}%"></span></div>
+      <div class="dv-txt">${escHtml(cardiacDriftText(drift))}</div></div>` : "";
   return `<div class="cd-card">
     ${tiles}
     <div class="cd-curve">${hrCurveSVG(r.hrSeries, defs[1].max, W)}</div>
-    <div>${defs.map((d,i)=>`<div class="cd-zone"><span class="z"><i style="background:${d.color}"></i>Z${d.zone}</span><div class="bar"><i style="width:${Math.round(secs[i]/total*100)}%;background:${d.color}"></i></div><span class="t">${fmtDur(secs[i])}</span></div>`).join("")}</div>
-    ${!effRestingHr ? `<div class="cd-note">Zones calculées avec ta FC max seulement. Renseigne ta FC de repos (Profil › Mon compte) pour coller à l'app Santé.</div>` : ""}
+    ${zones}
+    ${driftHTML}
     ${ip && (ip.manual || ip.workCount>=2) ? `<div class="cd-pace"><div><div class="k">Allure travail ${ip.manual?"(manuel)":`(${ip.workCount})`}</div><div class="v" style="color:var(--accent)">${fmtA(ip.work)}/km</div></div>${ip.recovery?`<div><div class="k">Allure récup ${ip.manual?"(manuel)":`(${ip.recoveryCount})`}</div><div class="v" style="color:var(--text-3)">${fmtA(ip.recovery)}/km</div></div>`:""}</div>` : ""}
     ${flagFrac ? `<div class="cd-flag">Ta FC et ton allure alternent des blocs rapides et des récupérations : ça ressemble à un fractionné.<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-secondary" onclick="changeType('${r.id}','Fractionné')">Reclasser en Fractionné</button><button type="button" class="btn-secondary" onclick="changeType('${r.id}','${r.type}')">Garder ${escHtml(r.type)}</button></div></div>` : ""}
   </div>`;
@@ -4562,6 +4628,32 @@ function cardioDetailBlockHTML(r, effMaxHr, effRestingHr){
   const flagFrac = cardioTypeSuggestion(r)==="Fractionné";
   return `<button type="button" class="cd-row" aria-expanded="${open}" onclick="toggleHrDetail('${r.id}')"><span class="cd-label"><span class="cd-heart" aria-hidden="true">${icon("heart",16)}</span>Détail cardio</span>${flagFrac?`<span class="tag">Fractionné détecté ?</span>`:""}<span class="chev">${icon(open?"chevronUp":"chevronDown",18)}</span></button>
     ${open?`<div class="${justOpenedKey==="hr_"+r.id?"expand-in":""}">${cardioCardHTML(r, effMaxHr, effRestingHr)}</div>`:""}`;
+}
+
+// Carte « Allure par km » (B3, C25) : une ligne par km, le plus rapide en citron, le plus lent en blanc, le km incomplet à part ;
+// repliée à 5 km au-delà (« Voir les N autres km ») ; un seul message de bilan.
+let openKmSplits = new Set();
+window.toggleKmSplits = (id) => { if(openKmSplits.has(id)) openKmSplits.delete(id); else openKmSplits.add(id); refreshSheet(); };
+function kmSplitsCardHTML(r){
+  const m = kmSplits({ paceSeries:r.paceSeries, distanceKm:r.dist, durationSec:r.durationSec, type:r.type });
+  if(!m) return "";
+  const fast = m.kms[m.fastest];
+  const rows = m.kms.map((s,i)=>({ k:`${i+1} km`, s, cls: i===m.fastest ? "fast" : i===m.slowest ? "slow" : "" }));
+  if(m.partial) rows.push({ k:fmtDec(m.partial.km, 2), s:m.partial.pace, cls:"part" });
+  const foldable = m.kms.length > KM_SPLIT_FOLD, open = openKmSplits.has(r.id);
+  const shown = foldable && !open ? rows.slice(0, KM_SPLIT_FOLD) : rows;
+  const hidden = rows.length - KM_SPLIT_FOLD;
+  return `<div class="km-card"><div class="km-hd"><span class="km-t">Allure par km</span><span class="avg">moyenne ${fmtKmPace(m.avg)}</span></div>
+    ${shown.map(x=>`<div class="km-row ${x.cls}"><span class="k">${x.k}</span><span class="bar"><i style="width:${kmSplitBarPct(x.s, fast).toFixed(1)}%"></i></span><span class="p">${fmtKmPace(x.s)}</span></div>`).join("")}
+    ${foldable ? `<button type="button" class="km-more" aria-expanded="${open}" onclick="toggleKmSplits('${r.id}')">${open ? "Réduire" : `Voir les ${hidden} autres km`} ${icon(open?"chevronUp":"chevronDown",16)}</button>` : ""}
+    <div class="km-leg"><span style="--c:var(--accent)">le plus rapide : ${kmOrdinal(m.fastest)} km</span><span style="--c:var(--text)">le plus lent : ${kmOrdinal(m.slowest)} km</span></div>
+    <div class="km-msg">${icon("sparkle",14)}<span>${escHtml(kmSplitsMessage(m))}</span></div></div>`;
+}
+// Tuile « Cadence » (B4, C25) : seule pour l'instant ; la récup du cœur la rejoindra avec RunSync 1.0 (8) (C26).
+function cadenceTileHTML(r){
+  const c = cadenceShown(r.cad, r.type);
+  if(c==null) return "";
+  return `<div class="cad-tile"><div class="sc-tile"><div class="l">Cadence</div><div class="v">${c}<small>pas/min</small></div></div><div class="leg">Cadence : nombre de pas par minute.</div></div>`;
 }
 
 /* ============================================================

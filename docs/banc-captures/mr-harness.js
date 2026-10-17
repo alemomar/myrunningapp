@@ -407,6 +407,32 @@
     celebrationOff(); plannedSessions=[...wkSessions, ...future]; show("progression"); openHistory();
     const ef = runningRuns.filter(r=>r.type==="EF" && r.hrSeries && r.hrSeries.length>10).slice(-1)[0] || lastRun;
     openRunSheet(ef.id); if(scen==="detail_suppression") askDeleteRun();
+  } else if(scen==="detail_indicateurs" || scen==="detail_indicateurs_longue" || scen==="detail_indicateurs_km"){
+    // C25 partie 1 : zones avec %, dérive cardiaque, allure par km, cadence, sur une sortie bien mesurée (une mesure d'allure
+    // toutes les 3 s, de FC toutes les 5 s). « _longue » : 75 min, cœur qui monte (en hausse), allure repliée à 5 km ;
+    // « _km » : la même, dépliée et défilée jusqu'à l'allure par km.
+    celebrationOff(); plannedSessions=[...wkSessions, ...future]; show("progression"); openHistory();
+    const ef = runningRuns.filter(r=>r.type==="EF" && r.hrSeries && r.hrSeries.length>10).slice(-1)[0] || lastRun;
+    const longue = scen!=="detail_indicateurs";
+    const kmP = longue ? [392,398,401,395,399,404,397,402,400,406,409] : [396,407,400,387,412,398,405];
+    const part = longue ? [0.4, 404] : [0.2, 401];
+    const segs = kmP.map(p=>({ p, len:p })).concat([{ p:part[1], len:part[0]*part[1] }]);
+    const dur = Math.round(segs.reduce((a,s)=>a+s.len,0));
+    const wob = (t, a) => a*(Math.sin(t/37)+0.6*Math.sin(t/11.3));
+    const pace = []; let el = 0;
+    segs.forEach(sg=>{ const end = el+sg.len; for(let t=Math.ceil(el/3)*3+3; t<=end+2; t+=3) pace.push({ t, pace:Math.round(sg.p + wob(t,3)) }); el = end; });
+    const hr = [];
+    // Zones du profil du banc : Z2 jusqu'à 151, Z3 jusqu'à 164, Z4 jusqu'à 178. EF : surtout Z2 et Z3, une bosse en Z4 vers 32 min ;
+    // longue : le cœur monte de 135 à 178 (dérive « en hausse »).
+    for(let t=5; t<=dur; t+=5){
+      const base = t<300 ? 112 + 33*t/300 : longue ? 135 + 43*(t-300)/(dur-300) : 147 + 3*(t-300)/(dur-300) + (t>1900 && t<2200 ? 18*Math.sin((t-1900)/300*Math.PI) : 0);
+      hr.push({ t, hr:Math.round(base + wob(t, longue ? 2.2 : 5)) });
+    }
+    Object.assign(ef, { type: longue ? "Long" : "EF", dist: kmP.length + part[0], durationSec: dur, dur: fmtDur(dur), allure: Math.round(dur/(kmP.length+part[0])),
+      hrSeries: hr, paceSeries: pace, fc: Math.round(hr.reduce((a,p)=>a+p.hr,0)/hr.length), peakHr: Math.max(...hr.map(p=>p.hr)), cad: longue ? 171 : 168 });
+    if(scen==="detail_indicateurs_km") openKmSplits.add(ef.id);
+    openRunSheet(ef.id);
+    if(scen==="detail_indicateurs_km") setTimeout(()=>{ const c = document.querySelector(".km-card"); if(c) c.scrollIntoView(); }, 50);
   } else if(scen==="detail_cardio_incomplet"){
     // R24 : fréquence cardiaque rangée « en paquets » dans Apple Santé (2 mesures pour toute la sortie) : pas de courbe ni de
     // zones, la moyenne et le maximum restent

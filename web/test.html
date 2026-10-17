@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=107"></script>
+<script src="logic.js?v=108"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -2368,6 +2368,52 @@ try {
   assertEqual("ton calcul : course du jour non notée, grosse semaine", [est[0].s, est[1].s, est[3].s], ["Ta course du 16/10 : 40 min × 4,3 = 172 points. Difficulté estimée : tu ne l'avais pas notée.", "Une course compte à plein le jour même, puis perd environ un quart de son poids chaque jour sans courir.", "Au-dessus de 1,5 : grosse semaine, n'augmente pas la semaine suivante."]);
   assertEqual("ton calcul : 1 023 points, à la française", chargeCalcRows(chargeCalcModel({ sessions:sess, ac:{ acute:966.2, chronic:1023.4, baselineWeeks:12, acwr:966.2/1023.4 }, todayTs:T }))[3].v, "966 ÷ 1\u00a0023 = 0,94");
   assertEqual("ton calcul : pas de charge -> pas d'encadré", [chargeCalcModel({ sessions:sess, ac:{ ...ac, acwr:null }, todayTs:T }), chargeCalcRows(null).length], [null, 0]);
+}
+
+// --- Détail d'une séance : zones avec %, dérive cardiaque, allure par km, cadence (C25, revue du 14/10/2026) ---
+{
+  assertEqual("zones : % arrondis qui totalisent 100", [roundPctTo100([1,1,1]), roundPctTo100([0,0])], [[34,33,33],[0,0]]);
+  const zs = hrZoneSummary([240,1260,1020,300,0]);   // 4, 21, 17, 5 et 0 min (maquette 1a)
+  assertEqual("zones : minutes et % de chaque zone (maquette)", zs.rows.map(z=>[z.name, z.min, z.pct]), [["Très facile",4,8],["Facile",21,45],["Modéré",17,36],["Soutenu",5,11],["Maximal",0,0]]);
+  assertEqual("zones : facile 89 % (42 min), soutenu 11 % (5 min)", [zs.easy, zs.hard], [{pct:89,min:42},{pct:11,min:5}]);
+
+  // Allure par km : une mesure par seconde, chaque km à son allure, un trou = pause
+  const paceSeries = (paces, partial, pauseAt, pauseSec) => {
+    const out = []; let t = 0;
+    const segs = paces.map(p=>({ p, len:p })); if(partial) segs.push({ p:partial[1], len:partial[0]*partial[1] });
+    let elapsed = 0;
+    segs.forEach(sg=>{ const end = elapsed + sg.len; while(t+1 <= Math.ceil(end-1e-9)){ t++; out.push({ t, pace:sg.p }); } elapsed = end; });
+    return pauseAt ? out.map(p=>p.t>pauseAt ? { t:p.t+pauseSec, pace:p.pace } : p) : out;
+  };
+  const ef = kmSplits({ paceSeries:paceSeries([396,407,400,387,412], [0.88,409]), distanceKm:5.88, durationSec:2362, type:"EF" });
+  assertEqual("allure par km : 5 km et 0,88 km à part (sortie d'Omar du 08/10, image validée)", [ef.kms, ef.partial, ef.fastest, ef.slowest, ef.avg], [[396,407,400,387,412], {km:0.88, pace:409}, 3, 4, 402]);
+  assertEqual("allure par km : sinon, le plus rapide et le plus lent", kmSplitsMessage(ef), "Ton km le plus rapide : le 4e (6'27). Le plus lent : le 5e (6'52).");
+  const msg = (p) => kmSplitsMessage(kmSplits({ paceSeries:paceSeries(p), distanceKm:p.length, durationSec:p.reduce((a,v)=>a+v,0), type:"EF" }));
+  assertEqual("allure par km : départ rapide, 2e moitié plus rapide, régulier", [msg([370,395,400,405,420]), msg([420,415,410,400,395]), msg([400,405,398,402,410])],
+    ["Départ un peu rapide : ton 1er km était 28 s plus vite que ta moyenne, et tu as ralenti à la fin.", "Bien géré : tu as fini plus vite que tu as commencé.", "Très régulier : tous tes km à moins de 20 s d'écart."]);
+  const paused = kmSplits({ paceSeries:paceSeries([400,400,400,400], null, 600, 300), distanceKm:4, durationSec:1900, type:"Long" });
+  assertEqual("allure par km : une pause de 5 min ne compte pas", paused.kms, [400,400,400,400]);
+  assertEqual("allure par km : 7 km, repliée au-delà de 5", [kmSplits({ paceSeries:paceSeries([400,400,400,400,400,400,400]), distanceKm:7, durationSec:2800, type:"Long" }).kms.length, KM_SPLIT_FOLD], [7, 5]);
+  assertEqual("allure par km : pas pour un fractionné, moins de 3 km, ou une allure trop espacée", [
+    kmSplits({ paceSeries:paceSeries([400,400,400]), distanceKm:3, durationSec:1200, type:"Fractionné" }),
+    kmSplits({ paceSeries:paceSeries([400,400]), distanceKm:2.5, durationSec:1000, type:"EF" }),
+    kmSplits({ paceSeries:[{t:120,pace:400},{t:600,pace:400},{t:1200,pace:400}], distanceKm:3, durationSec:1200, type:"EF" })], [null, null, null]);
+  assertEqual("allure par km : barres (le plus rapide plein, −0,8 % par seconde)", [kmSplitBarPct(387,387), kmSplitBarPct(412,387), kmSplitBarPct(600,387)], [100, 80, 8]);
+
+  // Dérive cardiaque : 50 min, allure constante, FC à 140 en 1re moitié (après l'échauffement), puis h2
+  const hrS = (h2) => Array.from({ length:600 }, (_,i)=>({ t:(i+1)*5, hr: (i+1)*5 < 1800 ? 140 : h2 }));
+  const flat = Array.from({ length:1000 }, (_,i)=>({ t:(i+1)*3, pace:400 }));
+  const dr = (h2, extra={}) => cardiacDrift({ hrSeries:hrS(h2), paceSeries:flat, durationSec:3000, type:"EF", ...extra });
+  assertEqual("dérive : stable, correct, en hausse", [dr(145), dr(150), dr(161)].map(d=>[d.pct, d.state]), [[3,"stable"],[7,"correct"],[13,"hausse"]]);
+  assertEqual("dérive : négative -> 0 %, Stable", [dr(135).pct, dr(135).state], [0, "stable"]);
+  const wavy = Array.from({ length:1000 }, (_,i)=>({ t:(i+1)*3, pace: Math.floor(((i+1)*3)/300)%2 ? 330 : 450 }));
+  assertEqual("dérive : rien si allure irrégulière, sortie de moins de 40 min, type Tempo ou FC trop espacée", [
+    cardiacDrift({ hrSeries:hrS(150), paceSeries:wavy, durationSec:3000, type:"EF" }), dr(150, { durationSec:2100 }), dr(150, { type:"Seuil" }),
+    cardiacDrift({ hrSeries:hrS(150).filter((_,i)=>i%12===0), paceSeries:flat, durationSec:3000, type:"EF" })], [null, null, null, null]);
+  assertEqual("dérive : textes et repère de la jauge", [cardiacDriftText({ pct:7, state:"correct" }), cardiacDriftMarker({ pct:4 }).toFixed(2), cardiacDriftMarker({ pct:20 })],
+    ["Ton cœur a monté de 7 % en 2e moitié. C'est normal sur une sortie de cette durée.", "0.27", 1]);
+
+  assertEqual("cadence : affichée de 100 à 220 sur une course, cachée sinon", [cadenceShown(168.4,"EF"), cadenceShown(110,"Long"), cadenceShown(5,"EF"), cadenceShown(799,"EF"), cadenceShown(168,"Renfo"), cadenceShown(null,"EF")], [168, 110, null, null, null, null]);
 }
 
 document.getElementById("summary").innerHTML =
