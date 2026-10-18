@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=108"></script>
+<script src="logic.js?v=109"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -2414,6 +2414,61 @@ try {
     ["Ton cœur a monté de 7 % en 2e moitié. C'est normal sur une sortie de cette durée.", "0.27", 1]);
 
   assertEqual("cadence : affichée de 100 à 220 sur une course, cachée sinon", [cadenceShown(168.4,"EF"), cadenceShown(110,"Long"), cadenceShown(5,"EF"), cadenceShown(799,"EF"), cadenceShown(168,"Renfo"), cadenceShown(null,"EF")], [168, 110, null, null, null, null]);
+}
+
+// --- Progression : « Ton cœur » et « Ta foulée » (C25.2, revues du 14 et du 17/10/2026) ---
+{
+  const paceSeries = (paces, partial) => {
+    const out = []; let t = 0, elapsed = 0;
+    const segs = paces.map(p=>({ p, len:p })); if(partial) segs.push({ p:partial[1], len:partial[0]*partial[1] });
+    segs.forEach(sg=>{ const end = elapsed + sg.len; while(t+1 <= Math.ceil(end-1e-9)){ t++; out.push({ t, pace:sg.p }); } elapsed = end; });
+    return out;
+  };
+  const reg = (paces, type, partial, km) => paceRegularity({ paceSeries:paceSeries(paces, partial), distanceKm:km || paces.length + (partial ? partial[0] : 0), durationSec:paces.reduce((a,v)=>a+v,0) + (partial ? partial[0]*partial[1] : 0), type:type||"EF" });
+  assertEqual("régularité d'allure : sorties d'Omar du 08/10 (50 %) et du 06/10 (100 %), images validées", [reg([396,407,400,387,412], "EF", [0.88,409]), reg([422,422,415,423])], [50, 100]);
+  assertEqual("régularité d'allure : rien sous 4 km entiers, ni pour un fractionné ou une course", [reg([400,400,400]), reg([400,400,400,400], "Fractionné"), reg([400,400,400,400], "Course"), reg([400,410,400,405], "Long")], [null, null, null, 100]);
+
+  const T = new Date(2026,9,17,12).getTime(), ago = (d) => T - d*DAY_MS;
+  const pts = (now, before) => [...now.map((v,i)=>({ ts:ago(2+i*5), value:v })), ...before.map((v,i)=>({ ts:ago(95+i*5), value:v }))];
+  const ti = (kind, now, before) => trendIndicator({ points:pts(now, before), todayTs:T, agg: kind==="reg" ? "mean" : "median", neutral:IND_NEUTRAL[kind], better: kind==="drift" ? "down" : "up", redWhenWorse: kind!=="cad" });
+  const pill = (kind, now, before) => indicatorPill(kind, ti(kind, now, before));
+  assertEqual("indicateur : caché sans aucune mesure, « Bientôt » sous 3 sorties sur 8 semaines", [trendIndicator({ points:[], todayTs:T }).state, ti("drift", [4,6], [9,9,9])], ["hidden", { state:"soon", count:2, missing:1 }]);
+  assertEqual("indicateur : une sortie d'il y a 60 jours ne compte ni maintenant ni avant", ti("cad", [168,168,168], []).nowCount + trendIndicator({ points:[{ ts:ago(60), value:170 }], todayTs:T, agg:"median", neutral:2, better:"up" }).count, 3);
+  assertEqual("dérive : 9 % contre 13 % (maquette), pastille verte", [ti("drift", [3,9,12], [13,12,15]).shownNow, pill("drift", [3,9,12], [13,12,15])], [9, { text:"↓ 4 pts de moins qu'avant (13 %)", tone:"good" }]);
+  assertEqual("dérive : 0 % contre 0,5 % = Comme avant (règle C3) ; hausse en rouge", [pill("drift", [0,0,1], [0,1,0,1]), pill("drift", [6,6,7], [3,3,2])], [{ text:"= Comme avant", tone:"same" }, { text:"↑ 3 pts de plus qu'avant (3 %)", tone:"bad" }]);
+  assertEqual("dérive : moins de 3 sorties il y a 3 mois -> chiffre sans pastille", [ti("drift", [2,3,4], [5,6]).tone, pill("drift", [2,3,4], [5,6])], [null, null]);
+  assertEqual("cadence : hausse en vert, baisse neutre (jamais rouge), écart de 1 pas = Comme avant", [pill("cad", [166,168,170], [163,164,165]), pill("cad", [160,160,160], [164,164,164]), pill("cad", [165,165,165], [164,164,164])],
+    [{ text:"↑ 4 pas de plus", tone:"good" }, { text:"↓ 4 pas de moins", tone:"down" }, { text:"= Comme avant", tone:"same" }]);
+  assertEqual("régularité d'allure : moyenne 69 % contre 57 % (Omar), écart de 2 pts = Comme avant, baisse en rouge", [ti("reg", [50,100,57], [57,57,57]).shownNow, pill("reg", [50,100,57], [57,57,57]), pill("reg", [60,60,60], [58,58,58]), pill("reg", [50,50,50], [60,60,60])],
+    [69, { text:"↑ 12 pts de mieux", tone:"good" }, { text:"= Comme avant", tone:"same" }, { text:"↓ 10 pts de moins", tone:"bad" }]);
+
+  const hsm = heartStrideModel([
+    { id:"a", ts:ago(2), type:"EF", drift:{ pct:2, state:"stable" }, cadence:168, reg:80 },
+    { id:"b", ts:ago(5), type:"Long", drift:null, cadence:170, reg:null },
+    { id:"c", ts:ago(8), type:"Fractionné", drift:null, cadence:180, reg:null },
+  ], T);
+  assertEqual("ton cœur / ta foulée : sorties faciles seulement (EF et longues)", [hsm.drift.points.length, hsm.cad.points.length, hsm.reg.points.length, hsm.cad.state, hsm.hasEasyRuns], [1, 2, 1, "soon", true]);
+  assertEqual("ton cœur / ta foulée : sans sortie facile, tout est caché", [heartStrideModel([], T).drift.state, heartStrideModel([], T).hasEasyRuns], ["hidden", false]);
+
+  assertEqual("« Bientôt » : 1 sortie sur 3 et ce qui manque (maquette 2c)", [indicatorSoonText("drift", { count:1, missing:2 }), indicatorSoonText("cad", { count:2, missing:1 }).text, indicatorSoonText("reg", { count:0, missing:3 }).count],
+    [{ count:"1 sortie sur 3", text:"Encore 2 sorties faciles de 40 min et plus pour mesurer l'endurance de ton cœur." }, "Encore 1 sortie facile pour suivre ta cadence.", "0 sortie sur 3"]);
+  assertEqual("ligne du coach de la courbe (texte validé de la dérive)", [indicatorCoachText("drift", ti("drift", [0,0,1], [0,1,0,1])), indicatorCoachText("cad", ti("cad", [168,168,168], [])), indicatorCoachText("reg", ti("reg", [50,100,57], [57,57,57]))],
+    ["Sur tes sorties faciles de 40 min et plus, ton cœur reste stable : 0 % de dérive en général, comme il y a 3 mois.", "Sur tes sorties faciles, tu fais 168 pas par minute en général ces 8 dernières semaines.", "Sur tes sorties faciles, 69 % de tes km restent dans ton allure, contre 57 % il y a 3 mois."]);
+  const pp = (firstAvg, lastAvg) => ({ status:"ok", firstAvg, lastAvg });
+  assertEqual("progression sur la période, en haut de la courbe", [indicatorProgressText("drift", pp(13,9)), indicatorProgressText("drift", pp(3,5)), indicatorProgressText("cad", pp(164,165)), indicatorProgressText("reg", pp(57,69)), indicatorProgressText("reg", { status:"insuffisant" })],
+    [{ text:"↓ 4 pts", tone:"good" }, { text:"↑ 2 pts", tone:"muted" }, { text:"= stable", tone:"muted" }, { text:"↑ 12 pts", tone:"good" }, null]);
+
+  const rated = (d, ratings) => ({ ts:ago(d), ratings });
+  const advice = (runs, extra={}) => cadenceAdvice({ ratedRuns:runs, todayTs:T, painAlert:false, cadence:168, ...extra });
+  const omar = [rated(6, { rpe:6, psoas_g:4, genoux_d:3, genoux_g:2 })];
+  assertEqual("conseil cadence : gêne au genou et au psoas (Omar, 11/10) -> vers 176 pas/min", advice(omar), { target:176, text:"Des pas un peu plus rapides (vers 176 pas/min) réduisent souvent l'impact sur le genou et la hanche. Si la gêne dure, demande l'avis d'un kiné." });
+  assertEqual("conseil cadence : le mot suit la zone (ancienne clé genou_d comprise)", [advice([rated(3, { genou_d:2 })]).text.includes("sur le genou."), advice([rated(3, { psoas_d:3 })]).text.includes("sur la hanche.")], [true, true]);
+  assertEqual("conseil cadence : rien après 30 jours, avec une alerte douleur, à 180 pas/min et plus, sans cadence ou sans gêne au genou ou à la hanche", [
+    advice([rated(31, { genoux_d:4 })]), advice(omar, { painAlert:true }), advice(omar, { cadence:180 }), advice(omar, { cadence:null }), advice([rated(3, { rpe:7, mollets_g:5 })])], [null, null, null, null, null]);
+
+  assertEqual("barres Avant / Maintenant et repère de la jauge de dérive", [indicatorBarPct("cad", 168), indicatorBarPct("cad", 230), indicatorBarPct("cad", 90), indicatorBarPct("reg", 69), indicatorBarPct("reg", null), driftGaugePos(9), driftGaugePos(20), driftGaugePos(null)], [57, 100, 2, 69, 0, 0.6, 1, null]);
+  const zeros = [0,0,0].map((v,i)=>({ ts:ago(30-i*10), value:v }));
+  assertEqual("courbes : une valeur à 0 compte quand on le demande (dérive de 0 %)", [trendSegments(zeros, 0), trendSegments(zeros, 0, true).toValue, windowProgress(zeros, ago(30), ago(10)).status, windowProgress(zeros, ago(30), ago(10), true).lastAvg], [null, 0, "insuffisant", 0]);
 }
 
 document.getElementById("summary").innerHTML =

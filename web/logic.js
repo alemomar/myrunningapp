@@ -2334,8 +2334,9 @@ function sinceLabel(startTs, todayTs){
 // Progression = moyenne des 4 premières semaines → moyenne des 4 dernières (D30). Si les données couvrent moins de
 // 8 semaines, chaque fenêtre vaut la moitié de la durée (elles ne se recouvrent jamais) ; en dessous de 2 semaines
 // de recul, pas de progression. `points` : [{ts, value}]. Bornes explicites : startTs → endTs.
-function windowProgress(points, startTs, endTs){
-  const pts = (points||[]).filter(p=>p.ts>=startTs && p.ts<=endTs && p.value>0);
+// `zeroOk` : une valeur à 0 compte (dérive cardiaque de 0 %) ; sans lui, 0 veut dire « pas de mesure ».
+function windowProgress(points, startTs, endTs, zeroOk){
+  const pts = (points||[]).filter(p=>p.ts>=startTs && p.ts<=endTs && (p.value>0 || (zeroOk && p.value===0)));
   if(pts.length<2) return { status:"insuffisant" };
   const span = endTs - startTs;
   if(span < 14*DAY_MS) return { status:"insuffisant" };
@@ -2346,10 +2347,10 @@ function windowProgress(points, startTs, endTs){
   return { status:"ok", firstAvg:avg(first), lastAvg:avg(last), startTs, fullWindows: w>=28*DAY_MS };
 }
 // Progression d'une courbe sur une période : de la première à la dernière séance de la période.
-function periodProgress(points, key, todayTs){
+function periodProgress(points, key, todayTs, zeroOk){
   const pts = pointsInPeriod(points, key, todayTs);
   if(pts.length<2) return { status:"insuffisant" };
-  const p = windowProgress(pts, pts[0].ts, pts[pts.length-1].ts);
+  const p = windowProgress(pts, pts[0].ts, pts[pts.length-1].ts, zeroOk);
   return p.status==="ok" ? { ...p, since: sinceLabel(pts[0].ts, todayTs) } : p;
 }
 // Texte de la progression d'une allure, dans le même référentiel que les allures affichées : « −0'16"/km » (citron) ;
@@ -2421,8 +2422,8 @@ function monthTicks(startTs, endTs, maxLabels){
   return all.filter((_,i)=>i%k===0);
 }
 // Droite de tendance (régression sur le temps, en jours) : valeurs aux dates `fromTs`, `toTs` (fin des points) et `projTs` (projection).
-function trendSegments(points, projDays){
-  const pts = (points||[]).filter(p=>p.value>0).slice().sort((a,b)=>a.ts-b.ts);
+function trendSegments(points, projDays, zeroOk){
+  const pts = (points||[]).filter(p=>p.value>0 || (zeroOk && p.value===0)).slice().sort((a,b)=>a.ts-b.ts);
   if(pts.length<3) return null;
   const t0 = pts[0].ts, day = (ts)=>(ts-t0)/DAY_MS;
   const { slope, intercept } = linearRegression(pts.map(p=>({x:day(p.ts), y:p.value})));
@@ -4184,3 +4185,121 @@ function cadenceShown(cad, type){
   const c = Math.round(Number(cad));
   return RUNNING_RUN_TYPES.includes(type) && c>=100 && c<=220 ? c : null;
 }
+
+/* ---------- Progression : « Ton cœur » et « Ta foulée » (C25.2, revues d'Omar du 14 et du 17/10/2026) ----------
+   Maquettes Claude Design 2a à 2c. Chaque tuile compare tes 8 dernières semaines aux mêmes 8 semaines il y a 3 mois (C2), sur
+   tes sorties faciles (EF et sorties longues). Il faut au moins 3 sorties mesurées sur les 8 dernières semaines, sinon
+   « Bientôt » (« 1 sortie sur 3 », C8), et au moins 3 il y a 3 mois pour comparer, sinon le chiffre seul (C3). Une mesure que
+   la montre n'a jamais envoyée : tuile cachée (pas de case vide, retour d'Amine). Pastilles : vert si c'est mieux, rouge si
+   c'est moins bien (exception validée à « jamais de rouge », C2), sauf la cadence, qui n'est jamais en rouge (C6). */
+const IND_WINDOW_DAYS = 56, IND_SHIFT_DAYS = 91, IND_MIN_RUNS = 3;
+const IND_EASY_TYPES = ["EF","Long"];
+// Écart sous lequel la pastille dit « = Comme avant » : dérive 1 point (C3), cadence 2 pas (C6), régularité d'allure 3 points.
+const IND_NEUTRAL = { drift:1, cad:2, reg:3 };
+// Régularité d'allure (C7, validée le 17/10) : par sortie, la part des km (sans le 1er) à ±2,5 % de l'allure moyenne de ces km,
+// sur les sorties faciles d'au moins 4 km entiers avec l'allure détaillée ; la tuile en fait la MOYENNE (Omar 69 % contre 57 %).
+const PACE_REG_BAND = 0.025, PACE_REG_MIN_KMS = 4;
+function paceRegularity({ paceSeries, distanceKm, durationSec, type }){
+  if(!IND_EASY_TYPES.includes(type)) return null;
+  const m = kmSplits({ paceSeries, distanceKm, durationSec, type });
+  if(!m || m.kms.length < PACE_REG_MIN_KMS) return null;
+  const k = m.kms.slice(1), avg = k.reduce((a,v)=>a+v,0)/k.length;
+  return Math.round(k.filter(v=>Math.abs(v-avg) <= avg*PACE_REG_BAND).length / k.length * 100);
+}
+// `points` : [{ ts, value }] de toutes les sorties mesurées. `agg` : "median" (dérive, cadence) ou "mean" (régularité d'allure).
+// `better` : "down" (dérive) ou "up" ; `redWhenWorse` : faux pour la cadence (une baisse reste neutre).
+// Les chiffres affichés sont arrondis ; l'écart de la pastille est celui des chiffres affichés, pour que tout tombe juste.
+function trendIndicator({ points, todayTs, agg, neutral, better, redWhenWorse }){
+  const pts = (points||[]).filter(p=>p && p.ts!=null && isFinite(p.value));
+  if(!pts.length) return { state:"hidden" };
+  const t = new Date(todayTs), end = new Date(t.getFullYear(), t.getMonth(), t.getDate()+1).getTime();
+  const win = (from, to) => pts.filter(p=>p.ts>=from && p.ts<to).map(p=>Number(p.value));
+  const now = win(end - IND_WINDOW_DAYS*DAY_MS, end);
+  const before = win(end - (IND_WINDOW_DAYS+IND_SHIFT_DAYS)*DAY_MS, end - IND_SHIFT_DAYS*DAY_MS);
+  if(now.length < IND_MIN_RUNS) return { state:"soon", count:now.length, missing:IND_MIN_RUNS-now.length };
+  const f = agg==="mean" ? (a)=>a.reduce((x,v)=>x+v,0)/a.length : median;
+  const cur = f(now), prev = before.length>=IND_MIN_RUNS ? f(before) : null;
+  const shownNow = Math.round(cur), shownBefore = prev==null ? null : Math.round(prev);
+  let deltaShown = null, tone = null;
+  if(prev!=null){
+    deltaShown = shownNow - shownBefore;
+    const improved = better==="up" ? deltaShown>0 : deltaShown<0;
+    tone = Math.abs(cur-prev) < neutral || Math.abs(deltaShown) < neutral ? "same" : improved ? "good" : redWhenWorse===false ? "down" : "bad";
+  }
+  return { state:"value", now:cur, before:prev, shownNow, shownBefore, deltaShown, tone, nowCount:now.length, beforeCount:before.length };
+}
+// Les trois indicateurs à partir des sorties : `runs` = [{ id, ts, type, drift, cadence, reg }] (drift : cardiacDrift(…) ou null).
+function heartStrideModel(runs, todayTs){
+  const easy = (runs||[]).filter(r=>r && IND_EASY_TYPES.includes(r.type));
+  const pts = (pick) => easy.map(r=>{ const v = pick(r); return v==null ? null : { ts:r.ts, id:r.id, type:r.type, ...v }; }).filter(Boolean);
+  const drift = pts(r=>r.drift ? { value:r.drift.pct, state:r.drift.state } : null);
+  const cad = pts(r=>r.cadence!=null ? { value:r.cadence } : null);
+  const reg = pts(r=>r.reg!=null ? { value:r.reg } : null);
+  return {
+    hasEasyRuns: easy.length>0,
+    drift: { points:drift, ...trendIndicator({ points:drift, todayTs, agg:"median", neutral:IND_NEUTRAL.drift, better:"down" }) },
+    cad: { points:cad, ...trendIndicator({ points:cad, todayTs, agg:"median", neutral:IND_NEUTRAL.cad, better:"up", redWhenWorse:false }) },
+    reg: { points:reg, ...trendIndicator({ points:reg, todayTs, agg:"mean", neutral:IND_NEUTRAL.reg, better:"up" }) },
+  };
+}
+// Pastille de comparaison (maquette 2a, couleurs validées le 14/10) : { text, tone } ; tone = good (vert), bad (rouge),
+// same / down (neutre). null : pas de comparaison.
+function indicatorPill(kind, m){
+  if(!m || m.state!=="value" || m.tone==null) return null;
+  if(m.tone==="same") return { text:"= Comme avant", tone:"same" };
+  const n = Math.abs(m.deltaShown), pts = `${n} pt${n>1?"s":""}`;
+  if(kind==="drift") return { text: m.deltaShown<0 ? `↓ ${pts} de moins qu'avant (${m.shownBefore} %)` : `↑ ${pts} de plus qu'avant (${m.shownBefore} %)`, tone:m.tone };
+  if(kind==="cad") return { text: m.deltaShown>0 ? `↑ ${n} pas de plus` : `↓ ${n} pas de moins`, tone:m.tone };
+  return { text: m.deltaShown>0 ? `↑ ${pts} de mieux` : `↓ ${pts} de moins`, tone:m.tone };
+}
+// « Bientôt » (maquette 2c) : « 1 sortie sur 3 » et la phrase de ce qui manque.
+function indicatorSoonText(kind, m){
+  const k = m.missing, s = k>1 ? "s" : "";
+  const what = { drift:`Encore ${k} sortie${s} facile${s} de 40 min et plus pour mesurer l'endurance de ton cœur.`,
+    reg:`Encore ${k} sortie${s} facile${s} de 4 km et plus pour mesurer la régularité de ton allure.`,
+    cad:`Encore ${k} sortie${s} facile${s} pour suivre ta cadence.` }[kind];
+  return { count:`${m.count} sortie${m.count>1?"s":""} sur ${IND_MIN_RUNS}`, text:what };
+}
+// Ligne du coach de la courbe (fenêtre ouverte depuis la tuile) : le chiffre de la tuile, comparé à il y a 3 mois.
+function indicatorCoachText(kind, m){
+  if(!m || m.state!=="value") return m && m.state==="soon" ? indicatorSoonText(kind, m).text : "";
+  const cmp = m.tone==null ? " ces 8 dernières semaines" : m.tone==="same" ? ", comme il y a 3 mois" : `, contre ${m.shownBefore}${kind==="cad"?"":" %"} il y a 3 mois`;
+  if(kind==="drift") return m.shownNow===0 ? `Sur tes sorties faciles de 40 min et plus, ton cœur reste stable : 0 % de dérive en général${cmp}.`
+    : `Sur tes sorties faciles de 40 min et plus, ton cœur dérive de ${m.shownNow} % en général${cmp}.`;
+  if(kind==="cad") return `Sur tes sorties faciles, tu fais ${m.shownNow} pas par minute en général${cmp}.`;
+  return `Sur tes sorties faciles, ${m.shownNow} % de tes km restent dans ton allure${cmp}.`;
+}
+// Progression affichée en haut de la courbe, sur la période choisie : « ↓ 4 pts » (citron si mieux), « = stable » sinon gris.
+function indicatorProgressText(kind, p){
+  if(!p || p.status!=="ok") return null;
+  const d = Math.round(p.lastAvg - p.firstAvg);
+  if(Math.abs(d) < IND_NEUTRAL[kind]) return { text:"= stable", tone:"muted" };
+  const unit = kind==="cad" ? "pas" : Math.abs(d)>1 ? "pts" : "pt";
+  const better = kind==="drift" ? d<0 : d>0;
+  return { text:`${d<0?"↓":"↑"} ${Math.abs(d)} ${unit}`, tone: better ? "good" : "muted" };
+}
+// Conseil cadence (C6b, validé le 17/10) : gêne au genou ou à la hanche (le psoas compte comme la hanche) notée dans les 30
+// derniers jours, pas d'alerte douleur active, cadence connue et sous 180 pas/min. « vers N pas/min » = cadence habituelle + 5 %.
+// `ratedRuns` : [{ ts, ratings }].
+const CADENCE_ADVICE_DAYS = 30, CADENCE_ADVICE_MAX = 180, CADENCE_ADVICE_STEP = 0.05;
+function cadenceAdvice({ ratedRuns, todayTs, painAlert, cadence }){
+  const c = Number(cadence);
+  if(painAlert || !(c>0) || c >= CADENCE_ADVICE_MAX) return null;
+  let knee = false, hip = false;
+  (ratedRuns||[]).forEach(r=>{
+    if(!r || todayTs - r.ts > CADENCE_ADVICE_DAYS*DAY_MS || r.ts > todayTs + DAY_MS) return;
+    Object.keys(ratingZones(r.ratings)).forEach(z=>{ const f = zoneFamily(z); if(f==="genoux") knee = true; if(f==="psoas") hip = true; });
+  });
+  if(!knee && !hip) return null;
+  const target = Math.round(c*(1+CADENCE_ADVICE_STEP));
+  const where = knee && hip ? "le genou et la hanche" : knee ? "le genou" : "la hanche";
+  return { target, text:`Des pas un peu plus rapides (vers ${target} pas/min) réduisent souvent l'impact sur ${where}. Si la gêne dure, demande l'avis d'un kiné.` };
+}
+// Largeur des barres Avant / Maintenant : cadence sur l'échelle 100 à 220 pas/min (celle des cadences affichées), % tels quels.
+function indicatorBarPct(kind, v){
+  if(v==null) return 0;
+  const pct = kind==="cad" ? (v-100)/120*100 : v;
+  return Math.max(2, Math.min(100, Math.round(pct)));
+}
+// Repère sur la jauge de la dérive (3 segments égaux : 0 à 5, 5 à 10, 10 à 15 %), comme dans le détail d'une séance.
+function driftGaugePos(v){ return v==null ? null : Math.max(0, Math.min(1, v/15)); }

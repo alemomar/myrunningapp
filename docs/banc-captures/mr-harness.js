@@ -375,6 +375,42 @@
     rows.sort((a,b)=>new Date(a.start_date)-new Date(b.start_date)); await loadData(); rateYesterday();
     plannedSessions=[...wkSessions, ...future];
     if(scen==="objectif_allure_prog"){ show("progression"); scrollToCard("progObjective"); } else show("aujourdhui");
+  } else if(/^(progression_coeur|courbe_derive|courbe_cadence|courbe_regularite|progression_bientot|progression_garmin|progression_sans_comparaison)$/.test(scen)){
+    // C25.2 : « Ton cœur » et « Ta foulée ». Sorties faciles bien mesurées (allure toutes les 3 s, FC toutes les 5 s, cadence) :
+    // dérive de ~13 % il y a 3 mois à ~9 % maintenant, régularité d'allure de ~55 % à ~75 %, cadence de 164 à 168, gêne au genou
+    // il y a 6 jours (conseil cadence). « _bientot » : 1 sortie mesurée (2 avec la cadence) sur 8 semaines ; « _garmin » : la
+    // cadence seule ; « _sans_comparaison » : rien de mesuré il y a 3 mois ; « courbe_* » : la courbe ouverte en fenêtre.
+    try{ localStorage.setItem("mra_notLinked", JSON.stringify(rows.map(r=>r.id))); }catch(e){}
+    celebrationOff();
+    const ageOf = (r) => Math.round((Date.now()-new Date(r.start_date).getTime())/86400000);
+    if(scen!=="progression_sans_comparaison") [96,100,104,109,113,118,122,127,131,136,140,145].forEach(n=>rows.push({ id:"old"+n, apple_type:"Running", include_in_stats:true, start_date:startOf(n).toISOString(), type: n%3===0 ? "Long" : "EF", distance_km: n%3===0 ? 11 : 8, duration_sec:2900, avg_hr:148, pain_ratings:{ rpe:5, note:4, gene:false, fatigue:3, mental:2, respiration:2 } }));
+    const easy = rows.filter(r=>(r.type==="EF"||r.type==="Long") && r.include_in_stats!==false).sort((a,b)=>new Date(b.start_date)-new Date(a.start_date));
+    easy.forEach((r, idx)=>{
+      const age = ageOf(r), f = Math.min(1, age/145);   // 0 aujourd'hui, 1 il y a 145 jours
+      let dense = true, cad = true;
+      if(scen==="progression_bientot"){ dense = idx===0; cad = idx<2; }
+      if(scen==="progression_garmin") dense = false;
+      if(scen==="progression_sans_comparaison" && age>=85){ dense = false; cad = false; }
+      if(cad) r.avg_cadence = Math.round(169 - 6*f + ((idx*3)%5 - 2));
+      if(!dense){ r.pace_series = null; return; }
+      const k = Math.max(7, Math.round(r.distance_km||8)), base = Math.round((r.type==="Long" ? 372 : 360) + 20*f);
+      const offEvery = f>0.6 ? 2 : (idx%2 ? 3 : 4);   // un km sur 2 (il y a 3 mois), 3 ou 4 (maintenant) sort de l'allure (±4 %, en alternance)
+      const kmP = Array.from({ length:k }, (_,i)=> i===0 ? Math.round(base*1.03) : i%offEvery===0 ? Math.round(base*(1 + (Math.floor(i/offEvery)%2 ? 0.04 : -0.04))) : Math.round(base*(1 + [0.004,-0.006,0.003,-0.004,0.005][i%5])));
+      const dur = kmP.reduce((a,v)=>a+v,0);
+      const pace = []; let el = 0, t = 0;
+      kmP.forEach(p=>{ const end = el+p; while(t+3<=end){ t+=3; pace.push({ t, pace:Math.round(p + 3*Math.sin(t/37)) }); } el = end; });
+      const d = 0.085 + 0.05*f + (((idx*37)%7) - 3)*0.006;   // dérive visée
+      const H1 = 141, H2 = H1/(1-d), L = dur-600, b = (H2-H1)/(L/2), a = H1 - b*L/4;
+      const hr = []; for(let s=5; s<=dur; s+=5){ const v = s<600 ? 112 + (a-112)*s/600 : a + b*(s-600); hr.push({ t:s, hr:Math.round(v + 1.5*Math.sin(s/53)) }); }
+      Object.assign(r, { distance_km:k, duration_sec:dur, pace_series:pace, hr_series:hr, avg_hr:Math.round(hr.reduce((x,p)=>x+p.hr,0)/hr.length), peak_hr:Math.max(...hr.map(p=>p.hr)) });
+    });
+    const knee = rows.find(r=>r.include_in_stats!==false && ageOf(r)>=4 && ageOf(r)<=8 && r.pain_ratings);
+    if(knee && scen!=="progression_garmin") knee.pain_ratings = { ...knee.pain_ratings, gene:true, genoux_d:3 };
+    rows.sort((a,b)=>new Date(a.start_date)-new Date(b.start_date)); await loadData(); rateYesterday();
+    plannedSessions=[...wkSessions, ...future]; show("progression");
+    const sheet = { courbe_derive:"drift", courbe_cadence:"cad", courbe_regularite:"reg" }[scen];
+    if(sheet && typeof openIndicatorSheet==="function") openIndicatorSheet(sheet);
+    else setTimeout(()=>{ const el = document.getElementById("progIndicators"); if(el) el.scrollIntoView(); }, 50);
   } else if(scen==="aujourdhui_repos_simple" || scen==="aujourdhui_gene" || scen==="aujourdhui_couru"){
     // Refonte d'Aujourd'hui (C27) : jour de repos sans carte d'action (objectif et chiffre du jour visibles) ; « gene » : gêne au
     // genou droit notée hier (À ménager, zone sensible, mobilité ciblée) ; « couru » : sortie reçue aujourd'hui sans séance prévue.

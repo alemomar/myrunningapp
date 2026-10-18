@@ -63,6 +63,11 @@
   --data-coral:oklch(0.7 0.19 25);
   --data-heart:oklch(0.62 0.22 25);
   --data-neutral:#8B8F96;
+  /* Pastilles « mieux / moins bien qu'avant » des indicateurs de Progression (C2, validées le 14/10 : seule exception au « jamais de rouge ») */
+  --delta-good:oklch(0.78 0.16 150);
+  --delta-good-bg:oklch(0.78 0.16 150 / .14);
+  --delta-bad:oklch(0.68 0.2 25);
+  --delta-bad-bg:oklch(0.68 0.2 25 / .14);
   /* Types de séance */
   --type-ef:#C6F432;
   --type-long:oklch(0.8 0.12 160);
@@ -609,6 +614,56 @@ button.pg-rec-row{cursor:pointer}
   .pg-ring .v,.pg-chg-row .z{font-size:17px}
   .pg-chg-row .n{font-size:19px}
 }
+/* « Ton cœur » et « Ta foulée » (C25.2, maquettes 2a à 2c) */
+.ind-sub{font-size:12.5px;line-height:1.35;color:var(--text-3);margin:-4px 4px 10px}
+.ind-sub + .ind-leg{margin-top:-6px}
+.ind-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;margin:0 4px 10px}
+.ind-leg span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:1px;background:currentColor}
+.ind-leg .g{color:var(--delta-good)}
+.ind-leg .b{color:var(--delta-bad)}
+.ind-card{position:relative;display:flex;flex-direction:column;align-items:flex-start;width:100%;min-width:0;margin-bottom:12px;padding:14px;border:none;border-radius:20px;background:var(--surface);color:inherit;font:inherit;text-align:left}
+button.ind-card{cursor:pointer}
+.ind-card .pg-over{padding-right:20px}
+.ind-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.ind-grid .ind-card{margin:0}
+.ind-grid .ind-card:only-child{grid-column:1/-1}
+.ind-grid .ind-card:not(:only-child) .pg-over{min-height:27px}   /* « Régularité d'allure » passe sur 2 lignes : les chiffres des 2 tuiles restent alignés */
+.ind-row{display:flex;align-items:center;gap:12px;margin:10px 0 2px}
+.ind-big{font:700 40px/1 var(--font-display);white-space:nowrap;flex:none;color:var(--text)}
+.ind-lab{font-size:13px;line-height:1.3;color:var(--text-3)}
+.ind-v{display:flex;align-items:baseline;gap:4px;margin-top:8px}
+.ind-v .u{font-size:13px;color:var(--text-3)}
+.ind-pill{display:inline-flex;align-items:center;margin:8px 0 2px;padding:4px 10px;border-radius:var(--r-pill);font-size:12.5px;font-weight:600;line-height:1.25;color:var(--text-3);background:var(--select-soft)}
+.ind-pill.good{color:var(--delta-good);background:var(--delta-good-bg)}
+.ind-pill.bad{color:var(--delta-bad);background:var(--delta-bad-bg)}
+.ind-gauge{position:relative;display:flex;gap:4px;width:100%;margin-top:14px}
+.ind-gauge i{flex:1;height:5px;border-radius:3px}
+.ind-gauge i:nth-child(1){background:var(--accent)}
+.ind-gauge i:nth-child(2){background:var(--text-faint)}
+.ind-gauge i:nth-child(3){background:var(--attention)}
+.ind-gauge .mk{position:absolute;top:-4px;width:3px;height:13px;margin-left:-1.5px;border-radius:2px;background:var(--text);box-shadow:0 0 0 2px var(--surface)}
+.ind-gauge .ring{position:absolute;top:-3px;width:11px;height:11px;margin-left:-5.5px;border-radius:50%;border:2px solid var(--text-muted);background:var(--surface)}
+.ind-gl{display:flex;justify-content:space-between;gap:10px;width:100%;margin-top:6px;font-size:11.5px;color:var(--text-3)}
+.ind-gl .t{color:var(--accent)}
+.ind-ab{display:flex;justify-content:space-between;gap:8px;width:100%;font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.ind-pill + .ind-ab,.ind-v + .ind-ab{margin-top:10px}
+.ind-ab.now{color:var(--text);font-weight:600}
+.ind-bar{width:100%;height:5px;margin:3px 0 7px;border-radius:3px;background:var(--line)}
+.ind-bar i{display:block;height:100%;border-radius:3px;background:var(--text-faint)}
+.ind-bar.now i{background:var(--text)}
+.ind-ph{font-size:12.5px;line-height:1.4;color:var(--text-3);margin-top:2px}
+.ind-ph.adv{display:flex;gap:6px;color:var(--text-2)}
+.ind-ph.adv svg{color:var(--accent);flex:none;margin-top:3px}
+.ind-soon{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:8px 0 10px}
+.ind-soon .w{font:700 40px/1 var(--font-display);text-transform:uppercase;color:var(--text-faint)}
+.ind-grid .ind-soon .w{font-size:32px}
+.ind-soon .n{font-size:13px;color:var(--text-3)}
+.ind-segs{display:flex;gap:4px;width:100%;margin-bottom:10px}
+.ind-segs i{flex:1;height:6px;border-radius:3px;background:var(--line)}
+.ind-segs i.on{background:var(--text-muted)}
+.ind-note{display:flex;align-items:center;gap:6px;margin:-2px 4px 16px;font-size:12.5px;color:var(--text-muted)}
+.ind-note svg{flex:none}
+.ind-sheet .pc{margin:0;padding:0;background:none}
 /* Feuille de la jauge de charge (4c) */
 .cg-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px}
 .cg-top .btns{display:flex;gap:8px;align-items:center}
@@ -1383,7 +1438,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=108"></script>
+<script src="logic.js?v=109"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -2991,10 +3046,82 @@ function indicatorTilesHTML(){
   return `<div class="pg-h2" id="progIndicators">Tes indicateurs</div>
     <div class="pg-grid">
       ${eff.unusual ? effUnusualTile : tile("Efficience cardiaque", effText, effColor, efficiencyPhrase(eff), "cardEff")}
-      ${tile("Régularité", reg.status==="ok" ? `${reg.weeksWithRun}/${reg.totalWeeks} sem.` : "—", reg.status==="ok" ? "var(--text)" : "var(--text-faint)", regularityPhrase(reg), null)}
+      ${tile("Régularité de course", reg.status==="ok" ? `${reg.weeksWithRun}/${reg.totalWeeks} sem.` : "—", reg.status==="ok" ? "var(--text)" : "var(--text-faint)", regularityPhrase(reg), null)}
       ${tile("Volume", `${fmtKm1(vol.last28)} km`, "var(--text)", `4 dernières semaines. Les 4 d'avant : ${fmtKm1(vol.prev28)} km.`, "cardVol")}
       ${chargeTile}
     </div>`;
+}
+// Blocs « Ton cœur » (dérive cardiaque) et « Ta foulée » (cadence, régularité d'allure), entre « Tes indicateurs » et « Chiffres
+// clés » (C1 v2, C25.2). Chaque tuile : valeur en blanc, pastille verte / rouge, barres Avant (gris) / Maintenant (blanc), une phrase
+// (C2) ; toucher la tuile ouvre sa courbe en fenêtre. « Bientôt » sous 3 sorties ; tuile jamais mesurée cachée, bloc vide caché,
+// et alors la ligne « Certaines mesures ne sont pas envoyées par ta montre » (C8).
+const indPillHTML = (pill) => pill ? `<span class="ind-pill ${pill.tone}">${escHtml(pill.text)}</span>` : "";
+function indSoonHTML(kind, label, m){
+  const s = indicatorSoonText(kind, m);
+  return `<div class="ind-card soon"><div class="pg-over">${label}</div>
+    <div class="ind-soon"><span class="w">Bientôt</span><span class="n">${escHtml(s.count)}</span></div>
+    <div class="ind-segs" aria-hidden="true">${[0,1,2].map(i=>`<i${i<m.count?' class="on"':""}></i>`).join("")}</div>
+    <div class="ind-ph">${escHtml(s.text)}</div></div>`;
+}
+function driftCardHTML(m){
+  if(m.state==="soon") return indSoonHTML("drift", "Dérive cardiaque", m);
+  const now = driftGaugePos(m.shownNow), before = m.tone!=null ? driftGaugePos(m.shownBefore) : null;
+  return `<button type="button" class="ind-card" onclick="openIndicatorSheet('drift')">
+    <div class="pg-over">Dérive cardiaque</div><span class="pg-chev" aria-hidden="true">${icon("chevronRight",14)}</span>
+    <div class="ind-row"><span class="ind-big">${m.shownNow} %</span><span class="ind-lab">de hausse du cœur en 2e moitié de tes sorties faciles de 40 min et plus</span></div>
+    ${indPillHTML(indicatorPill("drift", m))}
+    <div class="ind-gauge" aria-hidden="true"><i></i><i></i><i></i>${before!=null?`<span class="ring" style="left:${(before*100).toFixed(1)}%"></span>`:""}<span class="mk" style="left:${(now*100).toFixed(1)}%"></span></div>
+    <div class="ind-gl"><span class="t">Cible : moins de 5 %</span><span>${before!=null?"Avant ○ · ":""}Maintenant |</span></div>
+  </button>`;
+}
+function strideTileHTML(kind, m, advice){
+  const label = kind==="cad" ? "Cadence" : "Régularité d'allure";
+  if(m.state==="soon") return indSoonHTML(kind, label, m);
+  const fmt = (v) => v==null ? "—" : kind==="cad" ? String(v) : `${v} %`;
+  const phrase = advice ? `<div class="ind-ph adv">${icon("sparkle",12)}<span>${escHtml(advice.text)}</span></div>`
+    : `<div class="ind-ph">${kind==="cad" ? "Pas par minute sur tes sorties faciles." : "Part de tes km qui restent dans ton allure, sur tes sorties faciles."}</div>`;
+  return `<button type="button" class="ind-card" onclick="openIndicatorSheet('${kind}')">
+    <div class="pg-over">${label}</div><span class="pg-chev" aria-hidden="true">${icon("chevronRight",14)}</span>
+    <div class="ind-v"><span class="ind-big">${fmt(m.shownNow)}</span>${kind==="cad"?`<span class="u">pas/min</span>`:""}</div>
+    ${indPillHTML(indicatorPill(kind, m))}
+    <div class="ind-ab"><span>Avant</span><span>${fmt(m.shownBefore)}</span></div><div class="ind-bar" aria-hidden="true"><i style="width:${m.shownBefore==null?0:indicatorBarPct(kind, m.shownBefore)}%"></i></div>
+    <div class="ind-ab now"><span>Maintenant</span><span>${fmt(m.shownNow)}</span></div><div class="ind-bar now" aria-hidden="true"><i style="width:${indicatorBarPct(kind, m.shownNow)}%"></i></div>
+    ${phrase}
+  </button>`;
+}
+function heartStrideHTML(){
+  const hs = heartStrideData();
+  const show = { drift:hs.drift.state!=="hidden", cad:hs.cad.state!=="hidden", reg:hs.reg.state!=="hidden" };
+  const models = [hs.drift, hs.cad, hs.reg].filter(m=>m.state!=="hidden");
+  const anyValue = models.some(m=>m.state==="value"), anyCmp = models.some(m=>m.state==="value" && m.tone!=null);
+  let first = true;
+  const head = (title, id) => {
+    const intro = first && anyValue ? `<div class="ind-sub">Avant : il y a 3 mois. Maintenant : tes 8 dernières semaines.</div>${anyCmp?`<div class="ind-leg"><span class="g">Mieux qu'avant</span><span class="b">Moins bien qu'avant</span></div>`:""}` : "";
+    first = false;
+    return `<div class="pg-h2" id="${id}">${title}</div>${intro}`;
+  };
+  let out = "";
+  if(show.drift) out += head("Ton cœur", "progHeart") + driftCardHTML(hs.drift);
+  if(show.cad || show.reg){
+    const advice = show.cad && hs.cad.state==="value" ? cadenceAdvice({ ratedRuns: runningRuns.map(r=>({ ts:dateFromRun(r).getTime(), ratings:r.painRatings })), todayTs:Date.now(), painAlert: !!urgentAlert(), cadence:hs.cad.shownNow }) : null;
+    out += head("Ta foulée", "progStride") + `<div class="ind-grid">${show.cad?strideTileHTML("cad", hs.cad, advice):""}${show.reg?strideTileHTML("reg", hs.reg, null):""}</div>`;
+  }
+  if((!show.drift || !show.cad || !show.reg) && hs.hasEasyRuns) out += `<div class="ind-note">${icon("info",14)}<span>Certaines mesures ne sont pas envoyées par ta montre.</span></div>`;
+  return out;
+}
+// Courbe d'un indicateur en fenêtre (C1 v2) : même carte que les graphiques du bas (périodes, curseur, bulle), dans une feuille.
+let indSheet = null;   // "drift" | "cad" | "reg"
+window.openIndicatorSheet = (key) => { indSheet = key; chartSt(key).index = null; refreshSheet(); };
+window.closeIndicatorSheet = () => { indSheet = null; refreshSheet(); };
+document.addEventListener("keydown", (e) => { if(e.key==="Escape" && indSheet && !openYearMenu) closeIndicatorSheet(); });
+function renderIndicatorSheet(){
+  if(!indSheet) return false;
+  const label = { drift:"Dérive cardiaque", cad:"Cadence", reg:"Régularité d'allure" }[indSheet];
+  document.getElementById("sheetRoot").innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closeIndicatorSheet()"><div class="sheet ind-sheet" role="dialog" aria-modal="true" aria-label="${label}">
+    <div class="cg-top"><span class="pg-over">${indSheet==="drift" ? "Ton cœur" : "Ta foulée"}</span><div class="btns"><button class="sheet-close" type="button" aria-label="Fermer" onclick="closeIndicatorSheet()">${icon("x",16)}</button></div></div>
+    ${chartCardHTML(indSheet) || `<div class="pc-coach">${icon("sparkle",13)}<span>Pas encore assez de sorties mesurées pour cette courbe.</span></div>`}
+  </div></div>`;
+  return true;
 }
 function keyFiguresHTML(){
   const kf = keyFigures(runningRuns.map(runAsRecord), Date.now());
@@ -3039,6 +3166,7 @@ const progChartState = {};   // clé → { period, index }
 const CH_H = 170, CH_L = 34, CH_R = 8, CH_T = 10, CH_B = 148;
 const chartW = () => { const c = document.getElementById("content"); return Math.max(240, Math.min(520, (c ? c.clientWidth : 375) - 72)); };
 const chartSt = (key) => progChartState[key] || (progChartState[key] = { period:"all", index:null });
+const sheetChartW = () => Math.max(240, Math.min(520, window.innerWidth) - 32);   // courbe dans une fenêtre (C25.2) : largeur utile de la feuille
 const fmtDayFr = (ts) => new Date(ts).toLocaleDateString("fr-FR", { weekday:"short", day:"numeric", month:"short" });
 const svgEsc = (t) => String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 const FRAC_COLOR = "#C56A3E";   // terre battue : équivalent hexadécimal de --type-fractionne
@@ -3058,36 +3186,43 @@ function chartLegendHTML(items){
 }
 
 // --- Courbes dans le temps ---
-// cfg : { title, heart, points:[{ts,value,id,kind}], trendKinds:[...], progress:'pace'|'ratio', yFmt(v,dec), steps, decimals, goalTs, projDays,
+// cfg : { title, heart, points:[{ts,value,id,kind,color}], trendKinds:[...], progress:'pace'|'ratio', yFmt(v,dec), steps, decimals, goalTs, projDays,
 //         legend:[html], coachFn(progress,pts), bubbleFn(point)->parts, waitMinPoints, waitText }
+// Courbes des indicateurs de Progression (C25.2) : up (grandes valeurs en haut), yDomain {min,max} fixe, band {to,label} (zone cible
+// de 0 à `to`), progressFn(prog) (texte du haut), zeroOk (une valeur à 0 compte : dérive de 0 %), color sur un point.
 function timeChartModel(key, cfg){
   const st = chartSt(key), now = Date.now();
   const all = pointsInPeriod(cfg.points, st.period, now);
-  const W = chartW();
+  const W = cfg.inSheet ? sheetChartW() : chartW();
   if(all.length < (cfg.waitMinPoints||2)){
     if((cfg.points||[]).length >= (cfg.waitMinPoints||2)) return { key, empty:true, title:cfg.title, heart:cfg.heart, text:"Pas assez de séances sur cette période : choisis une période plus longue." };
     return { key, wait:true, title:cfg.title, text:cfg.waitText, count:all.length };
   }
   const trendPts = all.filter(p=>cfg.trendKinds.includes(p.kind));
-  const prog = periodProgress(trendPts, st.period, now);
-  const progress = cfg.progress==="ratio" ? ratioProgressText(prog) : paceProgressText(prog);
+  const prog = periodProgress(trendPts, st.period, now, cfg.zeroOk);
+  const progress = cfg.progressFn ? cfg.progressFn(prog) : cfg.progress==="ratio" ? ratioProgressText(prog) : paceProgressText(prog);
   const first = all[0].ts, lastPt = all[all.length-1].ts;
   let end = cfg.projDays ? lastPt + cfg.projDays*DAY_MS : lastPt;
   if(cfg.goalTs && cfg.goalTs>lastPt && cfg.goalTs < lastPt + 400*DAY_MS) end = Math.max(end, cfg.goalTs);
   const start = first, endTs = Math.max(end, start + 30*DAY_MS);
-  const yd = chartYDomain(all.map(p=>p.value), 0.1);
+  const yd = cfg.yDomain || chartYDomain(all.map(p=>p.value), 0.1);
   const ticks = niceTicks(yd.min, yd.max, 5, cfg.steps).ticks;
   const l = CH_L, r = W - CH_R, pw = r - l;
   const X = (ts) => l + (ts-start)/(endTs-start)*pw;
-  const Y = (v) => CH_T + (v-yd.min)/(yd.max-yd.min)*(CH_B-CH_T);   // petit = en haut (plus rapide, plus efficace)
+  const Y = cfg.up ? (v) => CH_B - (v-yd.min)/(yd.max-yd.min)*(CH_B-CH_T)    // grand = en haut (dérive, cadence, régularité)
+    : (v) => CH_T + (v-yd.min)/(yd.max-yd.min)*(CH_B-CH_T);   // petit = en haut (plus rapide, plus efficace)
   const nav = all.map(p=>({ id:p.id, kind:p.kind, frac:(X(p.ts)-l)/pw, race:p.kind==="race", p }));
   const dec = cfg.decimals ? axisDecimals(yd.min, yd.max, 5) : 0;
-  const trend = trendSegments(trendPts, cfg.projDays||0);
+  const trend = trendSegments(trendPts, cfg.projDays||0, cfg.zeroOk);
   const svg = (sel) => {
     const g = [];
     ticks.forEach(v=>{ const y = Y(v); g.push(`<line class="gl" x1="${l}" x2="${r}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text x="${l-6}" y="${(y+4).toFixed(1)}" text-anchor="end">${cfg.yFmt(v,dec)}</text>`); });
     monthTicks(start, endTs, Math.max(3, Math.floor(pw/50))).forEach(m=>{ g.push(`<text x="${Math.max(X(m.ts), l+12).toFixed(1)}" y="164" text-anchor="middle">${m.label}</text>`); });
     const plot = [];
+    if(cfg.band){   // zone cible (dérive : « Cible : moins de 5 % »), sous les points
+      const yb = Y(cfg.band.to), y0 = Y(yd.min);
+      plot.push(`<rect x="${l}" y="${yb.toFixed(1)}" width="${pw}" height="${(y0-yb).toFixed(1)}" fill="rgba(198,244,50,.10)"/><line x1="${l}" x2="${r}" y1="${yb.toFixed(1)}" y2="${yb.toFixed(1)}" stroke="#C6F432" stroke-opacity=".5" stroke-dasharray="4 3"/><text x="${l+4}" y="${(yb-5).toFixed(1)}" style="fill:#C6F432">${svgEsc(cfg.band.label)}</text>`);
+    }
     if(trend && !cfg.line){
       const x1 = X(trend.fromTs), x2 = X(trend.toTs);
       plot.push(`<line x1="${x1.toFixed(1)}" y1="${Y(trend.fromValue).toFixed(1)}" x2="${x2.toFixed(1)}" y2="${Y(trend.toValue).toFixed(1)}" stroke="#F2F3F0" stroke-width="1.5" stroke-dasharray="5 4" opacity=".7"/>`);
@@ -3108,7 +3243,7 @@ function timeChartModel(key, cfg){
       const x = X(p.ts).toFixed(1), y = Y(p.value).toFixed(1);
       if(p.kind==="long") plot.push(`<path d="M${x} ${(y-5)} l5 5 l-5 5 l-5 -5 Z" fill="#71D6A3"/>`);
       else if(p.kind==="race") plot.push(`<line x1="${x}" x2="${x}" y1="${(y-4)}" y2="${(y-20)}" stroke="#EE343B" stroke-width="1.6"/><path d="M${x} ${(y-20)} l10 4 l-10 4 Z" fill="#EE343B"/><circle cx="${x}" cy="${y}" r="4.2" fill="#EE343B" style="stroke:var(--surface);stroke-width:1.5"/>`);
-      else plot.push(`<circle cx="${x}" cy="${y}" r="${cfg.line?3:3.6}" fill="${p.kind==="frac"?FRAC_COLOR:p.kind==="eff"?"#FF645F":"#C6F432"}"/>`);
+      else plot.push(`<circle cx="${x}" cy="${y}" r="${cfg.line?3:3.6}" fill="${p.color || (p.kind==="frac"?FRAC_COLOR:p.kind==="eff"?"#FF645F":"#C6F432")}"/>`);
     });
     const cur = nav[sel].p, cx = X(cur.ts), cy = Y(cur.value);
     plot.push(`<g class="selm"><line x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="10" y2="148" stroke="#F2F3F0" stroke-width="1" opacity=".4"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6" fill="none" stroke="#F2F3F0" stroke-width="2"/></g>`);
@@ -3250,9 +3385,62 @@ function mixChartModel(){
     legend: chartLegendHTML([`<i class="sq" style="background:#C6F432"></i>Facile (zones 1 à 3)`, `<i class="sq" style="background:${FRAC_COLOR}"></i>Soutenu (zones 4 et 5)`, `<i class="ln"></i>Objectif conseillé : ${EASY_TARGET_PCT} % facile`]),
   });
 }
-const CHART_BUILDERS = { ef:efChartModel, frac:fracChartModel, eff:effChartModel, vol:volChartModel, mix:mixChartModel };
+// --- Courbes de « Ton cœur » et « Ta foulée » (C25.2, maquette 2b) : en fenêtre, ouvertes depuis leur tuile ---
+// Mesures de chaque sortie, gardées tant que la sortie ne change pas : la dérive relit toute la courbe de FC, on ne la refait pas
+// à chaque glissement du curseur. Les sorties à vérifier restent à part, comme pour la courbe d'endurance (D109).
+const indRunCache = new WeakMap();
+function runIndicatorValues(r){
+  const c = indRunCache.get(r);
+  if(c && c.type===r.type) return c;
+  const v = { type:r.type,
+    drift: cardiacDrift({ hrSeries:r.hrSeries, paceSeries:r.paceSeries, durationSec:r.durationSec, type:r.type }),
+    reg: paceRegularity({ paceSeries:r.paceSeries, distanceKm:r.dist, durationSec:r.durationSec, type:r.type }),
+    cadence: cadenceShown(r.cad, r.type) };
+  indRunCache.set(r, v);
+  return v;
+}
+function heartStrideData(){
+  return heartStrideModel(runningRuns.filter(r=>!doubtIds.has(r.id)).map(r=>({ id:r.id, ts:dateFromRun(r).getTime(), ...runIndicatorValues(r) })), Date.now());
+}
+const DRIFT_COLORS = { stable:"#C6F432", correct:"#F2F3F0", hausse:"#B688FE" };
+const easyLegend = (pts) => chartLegendHTML([paceLegendDot("#C6F432","EF"), pts.some(p=>p.type==="Long")?`<i class="dia" style="background:#71D6A3"></i>Sortie longue`:"", `<i class="ln"></i>Tendance`].filter(Boolean));
+const easyPoints = (pts) => pts.map(p=>({ ts:p.ts, value:p.value, id:p.id, kind:p.type==="Long"?"long":"ef" }));
+function driftChartModel(){
+  const d = heartStrideData().drift;
+  if(d.state!=="value") return null;
+  const max = Math.max(15, Math.ceil(Math.max(...d.points.map(p=>p.value))/5)*5);
+  return timeChartModel("drift", {
+    title:"Dérive cardiaque · hausse par sortie", heart:true, inSheet:true, up:true, zeroOk:true, yDomain:{ min:0, max }, band:{ to:5, label:"Cible : moins de 5 %" },
+    points:d.points.map(p=>({ ts:p.ts, value:p.value, id:p.id, kind:"drift", color:DRIFT_COLORS[p.state] })), trendKinds:["drift"], projDays:0, steps:[5,10,15,20,25],
+    yFmt:(v)=>`${v} %`, progressFn:(prog)=>indicatorProgressText("drift", prog), coachFn:()=>indicatorCoachText("drift", d),
+    bubbleFn:(p)=>[{t:`${p.value} %`, b:true}, {t:` · ${fmtDayFr(p.ts)}`}],
+    legend: chartLegendHTML([paceLegendDot("#C6F432","Stable"), paceLegendDot("#F2F3F0","Correct"), paceLegendDot("#B688FE","En hausse"), `<i class="ln"></i>Tendance`]),
+    waitMinPoints:2, waitText:"",
+  });
+}
+function cadChartModel(){
+  const d = heartStrideData().cad;
+  if(d.state!=="value") return null;
+  return timeChartModel("cad", {
+    title:"Cadence · pas par minute", inSheet:true, up:true, points:easyPoints(d.points), trendKinds:["ef","long"], projDays:0, steps:[2,5,10,20,25,50],
+    yFmt:(v)=>String(Math.round(v)), progressFn:(prog)=>indicatorProgressText("cad", prog), coachFn:()=>indicatorCoachText("cad", d),
+    bubbleFn:(p)=>[{t:`${p.value} pas/min`, b:true}, {t:` · ${fmtDayFr(p.ts)}`}],
+    legend: easyLegend(d.points), waitMinPoints:2, waitText:"",
+  });
+}
+function regChartModel(){
+  const d = heartStrideData().reg;
+  if(d.state!=="value") return null;
+  return timeChartModel("reg", {
+    title:"Régularité d'allure · par sortie", inSheet:true, up:true, zeroOk:true, yDomain:{ min:0, max:100 }, points:easyPoints(d.points), trendKinds:["ef","long"], projDays:0, steps:[25,50],
+    yFmt:(v)=>`${v} %`, progressFn:(prog)=>indicatorProgressText("reg", prog), coachFn:()=>indicatorCoachText("reg", d),
+    bubbleFn:(p)=>[{t:`${p.value} % des km dans ton allure`, b:true}, {t:` · ${fmtDayFr(p.ts)}`}],
+    legend: easyLegend(d.points), waitMinPoints:2, waitText:"",
+  });
+}
+const CHART_BUILDERS = { ef:efChartModel, frac:fracChartModel, eff:effChartModel, vol:volChartModel, mix:mixChartModel, drift:driftChartModel, cad:cadChartModel, reg:regChartModel };
 const chartSel = (m) => { const st = chartSt(m.key); return st.index==null ? m.nav.length-1 : Math.min(Math.max(st.index,0), m.nav.length-1); };
-const CHART_CARD_ID = { ef:"cardEf", frac:"cardFrac", eff:"cardEff", vol:"cardVol", mix:"cardMix" };
+const CHART_CARD_ID = { ef:"cardEf", frac:"cardFrac", eff:"cardEff", vol:"cardVol", mix:"cardMix", drift:"cardDrift", cad:"cardCad", reg:"cardReg" };
 function chartCardHTML(key){
   const m = CHART_BUILDERS[key]();
   if(!m) return "";
@@ -6750,6 +6938,7 @@ function renderSheetContent(root){
   else if(exerciseSheet) renderExerciseSheet();
   else if(typeof renderProgramSheet==="function" && renderProgramSheet()) { /* feuille Ajouter / Modifier */ }
   else if(typeof renderChargeSheet==="function" && renderChargeSheet()) { /* jauge de charge */ }
+  else if(typeof renderIndicatorSheet==="function" && renderIndicatorSheet()) { /* courbe d'un indicateur de Progression (C25.2) */ }
   else if(typeof renderRunSheet==="function" && renderRunSheet()) { /* détail d'une séance faite */ }
   else if(typeof renderObjectiveSheet==="function" && renderObjectiveSheet()) { /* objectif */ }
   else if(typeof renderSyncGuide==="function" && renderSyncGuide()) { /* guide de connexion RunSync */ }
@@ -6982,7 +7171,7 @@ function renderContentInner(){
       el.innerHTML=objectiveCardHTML()+`<div class="card">${emptyState("Aucune séance de course incluse","Ouvre l'historique, choisis une séance et active « Compter dans mes stats » pour l'inclure.",true)}<button class="btn-secondary" style="margin-top:10px" onclick="openHistory()">Ouvrir l'historique</button></div>`;
       return;
     }
-    el.innerHTML=objectiveCardHTML()+indicatorTilesHTML()+keyFiguresHTML()+recordsCardHTML()+chartsHTML();
+    el.innerHTML=objectiveCardHTML()+indicatorTilesHTML()+heartStrideHTML()+keyFiguresHTML()+recordsCardHTML()+chartsHTML();
   }
 
   else if(activeTab==="profil" && profilSection==="objectifs"){
