@@ -16,8 +16,9 @@ de sauvegarde ne sert qu'aux sauvegardes).
 Répartition (17/10/2026, demande d'Omar) : RunSync (au moins une séance d'Apple Santé), saisie à la main seulement, aucune
 séance ; et la liste des comptes avec leur statut, pour relancer ceux qui n'ont pas installé RunSync.
 
-Usage : python3 backend/suivi_testeurs.py [dossier de sauvegarde]   (par défaut, la plus récente)
-Écrit suivi_testeurs.json dans le dossier de la sauvegarde et l'affiche.
+Usage : python3 backend/suivi_testeurs.py <dossier>
+Les sauvegardes sont chiffrées depuis le 18/10/2026 (RGPD, A6) : <dossier> est une sauvegarde déchiffrée par
+backend/lire_sauvegarde.py (dossier temporaire, à effacer après usage). Écrit suivi_testeurs.json dans ce dossier et l'affiche.
 """
 import datetime
 
@@ -25,17 +26,11 @@ import json
 import os
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OWNER_IDS = {"6464472b-e7d3-4102-9e6e-597f74e607be"}   # compte principal d'Omar
 
 
 def latest_backup():
-    # Pas de glob : le chemin du projet contient « [3] », que glob lirait comme un motif.
-    base = os.path.join(ROOT, "backups")
-    dirs = sorted(n for n in os.listdir(base) if n.startswith("20") and os.path.isdir(os.path.join(base, n)))
-    if not dirs:
-        sys.exit("Aucune sauvegarde trouvée dans backups/.")
-    return os.path.join(base, dirs[-1])
+    sys.exit("Donne le dossier d'une sauvegarde déchiffrée : python3 backend/lire_sauvegarde.py (affiche son chemin).")
 
 
 def parse_ts(value):

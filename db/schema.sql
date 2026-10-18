@@ -33,7 +33,8 @@ create table public.profiles (
   vo2_max_is_manual boolean not null default false,
   program_settings jsonb,         -- réglages du moteur Programme (repli VMA/temps, contraintes)
   onboarding_completed_at timestamptz,  -- fin du parcours guidé de première connexion (migration_022)
-  suspended_zones jsonb           -- zones du corps mises en pause : [{"zone","since"}] (migration_023)
+  suspended_zones jsonb,          -- zones du corps mises en pause : [{"zone","since"}] (migration_023)
+  privacy_consent_at timestamptz  -- date de l'accord RGPD (écran d'accord) ; vide = pas encore donné (migration_026)
 );
 
 alter table public.profiles enable row level security;
@@ -44,6 +45,24 @@ create policy "Users can upsert their own profile"
   on public.profiles for insert with check (auth.uid() = user_id);
 create policy "Users can update their own profile"
   on public.profiles for update using (auth.uid() = user_id);
+
+-- Suppression de son propre compte (Mon compte › Tes données, migration_026) : supprime l'utilisateur
+-- connecté et lui seul ; profil, séances et programme partent avec lui (on delete cascade).
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Pas connecté';
+  end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
 
 -- ============================================================
 -- runs — séances réelles, synchronisées depuis Apple Santé (RunSync)

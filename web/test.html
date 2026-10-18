@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=109"></script>
+<script src="logic.js?v=110"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -2469,6 +2469,20 @@ try {
   assertEqual("barres Avant / Maintenant et repère de la jauge de dérive", [indicatorBarPct("cad", 168), indicatorBarPct("cad", 230), indicatorBarPct("cad", 90), indicatorBarPct("reg", 69), indicatorBarPct("reg", null), driftGaugePos(9), driftGaugePos(20), driftGaugePos(null)], [57, 100, 2, 69, 0, 0.6, 1, null]);
   const zeros = [0,0,0].map((v,i)=>({ ts:ago(30-i*10), value:v }));
   assertEqual("courbes : une valeur à 0 compte quand on le demande (dérive de 0 %)", [trendSegments(zeros, 0), trendSegments(zeros, 0, true).toValue, windowProgress(zeros, ago(30), ago(10)).status, windowProgress(zeros, ago(30), ago(10), true).lastAvg], [null, 0, "insuffisant", 0]);
+}
+
+// --- RGPD : accord et « Tes données » (A6 + A3, 14/10/2026) ---
+{
+  assertEqual("accord : écran tant que la date est vide (migration collée)", [privacyConsentNeeded(true, null), privacyConsentNeeded(true, "2026-10-14T10:00:00Z")], [true, false]);
+  assertEqual("accord : migration pas encore collée -> pas d'écran (l'app ne se bloque pas)", privacyConsentNeeded(false, null), false);
+  const ex = myDataExport({ email:"a@b.fr", profile:{ user_id:"u1", pseudo:"Lea", privacy_consent_at:"2026-10-14T10:00:00Z", goals:{ x:1 } },
+    runs:[{ id:"r1", hr_series:[{t:1,hr:120}], pain_ratings:{ genoux_g:2 } }], planned:[{ id:"p1" }], exportedAt:"2026-10-14T12:00:00Z" });
+  assertEqual("export : les 6 rubriques, dans l'ordre", Object.keys(ex), ["app","exporte_le","compte","profil","seances","programme"]);
+  assertEqual("export : e-mail et date de l'accord en tête", ex.compte, { email:"a@b.fr", accord_donne_le:"2026-10-14T10:00:00Z" });
+  assertEqual("export : les séances gardent cardio et ressentis tels quels", ex.seances[0].pain_ratings, { genoux_g:2 });
+  assertEqual("export : profil complet (objectifs compris)", ex.profil.goals, { x:1 });
+  assertEqual("export : rien en base -> listes vides, pas d'erreur", myDataExport({ email:"", profile:null, runs:null, planned:null, exportedAt:"t" }).seances, []);
+  assertEqual("export : nom du fichier", MY_DATA_FILENAME, "mes-donnees-myrunningapp.json");
 }
 
 document.getElementById("summary").innerHTML =

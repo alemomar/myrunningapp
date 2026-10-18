@@ -1408,6 +1408,27 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 .sheet .field input.sheet-input{flex:none;background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-md);padding:9px 14px;outline:none;transition:border-color var(--t-fast)}
 .sheet .field input.sheet-input:focus{border-color:var(--select)}
 .sheet-input{background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-sm);color:var(--text);font-size:16px;min-height:var(--tap-min);padding:9px 12px;font-family:inherit;box-sizing:border-box}
+/* RGPD (A6 + A3, 14/10/2026) : fenêtre Confidentialité, écran d'accord, « Tes données » */
+.pv-upd{font-size:12.5px;color:var(--text-muted);margin:-4px 0 10px}
+.pv-text h2{font:700 18px/1.15 var(--font-display);text-transform:uppercase;margin:18px 0 6px;color:var(--text)}
+.pv-text h2:first-child{margin-top:4px}
+.pv-text p,.pv-text li{font-size:14px;line-height:1.5;color:var(--text-2)}
+.pv-text p{margin:0 0 8px}
+.pv-text ul{margin:0 0 8px;padding-left:18px}
+.pv-text li{margin:0 0 5px}
+.pv-text b{color:var(--text);font-weight:600}
+.pv-text a{color:var(--accent)}
+.cs-points{display:flex;flex-direction:column;gap:12px}
+.cs-points div{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;line-height:1.45;color:var(--text-2)}
+.cs-points svg{flex:none;color:var(--accent);margin-top:2px}
+.cs-check{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border-radius:var(--r-lg);padding:14px;cursor:pointer}
+.cs-check input{appearance:none;-webkit-appearance:none;flex:none;width:24px;height:24px;margin:1px 0 0;border-radius:7px;border:2px solid var(--text-faint);background:var(--surface-sunken);display:grid;place-items:center;cursor:pointer}
+.cs-check input:checked{background:var(--accent);border-color:var(--accent)}
+.cs-check input:checked::after{content:"";width:6px;height:11px;border:solid var(--on-accent);border-width:0 2.5px 2.5px 0;transform:translate(0,-1px) rotate(45deg)}
+.cs-check input:focus-visible{outline:2px solid var(--select);outline-offset:2px}
+.cs-check span{font-size:15px;line-height:1.45;color:var(--text)}
+.pf-btn.danger{background:var(--danger-bg);color:var(--danger)}
+.auth-legal{margin-top:26px}
 </style>
 </head>
 <body>
@@ -1419,6 +1440,8 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
   <img class="auth-logo" src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="220" height="136">
   <div id="authBody"></div>
 </div>
+
+<div id="privacyRoot"></div>
 
 <div id="appView">
   <div class="topbar">
@@ -1438,7 +1461,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=109"></script>
+<script src="logic.js?v=110"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1527,6 +1550,7 @@ const ICONS = {
   share: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`,
   squarePlus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>`,
   phone: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>`,
+  lock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
 };
 function icon(name,size=18){ return ICONS[name].replace("<svg ",`<svg width="${size}" height="${size}" `); }
 // En-tête commun des feuilles : sur-titre facultatif, titre Condensed, bouton × de 36 px
@@ -1692,7 +1716,8 @@ function renderAuth(){
       ${up ? `<div class="auth-hint">6 caractères minimum.</div>` : ""}
       ${btn(up?"Créer le compte":"Se connecter")}${msgs}
       ${up ? "" : `<button type="button" class="auth-link quiet" onclick="authGo('forgot')">Mot de passe oublié ?</button>`}
-      <button type="button" class="auth-link" onclick="authGo('${up?"signin":"signup"}')">${up?"Déjà un compte ? Se connecter":"Pas de compte ? Créer un compte"}</button>`;
+      <button type="button" class="auth-link" onclick="authGo('${up?"signin":"signup"}')">${up?"Déjà un compte ? Se connecter":"Pas de compte ? Créer un compte"}</button>
+      <button type="button" class="auth-link quiet auth-legal" onclick="openPrivacy()">Confidentialité</button>`;
   } else if(st==="code"){
     const sent = auth.sentAt>0;
     html = `<div class="auth-h">Vérifie ta boîte mail</div>
@@ -2025,6 +2050,11 @@ async function loadData() {
   programSettings = profile?.program_settings || {};
   onboardingCompletedAt = profile?.onboarding_completed_at || null;
   suspendedZones = Array.isArray(profile?.suspended_zones) ? profile.suspended_zones : [];
+  // Accord RGPD (A6, migration 026) : lu à part. Colonne absente (migration pas encore collée) ou réseau en panne : pas d'écran
+  // d'accord plutôt qu'une app bloquée pour tout le monde.
+  const { data: consentRow, error: consentError } = await supa.from("profiles").select("privacy_consent_at").maybeSingle();
+  privacyReady = !consentError;
+  privacyConsentAt = consentRow?.privacy_consent_at || null;
 
   const { data: plannedData, error: plannedError } = await supa.from("planned_sessions").select("*").order("planned_date", { ascending: true });
   if(plannedError){
@@ -2869,6 +2899,130 @@ window.exportData = (format) => {
   const blob = new Blob([csv], {type:'text/csv'});
   downloadBlob(blob, `myrunningapp-export-${stamp}.csv`);
 };
+
+// ---------- RGPD (A6 + A3, décisions d'Omar du 13/10/2026) ----------
+let privacyReady = false, privacyConsentAt = null;   // accord : la colonne existe (migration 026) / date de l'accord
+const longDateFr = (iso) => new Date(iso).toLocaleDateString("fr-FR", { day:"numeric", month:"long", year:"numeric" });
+
+// Fenêtre « Confidentialité » : le texte vit dans confidentialite.html (page publique, aussi donnée à Apple pour RunSync) ; on
+// en lit le bloc #privacy-text pour qu'il n'existe qu'à un seul endroit. Racine à part (#privacyRoot), hors de l'app : elle
+// s'ouvre aussi depuis l'écran de connexion, quand l'app est cachée.
+let privacyOpen = false, privacyHtml = null, privacyFailed = false;
+window.openPrivacy = async () => {
+  privacyOpen = true; privacyFailed = false; renderPrivacy();
+  if(privacyHtml) return;
+  try{
+    const res = await fetch("confidentialite.html", { cache:"no-cache" });
+    if(!res.ok) throw new Error(String(res.status));
+    const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+    const art = doc.getElementById("privacy-text"), upd = doc.querySelector(".upd");
+    if(!art) throw new Error("texte introuvable");
+    privacyHtml = `${upd ? `<div class="pv-upd">${escHtml(upd.textContent)}</div>` : ""}${art.innerHTML}`;
+  }catch(e){ privacyFailed = true; }
+  if(privacyOpen) renderPrivacy();
+};
+window.closePrivacy = () => { privacyOpen = false; renderPrivacy(); };
+function renderPrivacy(){
+  const root = document.getElementById("privacyRoot"); if(!root) return;
+  if(!privacyOpen){ root.innerHTML = ""; return; }
+  const body = privacyHtml || (privacyFailed ? "<p>Pas pu charger la page. Vérifie ta connexion et réessaie.</p>" : "<p>Chargement…</p>");
+  root.innerHTML = `<div class="sheet-back" onclick="if(event.target===this)closePrivacy()"><div class="sheet" role="dialog" aria-modal="true" aria-label="Confidentialité de tes données">
+    ${sheetHeadHTML("Confidentialité de tes données", "closePrivacy()")}<div class="pv-text">${body}</div></div></div>`;
+  const x = root.querySelector(".sheet-close"); if(x) x.focus();
+}
+
+// Écran d'accord : avant tout le reste, à l'inscription comme pour les comptes existants. Case jamais cochée d'avance, lien
+// vers la page Confidentialité. « Je refuse » (décision 6) : l'app ne peut pas fonctionner sans ; « Revenir » ou supprimer.
+let consentUi = { checked:false, busy:false, refused:false };
+function consentHTML(){
+  if(consentUi.refused) return `<div class="on-screen">
+    <div class="on-head"><div class="on-title">Ton accord est nécessaire</div>
+      <div class="on-sub">Sans cet accord, l'app ne peut pas fonctionner : elle s'appuie sur ton cœur et tes ressentis pour adapter ton programme.</div></div>
+    <div class="on-body"><div class="on-sub">Tu peux revenir pour donner ton accord, ou supprimer ton compte et toutes tes données.</div></div>
+    <div class="on-foot">
+      <button type="button" class="btn-primary" onclick="consentBack()">Revenir</button>
+      <button type="button" class="btn-secondary" onclick="askDeleteAccount()">Supprimer mon compte</button>
+    </div></div>`;
+  const existing = accountHasData();
+  return `<div class="on-screen">
+    <div class="on-head"><div class="on-title">Ton accord</div>
+      <div class="on-sub">${existing ? "Rien ne change dans l'app : la loi demande simplement ton accord pour garder des données de santé." : "Avant de commencer, l'app a besoin de ton accord pour garder des données de santé."}</div></div>
+    <div class="on-body">
+      <div class="cs-points">
+        <div>${icon("heartPulse",18)}<span>Ta fréquence cardiaque, tes ressentis et tes douleurs servent à adapter ton programme et à suivre ta progression.</span></div>
+        <div>${icon("lock",18)}<span>Personne d'autre ne les voit : pas de publicité, pas de revente. Tu peux tout télécharger ou tout supprimer quand tu veux.</span></div>
+      </div>
+      <label class="cs-check"><input type="checkbox" id="consentBox"${consentUi.checked ? " checked" : ""} onchange="consentToggle(this.checked)"><span>J'accepte que MyRunningApp utilise mes données de santé (fréquence cardiaque, ressentis, douleurs) pour adapter mon programme et suivre ma progression.</span></label>
+      <button type="button" class="auth-link" style="margin-top:0" onclick="openPrivacy()">Lire la page Confidentialité</button>
+    </div>
+    <div class="on-foot">
+      <button type="button" class="btn-primary" id="consentGo" onclick="acceptConsent()"${consentUi.checked && !consentUi.busy ? "" : " disabled"}>${consentUi.busy ? "Enregistrement…" : "Continuer"}</button>
+      <button type="button" class="auth-link quiet" onclick="refuseConsent()">Je refuse</button>
+    </div></div>`;
+}
+window.consentToggle = (on) => { consentUi.checked = !!on; const b = document.getElementById("consentGo"); if(b) b.disabled = !consentUi.checked || consentUi.busy; };
+window.refuseConsent = () => { consentUi.refused = true; renderApp(); window.scrollTo({ top:0 }); };
+window.consentBack = () => { consentUi.refused = false; renderApp(); window.scrollTo({ top:0 }); };
+window.acceptConsent = async () => {
+  if(!consentUi.checked || consentUi.busy) return;
+  consentUi.busy = true; renderApp();
+  const at = new Date().toISOString();
+  const ok = await upsertProfile({ privacy_consent_at: at });
+  consentUi.busy = false;
+  if(!ok){ renderApp(); return; }
+  privacyConsentAt = at; consentUi = { checked:false, busy:false, refused:false };
+  renderApp(); window.scrollTo({ top:0 });
+  afterBootTasks();
+};
+
+// « Télécharger toutes mes données » (A3) : un seul fichier JSON, lignes relues en base au moment du clic (voir myDataExport).
+window.downloadMyData = async () => {
+  const [pr, ru, pl] = await Promise.all([
+    supa.from("profiles").select("*").maybeSingle(),
+    supa.from("runs").select("*").order("start_date", { ascending:true }),
+    supa.from("planned_sessions").select("*").order("planned_date", { ascending:true }),
+  ]);
+  if(pr.error || ru.error || pl.error){ toast("Pas pu préparer le fichier, vérifie ta connexion."); return; }
+  const data = myDataExport({ email:userEmail, profile:pr.data, runs:ru.data, planned:pl.data, exportedAt:new Date().toISOString() });
+  downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type:"application/json" }), MY_DATA_FILENAME);
+  toast("Fichier téléchargé.");
+};
+
+// « Retirer mon accord et supprimer mon compte » (A3, décision 6) : carte de confirmation, puis suppression par la fonction
+// delete_my_account (migration 026, jamais de clé de service dans l'app). Le dossier de la photo de profil part d'abord.
+let accountDelete = null;   // { busy }
+window.askDeleteAccount = () => { accountDelete = { busy:false }; renderAccountDeleteConfirm(); };
+window.cancelDeleteAccount = () => { if(accountDelete && accountDelete.busy) return; accountDelete = null; renderAccountDeleteConfirm(); };
+function renderAccountDeleteConfirm(){
+  const root = document.getElementById("confirmRoot"); if(!root) return;
+  if(!accountDelete){ root.innerHTML = ""; return; }
+  const busy = accountDelete.busy;
+  root.innerHTML = `<div class="confirm-back" onclick="if(event.target===this)cancelDeleteAccount()"><div class="confirm-card" role="alertdialog" aria-modal="true" aria-label="Supprimer ton compte ?"><h2>Supprimer ton compte ?</h2><p>Ton profil, tes séances, tes ressentis et ton programme seront effacés tout de suite, et de nos sauvegardes sous 30 jours. Ce n'est pas réversible.</p><p>Pense aussi à supprimer RunSync de ton iPhone.</p><div class="confirm-btns"><button type="button" onclick="cancelDeleteAccount()"${busy?" disabled":""}>Annuler</button><button type="button" class="go danger" onclick="confirmDeleteAccount()"${busy?" disabled":""}>${busy?"Suppression…":"Supprimer"}</button></div></div></div>`;
+  const first = root.querySelector(".confirm-btns button"); if(first && !busy) first.focus();   // le focus sur « Annuler », l'action sûre
+}
+window.confirmDeleteAccount = async () => {
+  if(!accountDelete || accountDelete.busy) return;
+  accountDelete.busy = true; renderAccountDeleteConfirm();
+  try{   // photo de profil (envoi coupé dans l'app depuis le 27/09, mais une ancienne peut rester)
+    if(userId){
+      const { data:files } = await supa.storage.from("avatars").list(userId);
+      if(files && files.length) await supa.storage.from("avatars").remove(files.map(f=>`${userId}/${f.name}`));
+    }
+  }catch(e){}
+  const { error } = await supa.rpc("delete_my_account");
+  if(error){ accountDelete = null; renderAccountDeleteConfirm(); toast("Pas pu supprimer ton compte. Vérifie ta connexion et réessaie."); return; }
+  accountDelete = null; renderAccountDeleteConfirm();
+  try{ Object.keys(localStorage).filter(k=>k.startsWith("mra_") && k!=="mra_installSkipped").forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  try{ await supa.auth.signOut(); }catch(e){}
+  consentUi = { checked:false, busy:false, refused:false }; privacyConsentAt = null;
+  document.getElementById("appView").style.display = "none";
+  Object.assign(auth, { step:"signin", email:"", password:"", code:"", error:"", notice:"Ton compte et toutes tes données ont été supprimés.", busy:false, sentAt:0, verified:false });
+  showAuth();
+};
+document.addEventListener("keydown", (e) => {
+  if(e.key!=="Escape") return;
+  if(accountDelete) cancelDeleteAccount(); else if(privacyOpen) closePrivacy();
+});
 
 // Copie défensive : certains appelants font des calculs style
 // `new Date(dateFromRun(r)).setDate(...)` — ne jamais renvoyer la même
@@ -4491,7 +4645,11 @@ function profilCompteHTML(){
       <div class="pf-group"><label class="pf-lbl" for="syncSince">Importer depuis</label><div class="pf-row stack"><input type="date" id="syncSince" value="${syncSinceDate||""}" onchange="saveSyncSinceDate(this.value); flashFieldSaved(this)"></div><div class="pf-slot"></div></div>
     </div>
     <div class="pf-card sm"><div class="pf-title">Parcours de démarrage</div><div class="pf-hint" style="margin-top:-4px">Refais les questions de départ (objectif, niveau, disponibilités). Tes réponses actuelles sont préremplies.</div><button type="button" class="pf-btn" onclick="restartOnboarding()">Refaire le parcours</button><button type="button" class="pf-btn" onclick="startTour()">Revoir la visite guidée</button></div>
-    <div class="pf-card sm"><div class="pf-title">Export</div><div class="pf-hint" style="margin-top:-4px">Un backup perso de toutes tes séances, en dehors de Supabase.</div><div class="pf-two"><button type="button" class="pf-btn" onclick="exportData('json')">Exporter en JSON</button><button type="button" class="pf-btn" onclick="exportData('csv')">Exporter en CSV</button></div></div>
+    <div class="pf-card sm"><div class="pf-title">Tes données</div><div class="pf-hint" style="margin-top:-4px">L'app garde ton profil, tes séances avec ton cœur et ton allure, tes ressentis et ton programme. Personne d'autre ne les voit.${privacyConsentAt ? ` Accord donné le ${escHtml(longDateFr(privacyConsentAt))}.` : ""}</div>
+      <button type="button" class="pf-btn" onclick="downloadMyData()">Télécharger toutes mes données</button>
+      <button type="button" class="pf-btn" onclick="exportData('csv')">Mes séances en tableau (CSV)</button>
+      <button type="button" class="pf-btn" onclick="openPrivacy()">Lire la page Confidentialité</button>
+      <button type="button" class="pf-btn danger" onclick="askDeleteAccount()">Retirer mon accord et supprimer mon compte</button></div>
     <button type="button" class="pf-logout" onclick="logout()">Déconnexion</button>`;
 }
 window.savePseudo = async (el) => {
@@ -7243,6 +7401,10 @@ async function boot(){
   document.getElementById("content").innerHTML = skeletonHTML(activeTab);
   await loadData();
   renderApp();
+  if(privacyConsentNeeded(privacyReady, privacyConsentAt)) return;   // écran d'accord : rien d'autre avant (A6)
+  afterBootTasks();
+}
+function afterBootTasks(){
   maybeShowNews();
   maybeCelebrate();
   resumeSyncGuide();
@@ -7255,7 +7417,7 @@ async function boot(){
 // l'écran vers le bas (app installée seulement : Safari a déjà son propre geste). Jamais pendant une saisie (fenêtre ouverte :
 // le rechargement attend sa fermeture), la visite guidée ou le parcours de démarrage.
 function refreshBlocked(){
-  return !loadedOnce || !onboardingCompletedAt || !!onbConnect || !!tour || !!document.querySelector("#sheetRoot .sheet");
+  return !loadedOnce || privacyConsentNeeded(privacyReady, privacyConsentAt) || !onboardingCompletedAt || !!onbConnect || !!tour || !!document.querySelector("#sheetRoot .sheet");
 }
 async function refreshFromServer(manual){
   if(refreshing) return;
@@ -7339,6 +7501,12 @@ function renderApp(){
   if(loadError && !loadedOnce){
     tabsEl.style.display = "none"; document.querySelector(".topbar").style.display = "none";
     document.getElementById("content").innerHTML = loadErrorHTML();
+    return;
+  }
+  if(privacyConsentNeeded(privacyReady, privacyConsentAt)){   // A6 : l'accord passe avant le parcours de démarrage
+    tabsEl.style.display = "none";
+    document.querySelector(".topbar").style.display = "none";
+    document.getElementById("content").innerHTML = consentHTML();
     return;
   }
   if(!onboardingCompletedAt && !onbRestarting && shouldAutoMarkOnboarding(accountHasData(), userCreatedAt)){

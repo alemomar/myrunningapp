@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
-"""Sauvegarde locale de la base Supabase (MyRunningApp).
+"""Sauvegarde chiffrée de la base Supabase (MyRunningApp).
 
-Exporte chaque table en JSON dans backups/<timestamp>/, et garde les
-BACKUP_KEEP dernières sauvegardes (supprime les plus anciennes).
+Exporte chaque table en JSON, les réunit dans une archive (tar.gz) chiffrée
+(AES-256, openssl du Mac) : <timestamp>.tar.gz.enc, écrite sur le Mac
+(~/.local/share/myrunningapp/backups/) et copiée dans backups/ du projet, sur
+Google Drive. Garde les BACKUP_KEEP dernières (environ 30 jours) aux deux
+endroits. RGPD (A6, décision d'Omar du 13/10/2026) : sauvegardes chiffrées, et
+un compte supprimé disparaît des copies sous 30 jours.
 
-Clé requise dans ~/.config/myrunningapp/backup.env :
-  SUPABASE_SERVICE_ROLE_KEY=...
+Clés requises dans ~/.config/myrunningapp/ (jamais dans Git ni sur le Drive) :
+  backup.env : SUPABASE_SERVICE_ROLE_KEY=...
+  backup.key : la clé de chiffrement (Omar en garde une copie dans son
+               gestionnaire de mots de passe : sans elle, les sauvegardes
+               sont illisibles).
+Pour relire une sauvegarde : backend/lire_sauvegarde.py.
 
 Lancé à la main : sauvegarde tout de suite. Lancé par launchd avec --auto
 (toutes les 30 min) : sauvegarde seulement si le dernier créneau (14 h ou 17 h)
@@ -13,13 +21,14 @@ n'est pas encore couvert et que le Mac est vraiment réveillé.
 """
 
 import http.client
+import io
 import json
 import os
 import re
-import shutil
 import socket
 import subprocess
 import sys
+import tarfile
 import time
 import urllib.error
 import urllib.parse
@@ -44,6 +53,10 @@ FETCH_RETRY_SECONDS = 20
 # supprimée du schéma, plus rien à en sauvegarder.
 TABLES = ["runs", "profiles", "planned_sessions"]
 BACKUP_KEEP = 60
+# Promesse de la page Confidentialité : un compte supprimé disparaît des sauvegardes sous 30 jours. 60 copies font 30
+# jours à 2 par jour, mais plus si le Mac est resté éteint : au-delà de 30 jours, une copie part quoi qu'il arrive (sauf
+# la plus récente).
+BACKUP_MAX_AGE = timedelta(days=30)
 # Supabase ne renvoie jamais plus de 1 000 lignes par lecture (réglage « max
 # rows » de l'API). Sans pagination, la sauvegarde du 2026-10-07 s'est arrêtée
 # à 1 000 séances sur environ 1 350, en se disant « terminée ». On lit donc
@@ -66,6 +79,16 @@ SLOT_HOURS = (14, 17)
 STATE_FILE = Path.home() / ".local" / "share" / "myrunningapp" / "backup_state.json"
 # Pendant une série d'échecs, au plus une notification toutes les 6 heures.
 NOTIFY_EVERY = timedelta(hours=6)
+
+
+# Chiffrement (RGPD, A6) : openssl fourni avec macOS (LibreSSL), clé dérivée par
+# PBKDF2. Mêmes réglages pour chiffrer et déchiffrer (lire_sauvegarde.py).
+OPENSSL = "/usr/bin/openssl"
+OPENSSL_ARGS = ["-aes-256-cbc", "-pbkdf2", "-iter", "200000", "-md", "sha256"]
+KEY_FILE = Path.home() / ".config" / "myrunningapp" / "backup.key"
+BACKUP_SUFFIX = ".tar.gz.enc"
+# Copie sur le Mac, hors Google Drive : launchd peut la lister et l'effacer.
+LOCAL_BACKUPS_DIR = Path.home() / ".local" / "share" / "myrunningapp" / "backups"
 
 
 class IncompleteTable(Exception):
@@ -257,25 +280,85 @@ def fail(state: dict, now: datetime, timestamp: str, message: str, auto: bool) -
     sys.exit(1)
 
 
-def prune_old_backups() -> None:
-    # Lister un dossier Google Drive (iterdir) échoue parfois avec
-    # "Operation not permitted" quand le script est lancé par launchd en
-    # arrière-plan (contrairement à lire/écrire un fichier précis, qui
-    # fonctionne très bien dans ce même contexte) — probablement une
-    # restriction propre à l'extension Google Drive côté énumération de
-    # dossier. Non bloquant : la sauvegarde elle-même a déjà réussi à ce
-    # stade, mieux vaut garder quelques sauvegardes en trop que faire
-    # échouer tout le run pour ça.
+def openssl(args: list, data: bytes) -> bytes:
+    done = subprocess.run(
+        [OPENSSL, "enc", *args, *OPENSSL_ARGS, "-pass", f"file:{KEY_FILE}"],
+        input=data, capture_output=True, timeout=300,
+    )
+    if done.returncode != 0:
+        raise RuntimeError("openssl : " + done.stderr.decode("utf-8", "replace").strip())
+    return done.stdout
+
+
+def build_encrypted_archive(files: dict) -> bytes:
+    """Archive tar.gz des fichiers JSON ({nom: texte}), chiffrée, vérifiée en la déchiffrant aussitôt."""
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        for name, text in files.items():
+            data = text.encode("utf-8")
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            info.mtime = int(time.time())
+            tar.addfile(info, io.BytesIO(data))
+    plain = buf.getvalue()
+    blob = openssl(["-salt"], plain)
+    if openssl(["-d"], blob) != plain:
+        raise RuntimeError("le déchiffrement de contrôle ne redonne pas l'archive")
+    return blob
+
+
+def write_file(path: Path, blob: bytes) -> None:
+    # Écrit à côté puis renomme : une copie coupée en route ne ressemble jamais à une sauvegarde.
+    part = path.with_name(path.name + ".part")
+    part.write_bytes(blob)
+    os.replace(part, path)
+
+
+def backups_to_delete(names: list, now: datetime) -> list:
+    """Noms à effacer : au-delà des BACKUP_KEEP plus récentes, ou plus vieux que BACKUP_MAX_AGE (jamais la plus récente)."""
+    names = sorted(names)
+    old = set(names[:-BACKUP_KEEP])
+    for name in names[:-1]:
+        try:
+            when = datetime.strptime(name[:17], "%Y-%m-%d_%H%M%S")
+        except ValueError:
+            continue
+        if now - when > BACKUP_MAX_AGE:
+            old.add(name)
+    return sorted(old)
+
+
+def prune_old_backups(auto: bool) -> None:
+    # Les BACKUP_KEEP dernières sauvegardes sont gardées, sur le Mac comme sur le Drive. Lancé par launchd, le script ne
+    # peut pas lister le dossier du Drive (« Operation not permitted », restriction de macOS sur Google Drive) mais il peut
+    # y effacer, par son nom, une sauvegarde qu'il a lui-même créée (vérifié le 18/10/2026) : la liste vient donc de la
+    # copie du Mac. Lancé à la main (accès complet), il range aussi le Drive à partir de sa propre liste.
     try:
-        backups = sorted(
-            (p for p in BACKUPS_DIR.iterdir() if p.is_dir()),
-            key=lambda p: p.name,
-        )
+        local = sorted(p.name for p in LOCAL_BACKUPS_DIR.glob("*" + BACKUP_SUFFIX))
     except OSError as err:
-        print(f"[prune] listing de {BACKUPS_DIR} impossible, purge ignorée : {err}", file=sys.stderr)
+        print(f"[prune] liste des sauvegardes du Mac impossible : {err}", file=sys.stderr)
         return
-    for old in backups[:-BACKUP_KEEP]:
-        shutil.rmtree(old)
+    now = datetime.now()
+    for name in backups_to_delete(local, now):
+        for folder in (LOCAL_BACKUPS_DIR, BACKUPS_DIR):
+            try:
+                (folder / name).unlink()
+            except FileNotFoundError:
+                pass
+            except OSError as err:
+                print(f"[prune] effacement de {folder / name} impossible : {err}", file=sys.stderr)
+    if auto:
+        return
+    try:
+        drive = sorted(p.name for p in BACKUPS_DIR.glob("*" + BACKUP_SUFFIX))
+    except OSError as err:
+        print(f"[prune] liste des sauvegardes du Drive impossible : {err}", file=sys.stderr)
+        return
+    for name in backups_to_delete(drive, now):
+        try:
+            (BACKUPS_DIR / name).unlink()
+        except OSError as err:
+            print(f"[prune] effacement de {BACKUPS_DIR / name} impossible : {err}", file=sys.stderr)
 
 
 def update_readme_status(when: datetime, counts: dict, errors: list) -> None:
@@ -306,7 +389,7 @@ def main() -> None:
     auto = "--auto" in sys.argv[1:]
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d_%H%M%S")
-    dest = BACKUPS_DIR / timestamp
+    dest = BACKUPS_DIR / (timestamp + BACKUP_SUFFIX)
     state = load_state()
 
     if auto:
@@ -318,6 +401,8 @@ def main() -> None:
             return
 
     key = load_service_role_key()
+    if not KEY_FILE.exists():
+        fail(state, now, timestamp, f"ÉCHEC : clé de chiffrement introuvable ({KEY_FILE}), aucune sauvegarde faite.", auto)
     keep_mac_awake()
     try:
         run_backup(key, now, timestamp, dest, state, auto)
@@ -331,6 +416,7 @@ def run_backup(key: str, now: datetime, timestamp: str, dest: Path, state: dict,
 
     counts = {}
     errors = []
+    files = {}
     for table in TABLES:
         try:
             rows = fetch_table(table, key)
@@ -338,19 +424,24 @@ def run_backup(key: str, now: datetime, timestamp: str, dest: Path, state: dict,
             print(f"[{timestamp}] ERREUR sur {table} : {err}", file=sys.stderr)
             errors.append((table, str(err)))
             continue
-        # Le dossier n'est créé qu'au premier succès : un échec total ne
-        # laisse plus de dossier vide qui ressemble à une sauvegarde réussie.
-        dest.mkdir(parents=True, exist_ok=True)
-        (dest / f"{table}.json").write_text(
-            json.dumps(rows, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        files[f"{table}.json"] = json.dumps(rows, indent=2, ensure_ascii=False)
         counts[table] = len(rows)
         print(f"[{timestamp}] {table} : {len(rows)} ligne(s) sauvegardée(s)")
 
+    # Rien n'est écrit si aucune table n'a été lue : un échec total ne laisse pas de fichier qui ressemble à une sauvegarde.
     if not counts:
         fail(state, now, timestamp, "ÉCHEC : aucune table sauvegardée.", auto)
 
-    prune_old_backups()
+    blob = build_encrypted_archive(files)
+    LOCAL_BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
+    write_file(LOCAL_BACKUPS_DIR / dest.name, blob)
+    try:
+        write_file(dest, blob)
+    except OSError as err:
+        fail(state, now, timestamp, f"PARTIELLE : copie sur le Drive impossible ({err}), sauvegarde gardée sur le Mac.", auto)
+    print(f"[{timestamp}] archive chiffrée : {len(blob) // 1024} Ko")
+
+    prune_old_backups(auto)
 
     # Comme prune_old_backups, lire+réécrire un fichier déjà existant sur
     # Google Drive (README.md) peut échouer sous launchd ("Operation not

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Confidentialité · MyRunningApp</title>
+<meta name="description" content="Ce que MyRunningApp garde de tes données, pourquoi, où, combien de temps, et tes droits.">
+<meta name="theme-color" content="#0C0D0F">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<!-- Page publique (A6, texte validé par Omar le 13/10/2026). Elle sert aussi d'adresse de confidentialité pour RunSync
+     (App Store Connect, HealthKit). L'app l'ouvre dans une fenêtre : elle lit seulement le bloc #privacy-text, donc tout
+     le texte reste ici, en un seul endroit. À chaque changement du texte : mettre à jour la date et prévenir les utilisateurs dans l'app. -->
+<style>
+@font-face{font-family:"Barlow";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/barlow-400.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/barlow-600.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/barlow-condensed-700.woff2) format("woff2")}
+:root{--bg:#0C0D0F;--surface:#17191C;--line:#26292E;--text:#F2F3F0;--text-2:#C9CCD0;--text-3:#A3A7AD;--text-muted:#8B8F96;--accent:#C6F432}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.55 "Barlow",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:680px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom))}
+.logo{display:block;width:150px;height:auto;margin-bottom:28px}
+h1{font:700 34px/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase;margin:0 0 6px;text-wrap:balance}
+.upd{color:var(--text-muted);font-size:14px;margin:0 0 26px}
+#privacy-text h2{font:700 21px/1.15 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.01em;margin:26px 0 8px;color:var(--text)}
+#privacy-text p,#privacy-text li{color:var(--text-2)}
+#privacy-text p{margin:0 0 10px}
+#privacy-text ul{margin:0 0 10px;padding-left:20px}
+#privacy-text li{margin:0 0 6px}
+#privacy-text b{color:var(--text);font-weight:600}
+#privacy-text a{color:var(--accent)}
+.foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);color:var(--text-muted);font-size:13.5px}
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="150" height="93">
+  <h1>Confidentialité de tes données</h1>
+  <p class="upd">Mise à jour le 18 octobre 2026</p>
+  <article id="privacy-text">
+    <h2>Qui est responsable ?</h2>
+    <p>Omar Alem, créateur de MyRunningApp. Pour toute question ou demande : <a href="mailto:get.myrunningapp@gmail.com">get.myrunningapp@gmail.com</a>.</p>
+
+    <h2>Ce que l'app garde</h2>
+    <ul>
+      <li><b>Ton compte :</b> ton adresse e-mail et ton mot de passe, chiffré, que personne ne peut lire.</li>
+      <li><b>Ton profil :</b> pseudo, photo si tu en mets une, âge, sexe, ville, niveau, objectifs, disponibilités, équipement.</li>
+      <li><b>Tes séances,</b> reçues d'Apple Santé grâce à RunSync : date, durée, distance, allure, fréquence cardiaque (moyenne, maximale et courbe), fréquence cardiaque au repos, VO2 max, pas, puissance, calories.</li>
+      <li><b>Ce que tu notes :</b> difficulté, fatigue, mental, respiration, gênes et douleurs avec les zones du corps concernées.</li>
+      <li><b>Ton programme :</b> séances prévues et faites, exercices cochés.</li>
+      <li><b>La date à laquelle tu as donné ton accord.</b></li>
+    </ul>
+    <p>La fréquence cardiaque, tes ressentis et tes douleurs sont des <b>données de santé</b>. L'app ne garde aucune position GPS.</p>
+
+    <h2>Pourquoi</h2>
+    <p>Pour te proposer un programme adapté, suivre ta progression (allure, charge, cœur), alléger tes séances quand une douleur revient et te prévenir quand une douleur mérite un avis médical. Pas de publicité, pas de revente, rien de visible par les autres utilisateurs.</p>
+
+    <h2>Sur quelle base</h2>
+    <p>Ton accord explicite, donné en cochant une case. Tu peux le retirer à tout moment. Sans lui, l'app ne peut pas fonctionner.</p>
+
+    <h2>Où sont tes données, et qui y a accès</h2>
+    <ul>
+      <li><b>La base de données :</b> Supabase, hébergée en Irlande (Union européenne).</li>
+      <li><b>RunSync,</b> sur ton iPhone, lit Apple Santé avec ton autorisation et envoie tes séances à la base.</li>
+      <li><b>Les sauvegardes :</b> deux fois par jour, sur l'ordinateur du responsable, <b>chiffrées</b>, avec une copie chiffrée dans son espace Google Drive.</li>
+      <li><b>Le code de l'app</b> est hébergé par GitHub. Il ne contient aucune de tes données.</li>
+      <li><b>Qui y a accès :</b> toi, et le responsable pour faire fonctionner et corriger l'app. Personne d'autre.</li>
+    </ul>
+
+    <h2>Combien de temps</h2>
+    <ul>
+      <li><b>Tant que ton compte existe.</b></li>
+      <li><b>Si tu supprimes ton compte :</b> tout est effacé immédiatement de la base, et au plus tard 30 jours après dans les sauvegardes.</li>
+      <li><b>Si tu n'ouvres plus l'app pendant 2 ans :</b> ton compte est supprimé.</li>
+    </ul>
+
+    <h2>Tes droits</h2>
+    <ul>
+      <li>Voir et corriger tes informations, dans Profil.</li>
+      <li>Télécharger toutes tes données en un fichier, dans Mon compte › Tes données.</li>
+      <li>Retirer ton accord et supprimer ton compte, au même endroit.</li>
+      <li>Pour toute autre demande, écris à <a href="mailto:get.myrunningapp@gmail.com">get.myrunningapp@gmail.com</a>. Réponse sous un mois.</li>
+      <li>Tu peux aussi saisir la CNIL (<a href="https://www.cnil.fr" rel="noopener">cnil.fr</a>).</li>
+    </ul>
+
+    <h2>Sécurité</h2>
+    <p>Connexion chiffrée, mot de passe jamais lisible, accès protégé par ton compte, sauvegardes chiffrées.</p>
+
+    <h2>À savoir</h2>
+    <p>MyRunningApp ne pose pas de diagnostic médical. Si cette page change, tu seras prévenu dans l'app.</p>
+  </article>
+  <p class="foot">MyRunningApp · application de course à pied en bêta.</p>
+</main>
+</body>
+</html>

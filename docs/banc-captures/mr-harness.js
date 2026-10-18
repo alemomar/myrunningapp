@@ -677,6 +677,22 @@
     setProfilSectionState("objectifs"); show("profil");
   } else if(scen==="profil_compte"){
     setProfilSectionState("compte"); show("profil");
+  } else if(/^(accord_|compte_donnees|compte_suppression|confidentialite_app)/.test(scen)){
+    // RGPD (A6 + A3, 14/10/2026) : écran d'accord (compte neuf ou existant, case cochée, refus), fenêtre Confidentialité,
+    // carte « Tes données » et confirmation de suppression du compte.
+    if(scen.startsWith("accord_") || scen==="confidentialite_app"){
+      privacyReady = true; privacyConsentAt = null;
+      if(scen==="accord_nouveau"){ RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={ principal:{}, secondaire:{} }; }
+      if(scen==="accord_coche") consentUi.checked = true;
+      if(scen==="accord_refus") consentUi.refused = true;
+      renderApp();
+      if(scen==="confidentialite_app") await openPrivacy();
+    } else {
+      privacyReady = true; privacyConsentAt = "2026-10-14T09:30:00Z";
+      setProfilSectionState("compte"); show("profil");
+      document.querySelector(".pf-logout")?.scrollIntoView({ block:"end" });
+      if(scen==="compte_suppression") askDeleteAccount();
+    }
   } else if(scen==="profil_compte_sans_runsync" || scen==="progression_aucune_incluse"){
     // R38 : RunSync jamais relié (séances saisies à la main seulement) : « Connecter Apple Santé » au lieu du lien vers RunSync.
     RUNS.forEach(r=>{ r.appleType = MANUAL_RUN_MARKER; if(scen==="progression_aucune_incluse") r.includeInStats = false; });

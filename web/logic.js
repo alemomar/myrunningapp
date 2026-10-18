@@ -4303,3 +4303,23 @@ function indicatorBarPct(kind, v){
 }
 // Repère sur la jauge de la dérive (3 segments égaux : 0 à 5, 5 à 10, 10 à 15 %), comme dans le détail d'une séance.
 function driftGaugePos(v){ return v==null ? null : Math.max(0, Math.min(1, v/15)); }
+/* ---------- RGPD : accord et « Tes données » (A6 + A3, décisions d'Omar du 13/10/2026) ----------
+   L'écran d'accord passe avant tout le reste (parcours de démarrage compris) tant que la date de l'accord est vide.
+   `ready` = la colonne privacy_consent_at existe (migration 026 collée) : sans elle, on n'affiche pas l'écran plutôt que
+   de bloquer l'app de tout le monde. */
+function privacyConsentNeeded(ready, consentAt){ return !!ready && !consentAt; }
+// « Télécharger mes données » : un seul fichier JSON avec tout ce que l'app garde (décision du 13/10) : le compte et la date de
+// l'accord, le profil (objectifs, niveau, réglages), les séances avec leur cardio, leur allure et les ressentis, le programme.
+// Les lignes sont données telles qu'elles sont en base, pour que rien ne manque.
+const MY_DATA_FILENAME = "mes-donnees-myrunningapp.json";
+function myDataExport({ email, profile, runs, planned, exportedAt }){
+  const p = profile || {};
+  return {
+    app: "MyRunningApp",
+    exporte_le: exportedAt,
+    compte: { email: email || "", accord_donne_le: p.privacy_consent_at || null },
+    profil: p,
+    seances: runs || [],
+    programme: planned || [],
+  };
+}
