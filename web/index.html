@@ -1408,22 +1408,40 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 .sheet .field input.sheet-input{flex:none;background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-md);padding:9px 14px;outline:none;transition:border-color var(--t-fast)}
 .sheet .field input.sheet-input:focus{border-color:var(--select)}
 .sheet-input{background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-sm);color:var(--text);font-size:16px;min-height:var(--tap-min);padding:9px 12px;font-family:inherit;box-sizing:border-box}
-/* « Bravo pour ta course ! » (C33, 19/10/2026) : bandeau en haut, 4 secondes, quelques confettis */
-.ch-ban{position:fixed;z-index:400;top:calc(env(safe-area-inset-top) + 10px);left:50%;width:min(520px, calc(100% - 24px));transform:translateX(-50%);overflow:hidden;border-radius:var(--r-lg);background:var(--surface-raised);border:1px solid var(--line);box-shadow:var(--shadow-lift)}
-.ch-in{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:none;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+/* « Bravo pour ta course ! » (C33, 19/10/2026) : habillage proposé par Claude Design (docs/design/demo-celebrations.html) :
+   fond des feuilles, arrondi 20 px, arrivée en glissant (0,42 s), barre citron qui se vide en 4 s, confettis qui partent de
+   l'animation, départ vers le haut (0,28 s) ; « réduire les animations » : simple fondu, sans confettis ni barre. */
+.ch-ban{position:fixed;z-index:400;top:calc(env(safe-area-inset-top) + 12px);left:0;right:0;margin:0 auto;width:min(520px, calc(100% - 24px))}
+.ch-in{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px 12px 10px;border:none;border-radius:20px;background:var(--surface-raised);box-shadow:0 14px 30px rgba(0,0,0,.55);color:var(--text);font:inherit;text-align:left;cursor:pointer;overflow:hidden}
 .ch-vis{flex:none;width:56px;height:56px;display:flex;align-items:center;justify-content:center}
 .ch-vis mra-cheer{display:block;width:56px;height:56px}
 .ch-ic{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center}
-.ch-t{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}
-.ch-t b{font:700 19px/1.1 var(--font-display);text-transform:uppercase;color:var(--accent)}
+.ch-t{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}
+.ch-t b{font:700 18px/1.1 var(--font-display);text-transform:uppercase;letter-spacing:.01em;color:var(--text)}
 .ch-s{font-size:12.5px;color:var(--text-muted)}
-.ch-m{font-size:13.5px;line-height:1.35;color:var(--text-2)}
+.ch-m{font-size:14px;line-height:1.35;color:var(--text-2)}
+.ch-chev{flex:none;display:flex;color:var(--text-muted)}
+.ch-timer{position:absolute;left:16px;right:16px;bottom:5px;height:2px;border-radius:2px;background:var(--line);overflow:hidden}
+.ch-timer i{position:absolute;inset:0;background:var(--accent);transform-origin:left;transform:scaleX(0)}
+.ch-conf{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.ch-conf i{position:absolute;width:4px;height:8px;border-radius:1px;opacity:0}
 @media (prefers-reduced-motion: no-preference){
-  .ch-ban{animation:chIn 320ms var(--ease) both}
-  .ch-ban.out{animation:chOut 260ms ease-in both}
+  .ch-ban{animation:chIn .42s cubic-bezier(.2,.8,.2,1) both}
+  .ch-ban.out{animation:chOut .28s cubic-bezier(.4,0,1,1) both}
+  .ch-timer i{animation:chTimer 4s linear forwards}
+  .ch-conf i{animation:chConf 1.3s cubic-bezier(.2,.7,.3,1) forwards}
 }
-@keyframes chIn{from{opacity:0;transform:translate(-50%,-24px)}to{opacity:1;transform:translate(-50%,0)}}
-@keyframes chOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-24px)}}
+@media (prefers-reduced-motion: reduce){
+  .ch-ban{animation:chFade .2s both}
+  .ch-ban.out{animation:chFadeOut .2s both}
+  .ch-timer,.ch-conf{display:none}
+}
+@keyframes chIn{from{transform:translateY(-120%);opacity:0}to{transform:none;opacity:1}}
+@keyframes chOut{to{transform:translateY(-120%);opacity:0}}
+@keyframes chTimer{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@keyframes chConf{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}}
+@keyframes chFade{from{opacity:0}}
+@keyframes chFadeOut{to{opacity:0}}
 /* RGPD (A6 + A3, 14/10/2026) : fenêtre Confidentialité, écran d'accord, « Tes données » */
 .pv-upd{font-size:12.5px;color:var(--text-muted);margin:-4px 0 10px}
 .pv-text h2{font:700 18px/1.15 var(--font-display);text-transform:uppercase;margin:18px 0 6px;color:var(--text)}
@@ -1480,6 +1498,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 <script src="config.js"></script>
 <script src="logic.js?v=113"></script>
 <script src="record-man.js?v=1"></script>
+<script src="mra-cheer.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -6553,7 +6572,7 @@ window.celebrationRate = () => { const id = celebration && celebration.runId; cl
 // Design (élément <mra-cheer>, demandé le 19/10) ; tant qu'il n'est pas là, ou pour un type qu'il ne connaît pas (course
 // officielle), l'icône du type de séance.
 const CHEER_KEY = "mra_cheer", CHEER_MS = 4000, CHEER_FIRST_LOOKBACK_MS = 24*3600*1000;
-const CHEER_CD_KINDS = ["reprise","objectif","cap","serie","semaine","plus-longue","endurance","vitesse","renfo","course"];
+const CHEER_CD_KINDS = ["reprise","objectif","cap","serie","semaine","plus-longue","endurance","vitesse","renfo"];   // course officielle : pas encore d'animation
 function cheerState(){ try{ const v = JSON.parse(localStorage.getItem(CHEER_KEY)||"null"); if(v && typeof v.since==="number") return v; }catch(e){} return null; }
 function saveCheerState(st){ try{ localStorage.setItem(CHEER_KEY, JSON.stringify({ since:st.since, ids:(st.ids||[]).slice(-200) })); }catch(e){} }
 let cheer = null, cheerTimer = null;
@@ -6578,7 +6597,7 @@ function cheerSubject(m){
   return [sessionTypeLabel(m.type), m.distKm>0 ? `${fmtDec(m.distKm,1)} km` : ""].filter(Boolean).join(" · ") + ", " + when;
 }
 function cheerVisualHTML(m){
-  if(window.customElements && customElements.get("mra-cheer") && CHEER_CD_KINDS.includes(m.kind))
+  if(window.customElements && window.customElements.get("mra-cheer") && CHEER_CD_KINDS.includes(m.kind))
     return `<mra-cheer kind="${escHtml(m.kind)}"${m.value!=null?` value="${escHtml(String(m.value))}"`:""} once aria-hidden="true"></mra-cheer>`;
   const c = TC[m.type]||TC.Other;
   return `<span class="ch-ic" style="background:${c}24;color:${c}" aria-hidden="true">${icon(TICON[m.type]||"activity",24)}</span>`;
@@ -6590,16 +6609,27 @@ function renderCheer(leaving){
   const subject = cheerSubject(cheer);
   root.innerHTML = `<div class="ch-ban${leaving?" out":""}" role="status" aria-live="polite">
     <button type="button" class="ch-in" onclick="openCheer()" aria-label="${escHtml(cheer.title)} ${escHtml(subject)}. ${escHtml(cheer.text)} Ouvre la séance.">
+      <span class="ch-conf" aria-hidden="true">${leaving ? "" : cheerConfettiHTML()}</span>
       <span class="ch-vis">${cheerVisualHTML(cheer)}</span>
       <span class="ch-t"><b>${escHtml(cheer.title)}</b><span class="ch-s">${escHtml(subject)}</span><span class="ch-m">${escHtml(cheer.text)}</span></span>
-    </button>${leaving ? "" : hierConfettiHTML()}</div>`;
+      <span class="ch-chev" aria-hidden="true">${icon("chevronRight",18)}</span>
+      <span class="ch-timer" aria-hidden="true"><i></i></span>
+    </button></div>`;
+}
+// Confettis de Claude Design : 14 éclats qui partent du centre de l'animation (citron, blanc, gris).
+function cheerConfettiHTML(){
+  const colors = ["#C6F432", "#F2F3F0", "#8B8F96", "#C6F432"];
+  return Array.from({ length:14 }, (_, i) => {
+    const a = (-160 + Math.random()*140) * Math.PI/180, d = 40 + Math.random()*90;
+    return `<i style="left:38px;top:38px;background:${colors[i%4]};--dx:${(Math.cos(a)*d+30).toFixed(0)}px;--dy:${(Math.sin(a)*d*0.5+60+Math.random()*60).toFixed(0)}px;--r:${(Math.random()*540-270).toFixed(0)}deg;animation-delay:${(0.15+Math.random()*0.15).toFixed(2)}s"></i>`;
+  }).join("");
 }
 function closeCheer(){
   clearTimeout(cheerTimer);
   if(!cheer) return;
   if(prefersReducedMotion()){ cheer = null; renderCheer(); return; }
   const el = document.querySelector("#cheerRoot .ch-ban"); if(el) el.classList.add("out");
-  setTimeout(()=>{ cheer = null; renderCheer(); }, 260);
+  setTimeout(()=>{ cheer = null; renderCheer(); }, 280);
 }
 window.openCheer = () => { const id = cheer && cheer.runId; closeCheer(); if(id) openRunSheet(id); };
 window.dismissHier = (runId, effFlag) => {
