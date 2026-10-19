@@ -31,7 +31,8 @@ def main() -> None:
         if not found:
             sys.exit(f"Aucune sauvegarde chiffrée dans {LOCAL_BACKUPS_DIR}")
         source = found[-1]
-    out = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(tempfile.mkdtemp(prefix="mra_sauvegarde_"))
+    # Dossier au nom de la sauvegarde (2026-10-18_183839) : suivi_testeurs.py y lit la date de la sauvegarde.
+    out = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(tempfile.mkdtemp(prefix="mra_sauvegarde_")) / source.name[:17]
     out.mkdir(parents=True, exist_ok=True)
     plain = openssl(["-d"], source.read_bytes())
     with tarfile.open(fileobj=io.BytesIO(plain), mode="r:gz") as tar:

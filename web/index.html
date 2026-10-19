@@ -1461,7 +1461,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=110"></script>
+<script src="logic.js?v=111"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -8094,8 +8094,8 @@ function syncStepBodyHTML(m, n){
   return `<div class="sg-wait"><div class="spinner" aria-hidden="true"></div><span>Synchronisation de tes courses… Ça prend en général moins de 30 secondes.</span></div>
     <button type="button" class="sg-skip" onclick="closeSyncGuide(true)">Continuer sans attendre</button>`;
 }
-// Note en tête du guide selon l'équipement déclaré (R4) : Garmin ou Strava, activer l'envoi vers Apple Santé ; Whoop seul ou
-// aucun appareil, le dire avant d'installer quoi que ce soit, et proposer la saisie à la main.
+// Note en tête du guide selon l'équipement déclaré (R4) : Garmin, Strava ou Whoop (E11, RunSync 1.0 (7)), activer l'envoi
+// vers Apple Santé ; aucun appareil, le dire avant d'installer quoi que ce soit, et proposer la saisie à la main.
 function syncGuideNoteHTML(m){
   const note = m.connected || m.phase ? null : syncGuideNote(syncEquip(goals?.equipement));   // à l'étape 4, le message du bas prend le relais
   if(!note) return "";

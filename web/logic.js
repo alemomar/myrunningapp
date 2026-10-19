@@ -2942,8 +2942,9 @@ function dateStepBlocked(model, choice){
 const SYNC_GUIDE_TITLES = ["Installe TestFlight", "Installe RunSync", "Ouvre RunSync et laisse-toi guider", "On reçoit tes courses"];
 const SYNC_WAIT_EMPTY_SEC = 30;   // R4 (08/10/2026) : 90 s « dans le vide » pour Mohamed, sans historique
 // Guide selon l'équipement déclaré dans « Ton profil coureur » (R4). RunSync lit Apple Santé : une Apple Watch y écrit
-// toute seule ; Garmin Connect et Strava seulement si on l'active dans leurs réglages ; RunSync écarte les séances Whoop
-// (doublons avec l'Apple Watch) ; sans montre ni app de course, rien n'arrive. `equipement` : « Apple Watch,Whoop »…
+// toute seule ; Garmin Connect et Strava seulement si on l'active dans leurs réglages ; Whoop aussi, et RunSync garde ses
+// séances depuis sa 1.0 (7), sauf doublon avec une montre (E11) ; sans montre ni app de course, rien n'arrive.
+// `equipement` : « Apple Watch,Whoop »…
 function syncEquip(equipement){
   const list = String(equipement||"").split(",").map(s=>s.trim()).filter(Boolean);
   if(!list.length) return { kind:null, apps:[] };
@@ -2965,6 +2966,9 @@ const SYNC_APP_HOWTO = {
   Strava: "dans Strava, touche ton profil, puis l'engrenage › Applications, services et appareils › Santé, et active «\u00a0Envoyer vers Santé\u00a0»",
 };
 const SYNC_RUNSYNC_LATER = "L'accès pour RunSync, lui, viendra à l'étape 3\u00a0: RunSync te le demandera, rien à faire avant.";
+// E11 (RunSync 1.0 (7), 13/10/2026) : réglage de l'app Whoop vers Apple Santé ; le bracelet n'a pas de GPS.
+const SYNC_WHOOP_HOWTO = "dans l'app Whoop, touche «\u00a0Plus\u00a0» › Paramètres de l'app › Intégrations › Apple Santé › Connecter";
+const SYNC_WHOOP_GPS = "Le bracelet n'a pas de GPS\u00a0: pour qu'une course ait sa distance, enregistre-la avec le GPS du téléphone dans l'app Whoop.";
 function syncGuideNote(eq){
   if(!eq) return null;
   if(eq.kind==="app"){
@@ -2975,7 +2979,7 @@ function syncGuideNote(eq){
     const late = garmin ? " Ensuite, si une course tarde à arriver, ouvre Garmin Connect\u00a0: c'est lui qui la copie dans Apple Santé." : "";
     return { text:`${first} Sans ça, rien n'arrivera. ${SYNC_RUNSYNC_LATER}${late}`, skip:false };
   }
-  if(eq.kind==="whoop") return { text:"Les séances Whoop ne sont pas encore reprises par RunSync. Tu peux saisir tes courses à la main, ou installer RunSync quand même pour plus tard.", skip:true };
+  if(eq.kind==="whoop") return { text:`Avant de commencer, ${SYNC_WHOOP_HOWTO}. Sans ça, rien n'arrivera. ${SYNC_WHOOP_GPS} ${SYNC_RUNSYNC_LATER}`, skip:false };
   if(eq.kind==="none") return { text:"Sans montre ni app de course, rien ne peut arriver tout seul. Enregistre tes courses avec une app qui les envoie dans Apple Santé (Strava, Nike Run Club…), ou saisis-les à la main.", skip:true };
   return null;
 }
@@ -2988,7 +2992,7 @@ function syncEmptyMessage(linked, eq, sinceText){
   const kind = eq ? eq.kind : null;
   if(kind==="watch") return { title:"RunSync est bien connecté.", lines:[`Apple Santé ne contient pas encore de course${since}. Ta prochaine course enregistrée avec ta montre arrivera toute seule.`, SYNC_MANUAL_LINE], reopen:false };
   if(kind==="app") return { title:`RunSync est bien connecté, mais Apple Santé ne contient aucune course${since}.`, lines:[`Active l'envoi de tes activités vers Apple Santé dans ${syncAppsText(eq.apps)} : elles arriveront ici toutes seules.`, SYNC_MANUAL_LINE], reopen:false };
-  if(kind==="whoop") return { title:"RunSync est bien connecté.", lines:["Les séances Whoop ne sont pas encore reprises. Pour l'instant, enregistre aussi tes courses avec une autre app.", SYNC_MANUAL_LINE], reopen:false };
+  if(kind==="whoop") return { title:`RunSync est bien connecté, mais Apple Santé ne contient aucune course${since}.`, lines:[`Connecte Whoop à Apple Santé : ${SYNC_WHOOP_HOWTO}. Tes séances arriveront ici toutes seules.`, SYNC_MANUAL_LINE], reopen:false };
   return { title:`RunSync est bien connecté, mais Apple Santé ne contient aucune course${since}.`, lines:["Pour que tes courses arrivent toutes seules, enregistre-les avec une app qui les envoie dans Apple Santé (Strava, Nike Run Club, Garmin Connect…).", SYNC_MANUAL_LINE], reopen:false };
 }
 // `done` : une case par étape à faire, toutes sauf la dernière (cases en trop ignorées) ; `received` : séances reçues

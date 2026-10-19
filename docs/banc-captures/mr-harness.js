@@ -753,7 +753,7 @@
     else if(scen==="message_erreur"){ show("profil"); toast("Pas enregistré, vérifie ta connexion.", { actionLabel:"Réessayer", ms:600000 }); }
     else if(scen==="profil_synchro_muette"){ RUNS=RUNS.filter(r=>dateFromRun(r).getTime() < Date.now()-9*86400000); runningRuns=RUNS.filter(r=>r.includeInStats); setProfilSectionState("compte"); show("profil"); }
     else if(scen==="onboarding_preparation"){ RUNS=[]; runningRuns=[]; efRuns=[]; fracRuns=[]; plannedSessions=[]; goals={}; programSettings={}; onboardingCompletedAt=null; onb=null; onbInit(); onb.step=5; onb.saving=true; onb.prepDone=2; renderApp(); }
-  } else if(/^guide_(etape[123]|attente|ok|vide|indice[23]|note_garmin|note_strava|note_garmin_strava|note_aucun|vide_montre|vide_garmin)$/.test(scen)){
+  } else if(/^guide_(etape[123]|attente|ok|vide|indice[23]|note_garmin|note_strava|note_garmin_strava|note_aucun|note_whoop|vide_montre|vide_garmin|vide_whoop)$/.test(scen)){
     // S10 : guide « Voir comment » (connecter RunSync), depuis Mon compte › Synchronisation ; 4 étapes depuis D107
     // (guide_indice2 / guide_indice3 : TestFlight / RunSync ne s'est pas ouvert, un mot propose de l'installer)
     // R4 : note en tête selon l'équipement (guide_note_garmin, guide_note_aucun) ; au bout de 30 s sans course, RunSync relié
@@ -763,7 +763,8 @@
     if(scen==="guide_note_aucun") goals.equipement = "Aucun";
     if(scen==="guide_note_strava") goals.equipement = "Strava";   // E14
     if(scen==="guide_note_garmin_strava") goals.equipement = "Garmin,Strava";
-    if(scen==="guide_vide_montre" || scen==="guide_vide_garmin") syncSinceDate = localDateStr(new Date(new Date().getFullYear(), 0, 1));
+    if(scen==="guide_note_whoop" || scen==="guide_vide_whoop") goals.equipement = "Whoop";   // E11 : Whoop repris par RunSync 1.0 (7)
+    if(scen==="guide_vide_montre" || scen==="guide_vide_garmin" || scen==="guide_vide_whoop") syncSinceDate = localDateStr(new Date(new Date().getFullYear(), 0, 1));
     RUNS=RUNS.filter(r=>r.appleType===MANUAL_RUN_MARKER); runningRuns=RUNS.filter(r=>r.includeInStats); try{ localStorage.removeItem("mra_syncGuide"); }catch(e){}
     openSyncGuide(); stopSyncPoll();
     const done = (scen==="guide_etape1" || /^guide_note/.test(scen)) ? [false,false,false] : (scen==="guide_etape2" || scen==="guide_indice2") ? [true,false,false]

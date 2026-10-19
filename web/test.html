@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=110"></script>
+<script src="logic.js?v=111"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -443,7 +443,8 @@ try {
   assertEqual("E14 : note Garmin = chemin dans Garmin Connect, l'accès RunSync à l'étape 3, ouvrir Garmin Connect si ça tarde", ["Garmin"].map(e=>{ const t=syncGuideNote(syncEquip(e)).text; return [/dans l'app Garmin Connect, touche «\u00a0Plus\u00a0»/.test(t), /étape 3/.test(t), /si une course tarde à arriver, ouvre Garmin Connect/.test(t)]; })[0], [true, true, true]);
   assertEqual("E14 : note Strava = chemin dans Strava, sans la phrase Garmin", (()=>{ const t=syncGuideNote(syncEquip("Strava")).text; return [/Envoyer vers Santé/.test(t), /étape 3/.test(t), /Garmin/.test(t)]; })(), [true, true, false]);
   assertEqual("E14 : Garmin + Strava = une seule des deux, de préférence Garmin Connect", /une seule de tes apps, de préférence Garmin Connect/.test(syncGuideNote(syncEquip("Garmin,Strava")).text), true);
-  assertEqual("R4 : pas de note pour une Apple Watch, proposition de passer sans montre", [syncGuideNote(syncEquip("Apple Watch")), syncGuideNote(syncEquip("Aucun")).skip, syncGuideNote(syncEquip("Whoop")).skip], [null, true, true]);
+  assertEqual("R4 : pas de note pour une Apple Watch, proposition de passer sans montre ; Whoop repris depuis RunSync 1.0 (7) (E11)", [syncGuideNote(syncEquip("Apple Watch")), syncGuideNote(syncEquip("Aucun")).skip, syncGuideNote(syncEquip("Whoop")).skip], [null, true, false]);
+  assertEqual("E11 : Whoop, le réglage à activer dans l'app Whoop et la limite du GPS", [syncGuideNote(syncEquip("Whoop")).text.includes("Intégrations › Apple Santé › Connecter"), syncGuideNote(syncEquip("Whoop")).text.includes("pas de GPS"), syncEmptyMessage(true, syncEquip("Whoop")).lines[0].startsWith("Connecte Whoop à Apple Santé")], [true, true, true]);
   assertEqual("R4 : RunSync pas relié -> rouvrir RunSync", [syncEmptyMessage(false, syncEquip("Aucun")).reopen, /pas encore connecté/.test(syncEmptyMessage(false, syncEquip("Aucun")).title)], [true, true]);
   const em = syncEmptyMessage(true, syncEquip("Aucun"), "1er janv.");
   assertEqual("R4 : relié, sans montre -> explique quoi faire, et la saisie à la main", [/depuis le 1er janv\./.test(em.title), /Strava, Nike Run Club/.test(em.lines[0]), /à la main/.test(em.lines[1])], [true, true, true]);

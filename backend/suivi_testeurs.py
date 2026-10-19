@@ -26,7 +26,13 @@ import json
 import os
 import sys
 
-OWNER_IDS = {"6464472b-e7d3-4102-9e6e-597f74e607be"}   # compte principal d'Omar
+# Comptes d'Omar, exclus (6 premiers caractères de l'identifiant) : principal et compte test « testleila » (état des lieux
+# du 17/10/2026, ce dernier était compté à tort parmi les testeurs RunSync).
+OWNER_PREFIXES = {"646447", "6fb81c"}
+
+
+def is_owner(user_id):
+    return str(user_id)[:6] in OWNER_PREFIXES
 
 
 def latest_backup():
@@ -44,14 +50,16 @@ def parse_ts(value):
 def funnel(profiles, runs, at):
     """Renvoie les étapes [{k, label, n}], le nombre de parcours finis le jour de la sauvegarde, la répartition par statut
     et la liste des comptes."""
-    users = {p["user_id"] for p in profiles if p["user_id"] not in OWNER_IDS}
-    users |= {r["user_id"] for r in runs if r["user_id"] not in OWNER_IDS}
+    users = {p["user_id"] for p in profiles if not is_owner(p["user_id"])}
+    users |= {r["user_id"] for r in runs if not is_owner(r["user_id"])}
     done = {p["user_id"] for p in profiles if p["user_id"] in users and p.get("onboarding_completed_at")}
     received = {r["user_id"] for r in runs if r["user_id"] in users and (r.get("apple_type") or "") != "Manuel"}
     manual = {r["user_id"] for r in runs if r["user_id"] in users and (r.get("apple_type") or "") == "Manuel"} - received
     rated = {r["user_id"] for r in runs if r["user_id"] in users and r.get("pain_ratings")}
     week_ago = at - datetime.timedelta(days=7)
     active = {r["user_id"] for r in runs if r["user_id"] in users and (parse_ts(r.get("start_date")) or at) >= week_ago}
+    # Accord RGPD (S35, 18/10/2026) : date de l'écran « Ton accord » (profiles.privacy_consent_at).
+    consent = {p["user_id"]: parse_ts(p.get("privacy_consent_at")) for p in profiles if p["user_id"] in users and p.get("privacy_consent_at")}
     today = {p["user_id"] for p in profiles if p["user_id"] in done
              and parse_ts(p.get("onboarding_completed_at")).date() == at.date()}
     steps = [
@@ -59,6 +67,7 @@ def funnel(profiles, runs, at):
         {"k": "runsync", "label": "RunSync installé", "n": len(received)},
         {"k": "rated", "label": "Ressenti noté", "n": len(rated)},
         {"k": "active", "label": "Actifs ces 7 jours", "n": len(active)},
+        {"k": "consent", "label": "Accord donné", "n": len(consent)},
     ]
     split = {"runsync": len(received), "manuel": len(manual), "aucune": len(users - received - manual)}
     started = {p["user_id"]: parse_ts(p.get("onboarding_completed_at")) for p in profiles}
@@ -76,6 +85,7 @@ def funnel(profiles, runs, at):
             "seances_main": len(mine) - len(synced),
             "dernier_envoi": last_sync.date().isoformat() if last_sync else None,
             "derniere_seance": last_run.date().isoformat() if last_run else None,
+            "accord": consent[u].date().isoformat() if u in consent else None,
         })
     order = {"runsync": 0, "manuel": 1, "aucune": 2}
     accounts.sort(key=lambda a: (order[a["statut"]], a["parcours"] or ""))
@@ -91,7 +101,7 @@ def main():
     at = datetime.datetime.strptime(os.path.basename(folder.rstrip("/")), "%Y-%m-%d_%H%M%S").astimezone()
     steps, today, split, accounts = funnel(profiles, runs, at)
     result = {"at": at.isoformat(timespec="seconds"), "steps": steps, "today": today, "split": split, "accounts": accounts,
-              "note": "Hors ton compte. Les comptes créés sans finir le parcours sont dans Supabase › Authentication › Users."}
+              "note": "Hors tes comptes (principal et test). Les comptes créés sans finir le parcours sont dans Supabase › Authentication › Users."}
     with open(os.path.join(folder, "suivi_testeurs.json"), "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=1)
     print(json.dumps(result, ensure_ascii=False))
