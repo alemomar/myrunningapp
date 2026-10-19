@@ -4327,3 +4327,89 @@ function myDataExport({ email, profile, runs, planned, exportedAt }){
     programme: planned || [],
   };
 }
+
+/* ---------- Bravo pour ta course ! (C33, revue d'Omar du 19/10/2026) ----------
+   À l'ouverture de l'app, une séance arrivée depuis la dernière visite (Apple Santé ou saisie à la main) est fêtée une seule
+   fois par un bandeau en haut : « Bravo pour ta course ! », la séance et un message tiré des vraies données. Chaque message
+   correspond à un ÉVÉNEMENT de cette course (pas de rotation), dans l'ordre validé : reprise, objectif de km du mois, cap de
+   km du mois, une semaine de plus dans la série, course officielle, nouvelle plus longue sortie du mois, 2e / 3e course de la
+   semaine, sinon ce que la séance apporte. Course officielle et plus longue sortie passent avant la 2e / 3e course (Omar,
+   19/10 : la course de 20 km de Leïla donnait « 2e sortie de la semaine »). Toujours positif ou neutre. Marche, vélo et
+   autres activités : pas de bandeau. */
+const CHEER_OTHER_TYPES = ["Renfo","Mobilité","Yoga","Étirements","Pilates"];
+const CHEER_MAX_AGE_DAYS = 7, CHEER_COMEBACK_DAYS = 10, CHEER_KM_STEP = 50, CHEER_STREAK_MIN = 3;
+const CHEER_PHRASES = {
+  EF: ["Une EF tranquille : c'est elle qui construit ton endurance.", "Une sortie facile de plus : ton endurance se construit comme ça.", "À allure facile, ton cœur apprend à durer."],
+  Long: ["Ton cœur et tes jambes apprennent à tenir la distance.", "Une sortie longue de plus : ton endurance prend de l'ampleur."],
+  "Fractionné": ["C'est comme ça qu'on gagne en vitesse.", "Les efforts courts d'aujourd'hui font l'allure de demain."],
+  Seuil: ["Un tempo tenu : ton allure de course progresse avec.", "Tenir une allure soutenue, ça s'apprend : c'est fait."],
+  Renfo: ["Le renfo protège tes articulations.", "Des muscles solides, des foulées plus sûres."],
+  "Mobilité": ["La mobilité garde tes hanches et tes chevilles souples.", "Quelques minutes de mobilité, et ta foulée s'en souvient."],
+  souple: ["Souplesse et récupération : ton corps te dit merci.", "Un moment pour récupérer : ça compte aussi."],
+};
+const CHEER_KIND_OF_TYPE = { EF:"endurance", Long:"endurance", "Fractionné":"vitesse", Seuil:"vitesse" };
+const cheerIsRun = (type) => RUNNING_RUN_TYPES.includes(type);
+const cheerEligible = (type) => cheerIsRun(type) || CHEER_OTHER_TYPES.includes(type);
+// Séances à fêter : arrivées après `since` (date d'arrivée en base, à défaut la date de la séance), datées des 7 derniers
+// jours, pas encore fêtées, pas « à vérifier » (D109). `sessions` : [{ id, ts, type, createdAt }].
+function cheerCandidates({ sessions, since, cheeredIds, doubtIds, nowTs }){
+  const done = new Set(cheeredIds||[]), doubt = new Set(doubtIds||[]);
+  return (sessions||[]).filter(s=>s && cheerEligible(s.type) && !done.has(s.id) && !doubt.has(s.id)
+    && (s.createdAt!=null ? s.createdAt : s.ts) > since && s.ts >= nowTs - CHEER_MAX_AGE_DAYS*DAY_MS && s.ts <= nowTs + DAY_MS)
+    .sort((a,b)=>a.ts-b.ts);
+}
+// Lundi (00:00, heure locale) de la semaine d'une date.
+function cheerWeekStart(ts){ const d = new Date(ts); d.setHours(0,0,0,0); d.setDate(d.getDate() - (d.getDay()+6)%7); return d.getTime(); }
+const cheerDay = (ts) => { const d = new Date(ts); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()); };
+const cheerKm = (v) => Number(v).toLocaleString("fr-FR", { maximumFractionDigits:1 });
+// Le bandeau : `fresh` = séances à fêter (cheerCandidates) ; `runs` = toutes les courses comptées dans les stats
+// ([{ id, ts, type, distKm }]) ; `kmGoal` = objectif de km du mois (facultatif). Rend { title, runId, type, distKm, ts,
+// text, kind, value } ; le sujet est la course la plus récente (à défaut la séance la plus récente).
+function cheerModel({ fresh, runs, kmGoal }){
+  const list = (fresh||[]).slice().sort((a,b)=>a.ts-b.ts);
+  if(!list.length) return null;
+  const runCount = list.filter(s=>cheerIsRun(s.type)).length, n = list.length;
+  const title = n===1 ? (runCount ? "Bravo pour ta course !" : "Bravo pour ta séance !") : runCount===n ? `Bravo pour tes ${n} courses !` : `Bravo pour tes ${n} séances !`;
+  const runsOnly = list.filter(s=>cheerIsRun(s.type));
+  const s = runsOnly.length ? runsOnly[runsOnly.length-1] : list[list.length-1];
+  const base = { title, runId:s.id, type:s.type, distKm:s.distKm||0, ts:s.ts };
+  const phrase = (key, count) => { const p = CHEER_PHRASES[key] || CHEER_PHRASES.EF; return p[count % p.length]; };
+  if(!cheerIsRun(s.type)){
+    const key = s.type==="Renfo" || s.type==="Mobilité" ? s.type : "souple";
+    return { ...base, text:phrase(key, list.filter(x=>x.type===s.type).length - 1), kind:"renfo", value:null };
+  }
+  const all = (runs||[]).filter(r=>r && cheerIsRun(r.type) && r.id!==s.id);
+  const prev = all.filter(r=>r.ts < s.ts).sort((a,b)=>a.ts-b.ts);
+  const dist = Number(s.distKm)||0;
+  // 1. Reprise : 10 jours ou plus depuis la course précédente.
+  if(prev.length){
+    const gap = Math.round((cheerDay(s.ts) - cheerDay(prev[prev.length-1].ts))/DAY_MS);
+    if(gap >= CHEER_COMEBACK_DAYS) return { ...base, text:`Belle reprise ! Première sortie depuis ${gap} jours : le plus dur est fait.`, kind:"reprise", value:gap };
+  }
+  // 2 et 3. Km du mois : objectif atteint, sinon un cap de 50 km franchi avec cette course.
+  const d0 = new Date(s.ts), inMonth = (r) => { const d = new Date(r.ts); return d.getFullYear()===d0.getFullYear() && d.getMonth()===d0.getMonth(); };
+  const monthPrev = prev.filter(inMonth), before = monthPrev.reduce((a,r)=>a+(Number(r.distKm)||0), 0), after = before + dist;
+  const goal = Number(kmGoal)||0;
+  if(goal>0 && before < goal && after >= goal) return { ...base, text:`Objectif du mois atteint : ${cheerKm(goal)} km !`, kind:"objectif", value:goal };
+  if(Math.floor(after/CHEER_KM_STEP) > Math.floor(before/CHEER_KM_STEP) && after >= CHEER_KM_STEP){
+    const cap = Math.floor(after/CHEER_KM_STEP)*CHEER_KM_STEP;
+    return { ...base, text:`${cap} km ce mois-ci : cap franchi !`, kind:"cap", value:cap };
+  }
+  // 4. 1re course d'une semaine qui prolonge une série d'au moins 3 semaines.
+  const wk = cheerWeekStart(s.ts), rank = prev.filter(r=>cheerWeekStart(r.ts)===wk).length + 1;
+  if(rank===1){
+    const weeks = new Set(prev.map(r=>cheerWeekStart(r.ts)));
+    let streak = 1, w = wk;
+    for(;;){ const p = new Date(w); p.setDate(p.getDate()-7); w = cheerWeekStart(p.getTime()); if(!weeks.has(w)) break; streak++; }
+    if(streak >= CHEER_STREAK_MIN) return { ...base, text:`${streak} semaines d'affilée avec au moins une course : la régularité paie.`, kind:"serie", value:streak };
+  }
+  // 5. Course officielle.
+  if(s.type==="Course") return { ...base, text: dist>0 ? `Une course officielle de ${cheerKm(dist)} km, jusqu'au bout : bravo !` : "Une course officielle, jusqu'au bout : bravo !", kind:"course", value:dist>0 ? Math.round(dist*10)/10 : null };
+  // 6. Nouvelle plus longue sortie du mois.
+  if(monthPrev.length && dist > Math.max(...monthPrev.map(r=>Number(r.distKm)||0)))
+    return { ...base, text:`Ta plus longue sortie du mois : ${cheerKm(dist)} km.`, kind:"plus-longue", value:Math.round(dist*10)/10 };
+  // 7. 2e, 3e… course de la semaine.
+  if(rank>=2) return { ...base, text:`${rank}e sortie de la semaine : tu tiens ton rythme.`, kind:"semaine", value:rank };
+  // 8. Ce que la séance apporte : les phrases changent d'une course du même type à l'autre.
+  return { ...base, text:phrase(s.type, prev.filter(r=>r.type===s.type).length), kind:CHEER_KIND_OF_TYPE[s.type] || "endurance", value:null };
+}

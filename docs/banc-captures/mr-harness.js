@@ -411,6 +411,26 @@
     const sheet = { courbe_derive:"drift", courbe_cadence:"cad", courbe_regularite:"reg" }[scen];
     if(sheet && typeof openIndicatorSheet==="function") openIndicatorSheet(sheet);
     else setTimeout(()=>{ const el = document.getElementById("progIndicators"); if(el) el.scrollIntoView(); }, 50);
+  } else if(/^bravo_(course|reprise|plusieurs)$/.test(scen)){
+    // C33 : bandeau « Bravo pour ta course ! » à l'ouverture. « _course » : EF reçue ce matin (1re de la semaine, la série
+    // continue) ; « _reprise » : rien depuis 12 jours ; « _plusieurs » : une sortie longue hier, un renfo hier soir et une EF
+    // ce matin arrivés d'un coup. Le bandeau reste affiché pour la capture (minuterie coupée).
+    try{ localStorage.setItem("mra_notLinked", JSON.stringify(rows.map(r=>r.id))); }catch(e){}
+    celebrationOff(); rateYesterday();
+    const nowIso = new Date().toISOString(), oldIso = new Date(Date.now()-30*86400000).toISOString();
+    rows.forEach(r=>{ r.created_at = oldIso; });
+    if(scen==="bravo_reprise"){ const cut = startOf(12).getTime(); for(let i=rows.length-1;i>=0;i--){ if(new Date(rows[i].start_date).getTime() > cut) rows.splice(i,1); } }
+    const am = new Date(); am.setHours(7,33,0,0);
+    rows.push({ id:"bravo1", apple_type:"Running", include_in_stats:true, start_date:am.toISOString(), created_at:nowIso, type:"EF", distance_km:8.1, duration_sec:2778, avg_hr:148, pain_ratings:{ rpe:5, note:4, gene:false } });
+    if(scen==="bravo_plusieurs"){
+      const y = startOf(1); y.setHours(9,10,0,0); const ye = startOf(1); ye.setHours(19,0,0,0);
+      rows.push({ id:"bravo2", apple_type:"Running", include_in_stats:true, start_date:y.toISOString(), created_at:nowIso, type:"Long", distance_km:14.2, duration_sec:5112, avg_hr:150 });
+      rows.push({ id:"bravo3", apple_type:"Strength", include_in_stats:false, start_date:ye.toISOString(), created_at:nowIso, type:"Renfo", distance_km:0, duration_sec:1800, avg_hr:110 });
+    }
+    rows.sort((a,b)=>new Date(a.start_date)-new Date(b.start_date)); await loadData(); rateYesterday();
+    plannedSessions=[...wkSessions, ...future]; show("aujourdhui");
+    try{ localStorage.setItem("mra_cheer", JSON.stringify({ since:Date.now()-3600000, ids:[] })); }catch(e){}
+    if(typeof maybeCheer==="function"){ maybeCheer(); clearTimeout(cheerTimer); }
   } else if(scen==="aujourdhui_repos_simple" || scen==="aujourdhui_gene" || scen==="aujourdhui_couru"){
     // Refonte d'Aujourd'hui (C27) : jour de repos sans carte d'action (objectif et chiffre du jour visibles) ; « gene » : gêne au
     // genou droit notée hier (À ménager, zone sensible, mobilité ciblée) ; « couru » : sortie reçue aujourd'hui sans séance prévue.

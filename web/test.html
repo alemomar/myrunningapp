@@ -15,7 +15,7 @@
 <div class="summary" id="summary">Exécution des tests...</div>
 <div id="results"></div>
 
-<script src="logic.js?v=111"></script>
+<script src="logic.js?v=113"></script>
 <script>
 // Smoke tests des fonctions de calcul pures (logic.js). Ouvrir ce fichier
 // directement dans un navigateur — aucun outil/build nécessaire.
@@ -2484,6 +2484,36 @@ try {
   assertEqual("export : profil complet (objectifs compris)", ex.profil.goals, { x:1 });
   assertEqual("export : rien en base -> listes vides, pas d'erreur", myDataExport({ email:"", profile:null, runs:null, planned:null, exportedAt:"t" }).seances, []);
   assertEqual("export : nom du fichier", MY_DATA_FILENAME, "mes-donnees-myrunningapp.json");
+}
+
+// --- « Bravo pour ta course ! » (C33, revue d'Omar du 19/10/2026) ---
+{
+  const at = (y,m,d,h=8) => new Date(y,m-1,d,h).getTime();
+  const NOW = at(2026,10,19,12);   // lundi 19/10/2026
+  const R = (id, ts, type="EF", km=5, extra={}) => ({ id, ts, type, distKm:km, ...extra });
+  const sess = [ R("a", at(2026,10,18), "EF", 5, { createdAt:NOW-3600e3 }), R("b", at(2026,10,17), "Marche", 3, { createdAt:NOW-3600e3 }),
+    R("c", at(2026,10,9), "EF", 5, { createdAt:NOW-3600e3 }), R("d", at(2026,10,18,18), "Renfo", 0, { createdAt:NOW-3600e3 }),
+    R("e", at(2026,10,16), "EF", 5, { createdAt:NOW-100*86400e3 }), R("f", at(2026,10,18,10), "Fractionné", 6, { createdAt:NOW-3600e3 }), R("g", at(2026,10,18,11), "EF", 1, { createdAt:NOW-3600e3 }) ];
+  assertEqual("bravo : seulement les nouvelles séances des 7 derniers jours, pas la marche, ni déjà fêtées, ni à vérifier", cheerCandidates({ sessions:sess, since:NOW-86400e3, cheeredIds:["f"], doubtIds:["g"], nowTs:NOW }).map(x=>x.id), ["a","d"]);
+  const title = (fresh) => cheerModel({ fresh, runs:[], kmGoal:0 }).title;
+  assertEqual("bravo : titres", [title([R("x", NOW)]), title([R("x", NOW, "Renfo", 0)]), title([R("x", NOW-2), R("y", NOW-1), R("z", NOW)]), title([R("x", NOW-1), R("y", NOW, "Renfo", 0)])],
+    ["Bravo pour ta course !", "Bravo pour ta séance !", "Bravo pour tes 3 courses !", "Bravo pour tes 2 séances !"]);
+  const msg = (subject, prev, kmGoal=0) => { const m = cheerModel({ fresh:[subject], runs:[...prev, subject], kmGoal }); return [m.kind, m.text]; };
+  assertEqual("bravo 1 : reprise après 12 jours", msg(R("s", NOW), [R("p", at(2026,10,7))]), ["reprise", "Belle reprise ! Première sortie depuis 12 jours : le plus dur est fait."]);
+  assertEqual("bravo 2 : objectif de km du mois atteint avec cette course", msg(R("s", NOW, "EF", 8), [R("p1", at(2026,10,15), "Long", 45), R("p2", at(2026,10,16), "EF", 40)], 90), ["objectif", "Objectif du mois atteint : 90 km !"]);
+  assertEqual("bravo 3 : cap de 50 km du mois franchi", msg(R("s", NOW, "EF", 8), [R("p1", at(2026,10,15), "Long", 25), R("p2", at(2026,10,16), "EF", 20)]), ["cap", "50 km ce mois-ci : cap franchi !"]);
+  assertEqual("bravo 4 : 1re course de la semaine, 5 semaines d'affilée", msg(R("s", NOW, "EF", 3), [R("p1", at(2026,9,21), "EF", 3), R("p2", at(2026,9,28), "EF", 3), R("p3", at(2026,10,5), "EF", 3), R("p4", at(2026,10,12), "EF", 3)]),
+    ["serie", "5 semaines d'affilée avec au moins une course : la régularité paie."]);
+  assertEqual("bravo 5 : 2e course de la semaine (pas la série, déjà fêtée lundi)", msg(R("s", at(2026,10,21), "EF", 3), [R("p0", at(2026,10,5), "EF", 3), R("p1", at(2026,10,12), "EF", 3), R("p2", at(2026,10,19), "EF", 3)]),
+    ["semaine", "2e sortie de la semaine : tu tiens ton rythme."]);
+  const prev8 = [R("p1", at(2026,10,14), "EF", 5), R("p2", at(2026,10,15), "EF", 5)];
+  assertEqual("bravo : une course officielle passe avant « 2e sortie de la semaine » (20 km de Leïla, 11/10)", msg(R("s", at(2026,10,11), "Course", 20), [R("p1", at(2026,10,6), "Seuil", 10)]), ["course", "Une course officielle de 20 km, jusqu'au bout : bravo !"]);
+  assertEqual("bravo : la plus longue sortie du mois passe avant « 3e sortie de la semaine »", msg(R("s", at(2026,10,25), "Long", 14), [R("p1", at(2026,10,20), "EF", 6), R("p2", at(2026,10,22), "EF", 6)]), ["plus-longue", "Ta plus longue sortie du mois : 14 km."]);
+  assertEqual("bravo 6 : nouvelle plus longue sortie du mois", msg(R("s", NOW, "Long", 10), prev8), ["plus-longue", "Ta plus longue sortie du mois : 10 km."]);
+  assertEqual("bravo 7 : sinon, ce que la séance apporte (la phrase change d'une EF à l'autre)", [msg(R("s", NOW, "EF", 4), prev8), msg(R("s", NOW, "Fractionné", 4), prev8)],
+    [["endurance", "À allure facile, ton cœur apprend à durer."], ["vitesse", "C'est comme ça qu'on gagne en vitesse."]]);
+  assertEqual("bravo : renfo seul -> séance, phrase du renfo", (({kind, text}) => [kind, text])(cheerModel({ fresh:[R("x", NOW, "Renfo", 0)], runs:[], kmGoal:0 })), ["renfo", "Le renfo protège tes articulations."]);
+  assertEqual("bravo : course et renfo arrivés ensemble -> le message parle de la course", cheerModel({ fresh:[R("x", NOW-1, "EF", 4), R("y", NOW, "Renfo", 0)], runs:[R("x", NOW-1, "EF", 4)], kmGoal:0 }).runId, "x");
 }
 
 document.getElementById("summary").innerHTML =

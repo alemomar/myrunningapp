@@ -1408,6 +1408,22 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 .sheet .field input.sheet-input{flex:none;background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-md);padding:9px 14px;outline:none;transition:border-color var(--t-fast)}
 .sheet .field input.sheet-input:focus{border-color:var(--select)}
 .sheet-input{background:var(--surface-sunken);border:1px solid var(--line-field);border-radius:var(--r-sm);color:var(--text);font-size:16px;min-height:var(--tap-min);padding:9px 12px;font-family:inherit;box-sizing:border-box}
+/* « Bravo pour ta course ! » (C33, 19/10/2026) : bandeau en haut, 4 secondes, quelques confettis */
+.ch-ban{position:fixed;z-index:400;top:calc(env(safe-area-inset-top) + 10px);left:50%;width:min(520px, calc(100% - 24px));transform:translateX(-50%);overflow:hidden;border-radius:var(--r-lg);background:var(--surface-raised);border:1px solid var(--line);box-shadow:var(--shadow-lift)}
+.ch-in{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:none;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ch-vis{flex:none;width:56px;height:56px;display:flex;align-items:center;justify-content:center}
+.ch-vis mra-cheer{display:block;width:56px;height:56px}
+.ch-ic{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+.ch-t{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}
+.ch-t b{font:700 19px/1.1 var(--font-display);text-transform:uppercase;color:var(--accent)}
+.ch-s{font-size:12.5px;color:var(--text-muted)}
+.ch-m{font-size:13.5px;line-height:1.35;color:var(--text-2)}
+@media (prefers-reduced-motion: no-preference){
+  .ch-ban{animation:chIn 320ms var(--ease) both}
+  .ch-ban.out{animation:chOut 260ms ease-in both}
+}
+@keyframes chIn{from{opacity:0;transform:translate(-50%,-24px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes chOut{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-24px)}}
 /* RGPD (A6 + A3, 14/10/2026) : fenêtre Confidentialité, écran d'accord, « Tes données » */
 .pv-upd{font-size:12.5px;color:var(--text-muted);margin:-4px 0 10px}
 .pv-text h2{font:700 18px/1.15 var(--font-display);text-transform:uppercase;margin:18px 0 6px;color:var(--text)}
@@ -1454,6 +1470,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
   <div id="tourRoot"></div>
   <div id="confirmRoot"></div>
   <div id="celebrationRoot"></div>
+  <div id="cheerRoot"></div>
   <div id="toastRoot" aria-live="polite"></div>
 
   <div class="tabs" id="tabs"></div>
@@ -1461,7 +1478,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="logic.js?v=111"></script>
+<script src="logic.js?v=113"></script>
 <script src="record-man.js?v=1"></script>
 <script>
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1609,6 +1626,7 @@ function mapRow(r){
     fracWorkManual: r.frac_work_manual || null,
     fracRecoveryManual: r.frac_recovery_manual || null,
     typeChecked: r.type_checked === true,   // D109 : type choisi ou confirmé par l'utilisateur
+    createdAt: r.created_at ? Date.parse(r.created_at) : null,   // arrivée en base : le bandeau « Bravo » ne fête que les nouvelles (C33)
   };
 }
 
@@ -2685,6 +2703,7 @@ window.saveManualRun = async () => {
   await runProgramMaintenance(); // rapproche aussi les autres séances prévues du même jour
   renderContent();
   painFollowUpToast(ratings || {}, "Séance enregistrée.");
+  maybeCheer();   // C33 : une course saisie à la main est fêtée aussi
 };
 /* ---------- Fusion saisie à la main / course synchronisée (chantier 3, Q2) ----------
    Quand la montre synchronise la course qu'on avait saisie à la main, la
@@ -6526,6 +6545,63 @@ function renderCelebration(){
 window.closeCelebration = () => { celebration = null; renderCelebration(); };
 document.addEventListener("keydown", (e) => { if(e.key==="Escape" && celebration) closeCelebration(); });
 window.celebrationRate = () => { const id = celebration && celebration.runId; closeCelebration(); if(id) goRateSession(id); };
+// ---------- « Bravo pour ta course ! » (C33, revue d'Omar du 19/10/2026) ----------
+// Une séance arrivée depuis la dernière visite est fêtée une seule fois par un bandeau en haut (format A) : quelques
+// confettis, le titre, la séance et un message tiré des vraies données (cheerModel, logic.js), 4 secondes ; le toucher
+// ouvre la séance. Le plein écran d'un record passe avant : la séance est alors comptée comme fêtée, sans bandeau.
+// La 1re fois, on part de 24 h plus tôt : la séance du jour est fêtée, pas tout l'historique. L'animation vient de Claude
+// Design (élément <mra-cheer>, demandé le 19/10) ; tant qu'il n'est pas là, ou pour un type qu'il ne connaît pas (course
+// officielle), l'icône du type de séance.
+const CHEER_KEY = "mra_cheer", CHEER_MS = 4000, CHEER_FIRST_LOOKBACK_MS = 24*3600*1000;
+const CHEER_CD_KINDS = ["reprise","objectif","cap","serie","semaine","plus-longue","endurance","vitesse","renfo","course"];
+function cheerState(){ try{ const v = JSON.parse(localStorage.getItem(CHEER_KEY)||"null"); if(v && typeof v.since==="number") return v; }catch(e){} return null; }
+function saveCheerState(st){ try{ localStorage.setItem(CHEER_KEY, JSON.stringify({ since:st.since, ids:(st.ids||[]).slice(-200) })); }catch(e){} }
+let cheer = null, cheerTimer = null;
+function maybeCheer(){
+  if(!onboardingCompletedAt || privacyConsentNeeded(privacyReady, privacyConsentAt) || newsSheet || !document.getElementById("cheerRoot")) return false;
+  let st = cheerState();
+  if(!st){ st = { since:Date.now()-CHEER_FIRST_LOOKBACK_MS, ids:[] }; saveCheerState(st); }
+  const fresh = cheerCandidates({ sessions: RUNS.map(r=>({ id:r.id, ts:dateFromRun(r).getTime(), type:r.type, distKm:r.dist||0, createdAt:r.createdAt })),
+    since:st.since, cheeredIds:st.ids, doubtIds:[...doubtIds], nowTs:Date.now() });
+  if(!fresh.length) return false;
+  saveCheerState({ since:st.since, ids:[...(st.ids||[]), ...fresh.map(f=>f.id)] });
+  if(celebration) return false;   // un record a déjà son plein écran
+  const m = cheerModel({ fresh, runs: runningRuns.map(r=>({ id:r.id, ts:dateFromRun(r).getTime(), type:r.type, distKm:r.dist||0 })), kmGoal: goals.kmMensuel ? Number(goals.kmMensuel) : 0 });
+  if(!m) return false;
+  cheer = m; renderCheer();
+  clearTimeout(cheerTimer); cheerTimer = setTimeout(closeCheer, CHEER_MS);
+  return true;
+}
+function cheerSubject(m){
+  const ago = daysBetween(localDateStr(new Date(m.ts)), localDateStr(new Date()));
+  const when = ago===0 ? "aujourd'hui" : ago===1 ? "hier" : dayLabelShort(new Date(m.ts)).toLowerCase();
+  return [sessionTypeLabel(m.type), m.distKm>0 ? `${fmtDec(m.distKm,1)} km` : ""].filter(Boolean).join(" · ") + ", " + when;
+}
+function cheerVisualHTML(m){
+  if(window.customElements && customElements.get("mra-cheer") && CHEER_CD_KINDS.includes(m.kind))
+    return `<mra-cheer kind="${escHtml(m.kind)}"${m.value!=null?` value="${escHtml(String(m.value))}"`:""} once aria-hidden="true"></mra-cheer>`;
+  const c = TC[m.type]||TC.Other;
+  return `<span class="ch-ic" style="background:${c}24;color:${c}" aria-hidden="true">${icon(TICON[m.type]||"activity",24)}</span>`;
+}
+function renderCheer(leaving){
+  const root = document.getElementById("cheerRoot");
+  if(!root) return;
+  if(!cheer){ root.innerHTML = ""; return; }
+  const subject = cheerSubject(cheer);
+  root.innerHTML = `<div class="ch-ban${leaving?" out":""}" role="status" aria-live="polite">
+    <button type="button" class="ch-in" onclick="openCheer()" aria-label="${escHtml(cheer.title)} ${escHtml(subject)}. ${escHtml(cheer.text)} Ouvre la séance.">
+      <span class="ch-vis">${cheerVisualHTML(cheer)}</span>
+      <span class="ch-t"><b>${escHtml(cheer.title)}</b><span class="ch-s">${escHtml(subject)}</span><span class="ch-m">${escHtml(cheer.text)}</span></span>
+    </button>${leaving ? "" : hierConfettiHTML()}</div>`;
+}
+function closeCheer(){
+  clearTimeout(cheerTimer);
+  if(!cheer) return;
+  if(prefersReducedMotion()){ cheer = null; renderCheer(); return; }
+  const el = document.querySelector("#cheerRoot .ch-ban"); if(el) el.classList.add("out");
+  setTimeout(()=>{ cheer = null; renderCheer(); }, 260);
+}
+window.openCheer = () => { const id = cheer && cheer.runId; closeCheer(); if(id) openRunSheet(id); };
 window.dismissHier = (runId, effFlag) => {
   try{
     if(runId){
@@ -7407,6 +7483,7 @@ async function boot(){
 function afterBootTasks(){
   maybeShowNews();
   maybeCelebrate();
+  maybeCheer();
   resumeSyncGuide();
   runProgramMaintenance();
 }
@@ -7427,9 +7504,10 @@ async function refreshFromServer(manual){
   refreshing = false;
   if(!ok) return;   // loadData a déjà prévenu : « Pas pu actualiser tes séances. On garde ce qui est affiché. »
   renderTabs(); renderContent();
-  const msg = newRunsMessage(before, RUNS.length);
-  if(msg) toast(msg); else if(manual) toast("Tout est à jour.");
   if(RUNS.length>before){ maybeCelebrate(); runProgramMaintenance(); }
+  const cheered = maybeCheer();   // C33 : le bandeau « Bravo » remplace le message « 1 nouvelle séance reçue »
+  const msg = newRunsMessage(before, RUNS.length);
+  if(msg && !cheered) toast(msg); else if(!msg && manual) toast("Tout est à jour.");
 }
 function autoRefresh(){
   if(!loadedOnce || document.visibilityState==="hidden" || Date.now()-lastLoadAt < AUTO_REFRESH_MS) return;
