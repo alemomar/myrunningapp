@@ -1,0 +1,10 @@
+{
+  "name": "MRA Proto",
+  "short_name": "MRA Proto",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0C0D0F",
+  "theme_color": "#0C0D0F",
+  "icons": [{ "src": "icone-proto.png", "sizes": "180x180", "type": "image/png" }]
+}
