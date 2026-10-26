@@ -109,6 +109,17 @@ nav.onglets{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px 
 nav.onglets button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;font-size:11.5px;color:var(--muted);border-radius:999px;text-align:center}
 nav.onglets button.actif{color:var(--text);font-weight:700}
 .vide{color:var(--text-3);text-align:center;padding:30px 10px}
+.segments{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:999px;background:var(--surface)}
+.segments button{padding:10px 0;border-radius:999px;text-align:center;color:var(--text-3);font-weight:600;font-size:14px}
+.segments button.actif{background:var(--text);color:#0C0D0F}
+.ligne{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.ligne[role=link]{cursor:pointer}
+.ligne .pt{flex:none;width:9px;height:9px;border-radius:50%}
+.ligne .m{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ligne .m b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ligne .m span{font-size:13px;color:var(--muted)}
+.ligne .al{font-family:var(--cond);font-weight:700;font-size:18px}
+.ligne .pv{font-size:12.5px;color:var(--muted)}
 .champ{display:flex;flex-direction:column;gap:6px}
 .champ label{font-size:13px;color:var(--text-3)}
 .champ input{width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--sunken);color:var(--text);font:inherit;font-size:16px}

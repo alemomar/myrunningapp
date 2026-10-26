@@ -276,6 +276,65 @@ const Calc = (() => {
       points: base.filter((s) => s.ts > nowTs - 365 * JOUR).map((s) => ({ ts: s.ts, v: val(s) })) };
   }
 
+  /* ---------- Progression (étape 3) ---------- */
+  // Courbe du repère : un point par semaine = médiane des sorties faciles des 4 semaines précédentes (au moins 2).
+  function repereCourbe(sorties, nowTs, mois, reg) {
+    const r = reg || REGLAGES, rp = repere(sorties, nowTs, r);
+    if (rp.etat !== "valeur") return { rp, points: [] };
+    const debut = nowTs - mois * 30.44 * JOUR, pts = [];
+    for (let fin = nowTs; fin >= debut; fin -= SEM) {
+      const fen = rp.points.filter((p) => p.ts <= fin && p.ts > fin - r.repereFenetreJours * JOUR);
+      if (fen.length >= 2) pts.unshift({ ts: fin, v: med(fen.map((p) => p.v)) });
+    }
+    return { rp, points: pts };
+  }
+  // Volume par mois (courses) sur les `mois` derniers mois, mois en cours compris.
+  function volumeParMois(sorties, nowTs, mois) {
+    const d = new Date(nowTs), out = [];
+    for (let i = mois - 1; i >= 0; i--) {
+      const deb = new Date(d.getFullYear(), d.getMonth() - i, 1).getTime(), fin = new Date(d.getFullYear(), d.getMonth() - i + 1, 1).getTime();
+      const c = sorties.filter((s) => estCourse(s) && s.ts >= deb && s.ts < fin);
+      out.push({ debut: deb, km: c.reduce((a, s) => a + s.dist, 0), n: c.length });
+    }
+    return out;
+  }
+  // Régularité : pour chacune des `semaines` dernières semaines (lundi à dimanche), au moins une course ?
+  function regularite(sorties, nowTs, semaines) {
+    const l = lundi(nowTs), out = [];
+    for (let i = semaines - 1; i >= 0; i--) { const deb = l - i * SEM; out.push(sorties.some((s) => estCourse(s) && s.ts >= deb && s.ts < deb + SEM)); }
+    return { semaines: out, avec: out.filter(Boolean).length };
+  }
+  // Un indicateur sorties faciles (dérive, cadence) dans le temps : points sur la période, médiane des 8 dernières semaines
+  // et des mêmes 8 semaines il y a 3 mois (règles de l'app, C2).
+  function indicateurDansLeTemps(sorties, nowTs, mois, valeur) {
+    const faciles = sorties.filter((s) => estCourse(s) && (s.type === "EF" || s.type === "Long"));
+    const pts = faciles.map((s) => ({ ts: s.ts, v: valeur(s), id: s.id })).filter((p) => p.v != null);
+    const fen = (fin) => pts.filter((p) => p.ts <= fin && p.ts > fin - 56 * JOUR).map((p) => p.v);
+    const now = fen(nowTs), avant = fen(nowTs - 91 * JOUR);
+    return { points: pts.filter((p) => p.ts >= nowTs - mois * 30.44 * JOUR), maintenant: now.length >= 3 ? med(now) : null, nMaintenant: now.length, avant: avant.length >= 3 ? med(avant) : null };
+  }
+  const derive = (s) => { const d = cardiacDrift({ hrSeries: s.hr, paceSeries: s.pace, durationSec: s.dur, type: s.type }); return d ? d.pct : null; };
+  const cadence = (s) => cadenceShown(s.cad, s.type);
+  // Records : ceux de l'app (5 km, 10 km, semi, marathon : temps ramené à la distance exacte), plus la sortie la plus longue.
+  function records(sorties) {
+    const runs = sorties.filter(estCourse).map((s) => ({ id: s.id, ts: s.ts, type: s.type, distKm: s.dist, durationSec: s.dur, paceSecKm: s.allure, workPaceSecKm: null, cleanEf: false }));
+    const h = recordHolders(runs);
+    const liste = RECORD_DISTANCES.map((d) => ({ cle: d.key, label: d.label, valeur: h.distances[d.key] ? fmtDur(h.distances[d.key].timeSec) : null, id: h.distances[d.key] ? h.distances[d.key].runId : null, ts: h.distances[d.key] ? h.distances[d.key].ts : null }));
+    const longue = sorties.filter(estCourse).reduce((m, s) => (!m || s.dist > m.dist ? s : m), null);
+    liste.push({ cle: "longue", label: "Plus longue", valeur: longue ? `${kmTxt(longue.dist * 1000)} km` : null, id: longue ? longue.id : null, ts: longue ? longue.ts : null });
+    return liste;
+  }
+  // Ton cap : l'objectif principal de l'app, en une ligne.
+  function cap(profil) {
+    const p = profil && profil.goals && profil.goals.principal;
+    if (!p || !p.objectifPrincipal) return null;
+    if (p.objectifPrincipal === "Préparer une course") {
+      const dist = RACE_LABELS[p.distanceCourse] || p.distanceCourse || "une course";
+      return `${dist}${p.dateCible ? ` le ${isoToFr(p.dateCible)}` : ""}`;
+    }
+    return p.objectifPrincipal === "Améliorer mon allure" ? "améliorer ton allure" : p.objectifPrincipal.charAt(0).toLowerCase() + p.objectifPrincipal.slice(1);
+  }
+
   /* ---------- Bloc cœur du détail ---------- */
   function fcMaxEffective(profil, sorties) {
     if (profil && profil.max_hr) return Number(profil.max_hr);
@@ -285,5 +344,6 @@ const Calc = (() => {
   }
 
   return { versSortie, estCourse, coeurFiable, ressentiDe, ressentiMot, habitude, verdict, conseil, zonesAllure, zoneDe, zonesLibelles,
-    decoupage, libelleType, evolution, ressentiFaceMesure, semaine, lundi, repere, fcMaxEffective, moyenne, med, kmTxt, allureTxt, TITRES };
+    decoupage, libelleType, evolution, ressentiFaceMesure, semaine, lundi, repere, repereCourbe, volumeParMois, regularite, indicateurDansLeTemps,
+    derive, cadence, records, cap, fcMaxEffective, moyenne, med, kmTxt, allureTxt, TITRES };
 })();

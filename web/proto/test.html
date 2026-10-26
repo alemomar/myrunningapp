@@ -133,6 +133,15 @@ window.__appels = [];
   const rp2 = Calc.repere(fac, NOW);
   ok(rp2.etat === "valeur" && rp2.valeur === 360 && rp2.ecart === 10, "Repère : allure à effort égal 6'00, 10 s de mieux qu'il y a 3 mois");
 
+  // Progression (étape 3)
+  const vol = Calc.volumeParMois([sortie({ id: "m1", ts: NOW - 2 * JOUR, km: 8, pace: 365 }), sortie({ id: "m2", ts: Date.parse("2026-09-10T08:00:00"), km: 10, pace: 365 })], NOW, 3);
+  ok(vol.length === 3 && vol[2].km === 8 && vol[1].km === 10 && vol[0].km === 0, "Volume par mois : 3 mois, mois en cours en dernier");
+  const rg = Calc.regularite([sortie({ id: "g1", ts: NOW - 1 * 3600000, km: 5, pace: 365 }), sortie({ id: "g2", ts: NOW - 15 * JOUR, km: 5, pace: 365 })], NOW, 12);
+  ok(rg.semaines.length === 12 && rg.avec === 2 && rg.semaines[11] === true, "Régularité : 12 semaines, 2 avec au moins une sortie");
+  const rec = Calc.records([sortie({ id: "k1", ts: NOW - 5 * JOUR, km: 10.02, pace: 330 }), sortie({ id: "k2", ts: NOW - 9 * JOUR, km: 10, pace: 345 }), sortie({ id: "k3", ts: NOW - 20 * JOUR, km: 15.2, pace: 380 })]);
+  ok(rec.find((x) => x.cle === "10k").id === "k1" && rec.find((x) => x.cle === "longue").valeur === "15,2 km" && rec.find((x) => x.cle === "5k").valeur === null, "Records : meilleur 10 km, plus longue sortie, 5 km « à venir »");
+  ok(Calc.cap({ goals: { principal: { objectifPrincipal: "Préparer une course", distanceCourse: "10km", dateCible: "2027-03-14" } } }) === "10 km le 14/03/2027", "Ton cap : la course visée et sa date");
+
   const nOk = res.filter((r) => r.ok).length, nKo = res.length - nOk;
   document.getElementById("bilan").innerHTML = `<b class="${nKo ? "ko" : "ok"}">${nOk} passés, ${nKo} échoués</b>`;
   document.getElementById("liste").innerHTML = res.map((r) => `<li class="${r.ok ? "ok" : "ko"}">${r.ok ? "✓" : "✗"} ${r.nom.replace(/</g, "&lt;")}</li>`).join("");
