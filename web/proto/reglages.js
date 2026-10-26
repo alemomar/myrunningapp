@@ -3,13 +3,27 @@
    s/km = secondes par kilomètre (6'05/km = 365 s/km). Plus le nombre est grand, plus l'allure est lente. */
 const REGLAGES = {
 
-  /* ---- « Habitude » : à quoi on compare une sortie ---- */
-  habitudeSemaines: 6,          // sorties du même type sur les 6 dernières semaines, sortie du jour exclue
-  minSortiesHabitude: 2,        // en dessous : pas de verdict (« pas encore d'habitude pour ce type de sortie »)
+  /* ---- « Habitude » : à quoi on compare une sortie (le bilan est TOUJOURS donné, retour d'Omar du 26/10) ----
+     1) Cœur fiable et allure détaillée : on compare tes PASSAGES à la même allure (même zone d'allure), toutes sorties
+        confondues : ton cœur sur ces passages face à ton habitude à cette allure. Un seuil se compare à tes autres
+        passages au seuil, même au milieu d'une sortie mixte. Fenêtre de 6 semaines, élargie à 12 s'il le faut.
+     2) Sinon : sorties du même type (allure, cœur moyen ou ressenti), 6 puis 12 semaines.
+     3) Sinon : « Ta première sortie de ce type » (elle devient le point de départ). */
+  habitudeSemaines: 6,          // sorties sur les 6 dernières semaines, sortie du jour exclue…
+  bilanFenetreMaxSemaines: 12,  // … élargies à 12 semaines s'il n'y a rien à comparer
+  minSortiesHabitude: 1,        // une seule sortie comparable suffit pour donner un bilan (on dit à combien on compare)
+  bilanMinPassageSec: 300,      // une zone d'allure compte si la sortie y a passé au moins 5 min (les courtes accélérations ne servent pas de référence)
+  penteCoeurDefaut: -0.7,       // à défaut de mieux : le cœur monte de 0,7 battement par s/km plus vite (corrige l'écart d'allure « à 10 s près »)
+  penteCoeurMin: -2, penteCoeurMax: -0.1, penteMinPoints: 6,   // pente tirée de tes passages si elle est plausible et s'il y a au moins 6 points
+  coeurToleranceSec: 20,        // cœur pris à 20 s près de chaque mesure d'allure
+  coeurDecalageSec: 45,         // le cœur suit l'allure avec ~45 s de retard : chaque mesure d'allure prend le cœur mesuré 45 s plus tard
+  coeurMinSec: 60,              // il faut au moins 60 s de cœur dans la zone pour comparer
+  bilanJoursOuverture: 7,       // le bilan s'ouvre tout seul à la 1re ouverture après une sortie de moins de 7 jours
 
-  /* ---- Verdict avec un cœur fiable ---- */
-  allureComparableSec: 10,      // « à allure comparable » = à 10 s/km près
-  minSortiesComparables: 2,     // sorties à allure comparable nécessaires pour comparer le cœur directement
+  /* ---- Bilan avec un cœur fiable ---- */
+  allureComparableSec: 10,      // « à allure comparable » = à 10 s/km près…
+  allureProcheMaxSec: 30,       // … sinon à 30 s/km près, le cœur de chaque passage étant ramené à ton allure du jour (pente ci-dessous)
+  minSortiesComparables: 1,     // sorties à allure comparable nécessaires pour comparer le cœur directement
   minSortiesTendance: 3,        // sinon : relation allure → cœur tirée des sorties du même type (au moins 3)
   ecartCoeurBpm: 3,             // au moins 3 battements sous l'habitude → « plus facile » ; 3 au-dessus → « plus dure »
 
@@ -58,6 +72,17 @@ const REGLAGES = {
   repereMinSorties: 3,
   repereFcRefJours: 84,
   repereEcartMinSec: 3,         // moins de 3 s/km d'écart : « stable »
+
+  /* ---- Tes allures par effort (Progression › Allure, idée d'Omar du 26/10) ----
+     L'effort se lit au cœur : EF = cœur en zone 2, Tempo = zone 3, Seuil = zone 4 (zones cardio de l'app, réserve de FC).
+     Pour chaque sortie au cœur fiable : l'allure tenue pendant les moments passés dans chaque zone (blocs d'au moins
+     90 s, sans leurs 30 premières secondes, le temps que le cœur se cale). Évolution : médiane des 6 dernières semaines
+     face aux 6 semaines d'il y a 3 mois. À distinguer de la répartition du temps en zones 1 à 5 (onglet Cœur). */
+  effortBlocMinSec: 90,
+  effortRetardSec: 30,
+  effortMinSec: { 1: 600, 2: 180, 3: 180 },   // temps minimum dans la zone pour qu'une sortie compte (EF 10 min, Tempo et Seuil 3 min)
+  effortFenetreJours: 42,
+  effortMinSorties: 2,
 
   /* ---- Ta semaine ---- */
   semaineMoyenneSemaines: 4,    // comparée à la semaine dernière et à la moyenne des 4 semaines d'avant

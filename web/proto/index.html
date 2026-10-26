@@ -109,6 +109,25 @@ nav.onglets{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px 
 nav.onglets button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;font-size:11.5px;color:var(--muted);border-radius:999px;text-align:center}
 nav.onglets button.actif{color:var(--text);font-weight:700}
 .vide{color:var(--text-3);text-align:center;padding:30px 10px}
+.pastille.nouveau{background:var(--control);color:var(--accent)}
+.ou-ligne{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);cursor:pointer}
+.ou-ligne:first-of-type{border-top:0}
+.ou-ic{flex:none;width:36px;height:36px;border-radius:12px;background:var(--sunken);color:var(--accent);display:flex;align-items:center;justify-content:center}
+.ou-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ou-v{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;font-family:var(--cond);font-weight:700;font-size:28px;line-height:1.05}
+.ou-v small{font-size:15px;color:var(--text-3);font-weight:600}
+.ou-v .badge{font-size:14px;align-self:center}
+.voir{display:flex;align-items:center;gap:4px;color:var(--accent);font-weight:600;font-size:14.5px}
+.segments.petits{width:min(260px,100%);align-self:flex-start;grid-template-columns:repeat(3,1fr)}
+.segments.petits button{padding:7px 0;font-size:13px}
+.effort{display:flex;flex-direction:column;gap:6px}
+.effort.sep{border-top:1px solid var(--line);padding-top:12px}
+.kvs{display:flex;flex-direction:column}
+.kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:14.5px}
+.kv:first-child{border-top:0}
+.kv span{display:inline-flex;align-items:center;gap:8px;color:var(--text-2)}
+.kv b{font-weight:600;text-align:right}
+.pt{display:inline-block;flex:none;width:9px;height:9px;border-radius:50%}
 .segments{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:999px;background:var(--surface)}
 .segments button{padding:10px 0;border-radius:999px;text-align:center;color:var(--text-3);font-weight:600;font-size:14px}
 .segments button.actif{background:var(--text);color:#0C0D0F}
@@ -136,9 +155,9 @@ svg text{font-family:"Barlow",system-ui,sans-serif}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config.js"></script>
 <script src="../logic.js?v=113"></script>
-<script src="reglages.js?v=1"></script>
+<script src="reglages.js?v=7"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=2"></script>
-<script src="app.js?v=2"></script>
+<script src="calculs.js?v=7"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

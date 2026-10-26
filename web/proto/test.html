@@ -36,9 +36,9 @@ window.__appels = [];
 </script>
 <script src="../config.js"></script>
 <script src="../logic.js?v=113"></script>
-<script src="reglages.js?v=1"></script>
+<script src="reglages.js?v=7"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=2"></script>
+<script src="calculs.js?v=7"></script>
 <script>
 (async () => {
   const res = [];
@@ -84,7 +84,10 @@ window.__appels = [];
   ok(v1.cle === "facile" && /5 battements de moins/.test(v1.phrase) && v1.base === "coeur", "Verdict cœur : 5 battements sous l'habitude → plus facile (" + v1.phrase + ")");
   ok(Calc.verdict(sortie({ id: "x2", ts: NOW, km: 8, pace: 365, fc: 155, hrPas: 5 }), hab, {}).cle === "dure", "Verdict cœur : 4 battements au-dessus → plus dure");
   ok(Calc.verdict(sortie({ id: "x3", ts: NOW, km: 8, pace: 368, fc: 150, hrPas: 5 }), hab, {}).cle === "moyenne", "Verdict cœur : 1 battement d'écart → dans ta moyenne");
-  ok(Calc.verdict(sortie({ id: "x4", ts: NOW, km: 8, pace: 365, fc: 150, hrPas: 5 }), [hab[0]], {}).cle === null, "Verdict : une seule sortie d'habitude → pas encore de verdict");
+  ok(Calc.verdict(sortie({ id: "x4", ts: NOW, km: 8, pace: 365, fc: 150, hrPas: 5 }), [hab[0]], {}).cle === "moyenne", "Bilan : une seule sortie comparable suffit (toujours un bilan)");
+  const prem = Calc.verdict(sortie({ id: "x6", ts: NOW, km: 8, pace: 365, fc: 150, hrPas: 5 }), [], {});
+  ok(prem.cle === "premiere" && /point de départ/.test(prem.phrase), "Bilan : rien à comparer sur 12 semaines → « Ta première sortie de ce type »");
+  ok(Calc.verdict(sortie({ id: "x7", ts: NOW, km: 8, pace: 365, fc: 146, hrPas: 5 }), [sortie({ id: "x8", ts: NOW - 9 * 7 * JOUR, km: 8, pace: 365, fc: 151, hrPas: 5 })], {}).cle === "facile", "Bilan : la fenêtre s'élargit à 12 semaines s'il le faut");
   const vieille = sortie({ id: "v", ts: NOW - 50 * JOUR, km: 8, pace: 365, fc: 151, hrPas: 5 });
   ok(Calc.habitude(sortie({ id: "x5", ts: NOW, km: 8, pace: 365 }), [...hab, vieille], REGLAGES).length === 3, "Habitude : 6 semaines seulement, sortie du jour exclue");
   // Verdict sans cœur fiable
@@ -132,6 +135,26 @@ window.__appels = [];
     .concat([95, 100, 110].map((d, i) => sortie({ id: "pb" + i, ts: NOW - d * JOUR, km: 8, pace: 370, fc: 150, hrPas: 5 })));
   const rp2 = Calc.repere(fac, NOW);
   ok(rp2.etat === "valeur" && rp2.valeur === 360 && rp2.ecart === 10, "Repère : allure à effort égal 6'00, 10 s de mieux qu'il y a 3 mois");
+
+  // Bilan sur les passages à la même allure (toutes sorties confondues)
+  const serieSortie = (id, ts, type, blocs) => { const ps = [], hs = []; let t = 0, m = 0;
+    blocs.forEach(([mb, p, hr]) => { const dur = mb * p / 1000; for (let u = 5; u <= dur; u += 5) { ps.push({ t: Math.round(t + u), pace: Math.round(p) }); hs.push({ t: Math.round(t + u), hr }); } t += dur; m += mb; });
+    return Calc.versSortie({ id, start_date: iso(ts), type, apple_type: "Running", distance_km: m / 1000, duration_sec: Math.round(t), avg_hr: 155, peak_hr: 175, include_in_stats: true, pace_series: ps, hr_series: hs }); };
+  const pSeuil = (z.bornes[2] + z.bornes[3]) / 2, pEndu = (z.bornes[0] + z.bornes[1]) / 2;
+  const sA = serieSortie("sa", NOW - 5 * JOUR, "Seuil", [[1500, pEndu, 140], [4000, pSeuil, 168], [1000, pEndu, 145]]);
+  const sB = serieSortie("sb", NOW, "Seuil", [[1500, pEndu, 140], [4000, pSeuil, 165], [1000, pEndu, 145]]);
+  const vB = Calc.verdict(sB, [sA, sB], {}, null, z);
+  ok(vB.cle === "facile" && vB.zone === 3 && /Au seuil/.test(vB.phrase) && /3 battements de moins/.test(vB.phrase), "Bilan : passages au seuil comparés à ceux d'une autre sortie (" + vB.phrase + ")");
+  const sC = serieSortie("sc", NOW - 3 * JOUR, "EF", [[2000, pSeuil, 169], [5000, pEndu, 142]]);
+  ok(Calc.verdict(sB, [sC, sB], {}, null, z).cle === "facile", "Bilan : les passages au seuil d'une sortie facile comptent aussi");
+  // Allures par effort (cœur en zone 2 = EF)
+  const defs = hrZoneDefs(188, 58);
+  const ef1 = serieSortie("ef1", NOW - 4 * JOUR, "EF", [[8000, 400, 145]]), ef2 = serieSortie("ef2", NOW - 11 * JOUR, "EF", [[8000, 404, 145]]);
+  const ape = Calc.alluresParEffort([ef1, ef2], NOW, 3, z, defs);
+  ok(ape[0].nom === "EF" && Math.abs(ape[0].maintenant - 402) <= 2 && ape[1].maintenant === null, "Allures par effort : allure tenue cœur en zone 2 (EF), rien en zone 3");
+  ok(Calc.serie([sortie({ id: "w1", ts: NOW - 3600000, km: 5, pace: 365 }), sortie({ id: "w2", ts: NOW - 4 * JOUR, km: 5, pace: 365 }), sortie({ id: "w3", ts: NOW - 10 * JOUR, km: 5, pace: 365 })], NOW) === 3, "Série : 3 semaines d'affilée avec au moins une sortie");
+  const decS = Calc.decoupage(sB, z);
+  ok(decS && decS.segments.length === 3 && decS.segments[1].cat === "soutenu", "Découpage : 3 catégories au plus, passages soutenus voisins regroupés (" + (decS ? decS.texte : "") + ")");
 
   // Progression (étape 3)
   const vol = Calc.volumeParMois([sortie({ id: "m1", ts: NOW - 2 * JOUR, km: 8, pace: 365 }), sortie({ id: "m2", ts: Date.parse("2026-09-10T08:00:00"), km: 10, pace: 365 })], NOW, 3);
