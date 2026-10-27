@@ -24,6 +24,8 @@ const Calc = (() => {
       pace: Array.isArray(row.pace_series) ? row.pace_series : null,
       lapMarkers: Array.isArray(row.lap_markers) ? row.lap_markers : null,
       fracWorkManual: Number(row.frac_work_manual) || null, fracRecoveryManual: Number(row.frac_recovery_manual) || null,
+      manuel: row.apple_type === "Manuel",   // saisie à la main dans l'app (MANUAL_RUN_MARKER de logic.js)
+      typeV2: row.typeV2 || null,            // V2 : type corrigé à la main (gardé sur ce téléphone dans le prototype)
     };
   }
   const estCourse = (s) => RUNNING_RUN_TYPES.includes(s.type) && s.stats && s.dist > 0 && s.allure > 0;
@@ -168,11 +170,17 @@ const Calc = (() => {
   }
 
   // Tempo ou Seuil pour une séance « Seuil » de l'app : la zone soutenue où elle a passé le plus de temps (E19).
+  // V2 : un seul vocabulaire (Sortie facile, Longue, Tempo, Seuil, Fractionné, Compétition) ; un type corrigé à la main passe avant.
   function libelleType(s, dec) {
-    const L = { EF: "Sortie facile", Long: "Sortie longue", Fractionné: "Fractionné", Course: "Course", Seuil: "Tempo" };
+    if (s.typeV2) return s.typeV2;
+    const L = { EF: "Sortie facile", Long: "Longue", Fractionné: "Fractionné", Course: "Compétition", Seuil: "Tempo" };
     if (s.type === "Seuil" && dec) return dec.tempsParZone[3] + dec.tempsParZone[4] > dec.tempsParZone[2] ? "Seuil" : "Tempo";
     return L[s.type] || s.type;
   }
+  const nomCourt = (lib) => (lib === "Sortie facile" ? "Facile" : lib);
+  // « Ta première au seuil », « tes sorties faciles »… : le type dans une phrase.
+  const PREMIERE = { "Sortie facile": "Ta première sortie facile", Longue: "Ta première sortie longue", Tempo: "Ta première au tempo", Seuil: "Ta première au seuil", "Fractionné": "Ton premier fractionné", "Compétition": "Ta première compétition" };
+  const TES = { "Sortie facile": "tes sorties faciles", Longue: "tes sorties longues", Tempo: "tes séances au tempo", Seuil: "tes séances au seuil", "Fractionné": "tes fractionnés", "Compétition": "tes compétitions" };
 
   /* ---------- Passages par zone d'allure : temps, distance, allure et cœur moyens ---------- */
   function passages(s, z, reg) {
@@ -188,7 +196,7 @@ const Calc = (() => {
     let best = -1; parmi.forEach((i) => { if (p[i].sec > 0 && (best < 0 || p[i].sec > p[best].sec)) best = i; });
     return best;
   }
-  const ZONE_A = ["en récupération", "en endurance", "au tempo", "au seuil", "en rapide"];
+  const ZONE_A = ["en récup", "en facile", "au tempo", "au seuil", "en fractionné"];
 
   /* ---------- Bilan (le « verdict » de la demande ; renommé le 26/10) ---------- */
   function habitude(s, toutes, reg, semaines) {
@@ -235,11 +243,20 @@ const Calc = (() => {
       const base = `${maj(ZONE_A[zi])} (${kmTxt(moi.m)} km à ${allureTxt(moi.allure)}/km), ton cœur était à ${Math.round(moi.fc)}`;
       const compare = `comparé à ${plur(ref.length, "sortie", "sorties")} des ${semaines} dernières semaines`;
       const phrase = cle === "moyenne" ? `${base} : comme d'habitude à cette allure (${compare}).` : `${base} : ${battements(d)} d'habitude à cette allure (${compare}).`;
-      return { cle, sens: SENS[cle], titre: TITRES[cle], phrase, base: "coeur", zone: zi, note: null, comparees: ref.length,
+      return { cle, sens: SENS[cle], titre: TITRES[cle], phrase, pourquoi: POURQUOI_COEUR[cle], compare: maj(compare), base: "coeur", zone: zi, note: null, comparees: ref.length, ecartBpm: d,
         tuiles: [{ cle: "allure", label: `Allure ${ZONE_A[zi]}`, valeur: allureTxt(moi.allure), unite: "/km", habitude: allureTxt(moyenne(ref.map((a) => a.allure))) },
-          { cle: "coeur", label: `Cœur ${ZONE_A[zi]}`, valeur: String(Math.round(moi.fc)), unite: "bpm", habitude: String(Math.round(fcAtt)) }] };
+          { cle: "coeur", label: `Cœur ${ZONE_A[zi]}`, valeur: String(Math.round(moi.fc)), unite: "bpm", habitude: String(Math.round(fcAtt)), delta: d }] };
     }
     return null;
+  }
+  const POURQUOI_COEUR = { facile: "À la même allure, ton cœur battait moins vite.", dure: "À la même allure, ton cœur battait plus vite.", moyenne: "Même allure, même cœur que d'habitude." };
+  // Le passage le plus long dans la zone qui fait le bilan (« Au seuil : 5,3 km sur 8,5 km »), pour une première sortie.
+  function passageDominant(s, z, r) {
+    if (!z) return null;
+    const p = passages(s, z, r);
+    if (!p) return null;
+    const zi = zoneDominante(p, s.type);
+    return zi < 0 || p[zi].sec < r.bilanMinPassageSec ? null : { zone: zi, m: p[zi].m, allure: p[zi].allure, fc: p[zi].fc };
   }
 
   function verdict(s, toutes, ressentis, reg, z) {
@@ -253,13 +270,21 @@ const Calc = (() => {
     const fiable = coeurFiable(s, r) && !!s.fc;
     const tuileAllure = (habVal) => ({ cle: "allure", label: "Allure", valeur: allureTxt(s.allure), unite: "/km", habitude: habVal != null ? allureTxt(habVal) : null });
     const notePartielle = !fiable && s.fc ? "Données cardio partielles avec ta montre : le bilan s'appuie sur ton allure et ton ressenti." : null;
+    const lib = libelleType(s, s.type === "Seuil" ? decoupage(s, z, r) : null);
     // 3) Rien à comparer : première sortie de ce type, elle devient le point de départ.
     if (hab.length < r.minSortiesHabitude) {
-      return { cle: "premiere", sens: SENS.premiere, titre: TITRES.premiere, base: null, note: notePartielle,
+      const pd = fiable ? passageDominant(s, z, r) : null;
+      const tuiles = pd && pd.fc ? [{ cle: "allure", label: `Allure ${ZONE_A[pd.zone]}`, valeur: allureTxt(pd.allure), unite: "/km", habitude: null },
+        { cle: "coeur", label: `Cœur ${ZONE_A[pd.zone]}`, valeur: String(Math.round(pd.fc)), unite: "bpm", habitude: null }]
+        : [tuileAllure(null)].concat(s.fc ? [{ cle: "coeur", label: "Cœur moyen", valeur: String(Math.round(s.fc)), unite: "bpm", habitude: null }] : []);
+      return { cle: "premiere", sens: SENS.premiere, titre: PREMIERE[lib] || TITRES.premiere, base: null, note: notePartielle,
+        pourquoi: "Elle devient ton point de départ : les prochaines s'y compareront.",
+        compare: pd ? `${maj(ZONE_A[pd.zone])} : ${kmTxt(pd.m)} km sur ${kmTxt(s.dist * 1000)} km` : `Rien à comparer sur les ${r.bilanFenetreMaxSemaines} dernières semaines`,
         phrase: `Pas d'autre sortie de ce type sur les ${r.bilanFenetreMaxSemaines} dernières semaines : ${allureTxt(s.allure)}/km${s.fc ? `, cœur à ${Math.round(s.fc)}` : ""}. Elle devient ton point de départ : la prochaine sera comparée à celle-ci.`,
-        tuiles: [tuileAllure(null)].concat(s.fc ? [{ cle: "coeur", label: "Cœur moyen", valeur: String(Math.round(s.fc)), unite: "bpm", habitude: null }] : []) };
+        tuiles };
     }
     const allureHab = moyenne(hab.map((h) => h.allure)), compare = `comparé à ${plur(hab.length, "sortie", "sorties")} de ce type des ${semaines} dernières semaines`;
+    const compareCourt = `Comparé à ${plur(hab.length, "sortie", "sorties")} des ${semaines} dernières semaines`;
     if (fiable) {
       const avecCoeur = hab.filter((h) => h.fc && coeurFiable(h, r));
       const comparables = avecCoeur.filter((h) => Math.abs(h.allure - s.allure) <= r.allureComparableSec);
@@ -274,8 +299,8 @@ const Calc = (() => {
         const cle = d <= -r.ecartCoeurBpm ? "facile" : d >= r.ecartCoeurBpm ? "dure" : "moyenne";
         const debut = `Ton cœur à ${Math.round(s.fc)} pour ${allureTxt(s.allure)}/km`;
         const phrase = cle === "moyenne" ? `${debut} : comme d'habitude à cette allure (${compare}).` : `${debut} : ${battements(d)} d'habitude à cette allure (${compare}).`;
-        return { cle, sens: SENS[cle], titre: TITRES[cle], phrase, base: "coeur", note: null, comparees: hab.length,
-          tuiles: [tuileAllure(allureHab), { cle: "coeur", label: "Cœur moyen", valeur: String(Math.round(s.fc)), unite: "bpm", habitude: String(Math.round(fcAttendue)) }] };
+        return { cle, sens: SENS[cle], titre: TITRES[cle], phrase, pourquoi: POURQUOI_COEUR[cle], compare: compareCourt, base: "coeur", note: null, comparees: hab.length, ecartBpm: d,
+          tuiles: [tuileAllure(allureHab), { cle: "coeur", label: "Cœur moyen", valeur: String(Math.round(s.fc)), unite: "bpm", habitude: String(Math.round(fcAttendue)), delta: d }] };
       }
     }
     const dA = s.allure - allureHab;   // > 0 : plus lent que d'habitude
@@ -289,13 +314,19 @@ const Calc = (() => {
       const rh = String(Math.round(resHab * 10) / 10).replace(".", ",");
       const phrase = `${allureTxt(s.allure)}/km, trouvée « ${ressentiMot(res, r)} » (${res}/10, d'habitude ${rh}/10) : ${
         cle === "facile" ? "plus facile" : cle === "dure" ? "plus dure" : "comme"} ${cle === "moyenne" ? "tes" : "que tes"} dernières sorties de ce type (${compare}).`;
-      return { cle, sens: SENS[cle], titre: TITRES[cle], phrase, base: "ressenti", note: notePartielle, comparees: hab.length,
-        tuiles: [tuileAllure(allureHab), { cle: "ressenti", label: "Ton ressenti", valeur: `${res}/10`, unite: "", habitude: `${rh}/10` }] };
+      const memeAllure = Math.abs(dA) <= r.allureComparableSec;
+      const pourquoi = cle === "facile" ? (memeAllure ? "Même allure, et tu l'as trouvée plus facile." : "Plus vite que d'habitude, sans te sentir plus fatigué.")
+        : cle === "dure" ? (memeAllure ? "Même allure, et tu l'as trouvée plus dure." : "Plus lente, et tu l'as trouvée plus dure.") : "Même allure, même ressenti que d'habitude.";
+      return { cle, sens: SENS[cle], titre: TITRES[cle], phrase, pourquoi, compare: compareCourt, base: "ressenti", note: notePartielle, comparees: hab.length,
+        tuiles: [tuileAllure(allureHab), { cle: "ressenti", label: "Ressenti", valeur: String(res), unite: "/10", habitude: rh }] };
     }
     const cle = dA <= -r.ecartAllureSec ? "rapide" : dA >= r.ecartAllureSec ? "lente" : "moyenne";
     const phrase = cle === "moyenne" ? `${allureTxt(s.allure)}/km : comme tes sorties de ce type (${compare}).`
       : `${allureTxt(s.allure)}/km : ${Math.round(Math.abs(dA))} s/km ${cle === "rapide" ? "plus vite" : "plus lent"} que ta moyenne sur ce type de sortie (${compare}). Note ton ressenti pour un bilan plus juste.`;
-    return { cle, sens: SENS[cle], titre: TITRES[cle], phrase, base: "allure", note: notePartielle, comparees: hab.length, tuiles: [tuileAllure(allureHab)] };
+    const tes = TES[lib] || "tes sorties de ce type";
+    const pourquoi = cle === "moyenne" ? `Même allure que ${tes}.` : `${Math.round(Math.abs(dA))} s/km ${cle === "rapide" ? "plus vite" : "plus lent"} que ${tes}.`;
+    const tuiles = [tuileAllure(allureHab)].concat(res != null ? [{ cle: "ressenti", label: "Ressenti", valeur: String(res), unite: "/10", habitude: resHab != null ? String(Math.round(resHab)) : null }] : []);
+    return { cle, sens: SENS[cle], titre: TITRES[cle], phrase, pourquoi, compare: compareCourt, base: "allure", note: notePartielle, comparees: hab.length, tuiles };
   }
 
   function conseil(s, v, reg) {
@@ -314,26 +345,36 @@ const Calc = (() => {
     const r = reg || REGLAGES;
     const comp = toutes.filter((h) => h.id !== s.id && estCourse(h) && h.type === s.type && Math.abs(h.dist - s.dist) <= s.dist * r.evolutionDistanceEcart
       && h.ts <= s.ts - r.evolutionDe * SEM && h.ts >= s.ts - r.evolutionA * SEM);
-    if (!comp.length) return { texte: "Pas de sortie comparable il y a 2 mois : la comparaison viendra.", ecart: null, n: 0 };
+    if (!comp.length) return { texte: "Pas de sortie comparable il y a 2 mois : la comparaison viendra.", court: "Pas encore de sortie comparable il y a 2 mois : la comparaison viendra.", ecart: null, n: 0 };
     const avant = moyenne(comp.map((h) => h.allure)), d = Math.round(avant - s.allure);
     const plage = `${plur(comp.length, "sortie", "sorties")} de ${kmTxt(s.dist * 1000 * (1 - r.evolutionDistanceEcart))} à ${kmTxt(s.dist * 1000 * (1 + r.evolutionDistanceEcart))} km`;
     const texte = Math.abs(d) < r.evolutionMinSec ? `Sur cette distance, tu cours au même rythme qu'il y a 2 mois (${plage}).`
       : `Sur cette distance, tu cours ${Math.abs(d)} s/km ${d > 0 ? "plus vite" : "plus lentement"} qu'il y a 2 mois (${plage}).`;
-    return { texte, ecart: d, n: comp.length };
+    const court = Math.abs(d) < r.evolutionMinSec ? "Même rythme qu'il y a 2 mois." : `${Math.abs(d)} s/km ${d > 0 ? "plus vite" : "plus lent"} qu'il y a 2 mois.`;
+    return { texte, court, ecart: d, n: comp.length };
   }
 
-  /* ---------- Ressenti face à la mesure ---------- */
-  function ressentiFaceMesure(s, v, ressentis, reg) {
-    const res = ressentiDe(s, ressentis), mot = ressentiMot(res, reg);
-    if (res == null) return "Note ton ressenti dans le bilan pour le comparer à ce que disent tes chiffres.";
-    if (!v || !v.cle || v.cle === "premiere") return `Tu l'as trouvée « ${mot} » (${res}/10). Ta prochaine sortie de ce type sera comparée à celle-ci.`;
+  /* ---------- Ressenti face à la mesure (V2 : une phrase, le ressenti en tête) ---------- */
+  // `libelle` : le type tel qu'affiché (Tempo ou Seuil pour une séance « Seuil » de l'app), sinon celui sans découpage.
+  function ressentiFaceMesure(s, v, ressentis, reg, libelle) {
+    const res = ressentiDe(s, ressentis);
+    if (res == null) return "Note ton ressenti pour le comparer à ce que disent tes chiffres.";
+    const lib = libelle || libelleType(s, null), intense = ["Tempo", "Seuil", "Fractionné", "Compétition"].includes(lib) || s.type === "Seuil";
+    if (intense && res >= 6) return `${res}/10 pour ${lib === "Fractionné" ? "un fractionné" : lib === "Compétition" ? "une compétition" : `une séance ${lib === "Tempo" ? "au tempo" : "au seuil"}`} : c'est l'effort attendu.`;
+    if (!v || !v.cle || v.cle === "premiere") return `${res}/10 : ta prochaine sortie de ce type s'y comparera.`;
     if (v.base === "ressenti") return `Sans cœur fiable, c'est ton ressenti (${res}/10) qui fait le bilan, avec ton allure.`;
+    // Échelle V2 : 1 à 4 facile, 5 modéré, 6 et plus soutenu ou dur.
+    const mot = res >= 6 ? "dure" : res <= 4 ? "facile" : "correcte";
     const mesure = v.cle === "facile" || v.cle === "rapide" ? "facile" : v.cle === "dure" || v.cle === "lente" ? "dure" : "correcte";
-    const qui = v.base === "coeur" ? "ton cœur" : "ton allure";
-    if (mot === mesure) return `Tu l'as trouvée ${mot}, et ${qui} le confirme.`;
-    if (mot === "dure" && mesure !== "dure") return `Tu l'as trouvée dure alors que ${qui} était dans ta moyenne ou mieux : fatigue, chaleur ou manque de sommeil jouent souvent.`;
-    if (mot === "facile" && mesure === "dure") return `Tu l'as trouvée facile, mais ${qui} dit qu'elle t'a demandé plus que d'habitude : garde un œil sur la récupération.`;
-    return `Tu l'as trouvée ${mot}, ${qui} la juge ${mesure} : un écart normal d'une sortie à l'autre.`;
+    const coeur = v.base === "coeur";
+    const chiffre = { dure: coeur ? "un cœur plus haut que d'habitude" : "une allure plus lente que d'habitude",
+      facile: coeur ? "un cœur plus bas que d'habitude" : "une allure plus rapide que d'habitude", correcte: coeur ? "un cœur dans ta moyenne" : "une allure dans ta moyenne" }[mesure];
+    if (mot === "dure" && mesure === "dure") return `${res}/10 et ${chiffre} : les deux parlent de fatigue.`;
+    if (mot === "facile" && mesure === "facile") return `${res}/10 et ${chiffre} : les deux disent que tu progresses.`;
+    if (mot === mesure) return `${res}/10 et ${chiffre} : rien à signaler.`;
+    if (mot === "dure") return `${res}/10 avec ${chiffre} : fatigue, chaleur ou manque de sommeil jouent souvent.`;
+    if (mesure === "dure") return `${res}/10, mais ${chiffre} : elle t'a demandé plus que d'habitude, garde un œil sur la récupération.`;
+    return `${res}/10 et ${chiffre} : un écart normal d'une sortie à l'autre.`;
   }
 
   /* ---------- Ta semaine, ta série ---------- */
@@ -420,7 +461,7 @@ const Calc = (() => {
   // `ilYaMois` : la comparaison se fait avec la même fenêtre il y a 3, 6 ou 12 mois (la période choisie).
   function alluresParEffort(sorties, nowTs, mois, z, defs, reg, ilYaMois) {
     const r = reg || REGLAGES, ilYa = (ilYaMois || 3) * MOIS_J * JOUR;
-    const efforts = [{ cle: "ef", k: 1, nom: "EF", zone: "zone 2" }, { cle: "tempo", k: 2, nom: "Tempo", zone: "zone 3" }, { cle: "seuil", k: 3, nom: "Seuil", zone: "zone 4" }];
+    const efforts = [{ cle: "ef", k: 1, nom: "Facile", zone: "zone 2" }, { cle: "tempo", k: 2, nom: "Tempo", zone: "zone 3" }, { cle: "seuil", k: 3, nom: "Seuil", zone: "zone 4" }];
     const recents = sorties.filter((s) => estCourse(s) && s.ts > nowTs - 400 * JOUR);
     const parSortie = defs ? recents.map((s) => ({ ts: s.ts, a: allureParEffort(s, z, defs, r) })).filter((x) => x.a) : [];
     const resume = (tous, min) => {
@@ -521,14 +562,170 @@ const Calc = (() => {
     for (let i = semaines - 1; i >= 0; i--) { const deb = l - i * SEM; out.push(sorties.some((s) => estCourse(s) && s.ts >= deb && s.ts < deb + SEM)); }
     return { semaines: out, avec: out.filter(Boolean).length };
   }
+  // V2 : records 5, 10, 15 km, semi, marathon et distance max ; un record pas encore fait dit combien il manque (« encore 3 km »,
+  // écart avec ta sortie la plus longue). Temps ramené à la distance exacte (règle de l'app, distanceRecordTime).
+  const DISTANCES_V2 = [{ key: "5k", km: 5, label: "5 km" }, { key: "10k", km: 10, label: "10 km" }, { key: "15k", km: 15, label: "15 km" },
+    { key: "semi", km: 21.0975, label: "Semi" }, { key: "marathon", km: 42.195, label: "Marathon" }];
+  const enRecord = (s) => ({ id: s.id, ts: s.ts, type: s.type, distKm: s.dist, durationSec: s.dur });
+  function meilleurTemps(courses, d) {
+    let best = null;
+    courses.slice().sort((a, b) => a.ts - b.ts).forEach((s) => { const t = distanceRecordTime(enRecord(s), d); if (t != null && (!best || t < best.t)) best = { t, id: s.id, ts: s.ts }; });
+    return best;
+  }
   function records(sorties) {
-    const runs = sorties.filter(estCourse).map((s) => ({ id: s.id, ts: s.ts, type: s.type, distKm: s.dist, durationSec: s.dur, paceSecKm: s.allure, workPaceSecKm: null, cleanEf: false }));
-    const h = recordHolders(runs);
-    const liste = RECORD_DISTANCES.map((d) => ({ cle: d.key, label: d.label, valeur: h.distances[d.key] ? fmtDur(h.distances[d.key].timeSec) : null, id: h.distances[d.key] ? h.distances[d.key].runId : null, ts: h.distances[d.key] ? h.distances[d.key].ts : null }));
-    const longue = sorties.filter(estCourse).reduce((m, s) => (!m || s.dist > m.dist ? s : m), null);
-    liste.push({ cle: "longue", label: "Plus longue", valeur: longue ? `${kmTxt(longue.dist * 1000)} km` : null, id: longue ? longue.id : null, ts: longue ? longue.ts : null });
+    const courses = sorties.filter(estCourse);
+    const longue = courses.reduce((m, s) => (!m || s.dist > m.dist ? s : m), null);
+    const liste = DISTANCES_V2.map((d) => { const b = meilleurTemps(courses, d);
+      return { cle: d.key, label: d.label, valeur: b ? fmtDur(b.t) : null, id: b ? b.id : null, ts: b ? b.ts : null,
+        manque: !b ? Math.max(1, Math.ceil(d.km - (longue ? longue.dist : 0))) : null }; });
+    liste.push({ cle: "longue", label: "Max", valeur: longue ? `${kmTxt(longue.dist * 1000)} km` : null, id: longue ? longue.id : null, ts: longue ? longue.ts : null });
     return liste;
   }
+  // Les records de distance battus par une sortie (face aux records d'avant elle), le plus long d'abord. Sert au plein écran.
+  function recordsBattus(s, sorties) {
+    if (!estCourse(s)) return [];
+    const avant = sorties.filter((h) => estCourse(h) && h.ts < s.ts);
+    return DISTANCES_V2.slice().reverse().map((d) => {
+      const t = distanceRecordTime(enRecord(s), d), b = meilleurTemps(avant, d);
+      return t != null && b && t < b.t ? { cle: d.key, label: d.label, temps: t, ancien: b.t, ancienTs: b.ts } : null;
+    }).filter(Boolean);
+  }
+  /* ================= V2 « progression » (maquettes Claude Design du 27/10) ================= */
+  // Ressenti : ce que veut dire un cran (« Soutenu · Je parlais par phrases courtes. »).
+  function ressentiCran(v, reg) { const r = reg || REGLAGES; return v == null ? null : r.ressentiEchelle.find((e) => v >= e.de && v <= e.a) || null; }
+  // Quelle tuile de « Ton niveau » une sortie fait bouger.
+  const EFFORT_DE = { "Sortie facile": "ef", Longue: "ef", Tempo: "tempo", Seuil: "seuil", "Fractionné": "frac" };
+
+  // Frise V2 : 3 couleurs, 3 morceaux au plus. Une sortie facile ou longue reste d'un seul bloc (aucun km rapide signalé).
+  function frise3(s, z, reg) {
+    const dec = decoupage(s, z, reg);
+    if (!dec) return null;
+    const lib = libelleType(s, dec), tot = s.dist * 1000;
+    if (lib === "Sortie facile" || lib === "Longue") return { morceaux: [{ cat: "facile", m: tot, mot: lib === "Longue" ? "en sortie longue" : "facile" }], suite: "Exactement ce qu'on attend d'une sortie d'endurance.", dec };
+    const segs = dec.segments, iS = segs.findIndex((c) => c.cat === "soutenu");
+    if (iS < 0) return { morceaux: [{ cat: "facile", m: tot, mot: "facile" }], suite: "Pas de passage soutenu dans cette sortie.", dec };
+    let jS = iS; segs.forEach((c, i) => { if (c.cat === "soutenu") jS = i; });
+    const somme = (a) => a.reduce((x, c) => x + c.m, 0);
+    const avant = somme(segs.slice(0, iS)), milieu = somme(segs.slice(iS, jS + 1)), apres = somme(segs.slice(jS + 1));
+    const m = [];
+    if (avant >= 100) m.push({ cat: "calme", m: avant, mot: "d'échauffement" });
+    m.push({ cat: "soutenu", m: milieu, mot: "en soutenu" });
+    if (apres >= 100) m.push({ cat: "calme", m: apres, mot: "de retour au calme" });
+    return { morceaux: m, suite: null, dec };
+  }
+
+  // Temps en zones cardio 1 à 5 d'une sortie (cœur fiable seulement).
+  function zonesSortie(s, fmax, frepos, reg) {
+    if (!fmax || !s.hr || !coeurFiable(s, reg)) return null;
+    const { secs, defs } = computeHrZoneSeconds(s.hr, fmax, frepos);
+    const tot = secs.reduce((a, v) => a + v, 0);
+    return tot > 0 ? { secs, defs, tot } : null;
+  }
+  // Verdict de répartition face à l'idéal du type de sortie (bilan, détail). ton : bon, presque, attention.
+  function verdictRepartition(lib, zs, reg) {
+    const r = reg || REGLAGES, id = r.idealZones[lib];
+    if (!id || !zs) return null;
+    const pct = zs.secs.map((v) => v / zs.tot * 100), facile = pct[0] + pct[1], z2max = zs.defs[1].max;
+    if (lib === "Sortie facile" || lib === "Longue") {
+      const mn = Math.round((zs.secs[2] + zs.secs[3] + zs.secs[4]) / 60);
+      if (mn < 1) return { ton: "bon", titre: "Parfait : tout en zones 1-2.", phrase: "Exactement ce qu'on attend d'une sortie facile.", court: "Parfait : toute la sortie en zones 1-2." };
+      const txt = `${mn} min (${Math.round(100 - facile)} %) au-dessus de la zone 2. Ralentis dès ${z2max} bpm.`;
+      return mn < r.idealPresqueMin ? { ton: "presque", titre: `Presque : ${Math.round(facile)} % en facile.`, phrase: txt, court: `Presque : ${mn} min au-dessus de la zone 2. Ralentis dès ${z2max} bpm.` }
+        : { ton: "attention", titre: `Trop haut pour une sortie facile : ${Math.round(facile)} % en facile.`, phrase: txt, court: `Trop haut : ${mn} min au-dessus de la zone 2. Ralentis dès ${z2max} bpm.` };
+    }
+    const cible = id.cible.reduce((a, i) => a + pct[i], 0), nomZ = id.cible.length > 1 ? `zones ${id.cible[0] + 1}-${id.cible[id.cible.length - 1] + 1}` : `zone ${id.cible[0] + 1}`;
+    const pour = lib === "Fractionné" ? "un fractionné" : lib === "Tempo" ? "un tempo" : "un seuil";
+    if (cible >= id.ciblePct && facile >= 25) return { ton: "bon", titre: `Bonne répartition pour ${pour}.`, phrase: `${Math.round(cible)} % en ${nomZ}, le reste surtout en facile : échauffement et retour au calme bien faits.`, court: `Bien construit : échauffement et retour au calme en facile, bloc en ${nomZ}.` };
+    if (cible < id.ciblePct) return { ton: "presque", titre: `Bloc un peu court pour ${pour}.`, phrase: `${Math.round(cible)} % en ${nomZ} : vise ${id.ciblePct} % ou plus.`, court: `Bloc un peu court : ${Math.round(cible)} % en ${nomZ}, vise ${id.ciblePct} %.` };
+    return { ton: "attention", titre: "Peu de facile autour du bloc.", phrase: "Prends 10 min d'échauffement et de retour au calme en facile.", court: "Peu de facile autour du bloc : 10 min d'échauffement et de retour au calme." };
+  }
+  // Part du temps en zones 1-2 et 3-5 sur une fenêtre de jours (courses au cœur fiable), sortie `exclureId` mise de côté.
+  function partZones(sorties, finTs, jours, fmax, frepos, reg, exclureId) {
+    if (!fmax) return null;
+    const secs = [0, 0, 0, 0, 0]; let n = 0;
+    sorties.filter((s) => estCourse(s) && s.id !== exclureId && s.ts <= finTs && s.ts > finTs - jours * JOUR && coeurFiable(s, reg)).forEach((s) => {
+      computeHrZoneSeconds(s.hr, fmax, frepos).secs.forEach((v, i) => { secs[i] += v; }); n++;
+    });
+    const tot = secs.reduce((a, v) => a + v, 0);
+    return tot > 0 ? { secs, tot, n, facilePct: (secs[0] + secs[1]) / tot * 100, soutenuPct: (secs[2] + secs[3] + secs[4]) / tot * 100 } : null;
+  }
+  // 1er km et allure moyenne d'une sortie (règle C7 « pars plus lentement »).
+  function premierKm(s) {
+    if (s.type === "Fractionné" || !s.pace) return null;
+    const ks = kmSplits({ paceSeries: s.pace, distanceKm: s.dist, durationSec: s.dur, type: "EF" });
+    return ks ? { premier: ks.kms[0], moyenne: ks.avg } : null;
+  }
+  // Ton allure par zone (Progression › Allure) : allure tenue dans chaque zone cardio, mois par mois (médiane des sorties du mois).
+  function allureParZoneMois(sorties, nowTs, mois, z, defs, reg) {
+    const r = reg || REGLAGES, d = new Date(nowTs), out = [0, 1, 2, 3, 4].map(() => []);
+    if (!defs) return out;
+    const min = [180, r.effortMinSec[1], r.effortMinSec[2], r.effortMinSec[3], 60];
+    for (let i = mois - 1; i >= 0; i--) {
+      const deb = new Date(d.getFullYear(), d.getMonth() - i, 1).getTime(), fin = new Date(d.getFullYear(), d.getMonth() - i + 1, 1).getTime();
+      const parZone = [0, 1, 2, 3, 4].map(() => []);
+      sorties.filter((s) => estCourse(s) && s.ts >= deb && s.ts < fin && s.ts <= nowTs).forEach((s) => {
+        const a = allureParEffort(s, z, defs, r);
+        if (a) a.forEach((x, k) => { if (x.allure && x.sec >= min[k]) parZone[k].push(x.allure); });
+      });
+      parZone.forEach((l, k) => { if (l.length) out[k].push({ ts: deb, mois: new Date(deb).getMonth(), v: med(l), n: l.length }); });
+    }
+    return out;
+  }
+  // Allure × régularité : ton allure facile les semaines à 2 sorties ou plus, face aux semaines à 1 sortie (12 dernières semaines).
+  function allureRegularite(sorties, nowTs, reg) {
+    const r = reg || REGLAGES, l = lundi(nowTs), deux = [], une = [];
+    for (let i = 0; i < r.croisementSemaines; i++) {
+      const deb = l - i * SEM, c = sorties.filter((s) => estCourse(s) && s.ts >= deb && s.ts < deb + SEM && s.ts <= nowTs);
+      const fac = c.filter((s) => s.type === "EF").map((s) => s.allure);
+      if (fac.length) (c.length >= 2 ? deux : une).push(med(fac));
+    }
+    const a2 = deux.length ? med(deux) : null, a1 = une.length ? med(une) : null;
+    return { deux: a2, une: a1, n2: deux.length, n1: une.length, gain: a2 != null && a1 != null ? Math.round(a1 - a2) : null };
+  }
+  // Allure × ressenti : sur tes sorties faciles notées, le 1er mois de la période face au dernier (ressenti moyen, allure).
+  function allureRessenti(sorties, ressentis, nowTs, mois, reg) {
+    const r = reg || REGLAGES, debut = nowTs - mois * MOIS_J * JOUR;
+    const notees = sorties.filter((s) => estCourse(s) && s.type === "EF" && s.ts >= debut && s.ts <= nowTs && ressentiDe(s, ressentis) != null);
+    if (notees.length < r.ressentisMin) return { n: notees.length, manque: r.ressentisMin - notees.length };
+    const cle = (ts) => { const x = new Date(ts); return x.getFullYear() * 12 + x.getMonth(); };
+    const parMois = {}; notees.forEach((s) => { (parMois[cle(s.ts)] = parMois[cle(s.ts)] || []).push(s); });
+    const k = Object.keys(parMois).map(Number).sort((a, b) => a - b);
+    if (k.length < 2) return { n: notees.length, manque: 0, unMois: true };
+    const bilan = (l, kk) => ({ mois: kk % 12, ressenti: moyenne(l.map((s) => ressentiDe(s, ressentis))), allure: med(l.map((s) => s.allure)), n: l.length });
+    return { n: notees.length, manque: 0, debut: bilan(parMois[k[0]], k[0]), fin: bilan(parMois[k[k.length - 1]], k[k.length - 1]) };
+  }
+  // Tes sorties faciles : les 6 dernières au cœur fiable et leur part du temps en zones 1-2 (vraiment facile : 80 % ou plus).
+  function sortiesFacilesZones(sorties, nowTs, fmax, frepos, reg, n) {
+    const r = reg || REGLAGES;
+    if (!fmax) return [];
+    return sorties.filter((s) => estCourse(s) && s.type === "EF" && s.ts <= nowTs && coeurFiable(s, r)).slice(-(n || 6)).reverse().map((s) => {
+      const zs = zonesSortie(s, fmax, frepos, r);
+      if (!zs) return null;
+      const pct = (zs.secs[0] + zs.secs[1]) / zs.tot * 100;
+      return { id: s.id, ts: s.ts, pct, vraiment: pct >= r.repereFacilePct };
+    }).filter(Boolean);
+  }
+  // Courbes V2 : tendance lissée sur 4 semaines glissantes, un point par semaine sur la période. Médiane, comme les valeurs
+  // affichées (« tes 4 dernières semaines ») : le bout de la courbe donne le même chiffre que la valeur en grand.
+  function lisser(points, debutTs, finTs, jours) {
+    const fen = (jours || 28) * JOUR, pts = points.slice().sort((a, b) => a.ts - b.ts), out = [];
+    for (let t = finTs; t >= debutTs; t -= SEM) {
+      const f = pts.filter((p) => p.ts <= t && p.ts > t - fen);
+      if (f.length) out.unshift({ ts: t, v: med(f.map((p) => p.v)) });
+    }
+    return out;
+  }
+  // Ton niveau en une phrase (Accueil, moment B) : le progrès le plus net des 4 allures, sinon ce qui tient.
+  function niveauPhrase(liste, mois, reg) {
+    const r = reg || REGLAGES, NOM = { ef: "Ton allure facile", tempo: "Ton tempo", seuil: "Ton seuil", frac: "Ton fractionné" };
+    const avec = liste.filter((e) => e.maintenant != null && e.ecart != null);
+    const best = avec.filter((e) => e.ecart >= r.repereEcartMinSec).sort((a, b) => b.ecart - a.ecart)[0];
+    if (best) return `${NOM[best.cle]} progresse : ${best.ecart} s plus vite en ${mois} mois.`;
+    if (avec.length && avec.every((e) => Math.abs(e.ecart) < r.repereEcartMinSec)) return `Ton niveau tient : stable sur ${mois} mois.`;
+    if (avec.length) return `Pas de progrès net sur ${mois} mois : c'est la régularité qui fera la différence.`;
+    return "Tes allures des 4 dernières semaines : ton point de départ.";
+  }
+
   // Ton cap : l'objectif principal de l'app, en une ligne.
   function cap(profil) {
     const p = profil && profil.goals && profil.goals.principal;
@@ -549,5 +746,8 @@ const Calc = (() => {
   return { versSortie, estCourse, coeurFiable, ressentiDe, ressentiMot, zonesAllure, zoneDe, zonesLibelles, pointsAllure, decoupage, libelleType,
     passages, zoneDominante, habitude, verdict, conseil, evolution, ressentiFaceMesure, lundi, semaine, serie, repere, repereCourbe,
     allureParEffort, alluresParEffort, sortiesParSemaine, typesSur, mois, semainesParType, zonesCardioPeriode, indicateurDansLeTemps, derive, cadence, coeurMoyen, volumeParMois, regularite,
-    records, cap, fcMaxEffective, moyenne, med, kmTxt, allureTxt, TITRES, ZONE_A };
+    records, cap, fcMaxEffective, moyenne, med, kmTxt, allureTxt, TITRES, ZONE_A,
+    // V2
+    nomCourt, passageDominant, recordsBattus, ressentiCran, EFFORT_DE, frise3, zonesSortie, verdictRepartition, partZones, premierKm,
+    allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, JOUR, SEM, MOIS_J };
 })();
