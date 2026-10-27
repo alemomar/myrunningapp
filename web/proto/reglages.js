@@ -81,6 +81,8 @@ const REGLAGES = {
   effortBlocMinSec: 90,
   effortRetardSec: 30,
   effortMinSec: { 1: 600, 2: 180, 3: 180 },   // temps minimum dans la zone pour qu'une sortie compte (EF 10 min, Tempo et Seuil 3 min)
+  fracMinSorties: 1,            // Fractionné : une séance sur la fenêtre suffit (les fractionnés sont plus rares)
+  zonesCardioEffort: ["Récupération", "EF", "Tempo", "Seuil", "Fractionné"],   // nom de l'effort de chaque zone cardio 1 à 5 (retour d'Omar du 27/10)
   effortFenetreJours: 28,          // les 4 dernières semaines (choix d'Omar du 27/10), face aux mêmes 4 semaines il y a 3 mois
   effortMinSorties: 2,
 

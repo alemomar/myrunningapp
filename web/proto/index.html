@@ -128,7 +128,30 @@ nav.onglets button.actif{color:var(--text);font-weight:700}
 .kv span{display:inline-flex;align-items:center;gap:8px;color:var(--text-2)}
 .kv b{font-weight:600;text-align:right}
 .pt{display:inline-block;flex:none;width:9px;height:9px;border-radius:50%}
-.niv-grille{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.niv-grille{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.niv[role=link]{cursor:pointer}
+.niv[role=link]:active{opacity:.8}
+.zones-grille{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.zone-tuile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 2px 8px;border-radius:12px;background:var(--sunken);border-top:4px solid var(--c)}
+.zt-v{font-family:var(--cond);font-weight:700;font-size:26px;line-height:1;color:var(--text)}
+.zt-v small{font-size:13px;color:var(--text-3);margin-left:1px}
+.zt-z{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.zt-n{font-size:11.5px;color:var(--c);font-weight:700;text-align:center}
+.phrase-forte{display:flex;gap:10px;align-items:flex-start;padding:14px;border-radius:14px;font-size:16px;font-weight:600;line-height:1.35}
+.phrase-forte svg{flex:none;margin-top:2px}
+.phrase-forte.bon{background:var(--accent-soft);color:var(--accent)}
+.phrase-forte.neutre{background:var(--control);color:var(--text)}
+.phrase-forte.attention{background:var(--attention-soft);color:var(--attention)}
+.regu-tete{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.regu-grand{font-family:var(--cond);font-weight:700;font-size:48px;line-height:1;color:var(--accent)}
+.regu-txt{font-size:14.5px;color:var(--text-2);line-height:1.3}
+.regu-grille{display:grid;grid-template-columns:repeat(12,1fr);gap:4px}
+.regu-case{aspect-ratio:1/1.25;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--cond);font-weight:700;font-size:17px}
+.regu-case.encours{outline:2px solid var(--text);outline-offset:1px}
+.regu-leg{align-items:center}
+.regu-ech{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 5px;border-radius:6px;font-family:var(--cond);font-weight:700;font-size:14px}
+.regu-ech::before,.regu-leg span:first-child::before{display:none}
+[id^=graphe-]{scroll-margin-top:70px}
 .niv{background:var(--sunken);border-radius:14px;padding:12px 10px;display:flex;flex-direction:column;gap:4px;min-width:0}
 .niv-n{font-family:var(--cond);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase}
 .niv-v{font-family:var(--cond);font-weight:700;font-size:30px;line-height:1;white-space:nowrap}
@@ -174,9 +197,9 @@ svg text{font-family:"Barlow",system-ui,sans-serif}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../config.js"></script>
 <script src="../logic.js?v=113"></script>
-<script src="reglages.js?v=8"></script>
+<script src="reglages.js?v=9"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=8"></script>
-<script src="app.js?v=6"></script>
+<script src="calculs.js?v=9"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

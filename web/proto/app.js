@@ -49,8 +49,8 @@
   const pastille = (sens, grande) => `<span class="pastille ${sens || "aucun"}${grande ? " grande" : ""}">${ic(sens || "aucun", grande ? 22 : 18, 2.4)}</span>`;
   const COUL = { calme: "#5A6068", facile: "#C6F432", soutenu: "#E2B04A" };
   const bloc = (titre, contenu, commentaire) => `<section class="carte"><h2>${esc(titre)}</h2>${contenu}${commentaire ? `<div class="com com-sep">${commentaire}</div>` : ""}</section>`;
-  const badgeEcart = (e, min) => e == null ? `<span class="badge egal">pas encore de comparaison</span>`
-    : e >= min ? `<span class="badge haut">−${e} s en 3 mois</span>` : e <= -min ? `<span class="badge bas">+${-e} s en 3 mois</span>` : `<span class="badge egal">stable en 3 mois</span>`;
+  const badgeEcart = (e, min, mois) => e == null ? `<span class="badge egal">pas encore de comparaison</span>`
+    : e >= min ? `<span class="badge haut">−${e} s en ${mois || 3} mois</span>` : e <= -min ? `<span class="badge bas">+${-e} s en ${mois || 3} mois</span>` : `<span class="badge egal">stable en ${mois || 3} mois</span>`;
 
   // Frise du découpage en 3 couleurs (calme, facile, soutenu) et sa légende en totaux.
   function frise(dec, haute) {
@@ -94,20 +94,22 @@
   }
   function niveauHTML(now) {
     const fm = fcMax(), defs = fm ? hrZoneDefs(fm.valeur, fcRepos()) : null;
-    const liste = defs ? Calc.alluresParEffort(etat.courses, now, 3, etat.zones, defs) : [];
-    const coul = { EF: couleurType("Sortie facile"), Tempo: couleurType("Tempo"), Seuil: couleurType("Seuil") };
-    const tuiles = liste.length ? `<div class="niv-grille">${liste.map((e) => `<div class="niv"><span class="niv-n" style="color:${coul[e.nom]}">${esc(e.nom)}</span>
+    const liste = Calc.alluresParEffort(etat.courses, now, 3, etat.zones, defs);
+    const coul = { ef: couleurType("Sortie facile"), tempo: couleurType("Tempo"), seuil: couleurType("Seuil"), frac: couleurType("Fractionné") };
+    // 2 lignes : EF et Tempo, puis Seuil et Fractionné (retour d'Omar du 27/10). Toucher une allure ouvre sa courbe dans Progression.
+    const tuiles = `<div class="niv-grille">${liste.map((e) => `<div class="niv" role="link" tabindex="0" data-go="#/progression/allure/${e.cle}" aria-label="${esc(`${e.nom} : voir la courbe`)}">
+        <span class="niv-n" style="color:${coul[e.cle]}">${esc(e.nom)}</span>
         <span class="niv-v">${e.maintenant != null ? Calc.allureTxt(e.maintenant) : "—"}${e.maintenant != null ? "<small>/km</small>" : ""}</span>
-        ${e.maintenant != null ? flecheEcart(e.ecart) : `<span class="niv-e egal">pas de passage</span>`}<span class="niv-z">cœur en ${esc(e.zone)}</span></div>`).join("")}</div>`
-      : `<div class="com">Renseigne ta FC max ou ton âge pour lire tes allures à l'effort.</div>`;
+        ${e.maintenant != null ? flecheEcart(e.ecart) : `<span class="niv-e egal">${e.cle === "frac" ? "pas de fractionné" : "pas de passage"}</span>`}
+        <span class="niv-z">${esc(e.cle === "frac" ? "blocs d'effort" : `cœur en ${e.zone}`)}</span></div>`).join("")}</div>`;
     const types = Calc.typesSur(etat.sorties, now, 28, etat.zones);
     const total = Object.values(types).reduce((a, v) => a + v, 0);
     const puces = ORDRE_TYPES.filter((t) => types[t] || ["Sortie facile", "Tempo", "Seuil", "Fractionné"].includes(t))
       .map((t) => `<span class="type-puce${types[t] ? "" : " zero"}" style="--c:${couleurType(t)}"><i></i><b>${types[t] || 0}</b> ${esc(COURT_TYPE[t])}</span>`).join("");
-    return `<section class="carte" role="link" tabindex="0" data-go="#/progression/allure" aria-label="Ton niveau">
-        <div class="carte-tete"><span class="sur">Ton niveau · 4 dernières semaines</span><span style="color:var(--muted)">${ic("chevron", 16)}</span></div>
+    return `<section class="carte" aria-label="Ton niveau">
+        <div class="carte-tete"><span class="sur">Ton niveau · 4 dernières semaines</span></div>
         ${tuiles}
-        <div class="com">L'allure que tu tiens quand ton cœur est en zone 2 (EF), 3 (Tempo) ou 4 (Seuil). Flèche : face aux mêmes 4 semaines il y a 3 mois.</div>
+        <div class="com">EF, Tempo, Seuil : l'allure que tu tiens quand ton cœur est en zone 2, 3 ou 4. Fractionné : l'allure de tes blocs d'effort. Flèche : face aux mêmes 4 semaines il y a 3 mois. Touche une allure pour voir sa courbe.</div>
         <div class="sur" style="margin-top:2px">${total} ${total > 1 ? "sorties" : "sortie"} en 4 semaines</div><div class="type-puces">${puces}</div>
       </section>`;
   }
@@ -122,44 +124,38 @@
         <button type="button" class="btn-primaire" data-go="#/sortie/${esc(s.id)}">Voir le détail de ta course ${ic("chevron", 18)}</button>
       </div>`;
   }
-  // Ton mois (remplace « Ta semaine », retour d'Omar du 27/10) : volume face au mois dernier, zones cardio 1 à 5, une phrase.
+  // Ton mois (remplace « Ta semaine », retour d'Omar du 27/10) : volume face au mois dernier, ton effort en zones 1 à 5 en grand,
+  // et la phrase mise en avant (27/10 : « pas assez mis en valeur »).
   function moisHTML(now) {
     const fm = fcMax(), m = Calc.mois(etat.sorties, now, fm ? fm.valeur : null, fcRepos());
     const c = m.ce, a = m.avant, tot = m.secs.reduce((x, v) => x + v, 0);
     const ecart = (v, ref, fmt) => ref == null ? "" : v > ref ? `+${fmt(v - ref)}` : v < ref ? `−${fmt(ref - v)}` : "=";
     const zones = tot > 0 && m.defs ? `<div class="sur" style="margin-top:2px">Ton effort ce mois-ci</div>
-        <div class="zones-barre" aria-hidden="true">${m.secs.map((v, i) => v > 0 ? `<i style="flex:${(v / tot).toFixed(4)};background:${m.defs[i].color}"></i>` : "").join("")}</div>
-        <div class="legende">${m.secs.map((v, i) => `<span style="--c:${m.defs[i].color}">Z${i + 1} ${Math.round(v / tot * 100)} %</span>`).join("")}</div>` : "";
+        <div class="zones-grille">${m.secs.map((v, i) => `<div class="zone-tuile" style="--c:${m.defs[i].color}"><span class="zt-v">${Math.round(v / tot * 100)}<small>%</small></span><span class="zt-z">Zone ${i + 1}</span><span class="zt-n">${esc(R.zonesCardioEffort[i])}</span></div>`).join("")}</div>
+        <div class="zones-barre" aria-hidden="true">${m.secs.map((v, i) => v > 0 ? `<i style="flex:${(v / tot).toFixed(4)};background:${m.defs[i].color}"></i>` : "").join("")}</div>` : "";
+    const ton = m.pctFacile == null || !c.n ? "neutre" : m.pctFacile >= R.moisFacileBienPct ? "bon" : m.pctFacile >= R.moisFacileMinPct ? "neutre" : "attention";
     return `<section class="carte" aria-label="Ton mois">
         <div class="sur">Ton mois · ${esc(MOIS[new Date(m.debut).getMonth()])}</div>
         <div class="chiffres3"><div><div class="v">${Calc.kmTxt(c.km * 1000)} km</div><div class="l">${esc(ecart(c.km, a.km, (x) => `${Calc.kmTxt(x * 1000)} km`))} vs mois dernier</div></div>
           <div><div class="v">${c.n}</div><div class="l">${c.n > 1 ? "sorties" : "sortie"} (${a.n} le mois dernier)</div></div>
           <div><div class="v">${dureeTxt(c.sec).toUpperCase()}</div><div class="l">de course</div></div></div>
         ${zones}
-        <div class="message neutre" style="background:transparent;padding:0">${ic("eclat", 16)}<span>${esc(m.phrase)}</span></div>
+        <div class="phrase-forte ${ton}">${ic(ton === "attention" ? "info" : "eclat", 18)}<span>${esc(m.phrase)}</span></div>
       </section>`;
   }
-  // Ta régularité en couleurs (retour d'Omar du 27/10) : 12 semaines, une colonne par semaine, empilée par type de sortie.
-  function semainesCouleursHTML(now) {
-    const sem = Calc.semainesParType(etat.sorties, now, 12, etat.zones), kmax = Math.max(...sem.map((w) => w.km), 1);
-    const reg = sem.filter((w) => w.km > 0).length, serie = Calc.serie(etat.sorties, now);
-    const W = 326, H = 120, bw = W / 12, base = 96;
-    const cols = sem.map((w, i) => {
-      const x = i * bw + bw * 0.16, larg = bw * 0.68;
-      if (!w.km) return `<rect x="${x.toFixed(1)}" y="${base - 4}" width="${larg.toFixed(1)}" height="4" rx="2" fill="#2A2E33"/>`;
-      let y = base;
-      const rects = ORDRE_TYPES.filter((t) => w.parType[t]).map((t) => { const h = Math.max(w.parType[t] / kmax * 84, 3); y -= h; return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${larg.toFixed(1)}" height="${(h - 1).toFixed(1)}" rx="3" fill="${couleurType(t)}"/>`; }).join("");
-      return rects + `<text x="${(x + larg / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" fill="#C9CCD0" font-size="9.5" text-anchor="middle">${Math.round(w.km)}</text>`;
-    }).join("");
-    const cadre = `<rect x="${(11 * bw + bw * 0.06).toFixed(1)}" y="2" width="${(bw * 0.88).toFixed(1)}" height="${base + 2}" rx="6" fill="none" stroke="#5A6068" stroke-dasharray="3 3"/>`;
-    const presents = ORDRE_TYPES.filter((t) => sem.some((w) => w.parType[t]));
-    return `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Tes 12 dernières semaines : ${reg} avec au moins une sortie">${cadre}${cols}
-        <text x="2" y="${H - 4}" fill="#8B8F96" font-size="10">il y a 12 sem.</text><text x="${W - 2}" y="${H - 4}" fill="#8B8F96" font-size="10" text-anchor="end">cette sem.</text></svg>
-      <div class="legende">${presents.map((t) => `<span style="--c:${couleurType(t)}">${esc(COURT_TYPE[t])}</span>`).join("")}</div>
-      <div class="regu-chiffres"><span><b>${reg}</b> semaines sur 12 avec au moins une sortie</span>${serie > 1 ? `<span class="regu-serie">${ic("eclat", 13)}${serie} semaines d'affilée</span>` : ""}</div>`;
+  // Ta régularité (27/10 : le graphique empilé n'était pas compris) : une case par semaine, le nombre de sorties dedans,
+  // plus la case est claire plus il y a eu de sorties.
+  function regulariteGrilleHTML(now) {
+    const sem = Calc.sortiesParSemaine(etat.sorties, now, 12), avec = sem.filter((w) => w.n > 0).length, serie = Calc.serie(etat.sorties, now);
+    const fond = (n) => n <= 0 ? "var(--control)" : n === 1 ? "rgba(198,244,50,.35)" : n === 2 ? "rgba(198,244,50,.68)" : "#C6F432";
+    const date = (ts) => { const d = new Date(ts); return `${d.getDate()} ${MOIS_C[d.getMonth()]}`; };
+    return `<div class="regu-tete"><span class="regu-grand">${avec}</span><span class="regu-txt">semaines sur 12<br>avec au moins une sortie</span>${serie > 1 ? `<span class="regu-serie">${ic("eclat", 13)}${serie} semaines d'affilée</span>` : ""}</div>
+      <div class="regu-grille">${sem.map((w, i) => `<div class="regu-case${i === 11 ? " encours" : ""}" style="background:${fond(w.n)};color:${w.n >= 3 ? "#0C0D0F" : w.n ? "var(--text)" : "var(--faint)"}" title="Semaine du ${date(w.debut)} : ${w.n} ${w.n > 1 ? "sorties" : "sortie"}">${w.n || "·"}</div>`).join("")}</div>
+      <div class="reperes"><span>sem. du ${esc(date(sem[0].debut))}</span><span>sem. du ${esc(date(sem[6].debut))}</span><span>cette semaine</span></div>
+      <div class="legende regu-leg"><span>Sorties dans la semaine :</span>${[0, 1, 2, 3].map((n) => `<span class="regu-ech" style="background:${fond(n)};color:${n >= 3 ? "#0C0D0F" : n ? "var(--text)" : "var(--faint)"}">${n === 3 ? "3+" : n}</span>`).join("")}</div>`;
   }
   const regulariteHTML = (now) => `<section class="carte" role="link" tabindex="0" data-go="#/progression/courses" aria-label="Ta régularité">
-      <div class="carte-tete"><span class="sur">Ta régularité · 12 semaines</span><span style="color:var(--muted)">${ic("chevron", 16)}</span></div>${semainesCouleursHTML(now)}</section>`;
+      <div class="carte-tete"><span class="sur">Ta régularité · 12 dernières semaines</span><span style="color:var(--muted)">${ic("chevron", 16)}</span></div>${regulariteGrilleHTML(now)}</section>`;
   function accueilHTML() {
     const now = Date.now(), prenom = String((etat.profil && etat.profil.pseudo) || "").trim();
     const derniere = etat.courses[etat.courses.length - 1];
@@ -225,7 +221,7 @@
   function barresZonesCardio(secs, defs, enPct) {
     const mx = Math.max(...secs, 1), tot = secs.reduce((a, v) => a + v, 0) || 1;
     const val = (v) => enPct ? `${Math.round(v / tot * 100)} %` : `${Math.round(v / 60)} MIN`;
-    return `<div style="display:flex;flex-direction:column;gap:10px">${defs.map((d, i) => `<div class="barre-zone"><div class="n">${esc(d.label)}<small>${i === 0 ? `jusqu'à ${d.max}` : i === 4 ? `plus de ${defs[3].max}` : `${defs[i - 1].max + 1} à ${d.max}`} bpm</small></div><div class="piste"><i style="width:${(secs[i] / mx * 100).toFixed(1)}%;background:${d.color}"></i></div><div class="v">${val(secs[i])}</div></div>`).join("")}</div>`;
+    return `<div style="display:flex;flex-direction:column;gap:10px">${defs.map((d, i) => `<div class="barre-zone"><div class="n">${esc(d.label)} · ${esc(R.zonesCardioEffort[i])}<small>${i === 0 ? `jusqu'à ${d.max}` : i === 4 ? `plus de ${defs[3].max}` : `${defs[i - 1].max + 1} à ${d.max}`} bpm</small></div><div class="piste"><i style="width:${(secs[i] / mx * 100).toFixed(1)}%;background:${d.color}"></i></div><div class="v">${val(secs[i])}</div></div>`).join("")}</div>`;
   }
   function coeurBlocHTML(s) {
     if (!(Calc.coeurFiable(s) && s.fc)) {
@@ -251,8 +247,7 @@
     html += `<section class="carte">${verdictLigne(v)}
         <div class="tuiles">${tuile("Distance", km(s), "km")}${tuile("Durée", fmtDur(s.dur))}${tuile("Allure", Calc.allureTxt(s.allure), "/km")}</div>
         ${puces.length ? `<div class="puces">${puces.map((p) => `<span class="puce" style="--c:var(--text-3)"><i></i>${esc(p)}</span>`).join("")}</div>` : ""}
-        <div class="com com-sep">${esc(v.phrase)}${v.note ? ` ${esc(v.note)}` : ""}</div>
-        <button type="button" class="voir" data-go="#/bilan/${esc(s.id)}" style="padding:0">Revoir ton bilan ${ic("chevron", 16)}</button></section>`;
+        <div class="com com-sep">${esc(v.phrase)}${v.note ? ` ${esc(v.note)}` : ""}</div></section>`;
     // Le cœur remonte en haut (retour d'Omar du 26/10).
     html += coeurBlocHTML(s);
     html += `<div class="sec-titre">Ce qui explique ton bilan</div>`;
@@ -316,10 +311,17 @@
     const ligne = o.points ? "" : `<polyline points="${pts.map((p) => `${X(p.ts).toFixed(1)},${Y(p.v).toFixed(1)}`).join(" ")}" fill="none" stroke="${o.couleur}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
     const ronds = o.points ? pts.map((p) => `<circle cx="${X(p.ts).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="3.5" fill="${o.couleur}"/>`).join("") : `<circle cx="${X(t1).toFixed(1)}" cy="${Y(pts[pts.length - 1].v).toFixed(1)}" r="5" fill="${o.couleur}"/>`;
     const d0 = new Date(t0), d1 = new Date(t1);
+    // Courbe de tendance (retour d'Omar du 27/10 : « on a du mal à lire l'évolution ») : droite des moindres carrés, en pointillé.
+    let tend = "";
+    if (o.tendance && pts.length >= 3) {
+      const lr = linearRegression(pts.map((p) => ({ x: (p.ts - t0) / 86400000, y: p.v }))), j1 = (t1 - t0) / 86400000;
+      const y0 = Math.max(a, Math.min(b, lr.intercept)), y1 = Math.max(a, Math.min(b, lr.intercept + lr.slope * j1));
+      tend = `<line x1="${X(t0).toFixed(1)}" y1="${Y(y0).toFixed(1)}" x2="${X(t1).toFixed(1)}" y2="${Y(y1).toFixed(1)}" stroke="${o.couleur}" stroke-width="2.4" stroke-dasharray="6 5" opacity=".75"/>`;
+    }
     return `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)}">
       <line x1="0" x2="${W - 38}" y1="${Y(hi).toFixed(1)}" y2="${Y(hi).toFixed(1)}" stroke="#26292E"/><line x1="0" x2="${W - 38}" y1="${Y(lo).toFixed(1)}" y2="${Y(lo).toFixed(1)}" stroke="#26292E"/>
       <text x="${W}" y="${(Y(hi) + 3).toFixed(1)}" fill="#8B8F96" font-size="10" text-anchor="end">${esc(o.fmt(hi))}</text><text x="${W}" y="${(Y(lo) + 3).toFixed(1)}" fill="#8B8F96" font-size="10" text-anchor="end">${esc(o.fmt(lo))}</text>
-      ${ligne}${ronds}
+      ${tend}${ligne}${ronds}
       <text x="6" y="${H - 3}" fill="#8B8F96" font-size="10">${MOIS_C[d0.getMonth()]}</text><text x="${W - 44}" y="${H - 3}" fill="#8B8F96" font-size="10" text-anchor="end">${MOIS_C[d1.getMonth()]}</text></svg>`;
   }
   const resume = (x, u, fmt) => x.maintenant == null ? `Il faut au moins 3 sorties mesurées sur 8 semaines (${x.nMaintenant} pour l'instant).`
@@ -330,29 +332,27 @@
     if (rp.etat === "bientot") repere = `<div class="sur">Ton repère · allure facile</div><div class="verdict-titre" style="color:var(--faint);font-size:44px">Bientôt</div>
         <div class="com">Encore ${rp.manque} ${rp.manque > 1 ? "sorties faciles" : "sortie facile"} sur 4 semaines pour mesurer ton allure de départ.</div>`;
     else {
-      const e = rp.ecart, phrase = e == null ? "Pas encore de sorties faciles il y a 3 mois pour comparer."
-        : Math.abs(e) < R.repereEcartMinSec ? "À effort égal, tu cours au même rythme qu'il y a 3 mois."
-        : `À effort égal, tu cours ${Math.abs(e)} s/km ${e > 0 ? "plus vite" : "plus lentement"} qu'il y a 3 mois.`;
-      repere = `<div class="sur">Ton repère · allure facile${rp.modeCoeur ? " à effort égal" : ""}</div>
-        <div class="repere"><span class="v" style="font-size:56px">${Calc.allureTxt(rp.valeur)}</span><span class="com" style="font-family:var(--cond);font-weight:600;font-size:18px">/KM</span><span style="margin-left:auto">${badgeEcart(rp.ecart, R.repereEcartMinSec)}</span></div>
+      const e = rp.ecart, phrase = e == null ? `Pas encore de sorties faciles il y a ${mois} mois pour comparer.`
+        : Math.abs(e) < R.repereEcartMinSec ? `À effort égal, tu cours au même rythme qu'il y a ${mois} mois.`
+        : `À effort égal, tu cours ${Math.abs(e)} s/km ${e > 0 ? "plus vite" : "plus lentement"} qu'il y a ${mois} mois.`;
+      repere = `<div class="sur">Ton repère · allure facile${rp.modeCoeur ? " à effort égal" : ""} · ces 4 dernières semaines</div>
+        <div class="repere"><span class="v" style="font-size:56px">${Calc.allureTxt(rp.valeur)}</span><span class="com" style="font-family:var(--cond);font-weight:600;font-size:18px">/KM</span><span style="margin-left:auto">${badgeEcart(rp.ecart, R.repereEcartMinSec, mois)}</span></div>
         <div style="color:var(--text-2)">${esc(phrase)}</div>
         ${courbe(points, { couleur: "#C6F432", inverse: true, fmt: (v) => fmtKmPace(v), padMin: 3, label: "Ton allure facile à effort égal sur la période" })}
         ${capTxt ? `<div class="com com-sep" style="display:flex;gap:8px;align-items:center"><span style="color:var(--accent)">${ic("eclat", 15)}</span><span>Ton cap : <b style="color:var(--text)">${esc(capTxt)}</b></span></div>` : ""}
         <div class="com">${rp.modeCoeur ? `Chaque point : la médiane de tes sorties faciles des 4 semaines précédentes, ramenées à un même cœur (${rp.fcRef}, ta FC habituelle en facile).` : "Chaque point : la médiane de l'allure de tes sorties faciles des 4 semaines précédentes."}</div>`;
     }
-    // Tes allures par effort : EF (zone 2), Tempo (zone 3), Seuil (zone 4).
+    // Tes allures par effort : EF, Tempo, Seuil (cœur en zone 2, 3, 4) et Fractionné (blocs d'effort), une courbe chacune.
     const fm = fcMax(), defs = fm ? hrZoneDefs(fm.valeur, fcRepos()) : null;
-    let efforts = `<div class="com">Renseigne ta FC max ou ton âge pour lire l'effort au cœur.</div>`;
-    if (defs) {
-      const liste = Calc.alluresParEffort(etat.courses, now, mois, etat.zones, defs);
-      efforts = liste.map((e, i) => `<div class="effort${i ? " sep" : ""}"><div class="carte-tete"><div><b style="font-size:16px">${esc(e.nom)}</b> <span class="com">cœur en ${esc(e.zone)} · ${esc(e.bornes)}</span></div></div>
-          ${e.maintenant != null ? `<div class="repere"><span class="v">${Calc.allureTxt(e.maintenant)}</span><span class="com">/km</span><span style="margin-left:auto">${badgeEcart(e.ecart, R.repereEcartMinSec)}</span></div>`
-            : `<div class="com">Pas assez de passages en ${esc(e.zone)} sur 4 semaines (${e.n} ${e.n > 1 ? "sorties" : "sortie"}, il en faut ${R.effortMinSorties}).</div>`}
-          ${courbe(e.points, { couleur: ["#C6F432", "#E2B04A", "#D9894A"][i], points: true, inverse: true, fmt: (v) => fmtKmPace(v), padMin: 4, h: 90, label: `Allure à l'effort ${e.nom}`, vide: "Pas encore de passages sur la période." })}</div>`).join("");
-    }
+    const coulE = { ef: couleurType("Sortie facile"), tempo: couleurType("Tempo"), seuil: couleurType("Seuil"), frac: couleurType("Fractionné") };
+    const liste = Calc.alluresParEffort(etat.courses, now, mois, etat.zones, defs, null, mois);
+    const efforts = liste.map((e, i) => `<div class="effort${i ? " sep" : ""}" id="graphe-${e.cle}"><div class="carte-tete"><div><b style="font-size:16px;color:${coulE[e.cle]}">${esc(e.nom)}</b> <span class="com">${esc(e.detail)}</span></div></div>
+          ${e.maintenant != null ? `<div class="repere"><span class="v">${Calc.allureTxt(e.maintenant)}</span><span class="com">/km</span><span style="margin-left:auto">${badgeEcart(e.ecart, R.repereEcartMinSec, mois)}</span></div>`
+            : `<div class="com">${e.cle === "frac" ? "Pas de fractionné sur les 4 dernières semaines." : !defs ? "Renseigne ta FC max ou ton âge pour lire l'effort au cœur." : `Pas assez de passages en ${esc(e.zone)} sur 4 semaines (${e.n} ${e.n > 1 ? "sorties" : "sortie"}, il en faut ${R.effortMinSorties}).`}</div>`}
+          ${courbe(e.points, { couleur: coulE[e.cle], points: true, tendance: true, inverse: true, fmt: (v) => fmtKmPace(v), padMin: 4, h: 100, label: `Allure ${e.nom}`, vide: e.cle === "frac" ? "Pas de fractionné sur la période." : "Pas encore de passages sur la période." })}</div>`).join("");
     const recs = Calc.records(etat.sorties);
     return `<section class="carte">${repere}</section>
-      ${bloc("Tes allures par effort", efforts, "L'effort se lit au cœur : l'allure que tu tiens quand ton cœur est en zone 2 (EF), 3 (Tempo) ou 4 (Seuil), même au milieu d'une sortie mixte. Médiane des 4 dernières semaines face à il y a 3 mois.")}
+      ${bloc("Tes allures par effort", efforts, `EF, Tempo, Seuil : l'allure que tu tiens quand ton cœur est en zone 2, 3 ou 4, même au milieu d'une sortie mixte. Fractionné : l'allure de tes blocs d'effort. Valeur : médiane des 4 dernières semaines, comparée aux mêmes 4 semaines il y a ${mois} mois. Pointillés : la tendance sur la période.`)}
       <section class="carte"><h2>Mes records</h2><div class="tuiles deux">${recs.map((r) => `<div class="tuile"${r.id ? ` role="link" tabindex="0" data-go="#/sortie/${esc(r.id)}"` : ""}><span class="l">${esc(r.label)}</span><span class="v"${r.valeur ? "" : ' style="color:var(--faint)"'}>${esc(r.valeur || "à venir")}</span>${r.ts ? `<span class="h">${esc(relatif(r.ts))}</span>` : ""}</div>`).join("")}</div>
         <div class="com com-sep">Temps ramené à la distance exacte, sur tes courses de 5 km, 10 km, semi et marathon (à 5 % près).</div></section>`;
   }
@@ -366,9 +366,9 @@
     }
     const cm = Calc.indicateurDansLeTemps(etat.courses, now, mois, Calc.coeurMoyen), der = Calc.indicateurDansLeTemps(etat.courses, now, mois, Calc.derive);
     return `${bloc("Temps par zone sur la période", zones, fm ? esc(`Zones calculées avec une FC max de ${fm.valeur} (${fm.source})${fr ? ` et une FC de repos de ${fr}` : ""}.`) : "")}
-      ${bloc("Ton cœur moyen en sortie facile", courbe(cm.points, { couleur: "#FF645F", points: true, fmt: (v) => `${Math.round(v)}`, padMin: 2, label: "Cœur moyen de tes sorties faciles", vide: "Pas encore de sortie facile au cœur fiable sur la période." }),
+      ${bloc("Ton cœur moyen en sortie facile", courbe(cm.points, { couleur: "#FF645F", points: true, tendance: true, fmt: (v) => `${Math.round(v)}`, padMin: 2, label: "Cœur moyen de tes sorties faciles", vide: "Pas encore de sortie facile au cœur fiable sur la période." }),
         esc(resume(cm, " bpm", (v) => Math.round(v))) + " À allure égale, un cœur qui baisse est un signe de progrès.")}
-      ${bloc("Dérive cardiaque", courbe(der.points, { couleur: "#B688FE", points: true, fmt: (v) => `${Math.round(v)} %`, padMin: 1, label: "Dérive cardiaque de tes sorties faciles", vide: "Pas encore de sortie mesurable sur la période." }),
+      ${bloc("Dérive cardiaque", courbe(der.points, { couleur: "#B688FE", points: true, tendance: true, fmt: (v) => `${Math.round(v)} %`, padMin: 1, label: "Dérive cardiaque de tes sorties faciles", vide: "Pas encore de sortie mesurable sur la période." }),
         esc(resume(der, " %", (v) => Math.round(v))) + " Mesurée seulement sur les sorties faciles d'au moins 40 min à allure régulière : sur un seuil ou une sortie courte, le cœur monte à cause de l'effort, pas de la fatigue. Moins de 5 % : stable.")}`;
   }
   function progressionCourses(now, mois) {
@@ -380,8 +380,8 @@
         <text x="${(x + bw / 2).toFixed(1)}" y="114" fill="#8B8F96" font-size="${vol.length > 6 ? 9 : 10}" text-anchor="middle">${MOIS_C[new Date(m.debut).getMonth()]}</text>`; }).join("")}</svg>`;
     const dernier = vol[vol.length - 1], avant = vol[vol.length - 2], cad = Calc.indicateurDansLeTemps(etat.courses, now, mois, Calc.cadence);
     return `${bloc("Volume par mois", barres, `${Calc.kmTxt(dernier.km * 1000)} km ce mois-ci${avant ? `, ${Calc.kmTxt(avant.km * 1000)} km le mois dernier` : ""}.`)}
-      ${bloc("Régularité", semainesCouleursHTML(now), "Une colonne par semaine : les km de chaque type de sortie. La semaine en cours est encadrée.")}
-      ${bloc("Cadence", courbe(cad.points, { couleur: "#44E7EF", points: true, fmt: (v) => `${Math.round(v)}`, padMin: 2, label: "Cadence de tes sorties faciles", vide: "Pas de cadence mesurée sur tes sorties faciles de la période." }),
+      ${bloc("Régularité", regulariteGrilleHTML(now), "Une case par semaine, du lundi au dimanche, avec le nombre de sorties. La semaine en cours est entourée.")}
+      ${bloc("Cadence", courbe(cad.points, { couleur: "#44E7EF", points: true, tendance: true, fmt: (v) => `${Math.round(v)}`, padMin: 2, label: "Cadence de tes sorties faciles", vide: "Pas de cadence mesurée sur tes sorties faciles de la période." }),
         esc(resume(cad, " pas/min", (v) => Math.round(v))))}`;
   }
   function progressionHTML(theme) {
@@ -401,7 +401,7 @@
     const conseillees = z ? [["EF", z.conseillees.easy], ["Marathon", z.conseillees.marathon], ["Seuil", z.conseillees.threshold], ["Fractionné", z.conseillees.interval]] : [];
     const lignesZones = z ? Calc.zonesLibelles(z).map((x) => `<div class="kv"><span><i class="pt" style="background:${x.couleur}"></i>${esc(x.nom)}</span><b>${esc(x.plage)}</b></div>`).join("") : "";
     const defs = fm ? hrZoneDefs(fm.valeur, fr) : null;
-    const lignesCoeur = defs ? defs.map((d, i) => `<div class="kv"><span><i class="pt" style="background:${d.color}"></i>${esc(d.label)}</span><b>${i === 0 ? `jusqu'à ${d.max}` : i === 4 ? `plus de ${defs[3].max}` : `${defs[i - 1].max + 1} à ${d.max}`} bpm</b></div>`).join("") : "";
+    const lignesCoeur = defs ? defs.map((d, i) => `<div class="kv"><span><i class="pt" style="background:${d.color}"></i>${esc(d.label)} · ${esc(R.zonesCardioEffort[i])}</span><b>${i === 0 ? `jusqu'à ${d.max}` : i === 4 ? `plus de ${defs[3].max}` : `${defs[i - 1].max + 1} à ${d.max}`} bpm</b></div>`).join("") : "";
     const capTxt = Calc.cap(etat.profil), derniere = etat.sorties[etat.sorties.length - 1], premiere = etat.sorties[0];
     return `<header class="tete"><div class="sur">Ton compte</div><h1>Profil</h1></header>
       <section class="carte"><h2>Ton niveau</h2>
@@ -432,7 +432,7 @@
     afficherBas("");
     if (!etat.session) { nav.classList.add("cache"); app.innerHTML = connexionHTML(); document.getElementById("fConnexion").addEventListener("submit", seConnecter); return; }
     if (!etat.pret) { app.innerHTML = `<p class="vide">${etat.erreur ? esc(etat.erreur) : "Lecture de tes sorties…"}</p>`; return; }
-    let [, vue, id] = (location.hash || "#/accueil").split("/");
+    let [, vue, id, ancre] = (location.hash || "#/accueil").split("/");
     if (vue === "verdict") vue = "bilan";   // ancienne adresse
     const s = id && vue !== "progression" ? etat.sorties.find((x) => String(x.id) === decodeURIComponent(id)) : null;
     const plein = vue === "bilan" || vue === "sortie";
@@ -447,6 +447,9 @@
     else if (vue === "profil") { app.innerHTML = profilHTML(); document.getElementById("deconnexion").addEventListener("click", async () => { await Lecture.deconnexion(); location.hash = "#/accueil"; location.reload(); }); }
     else app.innerHTML = accueilHTML();
     window.scrollTo(0, garderDefilement ? y : 0);
+    // #/progression/allure/seuil : on descend jusqu'à la courbe demandée (touchée depuis « Ton niveau »).
+    const cible = vue === "progression" && ancre && !garderDefilement ? document.getElementById(`graphe-${ancre}`) : null;
+    if (cible) cible.scrollIntoView({ block: "start" });
   }
   document.addEventListener("click", (e) => {
     const r = e.target.closest("[data-retour]"); if (r) { if (history.length > 1) history.back(); else location.hash = "#/accueil"; return; }
@@ -461,7 +464,7 @@
     const banc = window.__PROTO_BANC__;   // banc de captures local seulement (jamais publié)
     if (banc) { etat.profil = banc.profil || {}; etat.email = banc.email || ""; installer(banc.runs || []); return true; }
     const [runs, prof] = await Promise.all([
-      Lecture.lire("runs", "id,start_date,type,apple_type,distance_km,duration_sec,avg_hr,peak_hr,avg_cadence,pain_ratings,include_in_stats,hr_series,pace_series", { trierPar: "start_date" }),
+      Lecture.lire("runs", "id,start_date,type,apple_type,distance_km,duration_sec,avg_hr,peak_hr,avg_cadence,pain_ratings,include_in_stats,hr_series,pace_series,lap_markers,frac_work_manual,frac_recovery_manual", { trierPar: "start_date" }),
       Lecture.lire("profiles", "pseudo,age,max_hr,resting_hr,goals,program_settings", { unSeul: true }),
     ]);
     if (runs.error) { etat.erreur = `Pas pu lire tes sorties : ${runs.error.message}`; return false; }

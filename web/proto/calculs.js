@@ -22,6 +22,8 @@ const Calc = (() => {
       rpe: row.pain_ratings && row.pain_ratings.rpe != null ? Number(row.pain_ratings.rpe) : null,
       stats: row.include_in_stats !== false, hr: Array.isArray(row.hr_series) ? row.hr_series : null,
       pace: Array.isArray(row.pace_series) ? row.pace_series : null,
+      lapMarkers: Array.isArray(row.lap_markers) ? row.lap_markers : null,
+      fracWorkManual: Number(row.frac_work_manual) || null, fracRecoveryManual: Number(row.frac_recovery_manual) || null,
     };
   }
   const estCourse = (s) => RUNNING_RUN_TYPES.includes(s.type) && s.stats && s.dist > 0 && s.allure > 0;
@@ -365,7 +367,7 @@ const Calc = (() => {
   }
 
   /* ---------- Ton repère : allure facile à effort égal ---------- */
-  function repere(sorties, nowTs, reg) {
+  function repere(sorties, nowTs, reg, ilYaJours) {
     const r = reg || REGLAGES;
     const faciles = sorties.filter((s) => estCourse(s) && (s.type === "EF" || s.type === "Long"));
     const avecCoeur = faciles.filter((s) => s.fc && coeurFiable(s, r));
@@ -374,7 +376,7 @@ const Calc = (() => {
     const val = (s) => modeCoeur ? s.allure * s.fc / fcRef : s.allure;
     const base = modeCoeur ? avecCoeur : faciles;
     const fen = (fin) => base.filter((s) => s.ts <= fin && s.ts > fin - r.repereFenetreJours * JOUR);
-    const maintenant = fen(nowTs), avant = fen(nowTs - r.repereIlYaJours * JOUR);
+    const maintenant = fen(nowTs), avant = fen(nowTs - (ilYaJours || r.repereIlYaJours) * JOUR);
     if (maintenant.length < r.repereMinSorties) return { etat: "bientot", manque: r.repereMinSorties - maintenant.length, modeCoeur };
     const v = med(maintenant.map(val)), vAvant = avant.length >= r.repereMinSorties ? med(avant.map(val)) : null;
     const ecart = vAvant != null ? Math.round(vAvant - v) : null;   // > 0 : plus rapide qu'il y a 3 mois
@@ -383,7 +385,7 @@ const Calc = (() => {
   }
   // Courbe du repère : un point par semaine = médiane des sorties faciles des 4 semaines précédentes (au moins 2).
   function repereCourbe(sorties, nowTs, mois, reg) {
-    const r = reg || REGLAGES, rp = repere(sorties, nowTs, r);
+    const r = reg || REGLAGES, rp = repere(sorties, nowTs, r, mois * MOIS_J);   // comparé au début de la période choisie
     if (rp.etat !== "valeur") return { rp, points: [] };
     const debut = nowTs - mois * MOIS_J * JOUR, pts = [];
     for (let fin = nowTs; fin >= debut; fin -= SEM) {
@@ -413,19 +415,35 @@ const Calc = (() => {
     });
     return o.map((a) => ({ sec: a.sec, allure: a.m > 0 ? a.sec / (a.m / 1000) : null }));
   }
-  function alluresParEffort(sorties, nowTs, mois, z, defs, reg) {
-    const r = reg || REGLAGES;
-    const efforts = [{ k: 1, nom: "EF", zone: "zone 2" }, { k: 2, nom: "Tempo", zone: "zone 3" }, { k: 3, nom: "Seuil", zone: "zone 4" }];
-    const parSortie = sorties.filter((s) => estCourse(s) && s.ts > nowTs - 400 * JOUR).map((s) => ({ ts: s.ts, a: allureParEffort(s, z, defs, r) })).filter((x) => x.a);
-    return efforts.map((e) => {
-      const tous = parSortie.filter((x) => x.a[e.k].sec >= r.effortMinSec[e.k]).map((x) => ({ ts: x.ts, v: x.a[e.k].allure }));
+  // Tes allures par effort : EF, Tempo, Seuil (allure tenue cœur en zone 2, 3, 4) et Fractionné (allure de travail des blocs
+  // d'effort de tes fractionnés, calcul de l'app : saisie à la main, sinon blocs de la montre, sinon blocs repérés à l'allure).
+  // `ilYaMois` : la comparaison se fait avec la même fenêtre il y a 3, 6 ou 12 mois (la période choisie).
+  function alluresParEffort(sorties, nowTs, mois, z, defs, reg, ilYaMois) {
+    const r = reg || REGLAGES, ilYa = (ilYaMois || 3) * MOIS_J * JOUR;
+    const efforts = [{ cle: "ef", k: 1, nom: "EF", zone: "zone 2" }, { cle: "tempo", k: 2, nom: "Tempo", zone: "zone 3" }, { cle: "seuil", k: 3, nom: "Seuil", zone: "zone 4" }];
+    const recents = sorties.filter((s) => estCourse(s) && s.ts > nowTs - 400 * JOUR);
+    const parSortie = defs ? recents.map((s) => ({ ts: s.ts, a: allureParEffort(s, z, defs, r) })).filter((x) => x.a) : [];
+    const resume = (tous, min) => {
       const fen = (fin) => tous.filter((p) => p.ts <= fin && p.ts > fin - r.effortFenetreJours * JOUR).map((p) => p.v);
-      const now = fen(nowTs), avant = fen(nowTs - r.repereIlYaJours * JOUR);
-      const maintenant = now.length >= r.effortMinSorties ? med(now) : null, vAvant = avant.length >= r.effortMinSorties ? med(avant) : null;
-      return { ...e, bornes: defs ? `${e.k === 0 ? 0 : defs[e.k - 1].max + 1} à ${defs[e.k].max} bpm` : "",
-        points: tous.filter((p) => p.ts >= nowTs - mois * MOIS_J * JOUR), maintenant: maintenant != null ? Math.round(maintenant) : null,
+      const now = fen(nowTs), avant = fen(nowTs - ilYa);
+      const maintenant = now.length >= min ? med(now) : null, vAvant = avant.length >= min ? med(avant) : null;
+      return { points: tous.filter((p) => p.ts >= nowTs - mois * MOIS_J * JOUR), maintenant: maintenant != null ? Math.round(maintenant) : null,
         ecart: maintenant != null && vAvant != null ? Math.round(vAvant - maintenant) : null, n: now.length };
-    });
+    };
+    const liste = efforts.map((e) => ({ ...e, detail: defs ? `cœur en ${e.zone} · ${defs[e.k - 1].max + 1} à ${defs[e.k].max} bpm` : `cœur en ${e.zone}`,
+      ...resume(parSortie.filter((x) => x.a[e.k].sec >= r.effortMinSec[e.k]).map((x) => ({ ts: x.ts, v: x.a[e.k].allure })), r.effortMinSorties) }));
+    const frac = recents.filter((s) => s.type === "Fractionné").map((s) => {
+      const ip = getIntervalPaces({ paceSeries: s.pace, lapMarkers: s.lapMarkers, fracWorkManual: s.fracWorkManual, fracRecoveryManual: s.fracRecoveryManual });
+      return ip && ip.work && (ip.manual || ip.workCount >= 2) ? { ts: s.ts, v: ip.work } : null;
+    }).filter(Boolean);
+    liste.push({ cle: "frac", k: 4, nom: "Fractionné", zone: "blocs d'effort", detail: "allure de travail de tes fractionnés", ...resume(frac, r.fracMinSorties) });
+    return liste;
+  }
+  // Ta régularité : nombre de courses de chacune des `semaines` dernières semaines (du lundi au dimanche).
+  function sortiesParSemaine(sorties, nowTs, semaines) {
+    const l = lundi(nowTs), out = [];
+    for (let i = semaines - 1; i >= 0; i--) { const deb = l - i * SEM; out.push({ debut: deb, n: sorties.filter((s) => estCourse(s) && s.ts >= deb && s.ts < deb + SEM).length }); }
+    return out;
   }
 
   /* ---------- Accueil (27/10) : types de sorties, ton mois, tes semaines en couleurs ---------- */
@@ -530,6 +548,6 @@ const Calc = (() => {
 
   return { versSortie, estCourse, coeurFiable, ressentiDe, ressentiMot, zonesAllure, zoneDe, zonesLibelles, pointsAllure, decoupage, libelleType,
     passages, zoneDominante, habitude, verdict, conseil, evolution, ressentiFaceMesure, lundi, semaine, serie, repere, repereCourbe,
-    allureParEffort, alluresParEffort, typesSur, mois, semainesParType, zonesCardioPeriode, indicateurDansLeTemps, derive, cadence, coeurMoyen, volumeParMois, regularite,
+    allureParEffort, alluresParEffort, sortiesParSemaine, typesSur, mois, semainesParType, zonesCardioPeriode, indicateurDansLeTemps, derive, cadence, coeurMoyen, volumeParMois, regularite,
     records, cap, fcMaxEffective, moyenne, med, kmTxt, allureTxt, TITRES, ZONE_A };
 })();

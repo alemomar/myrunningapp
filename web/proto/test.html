@@ -36,9 +36,9 @@ window.__appels = [];
 </script>
 <script src="../config.js"></script>
 <script src="../logic.js?v=113"></script>
-<script src="reglages.js?v=8"></script>
+<script src="reglages.js?v=9"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=8"></script>
+<script src="calculs.js?v=9"></script>
 <script>
 (async () => {
   const res = [];
@@ -155,6 +155,16 @@ window.__appels = [];
   ok(Calc.serie([sortie({ id: "w1", ts: NOW - 3600000, km: 5, pace: 365 }), sortie({ id: "w2", ts: NOW - 4 * JOUR, km: 5, pace: 365 }), sortie({ id: "w3", ts: NOW - 10 * JOUR, km: 5, pace: 365 })], NOW) === 3, "Série : 3 semaines d'affilée avec au moins une sortie");
   const decS = Calc.decoupage(sB, z);
   ok(decS && decS.segments.length === 3 && decS.segments[1].cat === "soutenu", "Découpage : 3 catégories au plus, passages soutenus voisins regroupés (" + (decS ? decS.texte : "") + ")");
+
+  // Retours du 27/10 (2) : niveau Fractionné, comparaison selon la période, régularité par semaine
+  const fr1 = Calc.versSortie({ id: "fr1", start_date: iso(NOW - 6 * JOUR), type: "Fractionné", apple_type: "Running", distance_km: 6, duration_sec: 2000, include_in_stats: true, frac_work_manual: 270 });
+  const ape2 = Calc.alluresParEffort([ef1, ef2, fr1], NOW, 3, z, defs);
+  ok(ape2.length === 4 && ape2[3].cle === "frac" && ape2[3].maintenant === 270, "Ton niveau : 4 allures, dont le Fractionné (allure de travail des blocs)");
+  ok(Calc.alluresParEffort([ef1, ef2], NOW, 3, z, null)[0].maintenant === null, "Ton niveau : sans FC max, pas d'allure EF / Tempo / Seuil (le Fractionné reste possible)");
+  const sps = Calc.sortiesParSemaine([ef1, ef2, sortie({ id: "sp3", ts: NOW - 2 * 3600000, km: 5, pace: 365 }), sortie({ id: "sp4", ts: NOW - 3 * 3600000, km: 5, pace: 365 })], NOW, 12);
+  ok(sps.length === 12 && sps[11].n === 2 && sps[10].n === 1 && sps[9].n === 1, "Régularité : nombre de sorties de chaque semaine");
+  const pts6 = [3, 8, 15].map((d, i) => sortie({ id: "q" + i, ts: NOW - d * JOUR, km: 8, pace: 360, fc: 150, hrPas: 5 })).concat([185, 190, 195].map((d, i) => sortie({ id: "q6" + i, ts: NOW - d * JOUR, km: 8, pace: 380, fc: 150, hrPas: 5 })));
+  ok(Calc.repere(pts6, NOW, null, 183).ecart === 20 && Calc.repere(pts6, NOW).ecart === null, "Repère : la comparaison suit la période choisie (6 mois : 20 s de mieux)");
 
   // Accueil du 27/10 : types de sorties sur 4 semaines, ton mois, semaines en couleurs
   const ty = Calc.typesSur([sortie({ id: "t1", ts: NOW - 3 * JOUR, km: 8, pace: 420 }), sortie({ id: "t2", ts: NOW - 10 * JOUR, km: 6, pace: 420, type: "Fractionné" }), sortie({ id: "t3", ts: NOW - 40 * JOUR, km: 8, pace: 420 })], NOW, 28, z);
