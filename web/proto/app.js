@@ -101,7 +101,7 @@
         <span class="niv-n" style="color:${coul[e.cle]}">${esc(e.nom)}</span>
         <span class="niv-v">${e.maintenant != null ? Calc.allureTxt(e.maintenant) : "—"}${e.maintenant != null ? "<small>/km</small>" : ""}</span>
         ${e.maintenant != null ? flecheEcart(e.ecart) : `<span class="niv-e egal">${e.cle === "frac" ? "pas de fractionné" : "pas de passage"}</span>`}
-        <span class="niv-z">${esc(e.cle === "frac" ? "blocs d'effort" : `cœur en ${e.zone}`)}</span></div>`).join("")}</div>`;
+        <span class="niv-z">${esc(e.cle === "frac" ? "blocs d'effort" : e.zone)}</span></div>`).join("")}</div>`;
     const types = Calc.typesSur(etat.sorties, now, 28, etat.zones);
     const total = Object.values(types).reduce((a, v) => a + v, 0);
     const puces = ORDRE_TYPES.filter((t) => types[t] || ["Sortie facile", "Tempo", "Seuil", "Fractionné"].includes(t))
@@ -109,7 +109,6 @@
     return `<section class="carte" aria-label="Ton niveau">
         <div class="carte-tete"><span class="sur">Ton niveau · 4 dernières semaines</span></div>
         ${tuiles}
-        <div class="com">EF, Tempo, Seuil : l'allure que tu tiens quand ton cœur est en zone 2, 3 ou 4. Fractionné : l'allure de tes blocs d'effort. Flèche : face aux mêmes 4 semaines il y a 3 mois. Touche une allure pour voir sa courbe.</div>
         <div class="sur" style="margin-top:2px">${total} ${total > 1 ? "sorties" : "sortie"} en 4 semaines</div><div class="type-puces">${puces}</div>
       </section>`;
   }
@@ -480,7 +479,8 @@
   // Le bilan s'ouvre tout seul à la première ouverture qui suit une nouvelle sortie (de moins de 7 jours), une seule fois.
   function ouvrirBilanSiNouvelle() {
     const der = etat.courses[etat.courses.length - 1];
-    if (!der || location.hash || Date.now() - der.ts > R.bilanJoursOuverture * JOUR) return;
+    if (window.__PROTO_BANC__) return;   // banc de captures : écrans stables
+    if (!der || (location.hash && location.hash !== "#/accueil") || Date.now() - der.ts > R.bilanJoursOuverture * JOUR) return;
     if (lireLocal(CLE_BILAN_VU, null) === String(der.id)) return;
     ecrireLocal(CLE_BILAN_VU, String(der.id));
     location.hash = `#/bilan/${der.id}`;
@@ -488,9 +488,17 @@
   async function demarrer() {
     etat.pret = false; rendre();
     etat.pret = await charger();
+    etat.chargeA = Date.now();
     if (etat.pret) ouvrirBilanSiNouvelle();
     rendre();
   }
+  // Retour dans le prototype après plus de 30 s : on relit tes sorties (une course a pu arriver de RunSync entre-temps),
+  // sans écran de chargement, et son bilan s'ouvre si tu es sur l'Accueil.
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState !== "visible" || !etat.session || !etat.pret || window.__PROTO_BANC__) return;
+    if (Date.now() - (etat.chargeA || 0) < 30000) return;
+    if (await charger()) { etat.chargeA = Date.now(); ouvrirBilanSiNouvelle(); rendre(true); }
+  });
 
   (async () => {
     try { etat.ressentis = JSON.parse(lireLocal(CLE_RESSENTIS, "{}")) || {}; } catch (e) { etat.ressentis = {}; }
