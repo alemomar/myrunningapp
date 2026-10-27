@@ -76,13 +76,18 @@ const REGLAGES = {
   /* ---- Tes allures par effort (Progression › Allure, idée d'Omar du 26/10) ----
      L'effort se lit au cœur : EF = cœur en zone 2, Tempo = zone 3, Seuil = zone 4 (zones cardio de l'app, réserve de FC).
      Pour chaque sortie au cœur fiable : l'allure tenue pendant les moments passés dans chaque zone (blocs d'au moins
-     90 s, sans leurs 30 premières secondes, le temps que le cœur se cale). Évolution : médiane des 6 dernières semaines
-     face aux 6 semaines d'il y a 3 mois. À distinguer de la répartition du temps en zones 1 à 5 (onglet Cœur). */
+     90 s, sans leurs 30 premières secondes, le temps que le cœur se cale). Évolution : médiane des 4 dernières semaines
+     face aux 4 semaines d'il y a 3 mois. À distinguer de la répartition du temps en zones 1 à 5 (onglet Cœur). */
   effortBlocMinSec: 90,
   effortRetardSec: 30,
   effortMinSec: { 1: 600, 2: 180, 3: 180 },   // temps minimum dans la zone pour qu'une sortie compte (EF 10 min, Tempo et Seuil 3 min)
-  effortFenetreJours: 42,
+  effortFenetreJours: 28,          // les 4 dernières semaines (choix d'Omar du 27/10), face aux mêmes 4 semaines il y a 3 mois
   effortMinSorties: 2,
+
+  /* ---- Ton mois (Accueil, retour d'Omar du 27/10 : remplace « Ta semaine ») ---- */
+  moisFacileBienPct: 75,        // au moins 75 % du temps en zones 1 et 2 : « surtout du facile »
+  moisFacileMinPct: 60,         // moins de 60 % : « beaucoup d'intensité »
+  couleursTypes: { "Sortie facile": "#C6F432", "Sortie longue": "#44E7EF", Tempo: "#E2B04A", Seuil: "#D9894A", "Fractionné": "#FF645F", Course: "#F2F3F0" },
 
   /* ---- Ta semaine ---- */
   semaineMoyenneSemaines: 4,    // comparée à la semaine dernière et à la moyenne des 4 semaines d'avant

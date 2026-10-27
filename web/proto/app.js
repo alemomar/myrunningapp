@@ -82,55 +82,92 @@
 
   /* ---------- Accueil ---------- */
   const verdictLigne = (v) => `<div class="verdict-ligne">${pastille(v.sens)}<span class="t">${esc(v.titre)}</span></div>`;
-  function ouTuEnEsHTML(now) {
-    const rp = Calc.repere(etat.courses, now);
-    const vol = Calc.volumeParMois(etat.sorties, now, 2), ce = vol[1], avant = vol[0];
-    const serie = Calc.serie(etat.sorties, now), reg = Calc.regularite(etat.sorties, now, 12);
-    const ligne = (go, icone, titre, valeur, detail) => `<div class="ou-ligne" role="link" tabindex="0" data-go="${go}">
-        <span class="ou-ic">${ic(icone, 18)}</span><div class="ou-t"><span class="sur">${esc(titre)}</span><span class="ou-v">${valeur}</span><span class="com">${detail}</span></div><span style="color:var(--muted)">${ic("chevron", 16)}</span></div>`;
-    const repere = rp.etat === "bientot"
-      ? ligne("#/progression/allure", "allure", "Ton allure facile", "Bientôt", esc(`encore ${rp.manque} ${rp.manque > 1 ? "sorties faciles" : "sortie facile"} sur 4 semaines`))
-      : ligne("#/progression/allure", "allure", rp.modeCoeur ? "Ton allure facile, à effort égal" : "Ton allure facile",
-        `${Calc.allureTxt(rp.valeur)}<small>/km</small> ${badgeEcart(rp.ecart, R.repereEcartMinSec)}`, rp.modeCoeur ? esc(`ramenée à un cœur de ${rp.fcRef}, ta FC habituelle en facile`) : "médiane de tes sorties faciles des 4 dernières semaines");
-    const volume = ligne("#/progression/courses", "calendrier", "Ce mois-ci", `${Calc.kmTxt(ce.km * 1000)}<small>km</small>`,
-      esc(`${ce.n} ${ce.n > 1 ? "sorties" : "sortie"} · mois dernier : ${Calc.kmTxt(avant.km * 1000)} km`));
-    const regu = ligne("#/progression/courses", "check", "Ta régularité", serie > 1 ? `${serie}<small>semaines d'affilée</small>` : `${reg.avec}<small>sem. sur 12</small>`,
-      serie > 1 ? "avec au moins une sortie par semaine" : "semaines avec au moins une sortie, sur les 12 dernières");
-    return `<section class="carte" aria-label="Où tu en es" style="gap:0"><div class="sur" style="padding-bottom:4px">Où tu en es</div>${repere}${volume}${regu}</section>`;
+  // Ton niveau (choix B d'Omar, 27/10) : tes allures EF / Tempo / Seuil des 4 dernières semaines, et les sorties faites.
+  const ORDRE_TYPES = ["Sortie facile", "Sortie longue", "Tempo", "Seuil", "Fractionné", "Course"];
+  const COURT_TYPE = { "Sortie facile": "EF", "Sortie longue": "Longue", Tempo: "Tempo", Seuil: "Seuil", "Fractionné": "Fractionné", Course: "Course" };
+  const couleurType = (t) => R.couleursTypes[t] || "var(--faint)";
+  function flecheEcart(e) {
+    if (e == null) return `<span class="niv-e egal">nouveau</span>`;
+    if (e >= R.repereEcartMinSec) return `<span class="niv-e haut">${ic("haut", 12, 2.6)}${e} s</span>`;
+    if (e <= -R.repereEcartMinSec) return `<span class="niv-e bas">${ic("bas", 12, 2.6)}${-e} s</span>`;
+    return `<span class="niv-e egal">${ic("egal", 12, 2.6)}stable</span>`;
+  }
+  function niveauHTML(now) {
+    const fm = fcMax(), defs = fm ? hrZoneDefs(fm.valeur, fcRepos()) : null;
+    const liste = defs ? Calc.alluresParEffort(etat.courses, now, 3, etat.zones, defs) : [];
+    const coul = { EF: couleurType("Sortie facile"), Tempo: couleurType("Tempo"), Seuil: couleurType("Seuil") };
+    const tuiles = liste.length ? `<div class="niv-grille">${liste.map((e) => `<div class="niv"><span class="niv-n" style="color:${coul[e.nom]}">${esc(e.nom)}</span>
+        <span class="niv-v">${e.maintenant != null ? Calc.allureTxt(e.maintenant) : "—"}${e.maintenant != null ? "<small>/km</small>" : ""}</span>
+        ${e.maintenant != null ? flecheEcart(e.ecart) : `<span class="niv-e egal">pas de passage</span>`}<span class="niv-z">cœur en ${esc(e.zone)}</span></div>`).join("")}</div>`
+      : `<div class="com">Renseigne ta FC max ou ton âge pour lire tes allures à l'effort.</div>`;
+    const types = Calc.typesSur(etat.sorties, now, 28, etat.zones);
+    const total = Object.values(types).reduce((a, v) => a + v, 0);
+    const puces = ORDRE_TYPES.filter((t) => types[t] || ["Sortie facile", "Tempo", "Seuil", "Fractionné"].includes(t))
+      .map((t) => `<span class="type-puce${types[t] ? "" : " zero"}" style="--c:${couleurType(t)}"><i></i><b>${types[t] || 0}</b> ${esc(COURT_TYPE[t])}</span>`).join("");
+    return `<section class="carte" role="link" tabindex="0" data-go="#/progression/allure" aria-label="Ton niveau">
+        <div class="carte-tete"><span class="sur">Ton niveau · 4 dernières semaines</span><span style="color:var(--muted)">${ic("chevron", 16)}</span></div>
+        ${tuiles}
+        <div class="com">L'allure que tu tiens quand ton cœur est en zone 2 (EF), 3 (Tempo) ou 4 (Seuil). Flèche : face aux mêmes 4 semaines il y a 3 mois.</div>
+        <div class="sur" style="margin-top:2px">${total} ${total > 1 ? "sorties" : "sortie"} en 4 semaines</div><div class="type-puces">${puces}</div>
+      </section>`;
   }
   function derniereHTML(s) {
-    const v = bilanDe(s), dec = Calc.decoupage(s, etat.zones), res = Calc.ressentiDe(s, etat.ressentis);
+    const v = bilanDe(s), dec = Calc.decoupage(s, etat.zones), res = Calc.ressentiDe(s, etat.ressentis), lib = Calc.libelleType(s, dec);
     return `<div class="carte" role="link" tabindex="0" data-go="#/sortie/${esc(s.id)}" aria-label="Voir le détail de ta dernière sortie">
-        <div class="carte-tete"><span class="sur">Ta dernière sortie · ${esc(relatif(s.ts))}</span><span class="puce" style="padding:3px 9px"><i style="--c:${COUL.facile}"></i>${esc(Calc.libelleType(s, dec))}</span></div>
+        <div class="carte-tete"><span class="sur">Ta dernière sortie · ${esc(relatif(s.ts))}</span><span class="puce" style="padding:3px 9px;--c:${couleurType(lib)}"><i></i>${esc(lib)}</span></div>
         ${verdictLigne(v)}
         <div class="tuiles">${tuile("Distance", km(s), "km")}${tuile("Durée", fmtDur(s.dur))}${tuile("Allure", Calc.allureTxt(s.allure), "/km")}</div>
         ${dec ? frise(dec) : ""}
         ${res != null ? `<div class="com">Ressenti : <b style="color:var(--text)">${res}/10</b>, ${esc(Calc.ressentiMot(res))}</div>` : ""}
-        <div class="voir">Voir le détail ${ic("chevron", 16)}</div>
+        <button type="button" class="btn-primaire" data-go="#/sortie/${esc(s.id)}">Voir le détail de ta course ${ic("chevron", 18)}</button>
       </div>`;
   }
-  function semaineHTML(now) {
-    const w = Calc.semaine(etat.sorties, now, etat.zones), c = w.cette, d = w.derniere, m = w.moyenne;
-    const ligne = (lab, n, kmv, sec) => `<div class="compare">${lab} : <b>${String(n).replace(".", ",")} ${n > 1 ? "sorties" : "sortie"}</b> · <b>${Calc.kmTxt(kmv * 1000)} km</b> · <b>${dureeTxt(sec)}</b></div>`;
-    const tot = w.facileSec + w.soutenuSec;
-    const rep = tot > 0 ? `<div class="repart" aria-hidden="true"><i style="width:${100 - w.soutenuPct}%;background:${COUL.facile}"></i><i style="width:${w.soutenuPct}%;background:${COUL.soutenu}"></i></div>
-      <div class="legende"><span style="--c:${COUL.facile}">facile ${100 - w.soutenuPct} %</span><span style="--c:${COUL.soutenu}">soutenu ${w.soutenuPct} %</span></div>` : "";
-    return `<section class="carte" aria-label="Ta semaine">
-        <div class="sur">Ta semaine</div>
-        <div class="chiffres3"><div><div class="v">${c.n}</div><div class="l">${c.n > 1 ? "sorties" : "sortie"}</div></div><div><div class="v">${Calc.kmTxt(c.km * 1000)} km</div><div class="l">distance</div></div><div><div class="v">${dureeTxt(c.sec).toUpperCase()}</div><div class="l">durée</div></div></div>
-        ${ligne("Semaine dernière", d.n, d.km, d.sec)}
-        ${m.n != null ? ligne(`Moyenne des ${R.semaineMoyenneSemaines} semaines d'avant`, Math.round(m.n * 10) / 10, m.km, m.sec) : ""}
-        ${rep}
-        <div class="message neutre" style="background:transparent;padding:0">${ic("eclat", 16)}<span>${esc(w.phrase)}</span></div>
+  // Ton mois (remplace « Ta semaine », retour d'Omar du 27/10) : volume face au mois dernier, zones cardio 1 à 5, une phrase.
+  function moisHTML(now) {
+    const fm = fcMax(), m = Calc.mois(etat.sorties, now, fm ? fm.valeur : null, fcRepos());
+    const c = m.ce, a = m.avant, tot = m.secs.reduce((x, v) => x + v, 0);
+    const ecart = (v, ref, fmt) => ref == null ? "" : v > ref ? `+${fmt(v - ref)}` : v < ref ? `−${fmt(ref - v)}` : "=";
+    const zones = tot > 0 && m.defs ? `<div class="sur" style="margin-top:2px">Ton effort ce mois-ci</div>
+        <div class="zones-barre" aria-hidden="true">${m.secs.map((v, i) => v > 0 ? `<i style="flex:${(v / tot).toFixed(4)};background:${m.defs[i].color}"></i>` : "").join("")}</div>
+        <div class="legende">${m.secs.map((v, i) => `<span style="--c:${m.defs[i].color}">Z${i + 1} ${Math.round(v / tot * 100)} %</span>`).join("")}</div>` : "";
+    return `<section class="carte" aria-label="Ton mois">
+        <div class="sur">Ton mois · ${esc(MOIS[new Date(m.debut).getMonth()])}</div>
+        <div class="chiffres3"><div><div class="v">${Calc.kmTxt(c.km * 1000)} km</div><div class="l">${esc(ecart(c.km, a.km, (x) => `${Calc.kmTxt(x * 1000)} km`))} vs mois dernier</div></div>
+          <div><div class="v">${c.n}</div><div class="l">${c.n > 1 ? "sorties" : "sortie"} (${a.n} le mois dernier)</div></div>
+          <div><div class="v">${dureeTxt(c.sec).toUpperCase()}</div><div class="l">de course</div></div></div>
+        ${zones}
+        <div class="message neutre" style="background:transparent;padding:0">${ic("eclat", 16)}<span>${esc(m.phrase)}</span></div>
       </section>`;
   }
+  // Ta régularité en couleurs (retour d'Omar du 27/10) : 12 semaines, une colonne par semaine, empilée par type de sortie.
+  function semainesCouleursHTML(now) {
+    const sem = Calc.semainesParType(etat.sorties, now, 12, etat.zones), kmax = Math.max(...sem.map((w) => w.km), 1);
+    const reg = sem.filter((w) => w.km > 0).length, serie = Calc.serie(etat.sorties, now);
+    const W = 326, H = 120, bw = W / 12, base = 96;
+    const cols = sem.map((w, i) => {
+      const x = i * bw + bw * 0.16, larg = bw * 0.68;
+      if (!w.km) return `<rect x="${x.toFixed(1)}" y="${base - 4}" width="${larg.toFixed(1)}" height="4" rx="2" fill="#2A2E33"/>`;
+      let y = base;
+      const rects = ORDRE_TYPES.filter((t) => w.parType[t]).map((t) => { const h = Math.max(w.parType[t] / kmax * 84, 3); y -= h; return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${larg.toFixed(1)}" height="${(h - 1).toFixed(1)}" rx="3" fill="${couleurType(t)}"/>`; }).join("");
+      return rects + `<text x="${(x + larg / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" fill="#C9CCD0" font-size="9.5" text-anchor="middle">${Math.round(w.km)}</text>`;
+    }).join("");
+    const cadre = `<rect x="${(11 * bw + bw * 0.06).toFixed(1)}" y="2" width="${(bw * 0.88).toFixed(1)}" height="${base + 2}" rx="6" fill="none" stroke="#5A6068" stroke-dasharray="3 3"/>`;
+    const presents = ORDRE_TYPES.filter((t) => sem.some((w) => w.parType[t]));
+    return `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Tes 12 dernières semaines : ${reg} avec au moins une sortie">${cadre}${cols}
+        <text x="2" y="${H - 4}" fill="#8B8F96" font-size="10">il y a 12 sem.</text><text x="${W - 2}" y="${H - 4}" fill="#8B8F96" font-size="10" text-anchor="end">cette sem.</text></svg>
+      <div class="legende">${presents.map((t) => `<span style="--c:${couleurType(t)}">${esc(COURT_TYPE[t])}</span>`).join("")}</div>
+      <div class="regu-chiffres"><span><b>${reg}</b> semaines sur 12 avec au moins une sortie</span>${serie > 1 ? `<span class="regu-serie">${ic("eclat", 13)}${serie} semaines d'affilée</span>` : ""}</div>`;
+  }
+  const regulariteHTML = (now) => `<section class="carte" role="link" tabindex="0" data-go="#/progression/courses" aria-label="Ta régularité">
+      <div class="carte-tete"><span class="sur">Ta régularité · 12 semaines</span><span style="color:var(--muted)">${ic("chevron", 16)}</span></div>${semainesCouleursHTML(now)}</section>`;
   function accueilHTML() {
     const now = Date.now(), prenom = String((etat.profil && etat.profil.pseudo) || "").trim();
     const derniere = etat.courses[etat.courses.length - 1];
     return `<header class="tete"><div class="sur">${esc(jourTxt(now))}</div><h1>${prenom ? `Salut ${esc(prenom)}` : "Salut"}</h1></header>
-      ${ouTuEnEsHTML(now)}
+      ${niveauHTML(now)}
       ${derniere ? derniereHTML(derniere) : `<div class="carte"><div class="sur">Ta dernière sortie</div><p class="com">Pas encore de course reçue.</p></div>`}
-      ${semaineHTML(now)}`;
+      ${moisHTML(now)}
+      ${regulariteHTML(now)}`;
   }
 
   /* ---------- Bilan après une sortie ---------- */
@@ -310,12 +347,12 @@
       const liste = Calc.alluresParEffort(etat.courses, now, mois, etat.zones, defs);
       efforts = liste.map((e, i) => `<div class="effort${i ? " sep" : ""}"><div class="carte-tete"><div><b style="font-size:16px">${esc(e.nom)}</b> <span class="com">cœur en ${esc(e.zone)} · ${esc(e.bornes)}</span></div></div>
           ${e.maintenant != null ? `<div class="repere"><span class="v">${Calc.allureTxt(e.maintenant)}</span><span class="com">/km</span><span style="margin-left:auto">${badgeEcart(e.ecart, R.repereEcartMinSec)}</span></div>`
-            : `<div class="com">Pas assez de passages en ${esc(e.zone)} sur 6 semaines (${e.n} ${e.n > 1 ? "sorties" : "sortie"}, il en faut ${R.effortMinSorties}).</div>`}
+            : `<div class="com">Pas assez de passages en ${esc(e.zone)} sur 4 semaines (${e.n} ${e.n > 1 ? "sorties" : "sortie"}, il en faut ${R.effortMinSorties}).</div>`}
           ${courbe(e.points, { couleur: ["#C6F432", "#E2B04A", "#D9894A"][i], points: true, inverse: true, fmt: (v) => fmtKmPace(v), padMin: 4, h: 90, label: `Allure à l'effort ${e.nom}`, vide: "Pas encore de passages sur la période." })}</div>`).join("");
     }
     const recs = Calc.records(etat.sorties);
     return `<section class="carte">${repere}</section>
-      ${bloc("Tes allures par effort", efforts, "L'effort se lit au cœur : l'allure que tu tiens quand ton cœur est en zone 2 (EF), 3 (Tempo) ou 4 (Seuil), même au milieu d'une sortie mixte. Médiane des 6 dernières semaines face à il y a 3 mois.")}
+      ${bloc("Tes allures par effort", efforts, "L'effort se lit au cœur : l'allure que tu tiens quand ton cœur est en zone 2 (EF), 3 (Tempo) ou 4 (Seuil), même au milieu d'une sortie mixte. Médiane des 4 dernières semaines face à il y a 3 mois.")}
       <section class="carte"><h2>Mes records</h2><div class="tuiles deux">${recs.map((r) => `<div class="tuile"${r.id ? ` role="link" tabindex="0" data-go="#/sortie/${esc(r.id)}"` : ""}><span class="l">${esc(r.label)}</span><span class="v"${r.valeur ? "" : ' style="color:var(--faint)"'}>${esc(r.valeur || "à venir")}</span>${r.ts ? `<span class="h">${esc(relatif(r.ts))}</span>` : ""}</div>`).join("")}</div>
         <div class="com com-sep">Temps ramené à la distance exacte, sur tes courses de 5 km, 10 km, semi et marathon (à 5 % près).</div></section>`;
   }
@@ -341,12 +378,9 @@
       return `<rect x="${(x + bw * 0.18).toFixed(1)}" y="${(96 - h).toFixed(1)}" width="${(bw * 0.64).toFixed(1)}" height="${Math.max(h, 1).toFixed(1)}" rx="4" fill="${i === vol.length - 1 ? "#C6F432" : "#3A3E44"}"/>
         <text x="${(x + bw / 2).toFixed(1)}" y="${(90 - h).toFixed(1)}" fill="#C9CCD0" font-size="${vol.length > 6 ? 9 : 11}" text-anchor="middle">${Math.round(m.km)}</text>
         <text x="${(x + bw / 2).toFixed(1)}" y="114" fill="#8B8F96" font-size="${vol.length > 6 ? 9 : 10}" text-anchor="middle">${MOIS_C[new Date(m.debut).getMonth()]}</text>`; }).join("")}</svg>`;
-    const reg = Calc.regularite(etat.sorties, now, 12), serie = Calc.serie(etat.sorties, now);
-    const carres = `<div style="display:grid;grid-template-columns:repeat(12,1fr);gap:4px">${reg.semaines.map((ok, i) => `<i style="display:block;height:18px;border-radius:5px;background:${ok ? "#C6F432" : "var(--control)"}${i === 11 ? ";outline:2px solid var(--text);outline-offset:1px" : ""}"></i>`).join("")}</div>
-      <div class="reperes"><span>il y a 12 sem.</span><span></span><span>cette semaine</span></div>`;
     const dernier = vol[vol.length - 1], avant = vol[vol.length - 2], cad = Calc.indicateurDansLeTemps(etat.courses, now, mois, Calc.cadence);
     return `${bloc("Volume par mois", barres, `${Calc.kmTxt(dernier.km * 1000)} km ce mois-ci${avant ? `, ${Calc.kmTxt(avant.km * 1000)} km le mois dernier` : ""}.`)}
-      ${bloc("Régularité", carres, `${reg.avec} semaines sur 12 avec au moins une sortie${serie > 1 ? ` · ${serie} semaines d'affilée en ce moment` : ""}.`)}
+      ${bloc("Régularité", semainesCouleursHTML(now), "Une colonne par semaine : les km de chaque type de sortie. La semaine en cours est encadrée.")}
       ${bloc("Cadence", courbe(cad.points, { couleur: "#44E7EF", points: true, fmt: (v) => `${Math.round(v)}`, padMin: 2, label: "Cadence de tes sorties faciles", vide: "Pas de cadence mesurée sur tes sorties faciles de la période." }),
         esc(resume(cad, " pas/min", (v) => Math.round(v))))}`;
   }

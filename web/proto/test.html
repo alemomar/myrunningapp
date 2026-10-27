@@ -36,9 +36,9 @@ window.__appels = [];
 </script>
 <script src="../config.js"></script>
 <script src="../logic.js?v=113"></script>
-<script src="reglages.js?v=7"></script>
+<script src="reglages.js?v=8"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=7"></script>
+<script src="calculs.js?v=8"></script>
 <script>
 (async () => {
   const res = [];
@@ -155,6 +155,14 @@ window.__appels = [];
   ok(Calc.serie([sortie({ id: "w1", ts: NOW - 3600000, km: 5, pace: 365 }), sortie({ id: "w2", ts: NOW - 4 * JOUR, km: 5, pace: 365 }), sortie({ id: "w3", ts: NOW - 10 * JOUR, km: 5, pace: 365 })], NOW) === 3, "Série : 3 semaines d'affilée avec au moins une sortie");
   const decS = Calc.decoupage(sB, z);
   ok(decS && decS.segments.length === 3 && decS.segments[1].cat === "soutenu", "Découpage : 3 catégories au plus, passages soutenus voisins regroupés (" + (decS ? decS.texte : "") + ")");
+
+  // Accueil du 27/10 : types de sorties sur 4 semaines, ton mois, semaines en couleurs
+  const ty = Calc.typesSur([sortie({ id: "t1", ts: NOW - 3 * JOUR, km: 8, pace: 420 }), sortie({ id: "t2", ts: NOW - 10 * JOUR, km: 6, pace: 420, type: "Fractionné" }), sortie({ id: "t3", ts: NOW - 40 * JOUR, km: 8, pace: 420 })], NOW, 28, z);
+  ok(ty["Sortie facile"] === 1 && ty["Fractionné"] === 1 && Object.keys(ty).length === 2, "Ton niveau : types de sorties des 4 dernières semaines seulement");
+  const mo = Calc.mois([ef1, ef2, sortie({ id: "mo3", ts: Date.parse("2026-09-20T08:00:00"), km: 10, pace: 420 })], NOW, 188, 58);
+  ok(mo.ce.n === 2 && Math.abs(mo.ce.km - 16) < 0.01 && mo.avant.n === 1 && mo.pctFacile === 100 && /zones 1 et 2/.test(mo.phrase), "Ton mois : volume face au mois dernier et part du temps en zones 1 et 2 (" + mo.phrase + ")");
+  const spt = Calc.semainesParType([ef1, serieSortie("st2", NOW - 2 * 3600000, "Fractionné", [[3000, 300, 175]])], NOW, 12, z);
+  ok(spt.length === 12 && spt[11].parType["Fractionné"] === 3 && spt[11 - 1].parType["Sortie facile"] === 8, "Régularité en couleurs : km par type et par semaine");
 
   // Progression (étape 3)
   const vol = Calc.volumeParMois([sortie({ id: "m1", ts: NOW - 2 * JOUR, km: 8, pace: 365 }), sortie({ id: "m2", ts: Date.parse("2026-09-10T08:00:00"), km: 10, pace: 365 })], NOW, 3);

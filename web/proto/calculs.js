@@ -428,6 +428,44 @@ const Calc = (() => {
     });
   }
 
+  /* ---------- Accueil (27/10) : types de sorties, ton mois, tes semaines en couleurs ---------- */
+  // Nombre de sorties par type sur les `jours` derniers jours (« Seuil » de l'app départagé en Tempo / Seuil).
+  function typesSur(sorties, nowTs, jours, z, reg) {
+    const out = {};
+    sorties.filter((s) => estCourse(s) && s.ts > nowTs - jours * JOUR && s.ts <= nowTs).forEach((s) => {
+      const lib = libelleType(s, s.type === "Seuil" ? decoupage(s, z, reg) : null); out[lib] = (out[lib] || 0) + 1;
+    });
+    return out;
+  }
+  // Ton mois : volume face au mois dernier, temps en zones cardio 1 à 5 et une phrase.
+  function mois(sorties, nowTs, fmax, frepos, reg) {
+    const r = reg || REGLAGES, d = new Date(nowTs);
+    const bornes = (k) => [new Date(d.getFullYear(), d.getMonth() + k, 1).getTime(), new Date(d.getFullYear(), d.getMonth() + k + 1, 1).getTime()];
+    const bilan = ([de, a]) => { const c = sorties.filter((s) => estCourse(s) && s.ts >= de && s.ts < a && s.ts <= nowTs); return { n: c.length, km: c.reduce((x, s) => x + s.dist, 0), sec: c.reduce((x, s) => x + s.dur, 0), sorties: c }; };
+    const ce = bilan(bornes(0)), avant = bilan(bornes(-1));
+    const secs = [0, 0, 0, 0, 0]; let nCoeur = 0;
+    if (fmax) ce.sorties.filter((s) => coeurFiable(s, r)).forEach((s) => { computeHrZoneSeconds(s.hr, fmax, frepos).secs.forEach((v, i) => { secs[i] += v; }); nCoeur++; });
+    const tot = secs.reduce((a, v) => a + v, 0), pctFacile = tot > 0 ? Math.round((secs[0] + secs[1]) / tot * 100) : null;
+    const phrase = !ce.n ? "Pas encore de sortie ce mois-ci : une sortie facile pour le lancer."
+      : pctFacile == null ? "Ajoute des sorties avec ta montre au poignet pour voir la répartition de ton effort."
+      : pctFacile >= r.moisFacileBienPct ? `${pctFacile} % de ton temps en zones 1 et 2 : surtout du facile, c'est la base qui fait progresser.`
+      : pctFacile >= r.moisFacileMinPct ? `${pctFacile} % de ton temps en zones 1 et 2 : un bon mélange de facile et de soutenu.`
+      : `${pctFacile} % de ton temps en zones 1 et 2 : beaucoup d'intensité, garde au moins 3 sorties sur 4 en facile.`;
+    return { ce, avant, secs, nCoeur, pctFacile, phrase, debut: bornes(0)[0], defs: fmax ? hrZoneDefs(fmax, frepos) : null };
+  }
+  // Tes semaines en couleurs : pour chacune des `semaines` dernières semaines, les km de chaque type de sortie.
+  function semainesParType(sorties, nowTs, semaines, z, reg) {
+    const l = lundi(nowTs), out = [];
+    for (let i = semaines - 1; i >= 0; i--) {
+      const deb = l - i * SEM, parType = {};
+      sorties.filter((s) => estCourse(s) && s.ts >= deb && s.ts < deb + SEM).forEach((s) => {
+        const lib = libelleType(s, s.type === "Seuil" ? decoupage(s, z, reg) : null); parType[lib] = (parType[lib] || 0) + s.dist;
+      });
+      out.push({ debut: deb, parType, km: Object.values(parType).reduce((a, v) => a + v, 0) });
+    }
+    return out;
+  }
+
   /* ---------- Cœur sur la période ---------- */
   function zonesCardioPeriode(sorties, nowTs, mois, fmax, frepos, reg) {
     const secs = [0, 0, 0, 0, 0]; let n = 0;
@@ -492,6 +530,6 @@ const Calc = (() => {
 
   return { versSortie, estCourse, coeurFiable, ressentiDe, ressentiMot, zonesAllure, zoneDe, zonesLibelles, pointsAllure, decoupage, libelleType,
     passages, zoneDominante, habitude, verdict, conseil, evolution, ressentiFaceMesure, lundi, semaine, serie, repere, repereCourbe,
-    allureParEffort, alluresParEffort, zonesCardioPeriode, indicateurDansLeTemps, derive, cadence, coeurMoyen, volumeParMois, regularite,
+    allureParEffort, alluresParEffort, typesSur, mois, semainesParType, zonesCardioPeriode, indicateurDansLeTemps, derive, cadence, coeurMoyen, volumeParMois, regularite,
     records, cap, fcMaxEffective, moyenne, med, kmTxt, allureTxt, TITRES, ZONE_A };
 })();
