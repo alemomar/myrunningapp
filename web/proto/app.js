@@ -8,15 +8,16 @@
    ajoutée, conseil en cours, objectif, montre) reste sur ce téléphone (localStorage), jamais dans la base. */
 (() => {
   const R = REGLAGES, U = UI, JOUR = 86400000, esc = U.esc, ic = U.ic;
-  const CLES = { ressentis: "mra_proto_ressentis", types: "mra_proto_types", ajouts: "mra_proto_ajouts", conseils: "mra_proto_conseils", vues: "mra_proto_vues",
-    replies: "mra_proto_replies", objectif: "mra_proto_objectif", montre: "mra_proto_montre", ancienBilanVu: "mra_proto_bilan_vu" };
+  const CLES = { ressentis: "mra_proto_ressentis", types: "mra_proto_types", ajouts: "mra_proto_ajouts", vues: "mra_proto_vues",
+    plis: "mra_proto_plis", objectif: "mra_proto_objectif", montre: "mra_proto_montre", ancienBilanVu: "mra_proto_bilan_vu" };
   const lire = (cle, defaut) => { try { const v = localStorage.getItem(cle); return v == null ? defaut : JSON.parse(v); } catch (e) { return defaut; } };
   const garder = (cle, v) => { try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) { /* stockage indisponible : vaut pour cette visite */ } };
   const banc = () => !!window.__PROTO_BANC__;
   const etat = { session: null, email: "", profil: null, brutes: [], sorties: [], courses: [], zones: null, erreur: "", pret: false, chargeA: 0,
-    ressentis: lire(CLES.ressentis, {}), types: lire(CLES.types, {}), ajouts: lire(CLES.ajouts, []), conseilsStock: lire(CLES.conseils, {}),
-    replies: lire(CLES.replies, {}), objectifLocal: lire(CLES.objectif, null), montre: lire(CLES.montre, null),
-    filtre: "courses", periode: 3, autresRecues: [], demo: null, now: null, memo: {} };
+    ressentis: lire(CLES.ressentis, {}), types: lire(CLES.types, {}), ajouts: lire(CLES.ajouts, []),
+    plis: lire(CLES.plis, {}), objectifLocal: lire(CLES.objectif, null), montre: lire(CLES.montre, null),
+    filtre: "courses", periode: 12, autresRecues: [], demo: null, now: null, memo: {} };   // 28/10 : Progression sur 12 mois par défaut
+  try { localStorage.removeItem("mra_proto_conseils"); localStorage.removeItem("mra_proto_replies"); } catch (e) { /* rien à faire */ }
   const maintenant = () => etat.now || Date.now();
 
   /* ---------- Données ---------- */
@@ -51,15 +52,8 @@
       label: `${nom === "Semi-marathon" ? "semi" : nom}${temps ? ` en ${dureeCourte(temps)}` : date ? ` le ${isoToFr(date)}` : ""}` };
   }
   const dureeCourte = (sec) => { const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return h ? `${h} h ${String(m).padStart(2, "0")}` : `${m} min`; };
-  function conseils() {
-    return memo("conseil", () => {
-      const now = maintenant(), fm = fcMax();
-      const r = Conseil.evaluer({ courses: etat.courses, nowTs: now, fmax: fm && fm.valeur, frepos: fcRepos(), defs: defsZones(), objectif: objectif(), niveau: niveau(now), bilan: bilanDe },
-        etat.demo ? {} : etat.conseilsStock);
-      if (!etat.demo && !banc()) { etat.conseilsStock = r.stock; garder(CLES.conseils, r.stock); }
-      return r;
-    });
-  }
+  // 28/10 : la carte « Ton conseil » est retirée (retour d'Omar : « surcharge, ne sert pas à grand-chose »). Son moteur reste
+  // dans conseil.js (testé dans test.html) au cas où on le rebrancherait ; il n'est plus chargé par la page.
   function noterRessenti(id, v) {
     const n = { ...etat.ressentis };
     if (v == null || n[id] === v) delete n[id]; else n[id] = v;
@@ -113,8 +107,8 @@
     if (!der) return h + aucuneSortieHTML();
     const premieres = etat.courses.length < R.conseilMinSorties || now - etat.courses[0].ts < 28 * JOUR;
     if (premieres) h += `<section class="carte" style="background:var(--accent-soft);border:1px solid var(--accent-line);flex-direction:row;gap:12px">${ic("montre", 22)}<div><b class="lead">Tes ${etat.courses.length} premières sorties sont là</b><div class="txt2" style="font-size:14px;margin-top:4px">Ton bilan démarre dès maintenant. Ton niveau se précise après 4 semaines.</div></div></section>`;
-    const corps = modeA ? [taSortieHTML(der), conseilHTML(der), niveauHTML(now, der, false), moisHTML(now)]
-      : [conseilHTML(null), niveauHTML(now, null, !premieres), moisHTML(now), derniereLigneHTML(der)];
+    const corps = modeA ? [taSortieHTML(der), niveauHTML(now, der, false), moisHTML(now)]
+      : [niveauHTML(now, null, !premieres), moisHTML(now), derniereLigneHTML(der)];
     return h + (etat.demo === "reseau" ? `<div class="attenue" style="display:flex;flex-direction:column;gap:12px">${corps.join("")}</div>` : corps.join(""));
   }
   // 10H : rien reçu (après « Plus tard » ou « Pas de montre »).
@@ -142,49 +136,16 @@
         <div class="cap">${esc(U.relatif(s.ts, maintenant()).replace(/^./, (c) => c.toUpperCase()))} · ${esc(v.titre.toLowerCase())}</div></div><span class="chev" style="color:var(--faint)">${ic("chevron", 18)}</span></div></section>`;
   }
 
-  /* ---------- 1.3 · Ton conseil : 2 volets ---------- */
-  function effetTxt(c, eff) {
-    if (!eff) return "";
-    if (c.mesure === "premierKm") return `<span class="ef ${eff.sortie >= c.objectif ? "citron" : "gris"}">${esc(fmtKmPace(eff.sortie))} aujourd'hui</span>`;
-    if (eff.avant == null) return "";
-    const d = Math.round(eff.apres) - Math.round(eff.avant);
-    if (!d) return `<span class="ef gris">= avec ta sortie</span>`;
-    const bon = c.sens === "max" ? d < 0 : d > 0;
-    return `<span class="ef ${bon ? "citron" : "gris"}">${d > 0 ? "+" : "−"}${Math.abs(d)} avec ta sortie</span>`;
-  }
-  function voletHTML(c, sortie) {
-    if (c.resultat) {
-      const ok = c.resultat === "fait";
-      return `<div class="fin-volet"><span class="fin-ic ${ok ? "ok" : "non"}">${ic(ok ? "check" : "fleche", 16, 2.6)}</span><div><b>${ok ? "C'est fait" : "Pas encore"} · ${esc(Conseil.fmt(c, c.valeur))}</b>
-        <div class="txt2" style="font-size:14px">Objectif ${esc(Conseil.fmt(c, c.objectif))}. ${ok ? "Garde cet équilibre." : "On passe à un autre conseil demain."}</div></div></div>`;
-    }
-    const eff = sortie ? Conseil.effet(c, { courses: etat.courses, nowTs: maintenant(), fmax: fcMax() && fcMax().valeur, frepos: fcRepos(), defs: defsZones() }, sortie) : null;
-    const u = c.unite === "bpm" ? "bpm" : "";
-    return `<div class="volet">
-      <div class="carte-tete"><span class="sur">${c.volet === "zones" ? "Zones" : "Allure"}</span><span class="cap">encore ${c.resteJours} ${c.resteJours > 1 ? "jours" : "jour"}</span></div>
-      ${c.prolonge ? `<div class="cap" style="display:flex;gap:6px;align-items:center">${ic("fleche", 13)} Pas encore : on continue 1 semaine.</div>` : ""}
-      <div class="volet-titre">${esc(c.titre)}</div>
-      <div class="obj"><div class="g"><span class="l">${esc(c.etiquette || "Aujourd'hui")}</span>${U.num(Conseil.fmt(c, c.valeur), u, "va")}${effetTxt(c, eff)}</div>
-        <span class="fl">${ic("fleche", 20)}</span><div class="d"><span class="l c">Objectif</span>${U.num(Conseil.fmt(c, c.objectif), u, "vo")}</div></div>
-      <div class="cap">${esc(c.detail)}</div></div>`;
-  }
-  function conseilHTML(sortie) {
-    const r = conseils();
-    let corps;
-    if (r.attente) corps = `<div class="lead">Encore ${r.attente.manque} ${r.attente.manque > 1 ? "sorties" : "sortie"} et on te fait ton premier conseil.</div>
-      <div class="attente-barre" style="grid-template-columns:repeat(${r.attente.sur},1fr)">${Array.from({ length: r.attente.sur }, (_, i) => `<i class="${i < r.attente.n ? "on" : ""}"></i>`).join("")}</div>`;
-    else corps = [r.zones, r.allure].filter(Boolean).map((c) => voletHTML(c, sortie)).join("");
-    return `<section class="carte conseil" aria-label="Ton conseil"><div class="carte-tete"><h2>Ton conseil</h2>${info("conseil")}</div>${corps}</section>`;
-  }
-
-  /* ---------- Ton niveau ---------- */
+  /* ---------- Ton niveau actuel (retour d'Omar du 28/10) ----------
+     Bien dire que c'est ton niveau d'AUJOURD'HUI (4 dernières semaines), pas une moyenne de l'année : une ligne par effort,
+     l'allure d'il y a 3 mois → l'allure actuelle en grand. */
   function niveauHTML(now, sortieDuJour, avecPhrase) {
     const liste = niveau(now), bougee = sortieDuJour ? Calc.EFFORT_DE[libDe(sortieDuJour)] : null;
     const premieres = etat.courses.length && now - etat.courses[0].ts < 28 * JOUR;
-    return `<section class="carte" aria-label="Ton niveau"><span class="sur">Ton niveau · ${premieres ? "ton point de départ" : "4 dernières semaines"}</span>
+    return `<section class="carte" aria-label="Ton niveau actuel"><div><h2>Ton niveau actuel</h2>
+        <div class="txt2" style="font-size:14px;margin-top:3px">${premieres ? "Tes allures de départ : les écarts apparaîtront quand on pourra comparer." : "Tes allures des <b style=\"color:var(--text)\">4 dernières semaines</b>, face à il y a 3 mois."}</div></div>
       ${avecPhrase ? `<div class="lead">${esc(Calc.niveauPhrase(liste, 3))}</div>` : ""}
-      <div class="niv-grille">${liste.map((e) => U.tuileAllure(e, { bougee: bougee === e.cle && e.maintenant != null })).join("")}</div>
-      ${premieres ? `<div class="cap">Les écarts apparaissent quand on peut comparer.</div>` : ""}</section>`;
+      ${U.niveauLignes(liste, { bougee })}</section>`;
   }
 
   /* ---------- Ton mois ---------- */
@@ -241,21 +202,18 @@
   }
   const ressentiCarte = (s, res) => `<section class="carte" aria-label="Ton ressenti"><div class="carte-tete"><b style="font-size:16px">Comment tu l'as sentie ?</b>
       ${res != null ? `<span>${U.num(res, "/10", "n28")}</span>` : `<span class="cap">facultatif</span>`}</div>${U.crans(res, `data-sortie="${esc(s.id)}"`)}</section>`;
-  // Le conseil et « La prochaine fois » partagent une carte : un seul endroit pour l'après.
+  // Après le bilan : ta sortie face à l'idéal pour ce type (zones), puis « La prochaine fois ». Le conseil est retiré (28/10).
   function pourLaSuiteHTML(s, v, lib) {
-    const r = conseils(), fm = fcMax(), zs = fm ? Calc.zonesSortie(s, fm.valeur, fcRepos()) : null, id = R.idealZones[lib];
-    const c = (zs ? r.zones : null) || r.allure || r.zones;   // sortie au cœur partiel : le volet Allure seul (étape 10B)
+    const fm = fcMax(), zs = fm ? Calc.zonesSortie(s, fm.valeur, fcRepos()) : null, id = R.idealZones[lib];
     let zonesHTML = "";
-    if (r.zones && zs && id) {
+    if (zs && id) {
       const vr = Calc.verdictRepartition(lib, zs), m = (i) => Math.round(zs.secs[i] / 60);
       const droite = id.cible.length === 2 && id.cible[0] === 0 ? `${m(0) + m(1)} min sur ${Math.round(zs.tot / 60)} en zones 1-2` : `${id.cible.reduce((a, i) => a + m(i), 0)} min en ${id.cible.length > 1 ? `zones ${id.cible[0] + 1}-${id.cible[id.cible.length - 1] + 1}` : `zone ${id.cible[0] + 1}`}`;
-      const eff = Conseil.effet(r.zones, { courses: etat.courses, nowTs: maintenant(), fmax: fm.valeur, frepos: fcRepos(), defs: defsZones() }, s);
-      zonesHTML = `<div class="carte-tete" style="font-size:14px"><b>Ta sortie</b><span class="cap">${esc(droite)}</span></div>${U.zbarre(zs.secs)}
+      zonesHTML = `<span class="sur">Ton effort par zone</span><div class="carte-tete" style="font-size:14px"><b>Ta sortie</b><span class="cap">${esc(droite)}</span></div>${U.zbarre(zs.secs)}
         <div class="carte-tete" style="font-size:14px"><b>Idéal pour ${esc(pour(lib))}</b><span class="cap">${esc(id.cible[0] === 0 ? "tout en zones 1-2" : lib === "Fractionné" ? "facile autour des blocs" : "facile autour du bloc")}</span></div>${U.zbarre(id.pct, { pale: true })}
-        ${U.legendeZones()}${vr ? U.verdictBox({ ton: vr.ton, titre: vr.court }) : ""}
-        ${eff && eff.avant != null && Math.round(eff.avant) !== Math.round(eff.apres) ? `<div class="cap">${esc(r.zones.effet)} <s>${esc(Conseil.fmt(r.zones, eff.avant))}</s> → <b class="${Conseil.atteint(r.zones, eff.apres) ? "citron" : ""}" style="color:var(--text)">${esc(Conseil.fmt(r.zones, eff.apres))}</b> · objectif ${esc(Conseil.fmt(r.zones, r.zones.objectif))}</div>` : ""}`;
+        ${U.legendeZones()}${vr ? U.verdictBox({ ton: vr.ton, titre: vr.court }) : ""}<div class="filet"></div>`;
     }
-    return `<section class="carte">${c ? `<span class="sur">Ton conseil</span><div class="lead" style="margin-top:-6px">${esc(c.titre)}</div>${zonesHTML}<div class="filet"></div>` : ""}
+    return `<section class="carte">${zonesHTML}
       <div style="display:flex;gap:10px;align-items:flex-start"><span class="citron" style="margin-top:2px">${ic("eclat", 18)}</span><div><span class="sur">La prochaine fois</span><div class="lead" style="margin-top:3px">${esc(Calc.conseil(s, v))}</div></div></div></section>`;
   }
   // 9B : record, plein écran (le petit bonhomme), puis le bilan.
@@ -356,6 +314,13 @@
       <div class="m"><b>${esc(libDe(s))} · ${U.kmTxt(s.dist)} km</b><span>${esc(U.dateCourte(s.ts))}${s.manuel || s.local ? ` <span class="etiquette" style="height:19px;font-size:10.5px;margin-left:4px">Saisie à la main</span>` : ""}</span></div>
       <span class="al">${U.allure(s.allure)}</span><span class="chev">${ic("chevron", 16)}</span></div>`;
   }
+  // Années et mois repliés (retour d'Omar du 28/10) : par défaut, seuls l'année et le mois en cours sont dépliés ; ensuite,
+  // ce que tu ouvres ou fermes est gardé sur ce téléphone.
+  function estReplie(k) {
+    if (k in etat.plis) return !!etat.plis[k];
+    const d = new Date(maintenant());
+    return k !== `a${d.getFullYear()}` && k !== `m${d.getFullYear()}-${d.getMonth()}`;
+  }
   const nomAutre = (s) => (s.type === "Other" ? "Autre" : s.type === "Récupération" ? "Récup" : s.type);
   const quoiAutre = (s) => `${nomAutre(s)} ${s.dist > 0.3 && !/Renfo|Mobilit/.test(s.type) ? `${U.kmTxt(s.dist)} km` : U.dureeTxt(s.dur)}`;
   function sortiesHTML() {
@@ -377,11 +342,11 @@
     };
     const seg = [["courses", "Courses"], ["toutes", "Toutes"], ["autres", "Autres"]].map(([k, l]) => `<button type="button" data-filtre="${k}" class="${f === k ? "actif" : ""}" aria-pressed="${f === k}">${l}</button>`).join("");
     const corps = annees.map((a) => {
-      const ra = !!etat.replies[`a${a.y}`], tous = a.mois.flatMap((m) => m.items);
+      const ra = estReplie(`a${a.y}`), tous = a.mois.flatMap((m) => m.items);
       return `<button type="button" class="annee-tete${ra ? " replie" : ""}" data-replie="a${a.y}" aria-expanded="${!ra}"><span class="an" style="${ra ? "color:var(--text-3)" : ""}">${a.y}</span><span class="cap">${totaux(tous)}</span><span class="chev-rond">${ic("chevronHaut", 16)}</span></button>
-        ${ra ? "" : a.mois.map((m) => { const k = `m${a.y}-${m.m}`, rm = !!etat.replies[k], lignes = rm ? "" : lignesMois(m.items);
-          if (!rm && !lignes) return "";
-          return `<section class="mois-carte"><button type="button" class="mois-tete${rm ? " replie" : ""}" data-replie="${k}" aria-expanded="${!rm}"><h2>${esc(U.MOIS[m.m])}</h2><span class="cap">${totaux(m.items)}</span><span class="chev-rond">${ic("chevronHaut", 16)}</span></button>${lignes ? `<div style="padding-bottom:4px">${lignes}</div>` : ""}</section>`; }).join("")}`;
+        ${ra ? "" : a.mois.map((m) => { const k = `m${a.y}-${m.m}`, rm = estReplie(k), lignes = lignesMois(m.items);
+          if (!lignes) return "";   // rien à montrer avec ce filtre : pas d'en-tête de mois
+          return `<section class="mois-carte"><button type="button" class="mois-tete${rm ? " replie" : ""}" data-replie="${k}" aria-expanded="${!rm}"><h2>${esc(U.MOIS[m.m])}</h2><span class="cap">${totaux(m.items)}</span><span class="chev-rond">${ic("chevronHaut", 16)}</span></button>${rm ? "" : `<div style="padding-bottom:4px">${lignes}</div>`}</section>`; }).join("")}`;
     }).join("");
     return `${tete("", "Sorties", `<button type="button" class="btn-contour" data-go="#/ajouter">${ic("plus", 16, 2.6)}Ajouter</button>`)}
       <div class="segments" role="group" aria-label="Filtrer les sorties">${seg}</div>${corps || `<p class="cap" style="text-align:center;padding:30px">Rien à afficher.</p>`}`;
@@ -420,15 +385,19 @@
 
   /* =================== Progression (6) =================== */
   const MOIS_J = 30.44;
+  // L'écart d'une courbe (départ → arrivée) et sa période : « en 12 mois », ou « depuis janvier » si tes sorties commencent après.
+  const ecartCourbe = (c, rapideEnHaut) => (c.debut == null ? null : Math.round(rapideEnHaut ? c.debut - c.fin : c.fin - c.debut));
+  const suffixeCourbe = (c, mois) => (c.depuis > maintenant() - mois * MOIS_J * JOUR + 21 * JOUR ? `depuis ${U.MOIS[new Date(c.depuis).getMonth()]}` : `en ${mois} mois`);
   const pastilleEcart = (e, mois, suffixe) => { const m = U.ecartMots(e, suffixe || `en ${mois} mois`); return `<span class="etiquette" style="height:26px;padding:0 10px;font-size:12.5px;font-weight:700;${m.cls === "citron" ? "background:var(--accent-soft);color:var(--accent)" : m.cls === "violet" ? "background:var(--attention-bg);color:var(--attention-text)" : ""}">${esc(m.txt)}</span>`; };
   const nouveau = (t) => `${esc(t)}<span class="badge-nouveau">NOUVEAU</span>`;
   function progressionHTML(onglet, ancre) {
     const now = maintenant(), mois = etat.periode, t = ["allure", "coeur", "volume"].includes(onglet) ? onglet : "allure";
-    const sel = `<select class="periode" data-periode-select aria-label="Période">${[3, 6, 12].map((m) => `<option value="${m}"${m === mois ? " selected" : ""}>${m} mois</option>`).join("")}</select>`;
-    const segs = [["allure", "Allure"], ["coeur", "Cœur"], ["volume", "Volume"]].map(([k, l]) => `<button type="button" data-go="#/progression/${k}" class="${t === k ? "actif" : ""}" aria-pressed="${t === k}">${l}</button>`).join("");
+    // 28/10 (retours d'Omar) : une icône par onglet, et la période en boutons bien visibles sous les onglets (12 mois par défaut).
+    const segs = [["allure", "Allure", "jauge"], ["coeur", "Cœur", "coeur"], ["volume", "Volume", "barres"]].map(([k, l, i]) => `<button type="button" data-go="#/progression/${k}" class="${t === k ? "actif" : ""}" aria-pressed="${t === k}">${ic(i, 17, 2.2)}${l}</button>`).join("");
+    const per = `<div class="periodes" role="group" aria-label="Période"><span>Sur</span>${[3, 6, 12].map((m) => `<button type="button" data-periode="${m}" class="${m === mois ? "actif" : ""}" aria-pressed="${m === mois}">${m} mois</button>`).join("")}</div>`;
     const corps = !etat.courses.length ? `<section class="carte attenue"><h2>Ton allure facile</h2><svg viewBox="0 0 300 60" width="100%"><path d="M10 45 C80 40 150 30 290 15" fill="none" stroke="#5A6068" stroke-width="3" stroke-dasharray="5 6"/></svg></section>`
       : t === "coeur" ? progressionCoeur(now, mois) : t === "volume" ? progressionVolume(now, mois) : progressionAllure(now, mois);
-    return `${tete("", "Progression", sel)}<div class="segments" role="group" aria-label="Thème">${segs}</div>${!etat.courses.length ? aucuneSortieHTML() : ""}${corps}`;
+    return `${tete("", "Progression")}<div class="segments onglets-icones" role="group" aria-label="Thème">${segs}</div>${per}${!etat.courses.length ? aucuneSortieHTML() : ""}${corps}`;
   }
   function progressionAllure(now, mois) {
     const debut = now - mois * MOIS_J * JOUR, defs = defsZones(), o = objectif();
@@ -437,33 +406,24 @@
     if (rp.etat === "bientot") facile = `<div class="lead">Encore ${rp.manque} ${rp.manque > 1 ? "sorties faciles" : "sortie facile"} sur 4 semaines pour mesurer ton allure de départ.</div>`;
     else {
       const c = U.courbe(rp.points, { debut, fin: now, couleur: "#C6F432", rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 3, label: "Ton allure facile" });
-      facile = `<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">${U.num(fmtKmPace(rp.valeur), "/km", "n52")}<div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end">${pastilleEcart(rp.ecart, mois)}${rp.modeCoeur ? `<span class="cap">à cœur égal · ${rp.fcRef} bpm</span>` : ""}</div></div>${c.svg}`;
+      facile = `<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">${U.num(fmtKmPace(rp.valeur), "/km", "n52")}<div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end">${c.debut != null ? pastilleEcart(ecartCourbe(c, true), mois, suffixeCourbe(c, mois)) : pastilleEcart(rp.ecart, mois)}${rp.modeCoeur ? `<span class="cap">à cœur égal · ${rp.fcRef} bpm</span>` : ""}</div></div>${c.svg}`;
     }
     const obj = o ? `<div class="filet"></div><div style="display:flex;align-items:center;gap:10px;font-size:14.5px">${ic("drapeau", 17)}<span class="txt2" style="flex:1">Ton objectif <b style="color:var(--text)">${esc(o.label)}</b></span>${o.allure ? `<span class="txt2">${fmtKmPace(o.allure)}/km</span>` : ""}</div>` : "";
     // Tes allures par effort : Tempo, Seuil, Fractionné (le Facile est « Ton allure facile », Q2).
     const liste = Calc.alluresParEffort(etat.courses, now, mois, etat.zones, defs, null, mois);
     const efforts = liste.filter((e) => e.cle !== "ef").map((e, i) => {
-      const coul = U.couleurType(e.cle === "tempo" ? "Tempo" : e.cle === "seuil" ? "Seuil" : "Fractionné"), em = U.ecartMots(e.ecart);
+      const coul = U.couleurType(e.cle === "tempo" ? "Tempo" : e.cle === "seuil" ? "Seuil" : "Fractionné");
+      const c = e.maintenant != null && e.points.length >= 3 ? U.courbe(e.points, { debut, fin: now, couleur: coul, rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 4, h: 112, label: `Allure ${e.nom}` }) : null;
+      const em = c && c.debut != null ? U.ecartMots(ecartCourbe(c, true), suffixeCourbe(c, mois)) : U.ecartMots(e.ecart);   // l'écart dit ce que montre la courbe
       let bas;
       if (e.maintenant == null && e.cle === "frac") { const der = etat.courses.filter((s) => s.type === "Fractionné").slice(-1)[0]; bas = `<div class="txt2" style="font-size:14px">${der ? `Ton dernier fractionné, le ${U.jourMois(der.ts).replace(/\.$/, "")}. Rien depuis.` : "Pas encore de fractionné."}</div>`; }
       else if (e.maintenant == null) bas = `<div class="txt2" style="font-size:14px">${!defs ? "Renseigne ta FC max ou ton âge pour lire l'effort au cœur." : `Pas assez de passages ${e.cle === "tempo" ? "au tempo" : "au seuil"} sur 4 semaines.`}</div>`;
       else if (e.points.length < 3) bas = `<div class="txt2" style="font-size:14px">${e.points.length} ${e.points.length > 1 ? "sorties" : "sortie"} ${e.cle === "frac" ? "de fractionné" : e.cle === "tempo" ? "au tempo" : "au seuil"}. Encore ${3 - e.points.length} pour tracer ta tendance.</div>`;
-      else bas = U.courbe(e.points, { debut, fin: now, couleur: coul, rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 4, h: 112, label: `Allure ${e.nom}` }).svg;
+      else bas = c.svg;
       return `<div class="effort" id="graphe-${e.cle}" style="display:flex;flex-direction:column;gap:6px;${i ? "border-top:1px solid var(--line);padding-top:14px" : ""}">
         <div class="carte-tete"><span class="ta-tete" style="--c:${coul};color:var(--text);font-size:15px"><i></i>${esc(e.nom)}</span>${e.maintenant != null ? `<b class="${em.cls}" style="font-size:13.5px">${esc(em.txt)}</b>` : ""}</div>
         ${e.maintenant != null ? U.num(fmtKmPace(e.maintenant), "/km", "ta-v") : ""}${bas}</div>`;
     }).join("");
-    // Ton allure par zone : 5 courbes, une par zone, mois par mois.
-    const pz = Calc.allureParZoneMois(etat.courses, now, Math.min(mois, 6), etat.zones, defs);
-    const ecZ = pz.map((l) => (l.length >= 2 ? Math.round(l[0].v - l[l.length - 1].v) : null));
-    const der = new Date(now).getMonth();
-    const mesurables = ecZ.map((e, i) => ({ e, i, dernier: pz[i].length && pz[i][pz[i].length - 1].mois === der })).filter((x) => x.e != null && x.i < 4);
-    const plusVite = mesurables.filter((x) => x.e >= R.repereEcartMinSec), plusLent = mesurables.filter((x) => x.e <= -R.repereEcartMinSec);
-    const phraseZ = !mesurables.length ? "Il faut au moins 2 mois de sorties au cœur fiable pour comparer." : `${plusVite.length} ${plusVite.length > 1 ? "zones" : "zone"} sur ${mesurables.length} plus ${plusVite.length > 1 ? "rapides" : "rapide"} en ${Math.min(mois, 6)} mois.${plusLent.length === 1 ? ` Seul le ${R.zonesCardioEffort[plusLent[0].i].toLowerCase()} ralentit.` : ""}`;
-    const zonesCarte = defs ? `<section class="carte"><div class="carte-tete"><h2>${nouveau("Ton allure par zone")}</h2>${info("allure-zone")}</div><div class="lead">${esc(phraseZ)}</div>${graphiqueZones(pz, now, Math.min(mois, 6))}
-      <div>${pz.map((l, i) => { const e = ecZ[i], m = U.ecartMots(e), dernier = l.length && l[l.length - 1].mois === der;
-        return `<div class="kv"><span><i class="pt" style="background:${U.couleurZone(i)}"></i>${esc(R.zonesCardioEffort[i])}</span><b class="${!dernier ? "gris" : m.cls}" style="font-size:13.5px">${!l.length ? "pas de mesure" : !dernier ? `rien en ${U.MOIS_C[der]}` : e == null ? "1 mois mesuré" : esc(m.txt)}</b></div>`; }).join("")}</div>
-      <div class="cap">Allure moyenne tenue dans chaque zone cardio, mois par mois.</div></section>` : "";
     // Croisements
     const ar = Calc.allureRegularite(etat.courses, now);
     const maxA = Math.max(ar.deux || 0, ar.une || 0), barreA = (v) => (v ? Math.max(25, 100 - (v - Math.min(ar.deux || v, ar.une || v)) * 2.2) : 0);
@@ -479,26 +439,8 @@
         <div class="cap">Ressenti moyen de tes sorties faciles notées · ${as.n} sorties</div>`;
     return `<section class="carte" id="graphe-ef"><div class="carte-tete"><span class="ta-tete" style="--c:#C6F432;color:var(--text);font-size:16px"><i></i>Ton allure facile</span>${info("allure-facile")}</div>${facile}${obj}</section>
       <section class="carte"><div class="carte-tete"><h2>Tes allures par effort</h2>${info("efforts")}</div>${efforts}</section>
-      ${zonesCarte}
       <section class="carte"><div class="carte-tete"><h2>${nouveau("Allure × régularité")}</h2>${info("croisements")}</div>${regu}</section>
       <section class="carte"><div class="carte-tete"><h2>${nouveau("Allure × ressenti")}</h2>${info("croisements")}</div>${ress}</section>`;
-  }
-  // 5 courbes (une par zone) sur les mois de la période, rapide en haut, valeur de départ et d'arrivée.
-  function graphiqueZones(pz, now, mois) {
-    const W = 326, H = 190, d = new Date(now), moisL = Array.from({ length: mois }, (_, i) => new Date(d.getFullYear(), d.getMonth() - (mois - 1 - i), 1).getMonth());
-    const vals = pz.flat().map((p) => p.v);
-    if (vals.length < 2) return `<div class="cap">Pas encore assez de mois mesurés.</div>`;
-    const lo = Math.min(...vals) - 10, hi = Math.max(...vals) + 10, X = (m) => 44 + moisL.indexOf(m) / Math.max(mois - 1, 1) * (W - 90), Y = (v) => 14 + (v - lo) / (hi - lo) * (H - 40);
-    const lignes = pz.map((l, i) => { if (!l.length) return "";
-      const p = l.map((q) => [X(q.mois), Y(q.v)]), c = U.couleurZone(i);
-      return `<polyline points="${p.map((q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(" ")}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round"/>
-        ${p.map((q, k) => `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${k === p.length - 1 ? 4.5 : 3.2}" fill="${k === p.length - 1 ? c : "#17191C"}" stroke="${c}" stroke-width="2"/>`).join("")}
-        <text x="${(p[0][0] - 7).toFixed(1)}" y="${(p[0][1] + 3.5).toFixed(1)}" fill="#C9CCD0" font-size="10" font-weight="700" text-anchor="end">${fmtKmPace(l[0].v)}</text>
-        ${l.length > 1 ? `<text x="${(p[p.length - 1][0] + 8).toFixed(1)}" y="${(p[p.length - 1][1] + 3.5).toFixed(1)}" fill="${c}" font-size="10.5" font-weight="700">${fmtKmPace(l[l.length - 1].v)}</text>` : ""}`; }).join("");
-    return `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Ton allure dans chaque zone cardio, mois par mois">
-      <text x="${W - 2}" y="9" fill="#5A6068" font-size="9.5" text-anchor="end">plus rapide ↑</text>
-      ${moisL.map((m) => `<line x1="${X(m).toFixed(1)}" x2="${X(m).toFixed(1)}" y1="12" y2="${H - 24}" stroke="#26292E"/><text x="${X(m).toFixed(1)}" y="${H - 8}" fill="#5A6068" font-size="10" text-anchor="middle">${U.MOIS_C[m]}</text>`).join("")}
-      ${lignes}</svg>`;
   }
   function progressionCoeur(now, mois) {
     const fm = fcMax(), fr = fcRepos();
@@ -524,7 +466,7 @@
     const valCm = cC.fin ?? cm.maintenant, valDer = cD.fin ?? der.maintenant;
     return `<section class="carte"><div class="carte-tete"><h2>Temps par zone</h2>${info("coeur")}</div>${zones}</section>
       <section class="carte"><div class="carte-tete"><span class="ta-tete" style="--c:#C6F432;color:var(--text);font-size:16px"><i></i>Ton cœur en sortie facile</span>${info("coeur-facile")}</div>
-        ${valCm != null ? `<div style="display:flex;align-items:flex-end;justify-content:space-between">${U.num(Math.round(valCm), "bpm", "n52")}<b class="${ecartBpm == null || Math.abs(ecartBpm) < 2 ? "gris" : ecartBpm > 0 ? "citron" : "violet"}" style="font-size:13.5px">${ecartBpm == null || Math.abs(ecartBpm) < 2 ? `stable en ${mois} mois` : `${Math.abs(ecartBpm)} bpm ${ecartBpm > 0 ? "de moins" : "de plus"} en ${mois} mois`}</b></div>` : ""}
+        ${valCm != null ? `<div style="display:flex;align-items:flex-end;justify-content:space-between">${U.num(Math.round(valCm), "bpm", "n52")}<b class="${ecartBpm == null || Math.abs(ecartBpm) < 2 ? "gris" : ecartBpm > 0 ? "citron" : "violet"}" style="font-size:13.5px">${ecartBpm == null || Math.abs(ecartBpm) < 2 ? `stable ${suffixeCourbe(cC, mois)}` : `${Math.abs(ecartBpm)} bpm ${ecartBpm > 0 ? "de moins" : "de plus"} ${suffixeCourbe(cC, mois)}`}</b></div>` : ""}
         ${cC.svg}<div class="txt2" style="font-size:14.5px">À allure égale, un cœur qui baisse veut dire que tu progresses.</div></section>
       <section class="carte"><div class="carte-tete"><b style="font-size:16px">Dérive cardiaque</b>${info("derive")}</div>
         ${valDer != null ? `<div style="display:flex;align-items:flex-end;justify-content:space-between">${U.num(Math.round(valDer), "%", "n52")}<b class="${valDer < R.repereDerivePct ? "citron" : "violet"}" style="font-size:13.5px">${valDer < R.repereDerivePct ? `stable · sous ${R.repereDerivePct} %` : `au-dessus de ${R.repereDerivePct} %`}</b></div>` : ""}
@@ -661,7 +603,7 @@
           ${[[`Tes courses depuis le ${prem ? U.jourMois(prem.ts) : "—"}`, true], ["Ton cœur, seconde par seconde", true], ["On classe tes sorties", null], ["On calcule ton niveau", false]].map(([t, ok]) => `<div style="display:flex;gap:10px;align-items:center;color:${ok === false ? "var(--faint)" : "var(--text-2)"}">${ok ? `<span class="citron">${ic("check", 16, 2.6)}</span>` : `<span style="width:16px;height:16px;border-radius:50%;border:2px solid ${ok === null ? "var(--accent)" : "var(--line-empty)"};border-top-color:transparent;display:inline-block"></span>`}${esc(t)}</div>`).join("")}</section>
         <div class="cap" style="text-align:center">Import des 6 derniers mois · modifiable dans Profil › Ta montre</div>${suite("#/premiers/8", "Continuer (démo)")}`; })(),
       8: `<span class="fin-ic ok" style="width:44px;height:44px;margin-top:20px">${ic("check", 22, 3)}</span><h1 class="h-plein">Tout est prêt${pseudo ? `, ${esc(pseudo)}` : ""}</h1><div class="txt2" style="margin-top:-6px">${etat.sorties.filter((s) => s.ts >= maintenant() - 183 * JOUR).length} sorties reçues. Voici où tu en es.</div>
-        <span class="sur">Ton niveau · 4 dernières semaines</span><div class="niv-grille">${niveau(maintenant()).map((e) => U.tuileAllure(e, { vide: "pas encore" })).join("")}</div>
+        <div><h2>Ton niveau actuel</h2><div class="txt2" style="font-size:14px;margin-top:3px">Tes allures des 4 dernières semaines, face à il y a 3 mois.</div></div><section class="carte" style="padding:10px 6px">${U.niveauLignes(niveau(maintenant()))}</section>
         <span class="sur" style="margin-top:6px">Pour aller plus loin · facultatif</span><div class="groupe"><button type="button" class="rangee" data-go="#/profil/chrono"><span style="flex:1"><b style="display:block">Ajoute un chrono récent</b><span class="cap">Sert quand ta montre ne donne pas ton cœur</span></span>${ic("chevron", 16)}</button><button type="button" class="rangee" data-go="#/profil/objectif"><span style="flex:1"><b style="display:block">Fixe-toi un objectif</b><span class="cap">Un repère dans Progression et ton conseil</span></span>${ic("chevron", 16)}</button></div>
         ${suite("#/accueil", "Voir mon accueil")}`,
     };
@@ -670,12 +612,10 @@
 
   /* =================== Feuilles (i, type, ressenti, suppression) =================== */
   const INFOS = {
-    conseil: ["Comment on choisit ton conseil", "On lit tes 4 dernières semaines : où va ton effort (Zones) et comment tu cours (Allure). Dans chaque volet, la première règle qui s'applique donne le conseil. Il reste en place jusqu'à sa fin, avec le même chiffre. On te suggère, on ne t'impose rien."],
     bilan: ["Comment on fait ton bilan", "On compare ton cœur sur les passages à la même allure, sur tes 6 dernières semaines (12 s'il le faut). Sans cœur fiable : ton allure et ton ressenti. Rien à comparer : la sortie devient ton point de départ."],
     coeur: ["Tes zones cardio", null],
     "allure-facile": ["Ton allure facile", "Chaque sortie facile est ramenée à ton cœur habituel en facile : on voit si tu cours plus vite pour le même effort. La valeur : tes 4 dernières semaines. L'écart et la courbe : la période choisie."],
     efforts: ["Tes allures par effort", "L'allure que tu tiens quand ton cœur est en zone 3 (Tempo) ou 4 (Seuil), même au milieu d'une sortie. Fractionné : l'allure de tes blocs d'effort."],
-    "allure-zone": ["Ton allure par zone", "Pour chaque zone cardio, l'allure moyenne que tu y tiens, mois par mois. Une allure qui baisse à zone égale : tu cours plus vite pour le même effort."],
     croisements: ["Les croisements", "Allure × régularité : ton allure facile les semaines où tu cours 2 fois ou plus, face aux semaines à une sortie. Allure × ressenti : comment tu ressens tes sorties faciles, d'un mois à l'autre."],
     "coeur-facile": ["Ton cœur en sortie facile", "Le cœur moyen de tes sorties faciles au cœur fiable. Courbe : la moyenne glissante sur 4 semaines."],
     derive: ["La dérive cardiaque", "De combien ton cœur monte entre la 1re et la 2e moitié d'une sortie facile d'au moins 40 min à allure régulière. Sous 5 % : ton endurance tient."],
@@ -691,7 +631,7 @@
     if (INFOS[cle]) {
       let [titre, txt] = INFOS[cle];
       if (cle === "coeur") { const fm = fcMax(), fr = fcRepos(); txt = fm ? `Zones calculées avec une FC max de ${fm.valeur} (${fm.source})${fr ? ` et une FC de repos de ${fr}` : ""}. Zone 1 Récup, 2 Facile, 3 Tempo, 4 Seuil, 5 Fractionné.` : "Renseigne ta FC max ou ton âge pour calculer tes zones."; }
-      const r = cle === "conseil" ? conseils() : null, plus = r ? [r.zones, r.allure].filter((c) => c && c.phrase).map((c) => `<div class="mt"><span class="l">${c.volet === "zones" ? "Zones" : "Allure"} · ${esc(c.regle)}</span><span class="txt2" style="font-size:14px">${esc(c.phrase)}</span></div>`).join("") : "";
+      const plus = "";
       html = `<div class="feuille"><div class="poignee"></div><div class="carte-tete"><h2>${esc(titre)}</h2>${fermer}</div><div class="txt2">${esc(txt)}</div>${plus}</div>`;
     } else if (cle === "type") {
       const s = etat.sorties.find((x) => String(x.id) === String(id)); if (!s) return;
@@ -800,7 +740,8 @@
     const at = t.closest("[data-ajout-type]"); if (at) { brouillon.type = at.getAttribute("data-ajout-type"); at.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("actif", b === at)); return; }
     const fe = t.closest("[data-feuille]"); if (fe) { e.stopPropagation(); feuille(fe.getAttribute("data-feuille"), fe.getAttribute("data-id")); return; }
     const f = t.closest("[data-filtre]"); if (f) { etat.filtre = f.getAttribute("data-filtre"); rendre(true); return; }
-    const rp = t.closest("[data-replie]"); if (rp) { const k = rp.getAttribute("data-replie"), n = { ...etat.replies }; if (n[k]) delete n[k]; else n[k] = 1; etat.replies = n; garder(CLES.replies, n); rendre(true); return; }
+    const rp = t.closest("[data-replie]"); if (rp) { const k = rp.getAttribute("data-replie"); etat.plis = { ...etat.plis, [k]: estReplie(k) ? 0 : 1 }; garder(CLES.plis, etat.plis); rendre(true); return; }
+    const pe = t.closest("[data-periode]"); if (pe) { etat.periode = Number(pe.getAttribute("data-periode")); rendre(true); return; }
     const mo = t.closest("[data-montre]"); if (mo) { etat.montre = mo.getAttribute("data-montre"); garder(CLES.montre, etat.montre); rendre(true); return; }
     const od = t.closest("[data-obj-dist]"); if (od) { od.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("actif", b === od)); return; }
     const ac = t.closest("[data-action]");
@@ -814,7 +755,7 @@
         const choisie = document.querySelector("[data-obj-dist].actif"), dist = choisie ? choisie.getAttribute("data-obj-dist") : "10km";
         const p = String(document.getElementById("oTemps").value).trim().split(":").map(Number), sec = p.some(Number.isNaN) || !p[0] ? null : p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p.length === 2 ? p[0] * 60 + p[1] : p[0] * 60;
         etat.objectifLocal = { distance: dist, tempsSec: sec, date: document.getElementById("oDate").value || null }; garder(CLES.objectif, etat.objectifLocal);
-        etat.conseilsStock = { ...etat.conseilsStock, allure: null }; etat.memo = {}; U.toast("Objectif gardé sur ce téléphone."); rendre(true);
+        etat.memo = {}; U.toast("Objectif gardé sur ce téléphone."); rendre(true);
       } else if (a === "retirer-objectif") { etat.objectifLocal = null; garder(CLES.objectif, null); etat.memo = {}; rendre(true); }
       return;
     }
@@ -824,7 +765,6 @@
     const zone = document.querySelector("[data-ajout-cran]") && document.querySelector("[data-ajout-cran]").closest(".champ");
     if (zone) zone.innerHTML = `<div class="carte-tete"><span class="lab">Comment tu l'as sentie ?</span><span class="cap">facultatif</span></div>${U.crans(brouillon.ressenti, 'data-ajout-cran="1"')}`;
   }
-  document.addEventListener("change", (e) => { if (e.target.matches("[data-periode-select]")) { etat.periode = Number(e.target.value); rendre(true); } });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") { fermerCalque(); return; }
     const g = e.target.closest && e.target.closest("[data-go][role=link]"); if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); location.hash = g.getAttribute("data-go"); }

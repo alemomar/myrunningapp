@@ -111,6 +111,32 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .ta-n{font-size:12px;color:var(--muted)}
 .tiret{display:block;width:22px;height:3px;border-radius:2px;background:var(--faint);margin:16px 0 13px}
 
+/* ---------- Ton niveau actuel en lignes (28/10) : il y a 3 mois → 4 dernières semaines ---------- */
+.niv-lignes{display:flex;flex-direction:column}
+.nl{display:grid;grid-template-columns:1fr 54px 18px 88px 14px;align-items:center;gap:6px;padding:13px 10px;border-top:1px solid var(--line);border-radius:14px}
+.nl+.nl{border-top-left-radius:0;border-top-right-radius:0}
+.nl-tete{padding:0 10px 6px;border-top:0;font-size:10px;line-height:1.25;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.nl-tete span{text-align:right}
+.nl-tete+.nl{border-top:0}
+.nl.bougee{box-shadow:inset 0 0 0 1.5px var(--text);border-top-color:transparent}
+.nl.bougee+.nl{border-top-color:transparent}
+.nl-nom{display:flex;flex-direction:column;gap:3px;min-width:0}
+.nl-nom .ta-tete{color:var(--text);font-size:15.5px;font-weight:700}
+.nl-e{font-size:12.5px;font-weight:600}
+.nl-avant{font-size:19px;color:var(--text-3);text-align:right}
+.nl-fl{color:var(--faint);display:flex;justify-content:center}
+.nl-v{text-align:right}
+.nl-v .num{font-size:30px}
+.nl-ch{color:var(--faint);display:flex}
+.blanc{color:var(--text)}
+
+/* ---------- Progression : onglets à icônes et période bien visible (28/10) ---------- */
+.onglets-icones button{display:flex;align-items:center;justify-content:center;gap:7px}
+.periodes{display:flex;align-items:center;gap:6px;padding:0 2px}
+.periodes span{font-size:13.5px;color:var(--text-3);margin-right:2px}
+.periodes button{flex:1;height:38px;border-radius:999px;border:1.5px solid var(--line-field);text-align:center;font-weight:700;font-size:14.5px;color:var(--text-2)}
+.periodes button.actif{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+
 /* ---------- Ton conseil ---------- */
 .volet{display:flex;flex-direction:column;gap:10px}
 .volet+.volet{border-top:1px solid var(--line);padding-top:14px}
@@ -330,9 +356,8 @@ svg text{font-family:"Barlow",system-ui,sans-serif}
 <script src="../mra-cheer.js?v=1"></script>
 <script src="reglages.js?v=11"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=12"></script>
-<script src="conseil.js?v=3"></script>
-<script src="composants.js?v=1"></script>
-<script src="app.js?v=12"></script>
+<script src="calculs.js?v=14"></script>
+<script src="composants.js?v=3"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>

@@ -38,7 +38,7 @@ window.__appels = [];
 <script src="../logic.js?v=113"></script>
 <script src="reglages.js?v=11"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=12"></script>
+<script src="calculs.js?v=14"></script>
 <script src="conseil.js?v=3"></script>
 <script>
 (async () => {
@@ -205,6 +205,8 @@ window.__appels = [];
   const sfz = Calc.sortiesFacilesZones([ef1, ef2], NOW, 188, 58);
   ok(sfz.length === 2 && sfz.every((x) => x.vraiment && x.pct > 95), "V2 · tes sorties faciles : cœur en zone 2 → vraiment faciles");
   ok(Calc.lisser([{ ts: NOW - 20 * JOUR, v: 10 }, { ts: NOW - 2 * JOUR, v: 20 }], NOW - 28 * JOUR, NOW).slice(-1)[0].v === 15, "V2 · courbe : tendance lissée sur 4 semaines");
+  const niv = Calc.alluresParEffort([4, 11, 95, 100].map((j, i) => serieSortie("nv" + i, NOW - j * JOUR, "EF", [[8000, j < 50 ? 400 : 410, 145]])), NOW, 3, z, defs, null, 3)[0];
+  ok(Math.abs(niv.maintenant - 400) <= 2 && Math.abs(niv.avant - 410) <= 2 && niv.ecart === niv.avant - niv.maintenant, "Ton niveau actuel (28/10) : l'allure d'il y a 3 mois → celle des 4 dernières semaines (" + fmtKmPace(niv.avant) + " → " + fmtKmPace(niv.maintenant) + ")");
 
   // Ton conseil (C3 à C10)
   const ctxC = (courses, now) => ({ courses, nowTs: now || NOW, fmax: 188, frepos: 58, defs, objectif: null, niveau: [], bilan: () => ({ cle: "moyenne" }) });

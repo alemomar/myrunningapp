@@ -469,7 +469,8 @@ const Calc = (() => {
       const now = fen(nowTs), avant = fen(nowTs - ilYa);
       const maintenant = now.length >= min ? med(now) : null, vAvant = avant.length >= min ? med(avant) : null;
       return { points: tous.filter((p) => p.ts >= nowTs - mois * MOIS_J * JOUR), maintenant: maintenant != null ? Math.round(maintenant) : null,
-        ecart: maintenant != null && vAvant != null ? Math.round(vAvant - maintenant) : null, n: now.length };
+        avant: vAvant != null ? Math.round(vAvant) : null,   // la même fenêtre il y a 3 mois (ou la période choisie) : « 7'04 → 7'12 »
+        ecart: maintenant != null && vAvant != null ? Math.round(vAvant) - Math.round(maintenant) : null, n: now.length };   // écart des valeurs affichées
     };
     const liste = efforts.map((e) => ({ ...e, detail: defs ? `cœur en ${e.zone} · ${defs[e.k - 1].max + 1} à ${defs[e.k].max} bpm` : `cœur en ${e.zone}`,
       ...resume(parSortie.filter((x) => x.a[e.k].sec >= r.effortMinSec[e.k]).map((x) => ({ ts: x.ts, v: x.a[e.k].allure })), r.effortMinSorties) }));
