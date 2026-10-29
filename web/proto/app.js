@@ -210,7 +210,7 @@
       const vr = Calc.verdictRepartition(lib, zs), m = (i) => Math.round(zs.secs[i] / 60);
       const droite = id.cible.length === 2 && id.cible[0] === 0 ? `${m(0) + m(1)} min sur ${Math.round(zs.tot / 60)} en zones 1-2` : `${id.cible.reduce((a, i) => a + m(i), 0)} min en ${id.cible.length > 1 ? `zones ${id.cible[0] + 1}-${id.cible[id.cible.length - 1] + 1}` : `zone ${id.cible[0] + 1}`}`;
       zonesHTML = `<span class="sur">Ton effort par zone</span><div class="carte-tete" style="font-size:14px"><b>Ta sortie</b><span class="cap">${esc(droite)}</span></div>${U.zbarre(zs.secs)}
-        <div class="carte-tete" style="font-size:14px"><b>Idéal pour ${esc(pour(lib))}</b><span class="cap">${esc(id.cible[0] === 0 ? "tout en zones 1-2" : lib === "Fractionné" ? "facile autour des blocs" : "facile autour du bloc")}</span></div>${U.zbarre(id.pct, { pale: true })}
+        
         ${U.legendeZones()}${vr ? U.verdictBox({ ton: vr.ton, titre: vr.court }) : ""}<div class="filet"></div>`;
     }
     return `<section class="carte">${zonesHTML}
@@ -265,11 +265,11 @@
       <div class="mini" style="background:var(--sunken);border-radius:14px;padding:4px">${trois.join("").replace(/class="mt"/g, 'class="mt" style="background:transparent"')}</div>
       ${facile && der ? `<div class="txt2" style="font-size:14.5px">${esc(cardiacDriftText(der))}</div>` : ""}
       ${zs ? `<div class="filet"></div><span class="sur">Temps par zone cardio · d'après ton cœur</span><b style="font-size:14px">Ta sortie</b>${U.zbarre(zs.secs, { labels: true, haute: true })}${U.zcols(zs.secs, true, Calc.allureZonesCardio(s, etat.zones, defs))}<div class="cap" style="margin-top:-4px">Sous chaque zone : le temps passé, puis ton allure moyenne quand ton cœur y était.</div>
-        ${id ? `<div class="carte-tete" style="font-size:14px;margin-top:4px"><b>Idéal pour ${esc(pour(lib))}</b><span class="cap">${esc(id.texte)}</span></div>${U.zbarre(id.pct, { pale: true })}` : ""}
+
         ${vr ? U.verdictBox(vr) : ""}` : ""}</section>`;
   }
   function allureParKmHTML(s, lib) {
-    const ks = lib === "Fractionné" ? null : kmSplits({ paceSeries: s.pace, distanceKm: s.dist, durationSec: s.dur, type: "EF" });
+    const ks = lib === "Fractionné" ? null : Calc.kmParKm(s);   // 29/10 : les arrêts ne comptent plus comme du temps de course
     if (!ks) return `<section class="carte"><h2>Allure par km</h2><div class="cap">${lib === "Fractionné" ? "Pas d'allure par km pour un fractionné : ce sont les blocs d'effort qui comptent." : "Pas d'allure par km : il faut au moins 3 km et l'allure détaillée de ta montre."}</div></section>`;
     const k = ks.kms, n = k.length, rapide = Math.min(...k), moy = (a) => a.reduce((x, y) => x + y, 0) / a.length;
     // Un message sur la gestion de l'effort (pas une redite du plus rapide / plus lent).
@@ -291,7 +291,7 @@
       } else if (d > 5) { msg = `Tu as fini plus vite que tu n'as commencé (${fmtKmPace(k[0])} → ${fmtKmPace(k[n - 1])}) : bien géré.`; bon = true; }
       else msg = kmSplitsMessage(ks);
     }
-    const fc = Calc.coeurFiable(s) ? Calc.kmCoeur(s) : null, cf = (i) => (fc && fc[i] ? `<span class="c">${fc[i]}</span>` : '<span class="c"></span>');
+    const fc = Calc.coeurFiable(s) && ks.coeur ? ks.coeur : null, cf = (i) => (fc && fc[i] ? `<span class="c">${fc[i]}</span>` : '<span class="c"></span>');
     const rows = k.map((sec, i) => `<div class="km${i === ks.fastest ? " rapide" : ""}"><span>Km ${i + 1}</span><span class="piste"><i style="width:${kmSplitBarPct(sec, rapide).toFixed(1)}%"></i></span><span class="p">${fmtKmPace(sec)}</span>${cf(i)}</div>`).join("")
       + (ks.partial ? `<div class="km partiel"><span>${String(ks.partial.km).replace(".", ",")} km</span><span class="piste"><i style="width:${kmSplitBarPct(ks.partial.pace, rapide).toFixed(1)}%"></i></span><span class="p">${fmtKmPace(ks.partial.pace)}</span>${cf(k.length)}</div>` : "");
     const tete = `<div class="km km-tete"><span></span><span></span><span class="p">allure</span><span class="c">${fc ? "cœur" : ""}</span></div>`;
@@ -447,7 +447,7 @@
       const z = Calc.zonesCardioPeriode(etat.courses, now, mois, fm.valeur, fr), tot = z.secs.reduce((a, v) => a + v, 0);
       const dur = etat.courses.filter((s) => s.ts >= now - mois * MOIS_J * JOUR && Calc.coeurFiable(s)).reduce((a, s) => a + s.dur, 0);
       if (z.n) { const fac = (z.secs[0] + z.secs[1]) / tot * 100;
-        zones = `${U.deuxGrands(fac, 100 - fac)}${U.zbarre(z.secs, { repere: true })}${U.zcols(z.secs, false)}
+        zones = `${U.deuxGrands(fac, 100 - fac)}${U.zbarre(z.secs, { repere: true })}${U.zcols(z.secs, false, Calc.allureZonesCardioPeriode(etat.courses, now, mois, etat.zones, z.defs))}<div class="cap" style="margin-top:-4px">Sous chaque zone : ton allure moyenne quand ton cœur y était, sur la période.</div>
           ${U.verdictBox(fac >= R.repereFacilePct ? { ton: "bon", titre: `Bon équilibre : ${Math.round(fac)} % en facile.` } : { ton: "presque", titre: `Un peu trop de soutenu : vise ${R.repereFacilePct} % en facile.` })}
           <div class="cap">${z.n} sorties · ${esc(U.dureeTxt(dur))} de course</div>`; }
       else zones = `<div class="txt2">Pas de sortie au cœur fiable sur la période.</div>`;

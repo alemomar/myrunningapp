@@ -86,11 +86,17 @@ const Calc = (() => {
   }
 
   /* ---------- Points d'allure lissés, recalés sur la distance, avec le cœur au même instant ---------- */
+  // Trou au-delà duquel on considère une pause : 4 fois l'écart habituel entre deux mesures d'allure, au moins 15 s, au plus 2 min.
+  function trouMax(pc, r) {
+    const dts = [];
+    for (let i = 1; i < pc.length; i++) { const d = pc[i].t - pc[i - 1].t; if (d > 0) dts.push(d); }
+    return Math.min(r.pauseSec, Math.max(r.pauseMinSec || 0, (r.pauseFacteur || 0) * (med(dts) || 0)));
+  }
   const cachePoints = new Map();
   function pointsAllure(s, z, reg) {
     const r = reg || REGLAGES;
     if (!z || !s.pace || !(s.dist > 0) || !(s.dur > 0)) return null;
-    const cle = `${s.id}|${s.ts}|${s.pace.length}|${(s.hr || []).length}|${z.bornes.join(",")}|${r.lissageSec}|${r.pauseSec}|${r.coeurToleranceSec}|${r.coeurDecalageSec}`;
+    const cle = `${s.id}|${s.ts}|${s.pace.length}|${(s.hr || []).length}|${z.bornes.join(",")}|${r.lissageSec}|${r.pauseSec}|${r.pauseFacteur}|${r.pauseMinSec}|${r.coeurToleranceSec}|${r.coeurDecalageSec}`;
     if (cachePoints.has(cle)) return cachePoints.get(cle);
     let res = null;
     const pc = s.pace.filter((p) => p && p.pace > 0 && p.t >= 0).sort((a, b) => a.t - b.t);
@@ -101,8 +107,8 @@ const Calc = (() => {
         for (let j = i + 1; j < pc.length && pc[j].t <= p.t + demi; j++) fen.push(pc[j].pace);
         return med(fen);
       });
-      let prevT = 0; const pts = [];
-      pc.forEach((p, i) => { const dt = p.t - prevT; prevT = p.t; if (dt > 0 && dt <= r.pauseSec) pts.push({ t: p.t, dt, m: dt * 1000 / lisse[i], pace: lisse[i], zone: zoneDe(lisse[i], z), hr: null }); });
+      let prevT = 0; const pts = [], cap = trouMax(pc, r);
+      pc.forEach((p, i) => { const dt = p.t - prevT; prevT = p.t; if (dt > 0 && dt <= cap) pts.push({ t: p.t, dt, m: dt * 1000 / lisse[i], pace: lisse[i], zone: zoneDe(lisse[i], z), hr: null }); });
       const brut = pts.reduce((a, x) => a + x.m, 0);
       const ech = brut > 0 ? s.dist * 1000 / brut : 0;
       if (ech >= 0.8 && ech <= 1.25) {      // sinon les mesures sont trop loin de la distance de la sortie : jugées fausses
@@ -667,30 +673,51 @@ const Calc = (() => {
     pts.forEach((x) => { if (x.hr != null) { const a = o[zc(x.hr)]; a.sec += x.dt; a.m += x.m; } });
     return o.map((a) => (a.sec >= r.coeurMinSec && a.m > 0 ? Math.round(a.sec / (a.m / 1000)) : null));
   }
-  // Cœur moyen de chaque km (retour d'Omar du 29/10) : les mêmes km que l'allure par km de l'app (kmSplits : pauses de plus de
-  // 2 min ignorées, distance recalée sur celle de la sortie), le cœur mesuré entre deux passages au km. Tableau des km entiers,
-  // puis le bout final s'il fait 100 m ou plus ; null sans allure détaillée ou sans cœur.
-  function kmCoeur(s) {
-    if (!s.pace || !s.hr || !(s.dist > 0)) return null;
-    const gap = typeof KM_SPLIT_GAP_SEC !== "undefined" ? KM_SPLIT_GAP_SEC : 120;
-    const pc = s.pace.filter((p) => p && p.pace > 0 && p.t >= 0).sort((a, b) => a.t - b.t), hr = s.hr.filter((p) => p && p.hr > 0).sort((a, b) => a.t - b.t);
-    const parts = []; let prev = 0;
-    pc.forEach((p) => { const dt = p.t - prev; prev = p.t; if (dt > 0 && dt <= gap) parts.push({ t: p.t, dt, d: dt * 1000 / p.pace }); });
+  // Allure par km et cœur moyen de chaque km (29/10). Même principe que kmSplits de l'app, mais les arrêts (trou nettement plus
+  // long que l'écart habituel entre deux mesures, voir trouMax) ne comptent pas comme du temps de course : la moyenne des km
+  // retombe sur l'allure de la sortie. Les km se coupent sur la distance recalée sur celle de la sortie ; le cœur est mesuré entre
+  // deux passages au km. Renvoie { kms, partial, avg, fastest, slowest, coeur } (forme de kmSplits) ou null.
+  function kmParKm(s, reg) {
+    const r = reg || REGLAGES, minKm = typeof KM_SPLIT_MIN_KM !== "undefined" ? KM_SPLIT_MIN_KM : 3;
+    if (!s.pace || !(s.dist >= minKm) || !(s.dur > 0)) return null;
+    const pc = s.pace.filter((p) => p && p.pace > 0 && p.t >= 0).sort((a, b) => a.t - b.t);
+    if (pc.length / s.dur * 60 < 1) return null;
+    const cap = trouMax(pc, r), parts = []; let prev = 0;
+    pc.forEach((p) => { const dt = p.t - prev; prev = p.t; if (dt > 0 && dt <= cap) parts.push({ t: p.t, dt, d: dt * 1000 / p.pace }); });
     const brut = parts.reduce((a, x) => a + x.d, 0);
-    if (!hr.length || !(brut > 0)) return null;
-    const ech = s.dist * 1000 / brut, pleins = Math.floor(s.dist + 1e-9), bornes = [parts[0].t - parts[0].dt];
-    let d = 0;
+    if (!(brut > 0)) return null;
+    const ech = s.dist * 1000 / brut;
+    if (ech < 0.8 || ech > 1.25) return null;
+    const total = s.dist * 1000, pleins = Math.floor(total / 1000 + 1e-9), kms = [], bornes = [parts[0].t - parts[0].dt];
+    let d = 0, t = 0, tPassage = 0;
     parts.forEach((x) => {
       const dd = x.d * ech;
-      while (bornes.length - 1 < pleins && d + dd >= 1000 * bornes.length - 1e-6) bornes.push(x.t - x.dt + x.dt * ((1000 * bornes.length - d) / dd));
-      d += dd;
+      while (kms.length < pleins && d + dd >= 1000 * (kms.length + 1) - 1e-6) {
+        const f = (1000 * (kms.length + 1) - d) / dd, tc = t + x.dt * f;
+        kms.push(Math.round(tc - tPassage)); tPassage = tc; bornes.push(x.t - x.dt + x.dt * f);
+      }
+      d += dd; t += x.dt;
     });
+    if (kms.length < 2) return null;
+    const reste = total - kms.length * 1000;
+    const partial = reste >= 100 && t - tPassage > 0 ? { km: Math.round(reste / 10) / 100, pace: Math.round((t - tPassage) / (reste / 1000)) } : null;
+    const hr = (s.hr || []).filter((p) => p && p.hr > 0).sort((a, b) => a.t - b.t);
     const moy = (a, b) => { const l = hr.filter((p) => p.t >= a && p.t < b).map((p) => p.hr); return l.length ? Math.round(l.reduce((x, v) => x + v, 0) / l.length) : null; };
-    const out = [];
-    for (let i = 1; i < bornes.length; i++) out.push(moy(bornes[i - 1], bornes[i]));
-    const fin = parts[parts.length - 1].t;
-    if (s.dist * 1000 - pleins * 1000 >= 100 && fin > bornes[bornes.length - 1]) out.push(moy(bornes[bornes.length - 1], fin + 1));
-    return out;
+    const coeur = hr.length ? kms.map((_, i) => moy(bornes[i], bornes[i + 1])).concat(partial ? [moy(bornes[bornes.length - 1], parts[parts.length - 1].t + 1)] : []) : null;
+    return { kms, partial, avg: Math.round(t / s.dist), fastest: kms.indexOf(Math.min(...kms)), slowest: kms.indexOf(Math.max(...kms)), coeur };
+  }
+  const kmCoeur = (s) => { const k = kmParKm(s); return k ? k.coeur : null; };
+  // Allure moyenne dans chaque zone cardio sur une période (Progression › Cœur, 29/10) : toutes tes courses au cœur fiable.
+  function allureZonesCardioPeriode(sorties, nowTs, mois, z, defs, reg) {
+    const r = reg || REGLAGES;
+    if (!defs) return null;
+    const zc = (hr) => { for (let i = 0; i < defs.length; i++) if (hr <= defs[i].max) return i; return defs.length - 1; };
+    const o = [0, 1, 2, 3, 4].map(() => ({ sec: 0, m: 0 }));
+    sorties.filter((s) => estCourse(s) && s.ts <= nowTs && s.ts >= nowTs - mois * MOIS_J * JOUR && coeurFiable(s, r)).forEach((s) => {
+      const pts = pointsAllure(s, z, r);
+      if (pts) pts.forEach((x) => { if (x.hr != null) { const a = o[zc(x.hr)]; a.sec += x.dt; a.m += x.m; } });
+    });
+    return o.map((a) => (a.sec >= r.coeurMinSec && a.m > 0 ? Math.round(a.sec / (a.m / 1000)) : null));
   }
   // Ton allure par zone (Progression › Allure) : allure tenue dans chaque zone cardio, mois par mois (médiane des sorties du mois).
   function allureParZoneMois(sorties, nowTs, mois, z, defs, reg) {
@@ -794,5 +821,5 @@ const Calc = (() => {
     records, cap, fcMaxEffective, moyenne, med, kmTxt, allureTxt, TITRES, ZONE_A,
     // V2
     nomCourt, passageDominant, recordsBattus, ressentiCran, EFFORT_DE, frise3, zonesSortie, verdictRepartition, partZones, premierKm,
-    allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, kmCoeur, allureZonesCardio, JOUR, SEM, MOIS_J };
+    allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, kmCoeur, kmParKm, allureZonesCardio, allureZonesCardioPeriode, JOUR, SEM, MOIS_J };
 })();

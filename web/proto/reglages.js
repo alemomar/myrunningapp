@@ -52,7 +52,10 @@ const REGLAGES = {
   /* ---- Découpage automatique d'une sortie ---- */
   decoupageMinM: 400,           // un segment fait au moins 400 m (les plus courts sont fondus dans un voisin)
   lissageSec: 30,               // l'allure est lissée sur 30 s (médiane glissante) avant d'être classée
-  pauseSec: 120,                // plus de 2 min sans mesure = une pause (ni distance ni temps)
+  pauseSec: 120,                // plus de 2 min sans mesure = une pause (ni distance ni temps)…
+  pauseFacteur: 4, pauseMinSec: 15,   // … et dès qu'un trou dépasse 4 fois l'écart habituel entre deux mesures (au moins 15 s) :
+                                // un arrêt au feu de 20 à 40 s n'est plus compté comme du temps de course (29/10 : il ralentissait
+                                // toutes les allures de la sortie du 27/10, 7'23 au lieu de 7'14)
   echauffementMaxM: 2500,       // 1er segment plus lent que le suivant, de 2,5 km au plus, en récupération ou avant un passage soutenu = échauffement
   retourCalmeMaxM: 2500,        // dernier segment plus lent que le précédent, de 2,5 km au plus, en récupération ou après un fractionné / seuil = retour au calme
                                 // (une sortie facile qui finit facile après quelques km rapides garde « faciles »)
