@@ -1,7 +1,7 @@
 /* Prototype V2 « progression » : les composants communs (étape 1 des maquettes Claude Design, validée par Omar le 27/10/2026).
-   Chaque composant a une seule forme, partout : menu du bas, tuile d'allure, carte « Ton conseil », ressenti à 10 crans,
-   pastilles de type, ligne de bilan, frise, zones, courbe avec tendance, cases de régularité. Rien ici ne lit ni n'écrit de
-   données : on reçoit des chiffres, on rend du HTML. */
+   Chaque composant a une seule forme, partout : menu du bas, ressenti à 10 crans, pastilles de type, ligne de bilan, frise,
+   zones, courbe 11a, cases de régularité (révisions du 29/10 : courbe 11a, Ton mois 15a, temps par zone 16c). Rien ici ne lit
+   ni n'écrit de données : on reçoit des chiffres, on rend du HTML. */
 const UI = (() => {
   const R = REGLAGES;
   const esc = (t) => String(t == null ? "" : t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -75,36 +75,10 @@ const UI = (() => {
     return { txt: `stable${s}`, cls: "gris" };
   }
 
-  /* ---------- 1.2 · Tuile d'allure ---------- */
-  function tuileAllure(e, o) {
-    const coul = { ef: couleurType("Sortie facile"), tempo: couleurType("Tempo"), seuil: couleurType("Seuil"), frac: couleurType("Fractionné") }[e.cle];
-    const em = ecartMots(e.ecart), bougee = o && o.bougee;
-    const corps = e.maintenant != null
-      ? `${num(allure(e.maintenant), "/km", "ta-v")}
-         <span class="ta-e ${bougee ? "bougee" : em.cls === "citron" ? "progres" : ""}">${bougee ? "Bougée aujourd'hui" : esc(em.txt)}</span>
-         ${bougee ? "" : `<span class="ta-n">${e.n} ${e.n > 1 ? "sorties" : "sortie"}</span>`}`
-      : `<span class="tiret"></span><span class="ta-n" style="color:var(--text-3)">${esc(o && o.vide ? o.vide : e.cle === "frac" ? "Pas de fractionné en 4 semaines" : "bientôt")}</span>`;
-    return `<div class="tuile-allure${bougee ? " bougee" : ""}" role="link" tabindex="0" data-go="#/progression/allure/${e.cle}" aria-label="${esc(`${e.nom} : voir la courbe`)}">
-      <div class="ta-tete" style="--c:${coul}"><i></i>${esc(e.nom)}${ic("chevron", 15)}</div>${corps}</div>`;
-  }
-
-  /* ---------- Ton niveau en lignes (retour d'Omar du 28/10) ----------
-     On doit comprendre que c'est le niveau ACTUEL (4 dernières semaines) : une ligne par effort, l'allure d'il y a 3 mois,
-     une flèche, puis l'allure d'aujourd'hui en grand. Toute la ligne ouvre la courbe dans Progression. */
-  function niveauLignes(liste, o) {
-    const opt = o || {}, coul = { ef: couleurType("Sortie facile"), tempo: couleurType("Tempo"), seuil: couleurType("Seuil"), frac: couleurType("Fractionné") };
-    const tete = `<div class="nl nl-tete" aria-hidden="true"><span></span><span>il y a<br>3 mois</span><span></span><span>4 dernières<br>semaines</span><span></span></div>`;
-    const lignes = liste.map((e) => {
-      const em = ecartMots(e.ecart), bougee = opt.bougee === e.cle && e.maintenant != null;
-      const sous = e.maintenant == null ? (e.cle === "frac" ? "aucun en 4 semaines" : "pas assez de sorties") : bougee ? "bougée aujourd'hui" : em.txt;
-      const cls = e.maintenant == null ? "gris" : bougee ? "blanc" : em.cls === "citron" ? "citron" : "gris";
-      return `<div class="nl${bougee ? " bougee" : ""}" role="link" tabindex="0" data-go="#/progression/allure/${e.cle}" aria-label="${esc(`${e.nom} : ${e.avant != null ? `${allure(e.avant)} il y a 3 mois, ` : ""}${e.maintenant != null ? `${allure(e.maintenant)} sur tes 4 dernières semaines` : "pas de mesure"}. Voir la courbe`)}">
-        <span class="nl-nom"><span class="ta-tete" style="--c:${coul[e.cle]}"><i></i>${esc(e.nom)}</span><span class="nl-e ${cls}">${esc(sous)}</span></span>
-        <span class="num nl-avant">${e.avant != null ? allure(e.avant) : "—"}</span><span class="nl-fl">${ic("fleche", 15)}</span>
-        <span class="nl-v">${e.maintenant != null ? num(allure(e.maintenant), "/km", "") : '<span class="num" style="color:var(--faint)">—</span>'}</span><span class="nl-ch">${ic("chevron", 15)}</span></div>`;
-    }).join("");
-    return `<div class="niv-lignes">${tete}${lignes}</div>`;
-  }
+  // Couleur de chaque effort de « Ton niveau » (une couleur = un effort).
+  const couleurEffort = (cle) => couleurType({ ef: "Sortie facile", tempo: "Tempo", seuil: "Seuil", frac: "Fractionné" }[cle]);
+  // Flèche ↗ des petites tuiles de « Ton niveau » (clignote lentement, coupée si « réduire les animations »).
+  const flecheTuile = () => `<svg class="fl-tuile" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>`;
 
   /* ---------- 1.8 · Frise : 3 couleurs, 3 morceaux au plus ---------- */
   const COUL_FRISE = { calme: "#6B7078", facile: "#C6F432", soutenu: "#F7C747" };
@@ -123,13 +97,29 @@ const UI = (() => {
     return `<div class="zbarre${opt.pale ? " pale" : ""}${opt.haute ? " haute" : ""}"${opt.repere ? ' style="margin-top:16px"' : ""} aria-hidden="true">${segs}${rep}</div>`;
   }
   // 5 colonnes : % en grand, minutes dessous (si demandé), « Zone 1 » à « Zone 5 » (retour d'Omar du 28/10 : pas de noms) ;
-  // une zone à 0 reste visible, grisée.
+  // une zone à 0 reste visible, grisée. Les % sont arrondis pour faire 100 pile (29/10).
   // `allures` (facultatif, 29/10) : l'allure moyenne quand le cœur était dans chaque zone (« 7'24 »).
   function zcols(secs, minutes, allures) {
-    const tot = secs.reduce((a, v) => a + v, 0) || 1;
-    return `<div class="zcols">${secs.map((v, i) => { const p = Math.round(v / tot * 100);
-      return `<div class="zcol${p === 0 ? " zero" : ""}" style="--c:${couleurZone(i)}"><span class="p">${p} %</span>${minutes ? `<span class="m">${Math.round(v / 60)} min</span>` : ""}${allures ? `<span class="a">${allures[i] ? allure(allures[i]) : "—"}</span>` : ""}<span class="n">Zone ${i + 1}</span></div>`; }).join("")}</div>`;
+    const pz = Calc.partsZones(secs);
+    return `<div class="zcols">${secs.map((v, i) => { const p = pz.pcts[i];
+      return `<div class="zcol${p === 0 ? " zero" : ""}" style="--c:${couleurZone(i)}"><span class="p">${p} %</span>${minutes ? `<span class="m">${pz.mins[i]} min</span>` : ""}${allures ? `<span class="a">${allures[i] ? allure(allures[i]) : "—"}</span>` : ""}<span class="n">Zone ${i + 1}</span></div>`; }).join("")}</div>`;
   }
+  // 15a · Ton mois (révision du 29/10) : « 61 % en zones 1-2 » en grand, barre 2 couleurs (1-2 citron, 3-5 gris) avec le repère
+  // 80 %, puis les 5 zones en petites tuiles groupées comme la barre (1-2 à gauche, 3-5 à droite). Zone à 0 % en gris.
+  function partFacile(pz) {
+    const seg = (p, c) => (p > 0 ? `<i style="flex:${p};background:${c}"></i>` : "");
+    return `<div class="pf"><span class="num pf-v citron">${pz.facilePct} %</span><span class="pf-t">en zones 1-2</span></div>
+      <div class="zbarre deux" aria-hidden="true">${seg(pz.facilePct, "var(--accent)")}${seg(pz.soutenuPct, "var(--control-2)")}<span class="repere80" style="left:${R.repereFacilePct}%"><span>repère ${R.repereFacilePct} %</span></span></div>
+      <div class="ztuiles">${[[0, 1], [2, 3, 4]].map((g) => `<div style="flex:${g.length}">${g.map((i) => `<div class="zt${pz.pcts[i] ? "" : " zero"}" style="--c:${couleurZone(i)}"><span><i></i>Z${i + 1}</span><b class="num">${pz.pcts[i]} %</b></div>`).join("")}</div>`).join("")}</div>`;
+  }
+  // 16c · Temps par zone d'une sortie (révision du 29/10) : une colonne par zone, minutes au-dessus (hauteur = temps), « Z1 »
+  // dessous, puis l'allure moyenne dans la zone (« — » sans mesure). Zone vide : un trait gris.
+  function zcolonnes(mins, allures) {
+    const mx = Math.max(...mins, 1);
+    return `<div class="zcolonnes">${mins.map((m, i) => `<div class="zk${m ? "" : " zero"}" style="--c:${couleurZone(i)}"><span class="zk-m"><b class="num">${m}</b>min</span><i style="height:${m ? Math.max(6, Math.round(m / mx * 88)) : 4}px"></i><span class="zk-n">Z${i + 1}</span><span class="zk-a num">${allures && allures[i] ? `${allure(allures[i])}<small>/km</small>` : '<span class="zk-rien">—</span>'}</span></div>`).join("")}</div>`;
+  }
+  // Pastille de verdict : « bien » (citron), « presque » (gris), « trop soutenu » (violet).
+  const pastille = (ton, mot) => `<span class="pastille ${esc(ton)}">${esc(mot)}</span>`;
   const legendeZones = () => `<div class="leg">${[0, 1, 2, 3, 4].map((i) => `<span style="--c:${couleurZone(i)}">Zone ${i + 1}</span>`).join("")}</div>`;
   // Facile / Soutenu en grand (zones 1-2 et 3-5).
   function deuxGrands(facilePct, soutenuPct) {
@@ -156,9 +146,10 @@ const UI = (() => {
     return `<div class="crans" role="radiogroup" aria-label="Ressenti sur 10">${boutons}</div>${dessous}`;
   }
 
-  /* ---------- 1.10 · Courbe avec tendance ----------
-     Tendance lissée (moyenne glissante sur 4 semaines) en trait épais, points pâles derrière, valeur de départ à gauche et
-     d'arrivée à droite, rapide toujours en haut. o : { debut, fin, couleur, rapideEnHaut, fmt, repere: {v, label}, h, vide, sens }. */
+  /* ---------- 1.10 · Courbe 11a (révision Claude Design du 29/10, choisie par Omar) ----------
+     Un point par mois (un par semaine sur 1 à 3 mois), courbe douce, pointillé horizontal au niveau du départ ; seules la valeur
+     de départ (cercle vide) et l'actuelle (point plein) sont écrites ; initiales des mois en bas, ou les dates de début et de fin.
+     Mois sans mesure : tronçon en pointillé. Plus de nuage de points ni d'axe gradué. Rapide toujours en haut. */
   function cheminLisse(p) {
     if (p.length < 3) return `M${p.map((q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(" L")}`;
     let d = `M${p[0][0].toFixed(1)},${p[0][1].toFixed(1)}`;
@@ -168,46 +159,74 @@ const UI = (() => {
     }
     return d;
   }
-  function courbe(points, o) {
-    const W = 326, H = o.h || 150, brut = points.filter((p) => p.ts >= o.debut && p.ts <= o.fin);
-    const lisse = Calc.lisser(points, o.debut, o.fin, 28);
-    if (lisse.length < 2) return { svg: `<div class="cap">${esc(o.vide || "Pas encore assez de points pour tracer une tendance.")}</div>`, debut: null, fin: null };
-    // Zoom sur la tendance (retour d'Omar du 28/10 : « la courbe devrait être plus zoomée ») : l'échelle suit la courbe lissée,
-    // pas les points isolés ; les points hors de l'échelle ne sont pas dessinés.
-    const vals = lisse.map((p) => p.v).concat(o.repere ? [o.repere.v] : []);
-    const lo = Math.min(...vals), hi = Math.max(...vals), pad = Math.max((hi - lo) * 0.22, o.padMin || 1), a = lo - pad, b = hi + pad;
-    // La courbe part de ta première mesure de la période (pas de vide à gauche quand tes sorties commencent plus tard).
-    const x0 = lisse[0].ts, X = (t) => 34 + (t - x0) / Math.max(o.fin - x0, 1) * (W - 78), Y = (v) => { const k = (v - a) / (b - a); return 16 + (o.rapideEnHaut ? k : 1 - k) * (H - 40); };
-    const pts = lisse.map((p) => [X(p.ts), Y(p.v)]), p0 = lisse[0], p1 = lisse[lisse.length - 1];
-    const lab = (y, dessus) => (dessus ? (y - 10 < 12 ? y + 20 : y - 10) : (y + 20 > H - 26 ? y - 10 : y + 20));
-    const fmt = o.fmt || ((v) => String(Math.round(v)));
-    const d0 = new Date(x0), d1 = new Date(o.fin), gris = "#5A6068", an = o.fin - x0 > 200 * JOUR;
-    const moisAxe = (d) => `${MOIS_C[d.getMonth()]}${an ? ` ${d.getFullYear()}` : ""}`;
-    const rep = o.repere ? `<line x1="30" x2="${W - 6}" y1="${Y(o.repere.v).toFixed(1)}" y2="${Y(o.repere.v).toFixed(1)}" stroke="#8B8F96" stroke-width="1.2" stroke-dasharray="4 4"/>
-      <text x="30" y="${(Y(o.repere.v) - 5).toFixed(1)}" fill="#C9CCD0" font-size="10" font-weight="700">${esc(o.repere.label)}</text>` : "";
-    const sens = o.sens || "";   // 29/10 : plus de « plus rapide ↑ » (retour d'Omar) ; les lignes d'allure suffisent
-    // Lignes horizontales aux allures rondes (retour d'Omar du 29/10) : tous les 10, 15, 30 ou 60 s selon l'écart affiché.
-    let grille = "";
-    if (o.grille === "allure") {
-      const pas = b - a <= 35 ? 10 : b - a <= 80 ? 15 : b - a <= 160 ? 30 : 60;
-      for (let v = Math.ceil(a / pas) * pas; v <= b; v += pas) {
-        const y = Y(v);
-        if (y < 8 || y > H - 26) continue;
-        grille += `<line x1="30" x2="${W - 4}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#26292E" stroke-width="1"/><text x="0" y="${(y + 3.5).toFixed(1)}" fill="#8B8F96" font-size="10">${esc(fmt(v))}</text>`;
-      }
+  // `serie` : les points de Calc.serieCourbe ({ ts, mois, v } ; v null = rien de mesuré). o : { couleur, rapideEnHaut, fmt,
+  // padMin (demi-écart minimal affiché, pour ne pas grossir 2 s en montagne), repere: {v, label}, h, vide, label,
+  // axe: "mois" (initiales) ou "dates" (date du départ · « cette semaine ») }.
+  let nGrad = 0;
+  const INITIALES = "JFMAMJJASOND";
+  function dessinCourbe(serie, o) {
+    const vals = serie.filter((p) => p.v != null);
+    if (vals.length < 2) return { svg: `<div class="cap">${esc(o.vide || "Pas encore assez de mesures pour tracer une courbe.")}</div>`, debut: null, fin: null };
+    const W = 326, H = o.h || 118, HAUT = 28, BAS = 24, n = serie.length, c = o.couleur, fmt = o.fmt || ((v) => String(Math.round(v)));
+    const vs = vals.map((p) => p.v).concat(o.repere ? [o.repere.v] : []), lo = Math.min(...vs), hi = Math.max(...vs);
+    const demi = Math.max((hi - lo) / 2, o.padMin || 1), a = (hi + lo) / 2 - demi, b = (hi + lo) / 2 + demi;
+    const X = (i) => 9 + i * (W - 18) / Math.max(n - 1, 1), Y = (v) => { const k = (v - a) / (b - a); return HAUT + (o.rapideEnHaut ? k : 1 - k) * (H - HAUT - BAS); };
+    const P = serie.map((p, i) => (p.v == null ? null : [X(i), Y(p.v)]));
+    const runs = []; let cur = null;
+    P.forEach((q) => { if (q) { if (!cur) runs.push((cur = [])); cur.push(q); } else cur = null; });
+    const f2 = (x) => x.toFixed(1), id = `cg${++nGrad}`;
+    const pleins = runs.filter((r) => r.length >= 2);
+    const aires = pleins.map((r) => `<path d="${cheminLisse(r)} L${f2(r[r.length - 1][0])},${H} L${f2(r[0][0])},${H} Z" fill="url(#${id})"/>`).join("");
+    const traits = pleins.map((r) => `<path d="${cheminLisse(r)}" fill="none" stroke="${c}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`).join("");
+    const trous = runs.slice(0, -1).map((r, k) => { const p = r[r.length - 1], q = runs[k + 1][0];
+      return `<path d="M${f2(p[0])},${f2(p[1])} L${f2(q[0])},${f2(q[1])}" stroke="${c}" stroke-width="2.5" stroke-dasharray="4 5" stroke-linecap="round" opacity=".75" fill="none"/>`; }).join("");
+    const iF = P.findIndex(Boolean), iL = P.length - 1 - P.slice().reverse().findIndex(Boolean), F = P[iF], L = P[iL];
+    // Étiquettes du côté où la courbe ne passe pas (moyenne des 3 points voisins) : le départ dessous, sauf si la courbe
+    // descend ensuite ; l'arrivée dessus, sauf si la courbe arrive d'en haut. Les marges HAUT et BAS leur gardent la place.
+    const voisins = (l) => { const v = l.filter(Boolean).slice(0, 3); return v.length ? v.reduce((x, q) => x + q[1], 0) / v.length : null; };
+    const vF = voisins(P.slice(iF + 1)), vL = voisins(P.slice(0, iL).reverse());
+    const yF = vF != null && vF > F[1] + 2 ? F[1] - 12 : F[1] + 22;
+    const yL = vL != null && vL < L[1] - 2 ? L[1] + 24 : L[1] - 13;
+    // Repère (5 %, 170) : son étiquette à droite, sinon à gauche, sinon au milieu, là où elle ne touche pas une valeur écrite.
+    let rep = "";
+    if (o.repere) {
+      const yR = Y(o.repere.v), loin = (y) => Math.abs(y - (yR - 5)) > 22;
+      // La courbe ne traverse pas l'étiquette : sur ce bout de largeur, tous les points restent du même côté, à distance.
+      const libre = (x0, x1) => { const ys = P.filter((q) => q && q[0] >= x0 && q[0] <= x1).map((q) => q[1]); return ys.every((y) => y > yR + 4) || ys.every((y) => y < yR - 20); };
+      const [xR, ancre] = loin(yL) && loin(L[1]) && libre(W - 90, W) ? [W - 2, "end"] : loin(yF) && loin(F[1]) && libre(0, 90) ? [2, "start"] : [W / 2, "middle"];
+      rep = `<line x1="0" x2="${W}" y1="${f2(yR)}" y2="${f2(yR)}" stroke="#8B8F96" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="${f2(xR)}" y="${f2(yR - 5)}" fill="#C9CCD0" font-size="10" font-weight="700" text-anchor="${ancre}">${esc(o.repere.label)}</text>`;
     }
-    const svg = `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label || "Courbe")} : de ${esc(fmt(p0.v))} à ${esc(fmt(p1.v))}">
-      <line x1="0" x2="${W}" y1="${H - 22}" y2="${H - 22}" stroke="#26292E"/>
-      ${sens ? `<text x="${W - 2}" y="9" fill="${gris}" font-size="9.5" text-anchor="end">${esc(sens)}</text>` : ""}
-      ${grille}${rep}
-      ${brut.filter((p) => p.v >= a && p.v <= b).map((p) => `<circle cx="${X(p.ts).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="2.8" fill="${o.couleur}" opacity=".32"/>`).join("")}
-      <path d="${cheminLisse(pts)}" fill="none" stroke="${o.couleur}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="${pts[0][0].toFixed(1)}" cy="${pts[0][1].toFixed(1)}" r="5" fill="#17191C" stroke="${o.couleur}" stroke-width="2.4"/>
-      <text x="${(pts[0][0] - 4).toFixed(1)}" y="${lab(pts[0][1], true).toFixed(1)}" fill="#C9CCD0" font-size="11.5" font-weight="700">${esc(fmt(p0.v))}</text>
-      <circle cx="${pts[pts.length - 1][0].toFixed(1)}" cy="${pts[pts.length - 1][1].toFixed(1)}" r="5.5" fill="${o.couleur}"/>
-      <text x="${(pts[pts.length - 1][0] + 4).toFixed(1)}" y="${lab(pts[pts.length - 1][1], false).toFixed(1)}" fill="#F2F3F0" font-size="12.5" font-weight="700" text-anchor="end">${esc(fmt(p1.v))}</text>
-      <text x="2" y="${H - 6}" fill="${gris}" font-size="10">${moisAxe(d0)}</text><text x="${W - 2}" y="${H - 6}" fill="${gris}" font-size="10" text-anchor="end">${moisAxe(d1)}</text></svg>`;
-    return { svg, debut: p0.v, fin: p1.v, depuis: x0 };
+    let axe = "";
+    if (o.axe === "dates") axe = `<text x="0" y="${H + 16}" fill="#5A6068" font-size="11.5">${esc(jourMois(serie[0].ts))}</text><text x="${W}" y="${H + 16}" fill="#A3A7AD" font-size="11.5" font-weight="600" text-anchor="end">cette semaine</text>`;
+    else {
+      let dernierX = -99;
+      serie.forEach((p, i) => {
+        if (i && p.mois === serie[i - 1].mois) return;
+        if (X(i) - dernierX < 13) return;
+        dernierX = X(i);
+        const actuel = p.mois === serie[n - 1].mois && i >= n - 5;
+        axe += `<text x="${f2(X(i))}" y="${H + 16}" fill="${actuel ? "#F2F3F0" : "#5A6068"}" font-size="11"${actuel ? ' font-weight="700"' : ""} text-anchor="middle">${INITIALES[p.mois]}</text>`;
+      });
+    }
+    const svg = `<svg class="courbe11" width="100%" viewBox="0 0 ${W} ${H + 20}" role="img" aria-label="${esc(o.label || "Courbe")} : de ${esc(fmt(vals[0].v))} à ${esc(fmt(vals[vals.length - 1].v))}" style="overflow:visible">
+      <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".2"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>
+      <path d="M${f2(F[0])},${f2(F[1])} H${W - 2}" stroke="#3A4047" stroke-width="1.2" stroke-dasharray="2 5" fill="none"/>
+      ${rep}${aires}${trous}${traits}
+      <circle cx="${f2(F[0])}" cy="${f2(F[1])}" r="5" fill="#17191C" stroke="${c}" stroke-width="2.5"/>
+      <circle cx="${f2(L[0])}" cy="${f2(L[1])}" r="6.5" fill="${c}" stroke="#17191C" stroke-width="3"/>
+      <text class="cv" x="${f2(Math.max(F[0] - 4, 0))}" y="${f2(yF)}" fill="#A3A7AD" font-size="15">${esc(fmt(vals[0].v))}</text>
+      <text class="cv" x="${f2(Math.min(L[0] + 4, W))}" y="${f2(yL)}" fill="#F2F3F0" font-size="17" text-anchor="end">${esc(fmt(vals[vals.length - 1].v))}</text>
+      ${axe}</svg>`;
+    return { svg, debut: vals[0].v, fin: vals[vals.length - 1].v, depuis: serie[0].ts, finTs: vals[vals.length - 1].ts };
+  }
+  // Courbe de Progression : tes mesures une à une → un point par mois (par semaine sur 3 mois), puis le dessin.
+  // o : { fin (maintenant), mois (3, 6, 12), min (mesures par point à la semaine, comme Ton niveau ; 1 par mois suffit),
+  // finValeur (la valeur en grand, pour que le bout de la courbe soit ce chiffre) }.
+  function courbe(points, o) {
+    const so = { min: o.mois <= 3 ? o.min : 1 };
+    if ("finValeur" in o) so.fin = o.finValeur;
+    return dessinCourbe(Calc.serieCourbe(points, o.fin, o.mois, o.mois <= 3 ? "semaine" : "mois", so), { ...o, axe: "mois" });
   }
 
   /* ---------- Courbe du cœur d'une sortie, sur les bandes de zones (détail) ---------- */
@@ -244,6 +263,6 @@ const UI = (() => {
   }
 
   return Object.freeze({ esc, ic, JOUR, JOURS, MOIS, MOIS_C, debutJour, jourTxt, heureTxt, dateCourte, jourMois, relatif, memeJour, kmTxt, dureeTxt, allure, num,
-    couleurType, couleurZone, pillType, icBilan, bilanLigne, ecartMots, tuileAllure, niveauLignes, frise, friseTexte, COUL_FRISE, zbarre, zcols, legendeZones, deuxGrands, verdictBox,
-    fondRegu, reguCases, reguBande, crans, courbe, courbeCoeur, toast });
+    couleurType, couleurZone, couleurEffort, flecheTuile, pillType, icBilan, bilanLigne, ecartMots, frise, friseTexte, COUL_FRISE, zbarre, zcols, partFacile, zcolonnes, pastille, legendeZones, deuxGrands, verdictBox,
+    fondRegu, reguCases, reguBande, crans, dessinCourbe, courbe, courbeCoeur, toast });
 })();

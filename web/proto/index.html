@@ -72,7 +72,7 @@ h2{margin:0;font-family:var(--cond);font-weight:700;font-size:22px;text-transfor
 .info{width:28px;height:28px;border-radius:50%;background:var(--control);color:var(--text-2);display:inline-flex;align-items:center;justify-content:center;flex:none;font-family:Georgia,serif;font-style:italic;font-weight:700;font-size:14px}
 .badge-nouveau{display:inline-block;margin-left:8px;padding:2px 7px;border-radius:999px;background:var(--text);color:var(--on-accent);font-family:"Barlow";font-size:10px;font-weight:700;letter-spacing:.08em;vertical-align:middle}
 [role=link],[data-go]{cursor:pointer}
-.carte[role=link]:active,.ligne[role=link]:active,.tuile-allure[role=link]:active{opacity:.85}
+.carte[role=link]:active,.ligne[role=link]:active{opacity:.85}
 
 /* ---------- Boutons ---------- */
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;border-radius:999px;font-weight:700;font-size:16px;text-align:center}
@@ -98,37 +98,72 @@ nav.onglets{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px 
 nav.onglets button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:50px;font-size:11.5px;font-weight:600;color:var(--text-3);border-radius:999px;text-align:center}
 nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-weight:700}
 
-/* ---------- Tuile d'allure (Ton niveau) ---------- */
+/* ---------- Têtes d'effort (point de couleur + nom) ---------- */
 .niv-grille{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.tuile-allure{background:var(--sunken);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0;border:1.5px solid transparent}
-.tuile-allure.bougee{border-color:var(--text)}
 .ta-tete{display:flex;align-items:center;gap:7px;font-weight:600;font-size:14px;color:var(--text-2)}
 .ta-tete i{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
 .ta-tete svg{margin-left:auto;color:var(--faint)}
-.ta-v{font-size:34px}
-.ta-e{font-size:13.5px;font-weight:600;color:var(--text-3)}
-.ta-e.progres{color:var(--accent)} .ta-e.bougee{color:var(--text)}
-.ta-n{font-size:12px;color:var(--muted)}
 .tiret{display:block;width:22px;height:3px;border-radius:2px;background:var(--faint);margin:16px 0 13px}
 
-/* ---------- Ton niveau actuel en lignes (28/10) : il y a 3 mois → 4 dernières semaines ---------- */
-.niv-lignes{display:flex;flex-direction:column}
-.nl{display:grid;grid-template-columns:1fr 54px 18px 88px 14px;align-items:center;gap:6px;padding:13px 10px;border-top:1px solid var(--line);border-radius:14px}
-.nl+.nl{border-top-left-radius:0;border-top-right-radius:0}
-.nl-tete{padding:0 10px 6px;border-top:0;font-size:10px;line-height:1.25;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.nl-tete span{text-align:right}
-.nl-tete+.nl{border-top:0}
-.nl.bougee{box-shadow:inset 0 0 0 1.5px var(--text);border-top-color:transparent}
-.nl.bougee+.nl{border-top-color:transparent}
-.nl-nom{display:flex;flex-direction:column;gap:3px;min-width:0}
-.nl-nom .ta-tete{color:var(--text);font-size:15.5px;font-weight:700}
-.nl-e{font-size:12.5px;font-weight:600}
-.nl-avant{font-size:19px;color:var(--text-3);text-align:right}
-.nl-fl{color:var(--faint);display:flex;justify-content:center}
-.nl-v{text-align:right}
-.nl-v .num{font-size:30px}
-.nl-ch{color:var(--faint);display:flex}
-.blanc{color:var(--text)}
+/* ---------- Révisions Claude Design du 29/10 : courbe 11a, Ton niveau 13a, Ton mois 15a, temps par zone 16c ---------- */
+.n32{font-size:32px}.n56{font-size:56px;line-height:.85}.n56 small{font-size:.29em}
+.courbe11{display:block}
+.courbe11 .cv{font-family:var(--cond);font-weight:700}
+.niv13{gap:14px}
+.niv-titre{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.niv-titre span{font-family:var(--cond);font-size:16px;font-weight:600;text-transform:uppercase;color:var(--muted);line-height:1}
+.niv-sel{display:flex;flex-direction:column;gap:10px}
+.niv-sel .ta-tete{font-size:14.5px;min-width:0;white-space:nowrap}
+.per-mini{display:flex;background:var(--sunken);border-radius:999px;padding:3px;gap:2px;flex:none}
+.per-mini button{height:28px;padding:0 7px;border-radius:999px;font-size:12px;font-weight:700;color:var(--text-3);text-align:center;white-space:nowrap}
+.per-mini button.actif{background:var(--text);color:var(--on-accent)}
+.niv-val{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
+.niv-ec{display:flex;flex-direction:column;align-items:flex-end;gap:4px;min-width:0;text-align:right}
+.pastille-e{font-size:13px;font-weight:700;padding:4px 10px;border-radius:12px;background:var(--control);color:var(--text-2)}
+.pastille-e.citron{background:var(--accent-soft);color:var(--accent)}
+.pastille-e.violet{background:var(--attention-bg);color:var(--attention-text)}
+.pastille-e.rien{color:var(--muted)}
+.niv-vide{background:var(--sunken);border-radius:16px;padding:14px;font-size:14.5px;line-height:1.4;color:var(--text-2)}
+.niv-tuiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;border-top:1px solid var(--line);padding-top:12px}
+.niv-tuile{position:relative;background:var(--control);border:1px solid #2E3237;border-radius:14px;padding:10px 10px 10px 11px;display:flex;flex-direction:column;gap:4px;min-width:0;min-height:44px}
+.niv-tuile:active{transform:scale(.97)}
+.niv-tuile .ta-tete{font-size:12.5px;gap:6px;white-space:nowrap;overflow:hidden}
+.niv-tuile .ta-tete i{width:7px;height:7px}
+.nt-v{font-size:24px}
+.nt-v.rien{color:var(--faint)}
+.nt-e{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-3)}
+.nt-e.citron{color:var(--accent)}.nt-e.violet{color:var(--attention-text)}.nt-e.rien{color:var(--faint)}
+.fl-tuile{position:absolute;right:9px;top:36px;color:var(--muted);animation:clignote 3.2s ease-in-out infinite}
+@keyframes clignote{0%,100%{opacity:1}50%{opacity:.15}}
+@media (prefers-reduced-motion:reduce){.fl-tuile{animation:none}}
+.mois-chiffres{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mois-chiffres>div{display:flex;flex-direction:column;gap:6px}
+.mois-chiffres b{font-size:13px;font-weight:700}
+.pf{display:flex;align-items:baseline;gap:8px}
+.pf-v{font-size:32px}
+.pf-t{font-size:15px;font-weight:600;color:var(--text-2)}
+.zbarre.deux i:first-of-type{border-radius:6px 0 0 6px}.zbarre.deux i:last-of-type{border-radius:0 6px 6px 0}.zbarre.deux i:only-of-type{border-radius:6px}
+.ztuiles{display:flex;gap:10px}
+.ztuiles>div{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
+.zt{background:var(--sunken);border-radius:12px;padding:9px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.zt span{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--text-3)}
+.zt span i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+.zt b{font-size:20px}
+.zt.zero b{color:var(--faint)}.zt.zero span i{opacity:.4}
+.zcolonnes{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:end;padding-top:4px}
+.zk{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
+.zk-m{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap}
+.zk-m b{font-size:17px;color:var(--text);margin-right:2px}
+.zk i{display:block;width:100%;max-width:46px;border-radius:6px;background:var(--c)}
+.zk.zero i{background:var(--control-2);border-radius:2px}
+.zk.zero .zk-m b{color:var(--faint)}
+.zk-n{font-size:12px;font-weight:700;color:var(--c)}
+.zk-a{font-size:14px;color:var(--text);white-space:nowrap}
+.zk-a small{font-size:.75em;color:var(--text-3);margin-left:1px}
+.zk-rien{color:var(--faint)}
+.pastille{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;font-weight:700;font-size:13px;background:var(--control);color:var(--text);white-space:nowrap;flex:none}
+.pastille.bon{background:var(--accent-soft);color:var(--accent)}
+.pastille.attention{background:var(--attention-bg);color:var(--attention-text)}
 
 /* ---------- Ton mois aéré (28/10) : plus d'espace, chiffres un peu moins gros ---------- */
 .carte.aeree{gap:20px;padding:22px 18px}
@@ -369,8 +404,8 @@ svg text{font-family:"Barlow",system-ui,sans-serif}
 <script src="../mra-cheer.js?v=1"></script>
 <script src="reglages.js?v=12"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=18"></script>
-<script src="composants.js?v=6"></script>
-<script src="app.js?v=20"></script>
+<script src="calculs.js?v=19"></script>
+<script src="composants.js?v=7"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>

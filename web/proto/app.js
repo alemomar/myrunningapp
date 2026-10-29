@@ -16,7 +16,8 @@
   const etat = { session: null, email: "", profil: null, brutes: [], sorties: [], courses: [], zones: null, erreur: "", pret: false, chargeA: 0,
     ressentis: lire(CLES.ressentis, {}), types: lire(CLES.types, {}), ajouts: lire(CLES.ajouts, []),
     plis: lire(CLES.plis, {}), objectifLocal: lire(CLES.objectif, null), montre: lire(CLES.montre, null),
-    filtre: "courses", periode: 12, autresRecues: [], demo: null, now: null, memo: {} };   // 28/10 : Progression sur 12 mois par défaut
+    filtre: "courses", periode: 12, autresRecues: [], demo: null, now: null, memo: {},   // 28/10 : Progression sur 12 mois par défaut
+    nivSel: "ef", nivPer: 3 };   // Ton niveau (13a) : Facile sur 3 mois à l'ouverture, rien n'est mémorisé
   try { localStorage.removeItem("mra_proto_conseils"); localStorage.removeItem("mra_proto_replies"); } catch (e) { /* rien à faire */ }
   const maintenant = () => etat.now || Date.now();
 
@@ -107,8 +108,8 @@
     if (!der) return h + aucuneSortieHTML();
     const premieres = etat.courses.length < R.conseilMinSorties || now - etat.courses[0].ts < 28 * JOUR;
     if (premieres) h += `<section class="carte" style="background:var(--accent-soft);border:1px solid var(--accent-line);flex-direction:row;gap:12px">${ic("montre", 22)}<div><b class="lead">Tes ${etat.courses.length} premières sorties sont là</b><div class="txt2" style="font-size:14px;margin-top:4px">Ton bilan démarre dès maintenant. Ton niveau se précise après 4 semaines.</div></div></section>`;
-    const corps = modeA ? [taSortieHTML(der), niveauHTML(now, der), moisHTML(now)]
-      : [niveauHTML(now, null), moisHTML(now), derniereLigneHTML(der)];
+    const corps = modeA ? [taSortieHTML(der), niveauHTML(now), moisHTML(now)]
+      : [niveauHTML(now), moisHTML(now), derniereLigneHTML(der)];
     return h + (etat.demo === "reseau" ? `<div class="attenue" style="display:flex;flex-direction:column;gap:12px">${corps.join("")}</div>` : corps.join(""));
   }
   // 10H : rien reçu (après « Plus tard » ou « Pas de montre »).
@@ -136,37 +137,75 @@
         <div class="cap">${esc(U.relatif(s.ts, maintenant()).replace(/^./, (c) => c.toUpperCase()))} · ${esc(v.titre.toLowerCase())}</div></div><span class="chev" style="color:var(--faint)">${ic("chevron", 18)}</span></div></section>`;
   }
 
-  /* ---------- Ton niveau actuel (retour d'Omar du 28/10) ----------
-     Bien dire que c'est ton niveau d'AUJOURD'HUI (4 dernières semaines), pas une moyenne de l'année : une ligne par effort,
-     l'allure d'il y a 3 mois → l'allure actuelle en grand. */
-  function niveauHTML(now, sortieDuJour) {
-    const liste = niveau(now), bougee = sortieDuJour ? Calc.EFFORT_DE[libDe(sortieDuJour)] : null;
-    const premieres = etat.courses.length && now - etat.courses[0].ts < 28 * JOUR;
-    return `<section class="carte" aria-label="Ton niveau actuel"><div><h2>Ton niveau actuel</h2>
-        <div class="txt2" style="font-size:14px;margin-top:3px">${premieres ? "Tes allures de départ : les écarts apparaîtront quand on pourra comparer." : "Tes allures des <b style=\"color:var(--text)\">4 dernières semaines</b>, face à il y a 3 mois."}</div></div>
-      ${U.niveauLignes(liste, { bougee })}</section>`;
+  /* ---------- Ton niveau des 4 dernières semaines (13a, révision Claude Design choisie par Omar le 29/10) ----------
+     Une allure en grand (Facile à l'ouverture) avec son écart et sa courbe 11a (un point par semaine sur 1, 2 ou 3 mois), les
+     3 autres en petites tuiles : la tuile touchée passe en grand. Écarts calculés sur la période choisie. Rien n'est mémorisé. */
+  const NIV = { ef: { nom: "Facile", titre: "Ton allure facile", de: "sortie facile", un: "sortie facile", des: "sorties faciles" },
+    tempo: { nom: "Tempo", titre: "Ton allure au tempo", de: "tempo", un: "séance au tempo", des: "séances au tempo" },
+    seuil: { nom: "Seuil", titre: "Ton allure au seuil", de: "seuil", un: "séance au seuil", des: "séances au seuil" },
+    frac: { nom: "Fractionné", titre: "Ton allure en fractionné", de: "fractionné", un: "fractionné", des: "fractionnés" } };
+  function niveauHTML(now) {
+    const liste = memo(`nc${now}`, () => Calc.niveauCourbes(etat.courses, now, etat.zones, defsZones())), per = etat.nivPer;
+    const sel = liste.find((e) => e.cle === etat.nivSel) || liste[0];
+    // L'écart d'un effort sur la période : « 9 s plus lent », « nouveau », « aucun en 4 sem. ». cls : citron, violet, gris, rien.
+    const ecartDe = (e) => {
+      const ns = Calc.niveauSerie(e, now, per), manque = e.maintenant == null && e.manque > 0 && (e.cle === "ef" || e.n4 > 0);
+      if (e.maintenant == null) return { ns, txt: manque ? `encore ${e.manque} ${e.manque > 1 ? "sorties" : "sortie"}` : e.cle === "ef" ? "aucune en 4 sem." : "aucun en 4 sem.", cls: "rien" };
+      if (ns.nouveau) return { ns, txt: "nouveau", cls: "gris" };
+      if (ns.ecart == null) return { ns, txt: "reprise", cls: "gris" };
+      return { ns, ...U.ecartMots(ns.ecart) };
+    };
+    const g = ecartDe(sel), ns = g.ns, n = NIV[sel.cle], coul = U.couleurEffort(sel.cle);
+    const depuis = ns && ns.tronquee ? `depuis le ${U.jourMois(ns.serie[0].ts)}` : null;
+    const pastille = ns && !ns.nouveau && ns.ecart != null ? (g.cls === "gris" ? (depuis ? `stable ${depuis}` : `stable sur ${per} mois`) : `${g.txt} ${depuis || `qu'il y a ${per} mois`}`) : g.txt;
+    const sous = ns && ns.nouveau && ns.depuisTs ? `${ns.nDepuis} ${ns.nDepuis > 1 ? "sorties" : "sortie"} depuis le ${U.jourMois(ns.depuisTs)}`
+      : sel.maintenant == null && sel.derniere ? `dernière le ${U.jourMois(sel.derniere.ts)}` : "";
+    let vide = "";
+    if (sel.maintenant == null) {
+      if (sel.cle !== "ef" && sel.cle !== "frac" && !defsZones()) vide = "Renseigne ta FC max ou ton âge pour lire l'effort au cœur.";
+      else if (sel.manque > 0 && (sel.cle === "ef" || sel.n4 > 0)) vide = `Encore ${sel.manque} ${sel.manque > 1 ? n.des : n.un} sur 4 semaines pour mesurer ton allure.`;
+      else if (sel.derniere) vide = `Pas de ${n.de} depuis 4 semaines. Ta dernière séance : ${fmtKmPace(sel.derniere.v)} /km, le ${U.jourMois(sel.derniere.ts).replace(/\.?$/, ".")}`;
+      else vide = `Pas encore de ${n.un}.`;
+    } else if (ns.serie.length < 2) vide = "Ta courbe apparaît dès la semaine prochaine.";
+    const courbe = !vide ? U.dessinCourbe(ns.serie, { couleur: coul, rapideEnHaut: true, fmt: fmtKmPace, padMin: 6, axe: "dates", h: 104, label: n.titre }).svg : "";
+    const pers = [1, 2, 3].map((p) => `<button type="button" data-niv-per="${p}" class="${p === per ? "actif" : ""}" aria-pressed="${p === per}">${p} mois</button>`).join("");
+    const tuiles = liste.filter((e) => e !== sel).map((e) => { const ge = ecartDe(e);
+      return `<button type="button" class="niv-tuile" data-niv-sel="${e.cle}" aria-label="${esc(`${NIV[e.cle].nom} : ${e.maintenant != null ? fmtKmPace(e.maintenant) : "pas de mesure"}, ${ge.txt}. Afficher en grand`)}">
+        <span class="ta-tete" style="--c:${U.couleurEffort(e.cle)}"><i></i>${esc(NIV[e.cle].nom)}</span>
+        <span class="num nt-v${e.maintenant == null ? " rien" : ""}">${e.maintenant != null ? fmtKmPace(e.maintenant) : "—"}</span>
+        <span class="nt-e ${ge.cls}">${esc(ge.txt)}</span>${U.flecheTuile()}</button>`; }).join("");
+    return `<section class="carte niv13" aria-label="Ton niveau des 4 dernières semaines">
+      <div class="niv-titre"><h2>Ton niveau</h2><span>des 4 dernières semaines</span></div>
+      <div class="niv-sel"><div class="carte-tete"><span class="ta-tete" style="--c:${coul}"><i></i>${esc(n.titre)}</span><div class="per-mini" role="group" aria-label="Période de la courbe">${pers}</div></div>
+        <div class="niv-val">${sel.maintenant != null ? U.num(fmtKmPace(sel.maintenant), "/km", "n56") : '<span class="num n56" style="color:var(--faint)">—</span>'}
+          <div class="niv-ec"><span class="pastille-e ${g.cls}">${esc(pastille)}</span>${sous ? `<span class="cap">${esc(sous)}</span>` : ""}</div></div></div>
+      ${courbe}${vide ? `<div class="niv-vide">${esc(vide)}</div>` : ""}
+      <div class="niv-tuiles">${tuiles}</div></section>`;
   }
 
-  /* ---------- Ton mois ---------- */
+  /* ---------- Ton mois (15a, révision Claude Design choisie par Omar le 29/10) ----------
+     Une phrase de verdict, km / sorties / durée, « 61 % en zones 1-2 » avec la barre et les 5 zones en petites tuiles, puis la
+     régularité en cases chiffrées (sans « d'affilée »). */
   function moisHTML(now) {
     const fm = fcMax(), m = Calc.mois(etat.sorties, now, fm ? fm.valeur : null, fcRepos()), c = m.ce, a = m.avant, tot = m.secs.reduce((x, v) => x + v, 0);
-    const nomMois = U.MOIS[new Date(m.debut).getMonth()], moisAvant = U.MOIS_C[new Date(new Date(m.debut).getTime() - JOUR).getMonth()];
-    const sem = Calc.sortiesParSemaine(etat.sorties, now, 12), avec = sem.filter((w) => w.n > 0).length, serie = Calc.serie(etat.sorties, now);
+    const nomMois = U.MOIS[new Date(m.debut).getMonth()], moisAvant = U.MOIS[new Date(m.debut - JOUR).getMonth()];
+    const sem = Calc.sortiesParSemaine(etat.sorties, now, 12), avec = sem.filter((w) => w.n > 0).length;
     const bande = `<div class="filet"></div><div role="link" tabindex="0" data-go="#/progression/volume" style="display:flex;flex-direction:column;gap:10px" aria-label="Ta régularité : voir le détail">
-        <div class="carte-tete"><span><b>${avec} semaines sur 12</b>${serie > 1 ? `<span class="cap"> · ${serie} d'affilée</span>` : ""}</span><span style="color:var(--faint)">${ic("chevron", 16)}</span></div>${U.reguCases(sem)}<div class="carte-tete cap" style="margin-top:-2px"><span>${esc(U.jourMois(sem[0].debut))}</span><span>cette semaine</span></div></div>`;   // 28/10 : les chiffres, comme dans Progression
+        <div class="carte-tete"><b style="font-size:16px">${avec} semaines sur 12</b><span style="color:var(--faint)">${ic("chevron", 16)}</span></div>${U.reguCases(sem)}<div class="carte-tete cap" style="margin-top:-2px"><span>${esc(U.jourMois(sem[0].debut))}</span><span>cette semaine</span></div></div>`;
     if (!c.n) {
       const der = etat.courses.filter((s) => s.ts <= now).slice(-1)[0];
       return `<section class="carte aeree" aria-label="Ton mois"><span class="sur">Ton mois · ${esc(nomMois)}</span><div class="lead">Pas encore de sortie ce mois-ci.</div>
-        <div class="txt2" style="font-size:14px">${esc(U.MOIS[new Date(new Date(m.debut).getTime() - JOUR).getMonth()].replace(/^./, (x) => x.toUpperCase()))} : ${a.n} ${a.n > 1 ? "sorties" : "sortie"} · ${U.kmTxt(a.km)} km.${der ? ` Ta dernière : il y a ${Math.round((now - der.ts) / JOUR)} jours.` : ""}</div>${bande}</section>`;
+        <div class="txt2" style="font-size:14px">${esc(moisAvant.replace(/^./, (x) => x.toUpperCase()))} : ${a.n} ${a.n > 1 ? "sorties" : "sortie"} · ${U.kmTxt(a.km)} km.${der ? ` Ta dernière : il y a ${Math.round((now - der.ts) / JOUR)} jours.` : ""}</div>${bande}</section>`;
     }
-    const dKm = a.n ? c.km - a.km : null, dN = a.n ? c.n - a.n : null;
-    const zones = tot > 0 ? `<div class="filet"></div>${U.deuxGrands((m.secs[0] + m.secs[1]) / tot * 100, (m.secs[2] + m.secs[3] + m.secs[4]) / tot * 100)}${U.zbarre(m.secs, { repere: true })}${U.zcols(m.secs, false)}` : "";
-    // 28/10 (« un peu trop surchargé, il y a moyen de l'aérer ? ») : plus d'espace entre les trois parties, chiffres un peu moins gros.
+    const dKm = a.n ? c.km - a.km : null, dN = a.n ? c.n - a.n : null, pz = tot > 0 ? Calc.partsZones(m.secs) : null;
+    const phrase = [!a.n ? "" : c.km > a.km + 0.5 ? `Plus de km qu'en ${moisAvant}.` : c.km >= a.km - 0.5 ? `Autant de km qu'en ${moisAvant}.` : `Encore ${U.kmTxt(a.km - c.km)} km pour égaler ${moisAvant}.`,
+      !pz ? "" : pz.facilePct >= R.repereFacilePct ? "Bon équilibre : surtout du facile." : pz.facilePct >= R.moisFacileMinPct ? "Un peu trop d'allure soutenue." : "Beaucoup d'allure soutenue."].filter(Boolean).join(" ");
     return `<section class="carte aeree" aria-label="Ton mois"><span class="sur">Ton mois · ${esc(nomMois)}</span>
-      <div class="mini" style="gap:6px"><div>${U.num(U.kmTxt(c.km), "km", "n34")}<div class="cap" style="margin-top:4px">${dKm != null ? `<b class="${dKm >= 0 ? "citron" : "gris"}">${dKm >= 0 ? "+" : "−"}${U.kmTxt(Math.abs(dKm))} km</b> vs ${esc(moisAvant)}` : "ce mois-ci"}</div></div>
-        <div>${U.num(c.n, "", "n34")}<div class="cap" style="margin-top:4px">${c.n > 1 ? "sorties" : "sortie"}${dN ? ` <b class="${dN > 0 ? "citron" : "gris"}">${dN > 0 ? "+" : "−"}${Math.abs(dN)}</b>` : ""}</div></div>
-        <div>${U.num(U.dureeTxt(c.sec), "", "n34")}<div class="cap" style="margin-top:4px">de course</div></div></div>
-      ${zones}${bande}</section>`;
+      ${phrase ? `<div class="lead">${esc(phrase)}</div>` : ""}
+      <div class="mois-chiffres"><div>${U.num(U.kmTxt(c.km), "km", "n32")}${dKm != null && Math.abs(dKm) >= 0.05 ? `<b class="${dKm > 0 ? "citron" : "gris"}">${dKm > 0 ? "+" : "−"}${U.kmTxt(Math.abs(dKm))} km</b>` : ""}</div>
+        <div>${U.num(c.n, "", "n32")}<b class="${dN > 0 ? "citron" : "gris"}">${c.n > 1 ? "sorties" : "sortie"}${dN ? ` · ${dN > 0 ? "+" : "−"}${Math.abs(dN)}` : ""}</b></div>
+        <div>${U.num(U.dureeTxt(c.sec), "", "n32")}<b class="gris">de course</b></div></div>
+      ${pz ? `<div class="filet"></div>${U.partFacile(pz)}` : ""}${bande}</section>`;
   }
 
   /* =================== Ton bilan (3) et après une sortie (9) =================== */
@@ -260,13 +299,16 @@
     const trois = [mt("FC moy.", Math.round(s.fc), "bpm", dFc != null && Math.abs(dFc) >= 1 ? `<span class="${dFc > 0 ? "violet" : "citron"}">${dFc > 0 ? "+" : "−"}${Math.abs(dFc)} vs habitude</span>` : ""), mt("FC max", s.fcMax ? Math.round(s.fcMax) : "—", "bpm")];
     if (facile && der) trois.push(mt("Dérive", der.pct, "%", `<span class="${der.pct > R.repereDerivePct ? "violet" : "citron"}">${esc(DRIFT_LABELS[der.state].toLowerCase())}</span>`));
     else if (pd && pd.fc && pd.zone >= 2) trois.push(mt(Calc.ZONE_A[pd.zone].replace(/^./, (c) => c.toUpperCase()), Math.round(pd.fc), "bpm", v.cle === "premiere" ? "point de départ" : tFc && tFc.habitude ? `habitude ${tFc.habitude}` : ""));
-    const vr = Calc.verdictRepartition(lib, zs), id = R.idealZones[lib];
+    // Temps par zone cardio (16c, révision du 29/10) : le chiffre du verdict en tête (« 87 % en zones 1-2 », la somme exacte des
+    // zones), une colonne par zone avec ses minutes et ton allure dans la zone, puis le conseil seul.
+    const vr = Calc.verdictRepartition(lib, zs);
     return `<section class="carte"><div class="carte-tete"><h2>Cœur</h2>${info("coeur")}</div>${U.courbeCoeur(s, defs)}
       <div class="mini" style="background:var(--sunken);border-radius:14px;padding:4px">${trois.join("").replace(/class="mt"/g, 'class="mt" style="background:transparent"')}</div>
       ${facile && der ? `<div class="txt2" style="font-size:14.5px">${esc(cardiacDriftText(der))}</div>` : ""}
-      ${zs ? `<div class="filet"></div><span class="sur">Temps par zone cardio · d'après ton cœur</span><b style="font-size:14px">Ta sortie</b>${U.zbarre(zs.secs, { labels: true, haute: true })}${U.zcols(zs.secs, true, Calc.allureZonesCardio(s, etat.zones, defs))}
-
-        ${vr ? U.verdictBox(vr) : ""}` : ""}</section>`;
+      ${zs ? `<div class="filet"></div><span class="sur">Temps par zone cardio</span>
+        ${vr ? `<div class="carte-tete"><div class="pf"><span class="num pf-v citron">${vr.tete.pct} %</span><span class="pf-t">${esc(vr.tete.txt)}</span></div>${U.pastille(vr.ton, vr.mot)}</div>` : ""}
+        ${U.zcolonnes(Calc.partsZones(zs.secs).mins, Calc.allureZonesCardio(s, etat.zones, defs))}
+        ${vr ? U.verdictBox({ ton: vr.ton, titre: vr.conseil }) : ""}` : ""}</section>`;
   }
   function allureParKmHTML(s, lib) {
     const ks = lib === "Fractionné" ? null : Calc.kmParKm(s);   // 29/10 : les arrêts ne comptent plus comme du temps de course
@@ -379,7 +421,7 @@
   // L'écart d'une courbe (départ → arrivée) et sa période : « en 12 mois », ou « depuis janvier » si tes sorties commencent après.
   const ecartCourbe = (c, rapideEnHaut) => (c.debut == null ? null : Math.round(rapideEnHaut ? c.debut - c.fin : c.fin - c.debut));
   const suffixeCourbe = (c, mois) => (c.depuis > maintenant() - mois * MOIS_J * JOUR + 21 * JOUR ? `depuis ${U.MOIS[new Date(c.depuis).getMonth()]}` : `en ${mois} mois`);
-  const pastilleEcart = (e, mois, suffixe) => { const m = U.ecartMots(e, suffixe || `en ${mois} mois`); return `<span class="etiquette" style="height:26px;padding:0 10px;font-size:12.5px;font-weight:700;${m.cls === "citron" ? "background:var(--accent-soft);color:var(--accent)" : m.cls === "violet" ? "background:var(--attention-bg);color:var(--attention-text)" : ""}">${esc(m.txt)}</span>`; };
+  const pastilleEcart = (e, mois, suffixe) => { const m = U.ecartMots(e, suffixe || `en ${mois} mois`); return `<span class="etiquette" style="height:auto;min-height:26px;padding:4px 10px;border-radius:12px;line-height:1.3;text-align:right;font-size:12.5px;font-weight:700;${m.cls === "citron" ? "background:var(--accent-soft);color:var(--accent)" : m.cls === "violet" ? "background:var(--attention-bg);color:var(--attention-text)" : ""}">${esc(m.txt)}</span>`; };
   const nouveau = (t) => `${esc(t)}<span class="badge-nouveau">NOUVEAU</span>`;
   function progressionHTML(onglet, ancre) {
     const now = maintenant(), mois = etat.periode, t = ["allure", "coeur", "volume"].includes(onglet) ? onglet : "allure";
@@ -396,28 +438,31 @@
     let facile;
     if (rp.etat === "bientot") facile = `<div class="lead">Encore ${rp.manque} ${rp.manque > 1 ? "sorties faciles" : "sortie facile"} sur 4 semaines pour mesurer ton allure de départ.</div>`;
     else {
-      const c = U.courbe(rp.points, { debut, fin: now, couleur: "#C6F432", rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 3, label: "Ton allure facile", grille: "allure" });
+      const c = U.courbe(rp.points, { fin: now, mois, min: 2, finValeur: rp.valeur, couleur: "#C6F432", rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 6, label: "Ton allure facile" });
       facile = `<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">${U.num(fmtKmPace(rp.valeur), "/km", "n52")}<div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end">${c.debut != null ? pastilleEcart(ecartCourbe(c, true), mois, suffixeCourbe(c, mois)) : pastilleEcart(rp.ecart, mois)}${rp.modeCoeur ? `<span class="cap">à cœur égal · ${rp.fcRef} bpm</span>` : ""}</div></div>${c.svg}`;
     }
     const obj = o ? `<div class="filet"></div><div style="display:flex;align-items:center;gap:10px;font-size:14.5px">${ic("drapeau", 17)}<span class="txt2" style="flex:1">Ton objectif <b style="color:var(--text)">${esc(o.label)}</b></span>${o.allure ? `<span class="txt2">${fmtKmPace(o.allure)}/km</span>` : ""}</div>` : "";
     // Tes allures par effort : Tempo, Seuil, Fractionné (le Facile est « Ton allure facile », Q2).
-    const liste = Calc.alluresParEffort(etat.courses, now, mois, etat.zones, defs, null, mois);
+    // Les mesures d'un mois de plus que la période : le 1er point d'une courbe à la semaine regarde les 4 semaines d'avant.
+    const liste = Calc.alluresParEffort(etat.courses, now, mois + 1, etat.zones, defs, null, mois);
     // 28/10 (« sur 12 mois, je ne vois aucune séance de fractionné ») : la courbe suit la période choisie, même sans séance dans
-    // les 4 dernières semaines ; le chiffre en grand est alors celui de ta dernière séance, avec sa date.
+    // les 4 dernières semaines ; le chiffre en grand est alors le bout de la courbe (son mois, ou il y a combien de semaines).
     const efforts = liste.filter((e) => e.cle !== "ef").map((e, i) => {
       const coul = U.couleurType(e.cle === "tempo" ? "Tempo" : e.cle === "seuil" ? "Seuil" : "Fractionné");
       const quoi = e.cle === "frac" ? "fractionné" : e.cle === "tempo" ? "séance au tempo" : "séance au seuil";
-      const pts = e.points.slice().sort((a, b) => a.ts - b.ts), dernier = pts[pts.length - 1];
-      const c = pts.length >= 3 ? U.courbe(pts, { debut, fin: now, couleur: coul, rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 4, label: `Allure ${e.nom}`, grille: "allure" }) : null;
+      const pts = e.points.slice().sort((a, b) => a.ts - b.ts), dans = pts.filter((p) => p.ts >= debut), dernier = dans[dans.length - 1];
+      const c0 = dans.length ? U.courbe(pts, { fin: now, mois, min: e.cle === "frac" ? R.fracMinSorties : R.effortMinSorties, finValeur: e.maintenant, couleur: coul, rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 6, label: `Allure ${e.nom}` }) : null;
+      const c = c0 && c0.debut != null ? c0 : null;
       let bas;
       if (c) bas = c.svg;
-      else if (pts.length) bas = `<div class="txt2" style="font-size:14px">${pts.length} ${pts.length > 1 ? "séances" : "séance"} sur ${mois} mois. Encore ${3 - pts.length} pour tracer ta tendance.</div>`;
+      else if (dans.length) bas = `<div class="txt2" style="font-size:14px">Ta courbe démarre avec ${mois <= 3 ? "une 2e semaine" : "un 2e mois"} de mesures.</div>`;
       else bas = `<div class="txt2" style="font-size:14px">${e.cle !== "frac" && !defs ? "Renseigne ta FC max ou ton âge pour lire l'effort au cœur." : `Pas de ${quoi} sur ${mois} mois.`}</div>`;
       // 29/10 (retour d'Omar) : un bloc bien distinct par type d'allure, construit comme « Ton allure facile ».
-      const ec = c && c.debut != null ? ecartCourbe(c, true) : e.ecart, suf = c && c.debut != null ? suffixeCourbe(c, mois) : null;
+      const ec = c ? ecartCourbe(c, true) : e.ecart, suf = c ? suffixeCourbe(c, mois) : null;
       const titre = { tempo: "Ton allure au tempo", seuil: "Ton allure au seuil", frac: "Ton allure en fractionné" }[e.cle];
-      const grand = e.maintenant != null ? fmtKmPace(e.maintenant) : dernier ? fmtKmPace(dernier.v) : null;
-      const sous = e.maintenant != null ? "tes 4 dernières semaines" : dernier ? `ton dernier ${quoi === "fractionné" ? "fractionné" : quoi.replace("séance", "passage")}, le ${esc(U.jourMois(dernier.ts).replace(/\.$/, ""))} · rien depuis` : "";
+      // Sans valeur des 4 dernières semaines : le chiffre en grand = le bout de la courbe, et depuis quand il n'y a plus rien.
+      const grand = e.maintenant != null ? fmtKmPace(e.maintenant) : c ? fmtKmPace(c.fin) : dernier ? fmtKmPace(dernier.v) : null;
+      const sous = e.maintenant != null ? "tes 4 dernières semaines" : dernier ? `rien depuis le ${esc(U.jourMois(dernier.ts).replace(/\.$/, ""))}` : "";
       return `<section class="carte" id="graphe-${e.cle}"><div class="carte-tete"><span class="ta-tete" style="--c:${coul};color:var(--text);font-size:16px"><i></i>${esc(titre)}</span>${info("efforts")}</div>
         ${grand ? `<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">${U.num(grand, "/km", "n52")}<div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end">${c || e.maintenant != null ? pastilleEcart(ec, mois, suf) : ""}<span class="cap">${sous}</span></div></div>` : ""}
         ${bas}</section>`;
@@ -446,18 +491,17 @@
     if (fm) {
       const z = Calc.zonesCardioPeriode(etat.courses, now, mois, fm.valeur, fr), tot = z.secs.reduce((a, v) => a + v, 0);
       const dur = etat.courses.filter((s) => s.ts >= now - mois * MOIS_J * JOUR && Calc.coeurFiable(s)).reduce((a, s) => a + s.dur, 0);
-      if (z.n) { const fac = (z.secs[0] + z.secs[1]) / tot * 100;
-        zones = `${U.deuxGrands(fac, 100 - fac)}${U.zbarre(z.secs, { repere: true })}${U.zcols(z.secs, false, Calc.allureZonesCardioPeriode(etat.courses, now, mois, etat.zones, z.defs))}
-          ${U.verdictBox(fac >= R.repereFacilePct ? { ton: "bon", titre: `Bon équilibre : ${Math.round(fac)} % en facile.` } : { ton: "presque", titre: `Un peu trop de soutenu : vise ${R.repereFacilePct} % en facile.` })}
+      if (z.n) { const pz = Calc.partsZones(z.secs), fac = pz.facilePct;   // 29/10 : % arrondis pour faire 100 pile
+        zones = `${U.deuxGrands(fac, pz.soutenuPct)}${U.zbarre(z.secs, { repere: true })}${U.zcols(z.secs, false, Calc.allureZonesCardioPeriode(etat.courses, now, mois, etat.zones, z.defs))}
+          ${U.verdictBox(fac >= R.repereFacilePct ? { ton: "bon", titre: `Bon équilibre : ${fac} % en facile.` } : { ton: "presque", titre: `Un peu trop de soutenu : vise ${R.repereFacilePct} % en facile.` })}
           <div class="cap">${z.n} sorties · ${esc(U.dureeTxt(dur))} de course</div>`; }
       else zones = `<div class="txt2">Pas de sortie au cœur fiable sur la période.</div>`;
     }
-    const debut = now - mois * MOIS_J * JOUR;
     const cm = Calc.indicateurDansLeTemps(etat.courses, now, mois, Calc.coeurMoyen), der = Calc.indicateurDansLeTemps(etat.courses, now, mois, Calc.derive);
     const tousCm = etat.courses.filter((s) => s.type === "EF" || s.type === "Long").map((s) => ({ ts: s.ts, v: Calc.coeurMoyen(s) })).filter((p) => p.v != null);
     const tousDer = etat.courses.filter((s) => s.type === "EF" || s.type === "Long").map((s) => ({ ts: s.ts, v: Calc.derive(s) })).filter((p) => p.v != null);
-    const cC = U.courbe(tousCm, { debut, fin: now, couleur: "#F2F3F0", fmt: (v) => String(Math.round(v)), padMin: 2, label: "Ton cœur en sortie facile", vide: "Pas encore de sortie facile au cœur fiable sur la période." });
-    const cD = U.courbe(tousDer, { debut, fin: now, couleur: "#F2F3F0", fmt: (v) => `${Math.round(v)} %`, padMin: 1, repere: { v: R.repereDerivePct, label: `${R.repereDerivePct} %` }, label: "Dérive cardiaque", vide: "Pas encore de sortie facile de 40 min ou plus sur la période." });
+    const cC = U.courbe(tousCm, { fin: now, mois, couleur: "#F2F3F0", fmt: (v) => String(Math.round(v)), padMin: 3, label: "Ton cœur en sortie facile", vide: "Pas encore de sortie facile au cœur fiable sur la période." });
+    const cD = U.courbe(tousDer, { fin: now, mois, couleur: "#F2F3F0", fmt: (v) => `${Math.round(v)} %`, padMin: 1.5, repere: { v: R.repereDerivePct, label: `${R.repereDerivePct} %` }, label: "Dérive cardiaque", vide: "Pas encore de sortie facile de 40 min ou plus sur la période." });
     const ecartBpm = cC.debut != null ? Math.round(cC.debut - cC.fin) : null;
     const sf = fm ? Calc.sortiesFacilesZones(etat.courses, now, fm.valeur, fr) : [], vraies = sf.filter((x) => x.vraiment).length;
     // La valeur en grand = tes 4 dernières semaines = le bout de la courbe (même chiffre des deux côtés).
@@ -489,9 +533,9 @@
         <text x="${(x + bw / 2).toFixed(1)}" y="142" fill="#5A6068" font-size="${vol.length > 6 ? 9 : 10.5}" text-anchor="middle">${U.MOIS_C[new Date(m.debut).getMonth()]}</text>`; }).join("")}</svg>`;
     const dernier = vol[vol.length - 1], avant = vol[vol.length - 2], d = avant ? dernier.km - avant.km : null;
     const sem = Calc.sortiesParSemaine(etat.sorties, now, 12), avec = sem.filter((w) => w.n > 0).length, serie = Calc.serie(etat.sorties, now);
-    const cad = Calc.indicateurDansLeTemps(etat.courses, now, mois, Calc.cadence), debut = now - mois * MOIS_J * JOUR;
+    const cad = Calc.indicateurDansLeTemps(etat.courses, now, mois, Calc.cadence);
     const tousCad = etat.courses.filter((s) => s.type === "EF" || s.type === "Long").map((s) => ({ ts: s.ts, v: Calc.cadence(s) })).filter((p) => p.v != null);
-    const cC = U.courbe(tousCad, { debut, fin: now, couleur: "#F2F3F0", fmt: (v) => String(Math.round(v)), padMin: 2, repere: { v: R.repereCadence, label: String(R.repereCadence) }, label: "Cadence", vide: "Pas de cadence mesurée sur tes sorties faciles de la période." });
+    const cC = U.courbe(tousCad, { fin: now, mois, couleur: "#F2F3F0", fmt: (v) => String(Math.round(v)), padMin: 3, repere: { v: R.repereCadence, label: String(R.repereCadence) }, label: "Cadence", vide: "Pas de cadence mesurée sur tes sorties faciles de la période." });
     const valCad = cC.fin ?? cad.maintenant, ecCad = cC.debut != null ? Math.round(cC.fin - cC.debut) : null;
     const recs = Calc.records(etat.sorties);
     return `<section class="carte"><div class="carte-tete"><h2>Volume par mois</h2></div><div style="display:flex;align-items:flex-end;justify-content:space-between">${U.num(U.kmTxt(dernier.km), "km", "n52")}${d != null ? `<b class="${d >= 0 ? "citron" : "gris"}" style="font-size:13.5px">${d >= 0 ? "+" : "−"}${U.kmTxt(Math.abs(d))} km vs ${U.MOIS_C[new Date(avant.debut).getMonth()]}</b>` : ""}</div>${barres}</section>
@@ -601,7 +645,7 @@
           ${[[`Tes courses depuis le ${prem ? U.jourMois(prem.ts) : "—"}`, true], ["Ton cœur, seconde par seconde", true], ["On classe tes sorties", null], ["On calcule ton niveau", false]].map(([t, ok]) => `<div style="display:flex;gap:10px;align-items:center;color:${ok === false ? "var(--faint)" : "var(--text-2)"}">${ok ? `<span class="citron">${ic("check", 16, 2.6)}</span>` : `<span style="width:16px;height:16px;border-radius:50%;border:2px solid ${ok === null ? "var(--accent)" : "var(--line-empty)"};border-top-color:transparent;display:inline-block"></span>`}${esc(t)}</div>`).join("")}</section>
         <div class="cap" style="text-align:center">Import des 6 derniers mois · modifiable dans Profil › Ta montre</div>${suite("#/premiers/8", "Continuer (démo)")}`; })(),
       8: `<span class="fin-ic ok" style="width:44px;height:44px;margin-top:20px">${ic("check", 22, 3)}</span><h1 class="h-plein">Tout est prêt${pseudo ? `, ${esc(pseudo)}` : ""}</h1><div class="txt2" style="margin-top:-6px">${etat.sorties.filter((s) => s.ts >= maintenant() - 183 * JOUR).length} sorties reçues. Voici où tu en es.</div>
-        <div><h2>Ton niveau actuel</h2><div class="txt2" style="font-size:14px;margin-top:3px">Tes allures des 4 dernières semaines, face à il y a 3 mois.</div></div><section class="carte" style="padding:10px 6px">${U.niveauLignes(niveau(maintenant()))}</section>
+        ${niveauHTML(maintenant())}
         <span class="sur" style="margin-top:6px">Pour aller plus loin · facultatif</span><div class="groupe"><button type="button" class="rangee" data-go="#/profil/chrono"><span style="flex:1"><b style="display:block">Ajoute un chrono récent</b><span class="cap">Sert quand ta montre ne donne pas ton cœur</span></span>${ic("chevron", 16)}</button><button type="button" class="rangee" data-go="#/profil/objectif"><span style="flex:1"><b style="display:block">Fixe-toi un objectif</b><span class="cap">Un repère dans Progression et ton conseil</span></span>${ic("chevron", 16)}</button></div>
         ${suite("#/accueil", "Voir mon accueil")}`,
     };
@@ -612,10 +656,10 @@
   const INFOS = {
     bilan: ["Comment on fait ton bilan", "On compare ton cœur sur les passages à la même allure, sur tes 6 dernières semaines (12 s'il le faut). Sans cœur fiable : ton allure et ton ressenti. Rien à comparer : la sortie devient ton point de départ."],
     coeur: ["Tes zones cardio", null],
-    "allure-facile": ["Ton allure facile", "Chaque sortie facile est ramenée à ton cœur habituel en facile : on voit si tu cours plus vite pour le même effort. La valeur : tes 4 dernières semaines. L'écart et la courbe : la période choisie."],
+    "allure-facile": ["Ton allure facile", "Chaque sortie facile est ramenée à ton cœur habituel en facile : on voit si tu cours plus vite pour le même effort. La valeur : tes 4 dernières semaines. La courbe : un point par mois (par semaine sur 3 mois) sur la période choisie, pointillé = ton point de départ."],
     efforts: ["Tes allures par effort", "L'allure que tu tiens quand ton cœur est en zone 3 (Tempo) ou 4 (Seuil), même au milieu d'une sortie. Fractionné : l'allure de tes blocs d'effort."],
     croisements: ["Les croisements", "Allure × régularité : ton allure facile les semaines où tu cours 2 fois ou plus, face aux semaines à une sortie. Allure × ressenti : comment tu ressens tes sorties faciles, d'un mois à l'autre."],
-    "coeur-facile": ["Ton cœur en sortie facile", "Le cœur moyen de tes sorties faciles au cœur fiable. Courbe : la moyenne glissante sur 4 semaines."],
+    "coeur-facile": ["Ton cœur en sortie facile", "Le cœur moyen de tes sorties faciles au cœur fiable. Courbe : un point par mois (par semaine sur 3 mois)."],
     derive: ["La dérive cardiaque", "De combien ton cœur monte entre la 1re et la 2e moitié d'une sortie facile d'au moins 40 min à allure régulière. Sous 5 % : ton endurance tient."],
     "sorties-faciles": ["Tes sorties faciles", "Tes 6 dernières sorties faciles au cœur fiable, et la part de leur temps en zones 1-2. Vraiment facile : 80 % ou plus."],
     repos: ["Ton cœur au repos", "Bientôt lu chaque matin sur ta montre (prochaine version de RunSync). Pour l'instant, le prototype montre la valeur de ton profil."],
@@ -739,6 +783,9 @@
     const fe = t.closest("[data-feuille]"); if (fe) { e.stopPropagation(); feuille(fe.getAttribute("data-feuille"), fe.getAttribute("data-id")); return; }
     const f = t.closest("[data-filtre]"); if (f) { etat.filtre = f.getAttribute("data-filtre"); rendre(true); return; }
     const rp = t.closest("[data-replie]"); if (rp) { const k = rp.getAttribute("data-replie"); etat.plis = { ...etat.plis, [k]: estReplie(k) ? 0 : 1 }; garder(CLES.plis, etat.plis); rendre(true); return; }
+    // Ton niveau (13a) : la tuile touchée passe en grand ; 1, 2 ou 3 mois de courbe.
+    const nv = t.closest("[data-niv-sel]"); if (nv) { etat.nivSel = nv.getAttribute("data-niv-sel"); rendre(true); return; }
+    const np = t.closest("[data-niv-per]"); if (np) { etat.nivPer = Number(np.getAttribute("data-niv-per")); rendre(true); return; }
     const pe = t.closest("[data-periode]"); if (pe) { etat.periode = Number(pe.getAttribute("data-periode")); rendre(true); return; }
     const mo = t.closest("[data-montre]"); if (mo) { etat.montre = mo.getAttribute("data-montre"); garder(CLES.montre, etat.montre); rendre(true); return; }
     const od = t.closest("[data-obj-dist]"); if (od) { od.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("actif", b === od)); return; }
@@ -767,7 +814,7 @@
     if (e.key === "Escape") { fermerCalque(); return; }
     const g = e.target.closest && e.target.closest("[data-go][role=link]"); if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); location.hash = g.getAttribute("data-go"); }
   });
-  window.addEventListener("hashchange", () => { fermerCalque(); rendre(false); });
+  window.addEventListener("hashchange", () => { fermerCalque(); etat.nivSel = "ef"; etat.nivPer = 3; rendre(false); });   // Ton niveau : rien n'est mémorisé
 
   /* =================== Chargement et « après une sortie » (9) =================== */
   async function charger() {

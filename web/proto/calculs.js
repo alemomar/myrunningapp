@@ -628,23 +628,42 @@ const Calc = (() => {
     const tot = secs.reduce((a, v) => a + v, 0);
     return tot > 0 ? { secs, defs, tot } : null;
   }
+  // Arrondis qui tombent juste (29/10, révision Claude Design 16c : « 13 % annoncé, 12 % affiché ») : on arrondit chaque part
+  // au plus fort reste, pour que la somme des chiffres affichés fasse exactement `total` (100 %, ou la durée en minutes).
+  function repartir(vals, total) {
+    const s = vals.reduce((a, v) => a + (v > 0 ? v : 0), 0);
+    if (!(s > 0)) return vals.map(() => 0);
+    const brut = vals.map((v) => (v > 0 ? v : 0) / s * total), ent = brut.map(Math.floor);
+    let reste = total - ent.reduce((a, v) => a + v, 0);
+    brut.map((v, i) => [v - ent[i], i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (reste > 0) { ent[i]++; reste--; } });
+    return ent;
+  }
+  // Les 5 zones d'un temps en secondes : % et minutes arrondis juste, part en zones 1-2.
+  function partsZones(secs) {
+    const tot = secs.reduce((a, v) => a + v, 0), pcts = repartir(secs, 100), mins = repartir(secs, Math.round(tot / 60));
+    return { pcts, mins, facilePct: pcts[0] + pcts[1], soutenuPct: pcts[2] + pcts[3] + pcts[4] };
+  }
   // Verdict de répartition face à l'idéal du type de sortie (bilan, détail). ton : bon, presque, attention.
+  // Les chiffres sont ceux affichés (partsZones) : « 7 min au-dessus » = la somme des minutes des zones 3 à 5 qu'on voit.
+  // `tete` : le chiffre en tête du bloc (16c), `mot` : la pastille, `conseil` : l'encadré seul.
   function verdictRepartition(lib, zs, reg) {
     const r = reg || REGLAGES, id = r.idealZones[lib];
     if (!id || !zs) return null;
-    const pct = zs.secs.map((v) => v / zs.tot * 100), facile = pct[0] + pct[1], z2max = zs.defs[1].max;
+    const pz = partsZones(zs.secs), facile = pz.facilePct, z2max = zs.defs[1].max;
+    const MOT = { bon: "bien", presque: "presque", attention: "trop soutenu" };
+    const avec = (v, tete) => ({ ...v, mot: MOT[v.ton], tete, pz });
     if (lib === "Sortie facile" || lib === "Longue") {
-      const mn = Math.round((zs.secs[2] + zs.secs[3] + zs.secs[4]) / 60);
-      if (mn < 1) return { ton: "bon", titre: "Parfait : tout en zones 1-2.", phrase: "Exactement ce qu'on attend d'une sortie facile.", court: "Parfait : toute la sortie en zones 1-2." };
-      const txt = `${mn} min (${Math.round(100 - facile)} %) au-dessus de la zone 2. Ralentis dès ${z2max} bpm.`;
-      return mn < r.idealPresqueMin ? { ton: "presque", titre: `Presque : ${Math.round(facile)} % en facile.`, phrase: txt, court: `Presque : ${mn} min au-dessus de la zone 2. Ralentis dès ${z2max} bpm.` }
-        : { ton: "attention", titre: `Trop haut pour une sortie facile : ${Math.round(facile)} % en facile.`, phrase: txt, court: `Trop haut : ${mn} min au-dessus de la zone 2. Ralentis dès ${z2max} bpm.` };
+      const mn = pz.mins[2] + pz.mins[3] + pz.mins[4], tete = { pct: facile, txt: "en zones 1-2" };
+      if (mn < 1) return avec({ ton: "bon", titre: "Parfait : tout en zones 1-2.", phrase: "Exactement ce qu'on attend d'une sortie facile.", court: "Parfait : toute la sortie en zones 1-2.", conseil: "Toute la sortie en zones 1-2 : exactement ce qu'on attend d'une sortie facile." }, tete);
+      const txt = `${mn} min (${100 - facile} %) au-dessus de la zone 2. Ralentis dès ${z2max} bpm.`, cs = `${mn} min au-dessus de la zone 2. Ralentis dès ${z2max} bpm.`;
+      return avec(mn < r.idealPresqueMin ? { ton: "presque", titre: `Presque : ${facile} % en facile.`, phrase: txt, court: `Presque : ${cs}`, conseil: cs }
+        : { ton: "attention", titre: `Trop haut pour une sortie facile : ${facile} % en facile.`, phrase: txt, court: `Trop haut : ${cs}`, conseil: cs }, tete);
     }
-    const cible = id.cible.reduce((a, i) => a + pct[i], 0), nomZ = id.cible.length > 1 ? `zones ${id.cible[0] + 1}-${id.cible[id.cible.length - 1] + 1}` : `zone ${id.cible[0] + 1}`;
-    const pour = lib === "Fractionné" ? "un fractionné" : lib === "Tempo" ? "un tempo" : "un seuil";
-    if (cible >= id.ciblePct && facile >= 25) return { ton: "bon", titre: `Bonne répartition pour ${pour}.`, phrase: `${Math.round(cible)} % en ${nomZ}, le reste surtout en facile : échauffement et retour au calme bien faits.`, court: `Bien construit : échauffement et retour au calme en facile, bloc en ${nomZ}.` };
-    if (cible < id.ciblePct) return { ton: "presque", titre: `Bloc un peu court pour ${pour}.`, phrase: `${Math.round(cible)} % en ${nomZ} : vise ${id.ciblePct} % ou plus.`, court: `Bloc un peu court : ${Math.round(cible)} % en ${nomZ}, vise ${id.ciblePct} %.` };
-    return { ton: "attention", titre: "Peu de facile autour du bloc.", phrase: "Prends 10 min d'échauffement et de retour au calme en facile.", court: "Peu de facile autour du bloc : 10 min d'échauffement et de retour au calme." };
+    const cible = id.cible.reduce((a, i) => a + pz.pcts[i], 0), nomZ = id.cible.length > 1 ? `zones ${id.cible[0] + 1}-${id.cible[id.cible.length - 1] + 1}` : `zone ${id.cible[0] + 1}`;
+    const pour = lib === "Fractionné" ? "un fractionné" : lib === "Tempo" ? "un tempo" : "un seuil", tete = { pct: cible, txt: `en ${nomZ}` };
+    if (cible >= id.ciblePct && facile >= 25) return avec({ ton: "bon", titre: `Bonne répartition pour ${pour}.`, phrase: `${cible} % en ${nomZ}, le reste surtout en facile : échauffement et retour au calme bien faits.`, court: `Bien construit : échauffement et retour au calme en facile, bloc en ${nomZ}.`, conseil: `Bien construit : échauffement et retour au calme en facile, bloc en ${nomZ}.` }, tete);
+    if (cible < id.ciblePct) return avec({ ton: "presque", titre: `Bloc un peu court pour ${pour}.`, phrase: `${cible} % en ${nomZ} : vise ${id.ciblePct} % ou plus.`, court: `Bloc un peu court : ${cible} % en ${nomZ}, vise ${id.ciblePct} %.`, conseil: `Bloc un peu court : vise ${id.ciblePct} % ou plus en ${nomZ}.` }, tete);
+    return avec({ ton: "attention", titre: "Peu de facile autour du bloc.", phrase: "Prends 10 min d'échauffement et de retour au calme en facile.", court: "Peu de facile autour du bloc : 10 min d'échauffement et de retour au calme.", conseil: "Prends 10 min d'échauffement et de retour au calme en facile." }, tete);
   }
   // Part du temps en zones 1-2 et 3-5 sur une fenêtre de jours (courses au cœur fiable), sortie `exclureId` mise de côté.
   function partZones(sorties, finTs, jours, fmax, frepos, reg, exclureId) {
@@ -779,6 +798,54 @@ const Calc = (() => {
     }
     return out;
   }
+  // Courbes 11a (révision Claude Design du 29/10) : les points d'une courbe sur `mois` mois.
+  // pas "mois" : un point par mois (médiane des mesures du mois) ; le mois en cours = tes 4 dernières semaines, le même chiffre
+  // que la valeur en grand. pas "semaine" (1 à 3 mois : un point par mois n'en donnerait qu'un à trois) : un point par semaine,
+  // médiane des 4 semaines qui précèdent. Un trou (v null) = rien de mesuré : tronçon en pointillé. La courbe démarre à la
+  // première mesure. `fin` (facultatif) remplace la valeur du dernier point (la valeur en grand, null s'il n'y en a pas).
+  function serieCourbe(points, nowTs, mois, pas, o) {
+    const opt = o || {}, pts = points.filter((p) => p && p.v != null && !Number.isNaN(p.v) && p.ts <= nowTs), fen = 28 * JOUR;
+    const medFen = (de, a) => { const l = pts.filter((p) => p.ts > de && p.ts <= a).map((p) => p.v); return l.length >= (opt.min || 1) ? med(l) : null; };
+    const out = [];
+    if (pas === "mois") {
+      const d = new Date(nowTs);
+      for (let i = mois - 1; i >= 0; i--) {
+        const deb = new Date(d.getFullYear(), d.getMonth() - i, 1).getTime(), fin = new Date(d.getFullYear(), d.getMonth() - i + 1, 1).getTime();
+        out.push({ ts: i ? deb : nowTs, mois: new Date(deb).getMonth(), v: i ? medFen(deb - 1, fin - 1) : medFen(nowTs - fen, nowTs) });
+      }
+    } else {
+      for (let k = Math.floor(mois * MOIS_J / 7); k >= 0; k--) { const t = nowTs - k * SEM; out.push({ ts: t, mois: new Date(t).getMonth(), v: medFen(t - fen, t) }); }
+    }
+    if ("fin" in opt) out[out.length - 1] = { ...out[out.length - 1], v: opt.fin };
+    const i0 = out.findIndex((p) => p.v != null);
+    return i0 < 0 ? [] : out.slice(i0);
+  }
+  // Ton niveau (Accueil, 13a du 29/10) : pour chaque effort, l'allure des 4 dernières semaines (celle de niveauActuel), toutes
+  // les mesures de l'année (la courbe : un point par semaine), la première et la dernière, et ce qui manque pour une valeur.
+  function niveauCourbes(sorties, nowTs, z, defs, reg) {
+    const r = reg || REGLAGES, liste = niveauActuel(sorties, nowTs, z, defs, r), rp = repere(sorties, nowTs, r);
+    const tous = alluresParEffort(sorties, nowTs, 13, z, defs, r, 3);
+    return liste.map((e) => {
+      const brut = e.cle === "ef" ? (rp.points || []) : tous.find((x) => x.cle === e.cle).points;
+      const pts = brut.filter((p) => p.ts <= nowTs && p.v != null).sort((a, b) => a.ts - b.ts);
+      const n4 = pts.filter((p) => p.ts > nowTs - r.effortFenetreJours * JOUR).length;
+      const min = e.cle === "ef" ? r.repereMinSorties : e.cle === "frac" ? r.fracMinSorties : r.effortMinSorties;
+      return { ...e, points: pts, premiere: pts[0] || null, derniere: pts[pts.length - 1] || null, n4,
+        min: e.cle === "ef" ? 2 : e.cle === "frac" ? r.fracMinSorties : r.effortMinSorties,   // par point de courbe (comme repereCourbe et l'« il y a 3 mois »)
+        manque: e.maintenant != null ? 0 : e.cle === "ef" && rp.etat === "bientot" ? rp.manque : Math.max(min - n4, 0) };
+    });
+  }
+  // La courbe d'un effort sur 1, 2 ou 3 mois, et son écart (> 0 : plus vite) depuis la 1re valeur de la période.
+  // tronquee : pas de valeur tout au début (l'écart se lit alors « depuis le 5 août ») ; nouveau : seulement la valeur
+  // d'aujourd'hui (« 3 sorties depuis le 12 oct. »).
+  function niveauSerie(e, nowTs, mois) {
+    if (e.maintenant == null) return null;
+    const serie = serieCourbe(e.points, nowTs, mois, "semaine", { fin: e.maintenant, min: e.min || 1 });
+    const debut = nowTs - Math.floor(mois * MOIS_J / 7) * SEM, nouveau = serie.filter((p) => p.v != null).length < 2;
+    const depuis = serie.length ? e.points.filter((p) => p.ts > serie[0].ts - 28 * JOUR && p.ts <= nowTs) : [];
+    return { serie, nouveau, tronquee: !serie.length || serie[0].ts > debut, ecart: nouveau ? null : Math.round(serie[0].v) - Math.round(e.maintenant),
+      depuisTs: depuis.length ? depuis[0].ts : null, nDepuis: depuis.length };
+  }
   // Ton niveau actuel (Accueil) : Facile, Tempo, Seuil, Fractionné sur tes 4 dernières semaines, face à il y a 3 mois.
   // 28/10 (question d'Omar « pourquoi 7'12 ici et 7'09 dans Progression ? ») : le Facile est « Ton allure facile » de la
   // Progression (allure de tes sorties faciles ramenée à un même cœur, décision Q2 du Challenge), le même chiffre partout.
@@ -821,5 +888,7 @@ const Calc = (() => {
     records, cap, fcMaxEffective, moyenne, med, kmTxt, allureTxt, TITRES, ZONE_A,
     // V2
     nomCourt, passageDominant, recordsBattus, ressentiCran, EFFORT_DE, frise3, zonesSortie, verdictRepartition, partZones, premierKm,
-    allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, kmCoeur, kmParKm, allureZonesCardio, allureZonesCardioPeriode, JOUR, SEM, MOIS_J };
+    allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, kmCoeur, kmParKm, allureZonesCardio, allureZonesCardioPeriode, JOUR, SEM, MOIS_J,
+    // Révisions du 29/10
+    repartir, partsZones, serieCourbe, niveauCourbes, niveauSerie };
 })();

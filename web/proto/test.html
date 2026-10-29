@@ -38,7 +38,7 @@ window.__appels = [];
 <script src="../logic.js?v=113"></script>
 <script src="reglages.js?v=12"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=18"></script>
+<script src="calculs.js?v=19"></script>
 <script src="conseil.js?v=3"></script>
 <script>
 (async () => {
@@ -220,6 +220,27 @@ window.__appels = [];
   const na = Calc.niveauActuel(fac, NOW, z, defs)[0], rpNa = Calc.repere(fac, NOW);
   ok(na.cle === "ef" && na.maintenant === rpNa.valeur && na.maintenant === 360 && na.avant === 370 && na.ecart === 10, "Ton niveau actuel : le Facile de l'Accueil = « Ton allure facile » de la Progression (même chiffre, 6'10 → 6'00)");
   ok(Math.abs(niv.maintenant - 400) <= 2 && Math.abs(niv.avant - 410) <= 2 && niv.ecart === niv.avant - niv.maintenant, "Ton niveau actuel (28/10) : l'allure d'il y a 3 mois → celle des 4 dernières semaines (" + fmtKmPace(niv.avant) + " → " + fmtKmPace(niv.maintenant) + ")");
+
+  // Révisions Claude Design du 29/10 (11a, 13a, 15a, 16c)
+  const pzT = Calc.partsZones([63, 806, 114, 13, 4]);
+  ok(pzT.pcts.reduce((a, v) => a + v, 0) === 100 && pzT.facilePct + pzT.soutenuPct === 100 && pzT.soutenuPct === pzT.pcts[2] + pzT.pcts[3] + pzT.pcts[4] && pzT.soutenuPct === 13,
+    "Zones (16c) : les % affichés font 100 pile, le chiffre annoncé = la somme des zones (" + pzT.pcts.join(" + ") + ", soutenu " + pzT.soutenuPct + " %)");
+  ok(vrF.tete.pct === vrF.pz.facilePct && vrF.mot === "presque" && /^7 min au-dessus de la zone 2/.test(vrF.conseil) && vrF.pz.mins[2] + vrF.pz.mins[3] + vrF.pz.mins[4] === 7,
+    "Temps par zone (16c) : « " + vrF.tete.pct + " % en zones 1-2 » en tête, pastille « presque », l'encadré = le conseil seul, minutes au-dessus = celles des colonnes");
+  const ptsC = [{ ts: Date.parse("2026-08-10T08:00:00"), v: 400 }, { ts: Date.parse("2026-08-20T08:00:00"), v: 410 }, { ts: Date.parse("2026-10-20T08:00:00"), v: 390 }];
+  const scM = Calc.serieCourbe(ptsC, NOW, 3, "mois");
+  ok(scM.length === 3 && scM[0].v === 405 && scM[1].v === null && scM[2].v === 390 && scM[2].ts === NOW, "Courbe 11a : un point par mois (août 6'45), septembre sans sortie = trou, octobre = tes 4 dernières semaines");
+  ok(Calc.serieCourbe(ptsC, NOW, 6, "mois").length === 3 && Calc.serieCourbe(ptsC, NOW, 3, "mois", { fin: 385 })[2].v === 385, "Courbe 11a : démarre à la 1re mesure ; le bout = la valeur en grand");
+  const eT = { cle: "tempo", maintenant: 400, min: 2, points: [[100, 410], [95, 410], [40, 405], [33, 405], [10, 400], [3, 400]].map(([j, v]) => ({ ts: NOW - j * JOUR, v })) };
+  const ns3 = Calc.niveauSerie(eT, NOW, 3), ns1 = Calc.niveauSerie(eT, NOW, 1);
+  ok(ns3.serie.length === 14 && ns3.ecart === 10 && !ns3.nouveau && ns3.serie[13].v === 400, "Ton niveau (13a) : un point par semaine sur 3 mois, 10 s plus vite qu'il y a 3 mois");
+  ok(ns1.serie.length === 5 && ns1.ecart === 5 && !ns1.nouveau && !ns1.tronquee, "Ton niveau (13a) : sur 1 mois, 5 s plus vite qu'il y a 1 mois");
+  const eTr = { ...eT, points: eT.points.slice(2) }, nsTr = Calc.niveauSerie(eTr, NOW, 3);
+  ok(nsTr.tronquee && !nsTr.nouveau && nsTr.ecart === 5, "Ton niveau (13a) : rien au début de la période → l'écart part de ta 1re valeur (« 5 s plus vite depuis le … »)");
+  const eN = { cle: "seuil", maintenant: 380, min: 2, points: [{ ts: NOW - 95 * JOUR, v: 420 }, { ts: NOW - 20 * JOUR, v: 385 }, { ts: NOW - 5 * JOUR, v: 380 }] };
+  const nsN = Calc.niveauSerie(eN, NOW, 3);
+  ok(nsN.nouveau && nsN.ecart === null && nsN.nDepuis === 2 && Calc.niveauSerie({ ...eN, maintenant: null }, NOW, 3) === null,
+    "Ton niveau (13a) : une seule séance il y a 3 mois ne suffit pas (2 par point, comme avant) → « nouveau », « 2 sorties depuis » ; sans valeur des 4 semaines, pas de courbe");
 
   // Ton conseil (C3 à C10)
   const ctxC = (courses, now) => ({ courses, nowTs: now || NOW, fmax: 188, frepos: 58, defs, objectif: null, niveau: [], bilan: () => ({ cle: "moyenne" }) });
