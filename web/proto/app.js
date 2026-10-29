@@ -152,22 +152,21 @@
     const ecartDe = (e) => {
       const ns = Calc.niveauSerie(e, now, per);
       if (!ns.n) return { ns, txt: `${e.cle === "ef" ? "aucune" : "aucun"} en ${per} mois`, cls: "rien" };
-      if (ns.nouveau) return { ns, txt: "nouveau", cls: "gris" };
-      if (ns.ecart == null) return { ns, txt: ns.n > 1 ? `${ns.n} séances` : "1 séance", cls: "gris" };
+      if (ns.nouveau || ns.ecart == null) return { ns, txt: "nouveau", cls: "gris" };   // pas encore de quoi comparer sur la période
       return { ns, ...U.ecartMots(ns.ecart) };
     };
     const g = ecartDe(sel), ns = g.ns, n = NIV[sel.cle], coul = U.couleurEffort(sel.cle);
     const depuis = ns.tronquee && ns.serie.length ? `depuis le ${U.jourMois(ns.serie[0].ts)}` : null;
     const pastille = ns.n && !ns.nouveau && ns.ecart != null ? (g.cls === "gris" ? (depuis ? `stable ${depuis}` : `stable sur ${per} mois`) : `${g.txt} ${depuis || `qu'il y a ${per} mois`}`) : g.txt;
-    const sous = !ns.n ? (sel.derniere ? `dernière le ${U.jourMois(sel.derniere.ts)}` : "")
-      : ns.nouveau ? `${ns.n} ${ns.n > 1 ? "sorties" : "sortie"} depuis le ${U.jourMois(ns.depuisTs)}` : `${ns.n} ${ns.n > 1 ? "sorties" : "sortie"}`;
+    // 29/10 (retour d'Omar) : plus de nombre de sorties ; seulement depuis quand (nouveau) ou la dernière séance.
+    const sous = !ns.n ? (sel.derniere ? `dernière le ${U.jourMois(sel.derniere.ts)}` : "") : g.txt === "nouveau" ? `depuis le ${U.jourMois(ns.depuisTs)}` : "";
     let vide = "";
     if (!ns.n) {
       if (sel.cle !== "ef" && sel.cle !== "frac" && !defsZones()) vide = "Renseigne ta FC max ou ton âge pour lire l'effort au cœur.";
       else if (sel.cle === "ef" && sel.manque > 0) vide = `Encore ${sel.manque} ${sel.manque > 1 ? n.des : n.un} sur 4 semaines pour mesurer ton allure.`;
       else if (sel.derniere) vide = `Pas de ${n.de} sur ${per} mois. Ta dernière séance : ${fmtKmPace(sel.derniere.v)} /km, le ${U.jourMois(sel.derniere.ts).replace(/\.?$/, ".")}`;
       else vide = `Pas encore de ${n.un}.`;
-    } else if (ns.serie.filter((p) => p.v != null).length < 2) vide = `${ns.n > 1 ? `${ns.n} séances` : "Une séance"} sur ${per} mois, la dernière le ${U.jourMois(ns.derniere.ts).replace(/\.?$/, ".")}`;
+    } else if (ns.serie.filter((p) => p.v != null).length < 2) vide = "Ta courbe apparaît dès 2 semaines de séances.";
     const courbe = !vide ? U.dessinCourbe(ns.serie, { couleur: coul, rapideEnHaut: true, fmt: fmtKmPace, padMin: 6, axe: "dates", h: 104, label: n.titre }).svg : "";
     const pers = [1, 2, 3].map((p) => `<button type="button" data-niv-per="${p}" class="${p === per ? "actif" : ""}" aria-pressed="${p === per}">${p} mois</button>`).join("");
     const tuiles = liste.filter((e) => e !== sel).map((e) => { const ge = ecartDe(e), v = ge.ns.valeur;
