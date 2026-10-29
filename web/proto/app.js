@@ -242,21 +242,9 @@
         <div class="rang deux"><div class="stat"><div class="l">Ressenti</div>${res != null ? `${U.num(res, "/10", "v")}<div class="h">${esc(cran.mot)}</div>` : `<button type="button" class="citron" style="font-weight:700;margin-top:4px" data-feuille="ressenti" data-id="${esc(s.id)}">Noter</button>`}</div>
         ${manuel && s.fc ? `<div class="stat"><div class="l">Cœur moy.</div>${U.num(Math.round(s.fc), "bpm", "v")}</div>` : cad ? `<div class="stat"><div class="l">Cadence</div>${U.num(cad, "pas/min", "v")}<div class="h">${cadH}</div></div>` : ""}</div></section>`;
     if (!manuel) h += coeurCarte(s, v, lib, pd);
-    if (!manuel) {
-      h += `<div class="sur" style="padding:8px 2px 0">Ce qui explique ton bilan</div>`;
-      const f = Calc.frise3(s, etat.zones);
-      h += f ? `<section class="carte"><h2>Ta sortie en un coup d'œil</h2>${U.frise(f, true)}<div class="txt2">${U.friseTexte(f)}${f.suite ? ` ${esc(f.suite)}` : ""}</div></section>`
-        : `<section class="carte"><h2>Ta sortie en un coup d'œil</h2><div class="cap">Pas de découpage : ta montre n'a pas envoyé l'allure détaillée pour cette sortie.</div></section>`;
-      h += allureParKmHTML(s, lib);
-    }
-    const ev = Calc.evolution(s, etat.courses);
-    const surDist = v.cle === "premiere" ? `${v.titre} : la prochaine s'y comparera.` : ev.court;
-    const sensEv = v.cle === "premiere" ? "nouveau" : ev.ecart == null || Math.abs(ev.ecart) < R.evolutionMinSec ? "egal" : ev.ecart > 0 ? "haut" : "bas";
-    const face = Calc.ressentiFaceMesure(s, v, etat.ressentis, null, lib);
-    h += `<section class="carte" style="gap:0"><span class="sur" style="padding-bottom:4px">En résumé</span>
-      <div class="resume">${U.icBilan(sensEv, "petite")}<div><span class="sur">Sur cette distance</span><div class="lead" style="margin-top:3px">${esc(surDist)}</div></div></div>
-      <div class="resume">${U.icBilan(res == null ? "egal" : /fatigue|récupération/.test(face) ? "bas" : /progresses|attendu/.test(face) ? "haut" : "egal", "petite")}<div style="flex:1"><span class="sur">Ton ressenti face à la mesure</span>
-        ${res == null ? `<button type="button" class="btn second" style="margin-top:8px" data-feuille="ressenti" data-id="${esc(s.id)}">Note ton ressenti</button>` : `<div class="lead" style="margin-top:3px">${esc(face)}</div>`}</div></div></section>`;
+    // 29/10 (retours d'Omar) : « Ta sortie en un coup d'œil » et « En résumé » retirés ; temps par zone d'allure (comme Strava)
+    // et allure par km avec le cœur moyen de chaque km.
+    if (!manuel) h += zonesAllureHTML(s) + allureParKmHTML(s, lib);
     if (manuel) h += `<div class="cap" style="padding:0 4px">Saisie à la main : pas de courbe, de zones ni d'allure par km. Le bilan s'appuie sur ton allure.</div>`;
     return h;
   }
@@ -303,9 +291,22 @@
       } else if (d > 5) { msg = `Tu as fini plus vite que tu n'as commencé (${fmtKmPace(k[0])} → ${fmtKmPace(k[n - 1])}) : bien géré.`; bon = true; }
       else msg = kmSplitsMessage(ks);
     }
-    const rows = k.map((sec, i) => `<div class="km${i === ks.fastest ? " rapide" : ""}"><span>Km ${i + 1}</span><span class="piste"><i style="width:${kmSplitBarPct(sec, rapide).toFixed(1)}%"></i></span><span class="p">${fmtKmPace(sec)}</span></div>`).join("")
-      + (ks.partial ? `<div class="km partiel"><span>${String(ks.partial.km).replace(".", ",")} km</span><span class="piste"><i style="width:${kmSplitBarPct(ks.partial.pace, rapide).toFixed(1)}%"></i></span><span class="p">${fmtKmPace(ks.partial.pace)}</span></div>` : "");
-    return `<section class="carte"><h2>Allure par km</h2>${U.verdictBox({ ton: bon ? "bon" : "presque", titre: msg })}<div style="display:flex;flex-direction:column;gap:9px">${rows}</div></section>`;
+    const fc = Calc.coeurFiable(s) ? Calc.kmCoeur(s) : null, cf = (i) => (fc && fc[i] ? `<span class="c">${fc[i]}</span>` : '<span class="c"></span>');
+    const rows = k.map((sec, i) => `<div class="km${i === ks.fastest ? " rapide" : ""}"><span>Km ${i + 1}</span><span class="piste"><i style="width:${kmSplitBarPct(sec, rapide).toFixed(1)}%"></i></span><span class="p">${fmtKmPace(sec)}</span>${cf(i)}</div>`).join("")
+      + (ks.partial ? `<div class="km partiel"><span>${String(ks.partial.km).replace(".", ",")} km</span><span class="piste"><i style="width:${kmSplitBarPct(ks.partial.pace, rapide).toFixed(1)}%"></i></span><span class="p">${fmtKmPace(ks.partial.pace)}</span>${cf(k.length)}</div>` : "");
+    const tete = `<div class="km km-tete"><span></span><span></span><span class="p">allure</span><span class="c">${fc ? "cœur" : ""}</span></div>`;
+    return `<section class="carte"><h2>Allure par km</h2>${U.verdictBox({ ton: bon ? "bon" : "presque", titre: msg })}<div style="display:flex;flex-direction:column;gap:9px">${tete}${rows}</div></section>`;
+  }
+  // Temps par zone d'allure (retour d'Omar du 29/10, sur le modèle de Strava) : le temps passé dans chaque zone d'allure, la plus
+  // rapide en haut, avec ses bornes. Les zones viennent de ton chrono (Profil › Ton chrono), sinon de ton allure facile habituelle.
+  function zonesAllureHTML(s) {
+    const z = etat.zones, dec = z ? Calc.decoupage(s, z) : null;
+    if (!dec) return "";
+    const t = dec.tempsParZone, tot = t.reduce((a, v) => a + v, 0) || 1, mx = Math.max(...t, 1), plages = Calc.zonesLibelles(z), prof = z.niveau;
+    const rangs = [4, 3, 2, 1, 0].map((i) => `<div class="za"><span class="za-z">Zone ${i + 1}</span><span class="za-piste"><i style="width:${(t[i] / mx * 100).toFixed(1)}%;background:${R.zonesCouleurs[i]}"></i><b>${Math.round(t[i] / tot * 100)} %</b></span><span class="za-p">${esc(plages[i].plage)}</span></div>`).join("");
+    return `<section class="carte"><h2>Temps par zone d'allure</h2>
+      <div class="cap" style="margin-top:-6px">${prof ? `D'après ton chrono : ${Calc.kmTxt(prof.distanceKm * 1000)} km en ${fmtDur(prof.timeSec)}` : "D'après ton allure habituelle en sortie facile"}</div>
+      <div style="display:flex;flex-direction:column;gap:10px">${rangs}</div></section>`;
   }
 
   /* =================== Sorties (5) =================== */
@@ -405,7 +406,7 @@
     let facile;
     if (rp.etat === "bientot") facile = `<div class="lead">Encore ${rp.manque} ${rp.manque > 1 ? "sorties faciles" : "sortie facile"} sur 4 semaines pour mesurer ton allure de départ.</div>`;
     else {
-      const c = U.courbe(rp.points, { debut, fin: now, couleur: "#C6F432", rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 3, label: "Ton allure facile" });
+      const c = U.courbe(rp.points, { debut, fin: now, couleur: "#C6F432", rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 3, label: "Ton allure facile", grille: "allure" });
       facile = `<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">${U.num(fmtKmPace(rp.valeur), "/km", "n52")}<div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end">${c.debut != null ? pastilleEcart(ecartCourbe(c, true), mois, suffixeCourbe(c, mois)) : pastilleEcart(rp.ecart, mois)}${rp.modeCoeur ? `<span class="cap">à cœur égal · ${rp.fcRef} bpm</span>` : ""}</div></div>${c.svg}`;
     }
     const obj = o ? `<div class="filet"></div><div style="display:flex;align-items:center;gap:10px;font-size:14.5px">${ic("drapeau", 17)}<span class="txt2" style="flex:1">Ton objectif <b style="color:var(--text)">${esc(o.label)}</b></span>${o.allure ? `<span class="txt2">${fmtKmPace(o.allure)}/km</span>` : ""}</div>` : "";
@@ -417,7 +418,7 @@
       const coul = U.couleurType(e.cle === "tempo" ? "Tempo" : e.cle === "seuil" ? "Seuil" : "Fractionné");
       const quoi = e.cle === "frac" ? "fractionné" : e.cle === "tempo" ? "séance au tempo" : "séance au seuil";
       const pts = e.points.slice().sort((a, b) => a.ts - b.ts), dernier = pts[pts.length - 1];
-      const c = pts.length >= 3 ? U.courbe(pts, { debut, fin: now, couleur: coul, rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 4, h: 112, label: `Allure ${e.nom}` }) : null;
+      const c = pts.length >= 3 ? U.courbe(pts, { debut, fin: now, couleur: coul, rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 4, h: 112, label: `Allure ${e.nom}`, grille: "allure" }) : null;
       const em = c && c.debut != null ? U.ecartMots(ecartCourbe(c, true), suffixeCourbe(c, mois)) : U.ecartMots(e.ecart);   // l'écart dit ce que montre la courbe
       const valeur = e.maintenant != null ? `${U.num(fmtKmPace(e.maintenant), "/km", "ta-v")}<span class="cap">tes 4 dernières semaines</span>`
         : dernier ? `${U.num(fmtKmPace(dernier.v), "/km", "ta-v")}<span class="cap">ton dernier ${quoi === "fractionné" ? "fractionné" : quoi.replace("séance", "passage")}, le ${esc(U.jourMois(dernier.ts).replace(/\.$/, ""))} · rien depuis</span>` : "";

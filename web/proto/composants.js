@@ -184,11 +184,21 @@ const UI = (() => {
     const moisAxe = (d) => `${MOIS_C[d.getMonth()]}${an ? ` ${d.getFullYear()}` : ""}`;
     const rep = o.repere ? `<line x1="30" x2="${W - 6}" y1="${Y(o.repere.v).toFixed(1)}" y2="${Y(o.repere.v).toFixed(1)}" stroke="#8B8F96" stroke-width="1.2" stroke-dasharray="4 4"/>
       <text x="30" y="${(Y(o.repere.v) - 5).toFixed(1)}" fill="#C9CCD0" font-size="10" font-weight="700">${esc(o.repere.label)}</text>` : "";
-    const sens = o.sens || (o.rapideEnHaut ? "plus rapide ↑" : "");
+    const sens = o.sens || "";   // 29/10 : plus de « plus rapide ↑ » (retour d'Omar) ; les lignes d'allure suffisent
+    // Lignes horizontales aux allures rondes (retour d'Omar du 29/10) : tous les 10, 15, 30 ou 60 s selon l'écart affiché.
+    let grille = "";
+    if (o.grille === "allure") {
+      const pas = b - a <= 35 ? 10 : b - a <= 80 ? 15 : b - a <= 160 ? 30 : 60;
+      for (let v = Math.ceil(a / pas) * pas; v <= b; v += pas) {
+        const y = Y(v);
+        if (y < 8 || y > H - 26) continue;
+        grille += `<line x1="30" x2="${W - 4}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#26292E" stroke-width="1"/><text x="0" y="${(y + 3.5).toFixed(1)}" fill="#8B8F96" font-size="10">${esc(fmt(v))}</text>`;
+      }
+    }
     const svg = `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label || "Courbe")} : de ${esc(fmt(p0.v))} à ${esc(fmt(p1.v))}">
       <line x1="0" x2="${W}" y1="${H - 22}" y2="${H - 22}" stroke="#26292E"/>
       ${sens ? `<text x="${W - 2}" y="9" fill="${gris}" font-size="9.5" text-anchor="end">${esc(sens)}</text>` : ""}
-      ${rep}
+      ${grille}${rep}
       ${brut.filter((p) => p.v >= a && p.v <= b).map((p) => `<circle cx="${X(p.ts).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="2.8" fill="${o.couleur}" opacity=".32"/>`).join("")}
       <path d="${cheminLisse(pts)}" fill="none" stroke="${o.couleur}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="${pts[0][0].toFixed(1)}" cy="${pts[0][1].toFixed(1)}" r="5" fill="#17191C" stroke="${o.couleur}" stroke-width="2.4"/>

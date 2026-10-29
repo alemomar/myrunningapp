@@ -656,6 +656,31 @@ const Calc = (() => {
     const ks = kmSplits({ paceSeries: s.pace, distanceKm: s.dist, durationSec: s.dur, type: "EF" });
     return ks ? { premier: ks.kms[0], moyenne: ks.avg } : null;
   }
+  // Cœur moyen de chaque km (retour d'Omar du 29/10) : les mêmes km que l'allure par km de l'app (kmSplits : pauses de plus de
+  // 2 min ignorées, distance recalée sur celle de la sortie), le cœur mesuré entre deux passages au km. Tableau des km entiers,
+  // puis le bout final s'il fait 100 m ou plus ; null sans allure détaillée ou sans cœur.
+  function kmCoeur(s) {
+    if (!s.pace || !s.hr || !(s.dist > 0)) return null;
+    const gap = typeof KM_SPLIT_GAP_SEC !== "undefined" ? KM_SPLIT_GAP_SEC : 120;
+    const pc = s.pace.filter((p) => p && p.pace > 0 && p.t >= 0).sort((a, b) => a.t - b.t), hr = s.hr.filter((p) => p && p.hr > 0).sort((a, b) => a.t - b.t);
+    const parts = []; let prev = 0;
+    pc.forEach((p) => { const dt = p.t - prev; prev = p.t; if (dt > 0 && dt <= gap) parts.push({ t: p.t, dt, d: dt * 1000 / p.pace }); });
+    const brut = parts.reduce((a, x) => a + x.d, 0);
+    if (!hr.length || !(brut > 0)) return null;
+    const ech = s.dist * 1000 / brut, pleins = Math.floor(s.dist + 1e-9), bornes = [parts[0].t - parts[0].dt];
+    let d = 0;
+    parts.forEach((x) => {
+      const dd = x.d * ech;
+      while (bornes.length - 1 < pleins && d + dd >= 1000 * bornes.length - 1e-6) bornes.push(x.t - x.dt + x.dt * ((1000 * bornes.length - d) / dd));
+      d += dd;
+    });
+    const moy = (a, b) => { const l = hr.filter((p) => p.t >= a && p.t < b).map((p) => p.hr); return l.length ? Math.round(l.reduce((x, v) => x + v, 0) / l.length) : null; };
+    const out = [];
+    for (let i = 1; i < bornes.length; i++) out.push(moy(bornes[i - 1], bornes[i]));
+    const fin = parts[parts.length - 1].t;
+    if (s.dist * 1000 - pleins * 1000 >= 100 && fin > bornes[bornes.length - 1]) out.push(moy(bornes[bornes.length - 1], fin + 1));
+    return out;
+  }
   // Ton allure par zone (Progression › Allure) : allure tenue dans chaque zone cardio, mois par mois (médiane des sorties du mois).
   function allureParZoneMois(sorties, nowTs, mois, z, defs, reg) {
     const r = reg || REGLAGES, d = new Date(nowTs), out = [0, 1, 2, 3, 4].map(() => []);
@@ -758,5 +783,5 @@ const Calc = (() => {
     records, cap, fcMaxEffective, moyenne, med, kmTxt, allureTxt, TITRES, ZONE_A,
     // V2
     nomCourt, passageDominant, recordsBattus, ressentiCran, EFFORT_DE, frise3, zonesSortie, verdictRepartition, partZones, premierKm,
-    allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, JOUR, SEM, MOIS_J };
+    allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, kmCoeur, JOUR, SEM, MOIS_J };
 })();
