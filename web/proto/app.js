@@ -9,7 +9,7 @@
 (() => {
   const R = REGLAGES, U = UI, JOUR = 86400000, esc = U.esc, ic = U.ic;
   const CLES = { ressentis: "mra_proto_ressentis", types: "mra_proto_types", ajouts: "mra_proto_ajouts", vues: "mra_proto_vues",
-    plis: "mra_proto_plis", objectif: "mra_proto_objectif", montre: "mra_proto_montre", ancienBilanVu: "mra_proto_bilan_vu" };
+    plis: "mra_proto_plis", objectif: "mra_proto_objectif", montre: "mra_proto_montre", ancienBilanVu: "mra_proto_bilan_vu", garmin: "mra_proto_garmin" };
   const lire = (cle, defaut) => { try { const v = localStorage.getItem(cle); return v == null ? defaut : JSON.parse(v); } catch (e) { return defaut; } };
   const garder = (cle, v) => { try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) { /* stockage indisponible : vaut pour cette visite */ } };
   const banc = () => !!window.__PROTO_BANC__;
@@ -17,14 +17,14 @@
     ressentis: lire(CLES.ressentis, {}), types: lire(CLES.types, {}), ajouts: lire(CLES.ajouts, []),
     plis: lire(CLES.plis, {}), objectifLocal: lire(CLES.objectif, null), montre: lire(CLES.montre, null),
     filtre: "courses", periode: 12, autresRecues: [], demo: null, now: null, memo: {},   // 28/10 : Progression sur 12 mois par défaut
-    nivSel: "ef", nivPer: 3 };   // Ton niveau (13a) : Facile sur 3 mois à l'ouverture, rien n'est mémorisé
+    nivSel: "ef", nivPer: 3, garmin: !!lire(CLES.garmin, false) };   // garmin : démo « Voir comme une Garmin » (29/10)   // Ton niveau (13a) : Facile sur 3 mois à l'ouverture, rien n'est mémorisé
   try { localStorage.removeItem("mra_proto_conseils"); localStorage.removeItem("mra_proto_replies"); } catch (e) { /* rien à faire */ }
   const maintenant = () => etat.now || Date.now();
 
   /* ---------- Données ---------- */
   const TYPES_APP = { "Sortie facile": "EF", Longue: "Long", Tempo: "Seuil", Seuil: "Seuil", "Fractionné": "Fractionné", "Compétition": "Course", Autre: "Other" };
   function recalculer() {
-    const lignes = etat.brutes.concat(etat.ajouts);
+    const lignes = (etat.garmin ? etat.brutes.map(Calc.commeGarmin) : etat.brutes).concat(etat.ajouts);
     etat.sorties = lignes.map((row) => {
       const t = etat.types[row.id];
       const s = Calc.versSortie(t && t !== "Autre" ? { ...row, typeV2: t } : row);
@@ -37,6 +37,13 @@
     etat.memo = {};
   }
   const memo = (cle, f) => (cle in etat.memo ? etat.memo[cle] : (etat.memo[cle] = f()));
+  // Ta montre en détail ? (Garmin : cœur toutes les 2 min, allure toutes les ~10 min dans Apple Santé.) Ce qu'on ne peut pas
+  // mesurer est dit franchement, au lieu de « pas encore de séance ».
+  const detail = () => memo("detail", () => Calc.detailMontre(etat.courses, maintenant()));
+  const toutesLes = (sec) => (sec >= 90 ? `${Math.round(sec / 60)} min` : `${Math.round(sec)} s`);
+  const nonMesure = (cle) => (cle === "tempo" || cle === "seuil" ? !detail().coeur : cle === "frac" ? !detail().allure : false);
+  const texteNonMesure = (cle) => (cle === "frac" ? "Ta montre n'envoie pas ton allure assez souvent à Apple Santé pour mesurer tes fractionnés."
+    : `Ta montre n'envoie ton cœur à Apple Santé que toutes les ${toutesLes(detail().intervalle || 120)} : pas assez pour repérer ${cle === "tempo" ? "ton tempo" : "ton seuil"}.`);
   const fcMax = () => Calc.fcMaxEffective(etat.profil, etat.courses);
   const fcRepos = () => (etat.profil && etat.profil.resting_hr ? Number(etat.profil.resting_hr) : null);
   const defsZones = () => memo("defs", () => { const fm = fcMax(); return fm ? hrZoneDefs(fm.valeur, fcRepos()) : null; });
@@ -126,7 +133,7 @@
       <div class="carte-tete"><span class="sur">Ta sortie · aujourd'hui ${esc(U.heureTxt(s.ts))}</span>${U.pillType(lib)}</div>
       ${U.bilanLigne(v)}
       <div class="mini">${mt("Distance", U.kmTxt(s.dist), "km")}${mt("Durée", fmtDur(s.dur))}${mt("Allure", U.allure(s.allure), "/km")}</div>
-      ${f ? U.frise(f) : ""}${legende}
+      ${f ? U.frise(f) : ""}${legende}${!f ? `<div class="carte-tete" style="font-size:13px"><span></span>${res != null ? `<span class="txt2">Ressenti <b style="color:var(--text)">${res}/10</b> · ${esc(cran.mot)}</span>` : `<span class="citron" style="font-weight:600">Note ton ressenti</span>`}</div>` : ""}
       <button type="button" class="btn primaire" data-go="#/sortie/${esc(s.id)}">Voir le détail de ta course ${ic("chevron", 18, 2.4)}</button></section>`;
   }
   // 2B · Ta dernière sortie : une ligne qui se touche.
@@ -151,7 +158,7 @@
     // de la courbe. L'écart : « 9 s plus lent », « nouveau », « aucun en 1 mois ». cls : citron, violet, gris, rien.
     const ecartDe = (e) => {
       const ns = Calc.niveauSerie(e, now, per);
-      if (!ns.n) return { ns, txt: `${e.cle === "ef" ? "aucune" : "aucun"} en ${per} mois`, cls: "rien" };
+      if (!ns.n) return { ns, txt: nonMesure(e.cle) ? "non mesuré" : `${e.cle === "ef" ? "aucune" : "aucun"} en ${per} mois`, cls: "rien" };
       if (ns.nouveau || ns.ecart == null) return { ns, txt: "nouveau", cls: "gris" };   // pas encore de quoi comparer sur la période
       return { ns, ...U.ecartMots(ns.ecart) };
     };
@@ -162,7 +169,8 @@
     const sous = !ns.n ? (sel.derniere ? `dernière le ${U.jourMois(sel.derniere.ts)}` : "") : g.txt === "nouveau" ? `depuis le ${U.jourMois(ns.depuisTs)}` : "";
     let vide = "";
     if (!ns.n) {
-      if (sel.cle !== "ef" && sel.cle !== "frac" && !defsZones()) vide = "Renseigne ta FC max ou ton âge pour lire l'effort au cœur.";
+      if (nonMesure(sel.cle)) vide = texteNonMesure(sel.cle);
+      else if (sel.cle !== "ef" && sel.cle !== "frac" && !defsZones()) vide = "Renseigne ta FC max ou ton âge pour lire l'effort au cœur.";
       else if (sel.cle === "ef" && sel.manque > 0) vide = `Encore ${sel.manque} ${sel.manque > 1 ? n.des : n.un} sur 4 semaines pour mesurer ton allure.`;
       else if (sel.derniere) vide = `Pas de ${n.de} sur ${per} mois. Ta dernière séance : ${fmtKmPace(sel.derniere.v)} /km, le ${U.jourMois(sel.derniere.ts).replace(/\.?$/, ".")}`;
       else vide = `Pas encore de ${n.un}.`;
@@ -290,7 +298,9 @@
   function coeurCarte(s, v, lib, pd) {
     const fm = fcMax(), defs = defsZones();
     if (!(Calc.coeurFiable(s) && s.fc) || !defs) {
-      return `<section class="carte"><div class="carte-tete"><h2>Cœur</h2>${info("coeur")}</div><div class="verdict-box"><span class="vi" style="background:var(--control);color:var(--text)">${ic("montre", 14)}</span><span>Données cardio partielles avec ta montre : le bilan s'appuie sur ton allure et ton ressenti.</span></div>
+      const ic2 = Calc.intervalleCoeur(s), moyOk = Calc.coeurMoyenOk(s);
+      const txt = moyOk && ic2 ? `Ta montre n'envoie ton cœur à Apple Santé que toutes les ${toutesLes(ic2)} : pas de courbe ni de zones. Ton bilan s'appuie sur ton cœur moyen.` : "Données cardio partielles avec ta montre : le bilan s'appuie sur ton allure et ton ressenti.";
+      return `<section class="carte"><div class="carte-tete"><h2>Cœur</h2>${info("coeur")}</div><div class="verdict-box"><span class="vi" style="background:var(--control);color:var(--text)">${ic("montre", 14)}</span><span>${esc(txt)}</span></div>
         ${s.fc ? `<div class="mini deux">${mt("FC moy.", Math.round(s.fc), "bpm")}${mt("FC max", s.fcMax ? Math.round(s.fcMax) : "—", s.fcMax ? "bpm" : "")}</div>` : ""}</section>`;
     }
     const zs = Calc.zonesSortie(s, fm.valeur, fcRepos()), der = cardiacDrift({ hrSeries: s.hr, paceSeries: s.pace, durationSec: s.dur, type: s.type });
@@ -312,7 +322,7 @@
   }
   function allureParKmHTML(s, lib) {
     const ks = lib === "Fractionné" ? null : Calc.kmParKm(s);   // 29/10 : les arrêts ne comptent plus comme du temps de course
-    if (!ks) return `<section class="carte"><h2>Allure par km</h2><div class="cap">${lib === "Fractionné" ? "Pas d'allure par km pour un fractionné : ce sont les blocs d'effort qui comptent." : "Pas d'allure par km : il faut au moins 3 km et l'allure détaillée de ta montre."}</div></section>`;
+    if (!ks) return `<section class="carte"><h2>Allure par km</h2><div class="cap">${lib === "Fractionné" ? "Pas d'allure par km pour un fractionné : ce sont les blocs d'effort qui comptent." : s.dist >= 3 && !Calc.allureDetaillee(s) ? "Ta montre n'envoie ton allure à Apple Santé que toutes les 10 min environ : pas d'allure par km." : "Pas d'allure par km : il faut au moins 3 km et l'allure détaillée de ta montre."}</div></section>`;
     const k = ks.kms, n = k.length, rapide = Math.min(...k), moy = (a) => a.reduce((x, y) => x + y, 0) / a.length;
     // Un message sur la gestion de l'effort (pas une redite du plus rapide / plus lent).
     let msg, bon = false;
@@ -456,13 +466,13 @@
       let bas;
       if (c) bas = c.svg;
       else if (dans.length) bas = `<div class="txt2" style="font-size:14px">Ta courbe démarre avec ${mois <= 3 ? "une 2e semaine" : "un 2e mois"} de mesures.</div>`;
-      else bas = `<div class="txt2" style="font-size:14px">${e.cle !== "frac" && !defs ? "Renseigne ta FC max ou ton âge pour lire l'effort au cœur." : `Pas de ${quoi} sur ${mois} mois.`}</div>`;
+      else bas = `<div class="txt2" style="font-size:14px">${nonMesure(e.cle) ? texteNonMesure(e.cle) : e.cle !== "frac" && !defs ? "Renseigne ta FC max ou ton âge pour lire l'effort au cœur." : `Pas de ${quoi} sur ${mois} mois.`}</div>`;
       // 29/10 (retour d'Omar) : un bloc bien distinct par type d'allure, construit comme « Ton allure facile ».
       const ec = c ? ecartCourbe(c, true) : e.ecart, suf = c ? suffixeCourbe(c, mois) : null;
       const titre = { tempo: "Ton allure au tempo", seuil: "Ton allure au seuil", frac: "Ton allure en fractionné" }[e.cle];
       // Sans valeur des 4 dernières semaines : le chiffre en grand = le bout de la courbe, et depuis quand il n'y a plus rien.
       const grand = e.maintenant != null ? fmtKmPace(e.maintenant) : c ? fmtKmPace(c.fin) : dernier ? fmtKmPace(dernier.v) : null;
-      const sous = e.maintenant != null ? "tes 4 dernières semaines" : dernier ? `rien depuis le ${esc(U.jourMois(dernier.ts).replace(/\.$/, ""))}` : "";
+      const sous = e.maintenant != null ? "tes 4 dernières semaines" : dernier ? `${nonMesure(e.cle) ? "dernière mesure le" : "rien depuis le"} ${esc(U.jourMois(dernier.ts).replace(/\.$/, ""))}` : "";
       return `<section class="carte" id="graphe-${e.cle}"><div class="carte-tete"><span class="ta-tete" style="--c:${coul};color:var(--text);font-size:16px"><i></i>${esc(titre)}</span>${info("efforts")}</div>
         ${grand ? `<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">${U.num(grand, "/km", "n52")}<div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end">${c || e.maintenant != null ? pastilleEcart(ec, mois, suf) : ""}<span class="cap">${sous}</span></div></div>` : ""}
         ${bas}</section>`;
@@ -488,7 +498,9 @@
   function progressionCoeur(now, mois) {
     const fm = fcMax(), fr = fcRepos();
     let zones = `<div class="txt2">Renseigne ta FC max ou ton âge pour voir tes zones.</div>`;
-    if (fm) {
+    const detaille = detail().coeur;   // 29/10 : montre peu détaillée (Garmin) → une carte qui le dit, au lieu de 3 blocs vides
+    if (!detaille) zones = `<div class="txt2" style="font-size:14.5px">Ta montre n'envoie ton cœur à Apple Santé que toutes les ${toutesLes(detail().intervalle || 120)} : pas assez pour ton temps par zone, ta dérive et tes sorties faciles. Ton cœur moyen, lui, reste juste.</div>`;
+    else if (fm) {
       const z = Calc.zonesCardioPeriode(etat.courses, now, mois, fm.valeur, fr), tot = z.secs.reduce((a, v) => a + v, 0);
       const dur = etat.courses.filter((s) => s.ts >= now - mois * MOIS_J * JOUR && Calc.coeurFiable(s)).reduce((a, s) => a + s.dur, 0);
       // 29/10 (retour d'Omar) : comme le temps par zone d'une sortie (16c) : « 70 % en zones 1-2 » et sa pastille, une colonne
@@ -513,7 +525,7 @@
       <section class="carte"><div class="carte-tete"><span class="ta-tete" style="--c:#C6F432;color:var(--text);font-size:16px"><i></i>Ton cœur en sortie facile</span>${info("coeur-facile")}</div>
         ${valCm != null ? `<div style="display:flex;align-items:flex-end;justify-content:space-between">${U.num(Math.round(valCm), "bpm", "n52")}<b class="${ecartBpm == null || Math.abs(ecartBpm) < 2 ? "gris" : ecartBpm > 0 ? "citron" : "violet"}" style="font-size:13.5px">${ecartBpm == null || Math.abs(ecartBpm) < 2 ? `stable ${suffixeCourbe(cC, mois)}` : `${Math.abs(ecartBpm)} bpm ${ecartBpm > 0 ? "de moins" : "de plus"} ${suffixeCourbe(cC, mois)}`}</b></div>` : ""}
         ${cC.svg}<div class="txt2" style="font-size:14.5px">À allure égale, un cœur qui baisse veut dire que tu progresses.</div></section>
-      <section class="carte"><div class="carte-tete"><b style="font-size:16px">Dérive cardiaque</b>${info("derive")}</div>
+      ${detaille ? `<section class="carte"><div class="carte-tete"><b style="font-size:16px">Dérive cardiaque</b>${info("derive")}</div>
         ${valDer != null ? `<div style="display:flex;align-items:flex-end;justify-content:space-between">${U.num(Math.round(valDer), "%", "n52")}<b class="${valDer < R.repereDerivePct ? "citron" : "violet"}" style="font-size:13.5px">${valDer < R.repereDerivePct ? `stable · sous ${R.repereDerivePct} %` : `au-dessus de ${R.repereDerivePct} %`}</b></div>` : ""}
         ${cD.svg}<div class="txt2" style="font-size:14.5px">Combien ton cœur monte en fin de sortie facile. Sous ${R.repereDerivePct} % : ton endurance tient.</div></section>
       <section class="carte"><div class="carte-tete"><h2>${nouveau("Tes sorties faciles")}</h2>${info("sorties-faciles")}</div>
@@ -522,7 +534,7 @@
             <span style="position:relative;height:10px;border-radius:5px;background:var(--control)"><i style="display:block;height:100%;width:${Math.round(x.pct)}%;border-radius:5px;background:${x.vraiment ? "#C6F432" : "#5A6068"}"></i><i style="position:absolute;top:-4px;bottom:-4px;left:${R.repereFacilePct}%;width:2px;background:var(--text)"></i></span>
             <b style="text-align:right">${Math.round(x.pct)} %</b><span class="citron">${x.vraiment ? ic("check", 15, 2.6) : ""}</span></div>`).join("")}</div>
           <div class="cap">Trait blanc = repère ${R.repereFacilePct} %.${sf.length - vraies ? ` ${sf.length - vraies === 1 ? "L'autre est trop montée" : `Les ${sf.length - vraies} autres sont trop montées`} en zone 3.` : ""}</div>`
-          : `<div class="txt2">Pas encore de sortie facile au cœur fiable.</div>`}</section>
+          : `<div class="txt2">Pas encore de sortie facile au cœur fiable.</div>`}</section>` : ""}
       <section class="carte"><div class="carte-tete"><h2>${nouveau("Ton cœur au repos")}</h2>${info("repos")}</div>
         <div style="display:flex;align-items:flex-end;justify-content:space-between">${U.num(fr || "—", fr ? "bpm" : "", "n52")}<span class="cap">${fr ? "valeur de ton profil" : "pas encore de mesure"}</span></div>
         <svg viewBox="0 0 300 50" width="100%" aria-hidden="true"><path d="M8 18 C80 22 160 30 292 36" fill="none" stroke="#33373D" stroke-width="3" stroke-dasharray="5 6"/></svg>
@@ -572,7 +584,7 @@
       <div class="groupe">${rangee("compte", "profil", "Ton compte", "e-mail, mot de passe")}${rangee("donnees", "donnees", "Tes données", "télécharger, supprimer")}</div>
       <button type="button" class="btn second" data-action="deconnexion">Se déconnecter</button>
       <div class="sur" style="padding:14px 2px 0">Prototype · écrans de démonstration</div>
-      <div class="groupe">${demo("#/premiers/1", "Premiers pas (8 écrans)")}${demo("#/demo/record", "Après un record (plein écran)")}${demo("#/demo/partiel", "Bilan avec un cœur partiel (Garmin)")}${demo("#/demo/premieres", "Premières semaines")}${demo("#/demo/mois", "Mois sans sortie")}${demo("#/demo/reseau", "Pas de connexion")}${demo("#/demo/chargement", "Chargement")}${demo("#/demo/aucune", "Pas encore de sortie reçue")}${demo("#/demo/connexion", "Connexion")}</div>
+      <div class="groupe">${demo("#/premiers/1", "Premiers pas (8 écrans)")}${demo("#/demo/record", "Après un record (plein écran)")}<button type="button" class="rangee" data-action="garmin" aria-pressed="${etat.garmin}"><b style="font-weight:500;font-size:14.5px">Voir comme une Garmin</b><span class="interrupteur${etat.garmin ? " on" : ""}" aria-hidden="true"><i></i></span></button>${demo("#/demo/premieres", "Premières semaines")}${demo("#/demo/mois", "Mois sans sortie")}${demo("#/demo/reseau", "Pas de connexion")}${demo("#/demo/chargement", "Chargement")}${demo("#/demo/aucune", "Pas encore de sortie reçue")}${demo("#/demo/connexion", "Connexion")}</div>
       <div class="cap" style="padding:0 4px">Ces écrans reprennent tes vraies données, arrangées pour montrer chaque état. Rien n'est enregistré.</div>`;
   }
   function profilPage(page) {
@@ -741,6 +753,7 @@
     else if (vue === "premiers") html = premiersPasHTML(Number(id) || 1);
     else if (vue === "demo") html = vueDemo(id);
     else html = accueilHTML();
+    if (etat.garmin) html = `<div class="demo-bandeau" style="display:flex;justify-content:space-between;gap:10px"><span>Vu comme une Garmin</span><button type="button" style="text-decoration:underline" data-action="garmin-off">Arrêter</button></div>${html}`;
     app.innerHTML = html;
     if (vue === "demo" && id === "connexion") document.getElementById("fConnexion").addEventListener("submit", seConnecter);
     window.scrollTo(0, garderDefilement ? y : 0);
@@ -796,6 +809,10 @@
     if (ac) {
       const a = ac.getAttribute("data-action");
       if (a === "pas-ici") U.toast("Prototype : cette action se fera dans l'app.");
+      else if (a === "garmin" || a === "garmin-off") {   // tes sorties telles qu'une Garmin les envoie à Apple Santé, sur ce téléphone seulement
+        etat.garmin = a === "garmin" ? !etat.garmin : false; garder(CLES.garmin, etat.garmin); recalculer();
+        U.toast(etat.garmin ? "Tes sorties, vues comme avec une Garmin." : "Retour à tes vraies données."); rendre(true);
+      }
       else if (a === "deconnexion") { Lecture.deconnexion().then(() => { location.hash = "#/accueil"; location.reload(); }); }
       else if (a === "enregistrer-ajout") enregistrerAjout();
       else if (a === "supprimer-ajout") { const idS = ac.getAttribute("data-id"); etat.ajouts = etat.ajouts.filter((x) => x.id !== idS); garder(CLES.ajouts, etat.ajouts); recalculer(); fermerCalque(); location.hash = "#/sorties"; }

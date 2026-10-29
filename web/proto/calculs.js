@@ -30,6 +30,41 @@ const Calc = (() => {
   }
   const estCourse = (s) => RUNNING_RUN_TYPES.includes(s.type) && s.stats && s.dist > 0 && s.allure > 0;
 
+  // Montres peu détaillées (29/10, question d'Omar sur Garmin) : Garmin n'envoie à Apple Santé qu'un cœur toutes les 2 min et
+  // une allure toutes les ~10 min. La courbe et les zones ne sont alors pas fiables, mais le cœur moyen de la sortie l'est.
+  const mesures = (serie, cle) => (serie || []).filter((p) => p && p[cle] > 0);
+  const coeurMoyenOk = (s, reg) => { const r = reg || REGLAGES; return s.fc > 0 && (coeurFiable(s, r) || (s.dur > 0 && mesures(s.hr, "hr").length >= s.dur / r.coeurMoyenIntervalleMaxSec)); };
+  const allureDetaillee = (s, reg) => s.dur > 0 && mesures(s.pace, "pace").length / s.dur * 60 >= (reg || REGLAGES).allureDetailleeParMin;
+  // Écart habituel entre deux mesures de cœur d'une sortie, en secondes (« toutes les 2 min »).
+  function intervalleCoeur(s) {
+    const t = mesures(s.hr, "hr").map((p) => p.t).sort((a, b) => a - b), d = [];
+    for (let i = 1; i < t.length; i++) if (t[i] > t[i - 1]) d.push(t[i] - t[i - 1]);
+    return med(d);
+  }
+  // Ta montre sur tes dernières courses (hors saisies à la main) : cœur détaillé ? allure détaillée ? intervalle de cœur habituel.
+  function detailMontre(sorties, nowTs, reg) {
+    const r = reg || REGLAGES, l = sorties.filter((s) => estCourse(s) && !s.manuel && !s.local && s.ts <= nowTs).slice(-r.detailSorties);
+    if (!l.length) return { coeur: true, allure: true, intervalle: null };
+    return { coeur: l.filter((s) => coeurFiable(s, r)).length * 2 >= l.length, allure: l.filter((s) => allureDetaillee(s, r)).length * 2 >= l.length,
+      intervalle: med(l.map(intervalleCoeur).filter((v) => v != null)) };
+  }
+  // Démo « Voir comme une Garmin » (Profil › Écrans de démonstration) : une sortie telle que Garmin l'envoie à Apple Santé
+  // (cœur moyenné toutes les 2 min, allure moyenne toutes les ~10 min, pas de tours). Calcul sur le téléphone, rien n'est écrit.
+  function commeGarmin(row) {
+    const hr = mesures(row.hr_series, "hr").sort((a, b) => a.t - b.t), pc = mesures(row.pace_series, "pace").sort((a, b) => a.t - b.t);
+    const fenHr = []; let i = 0;
+    for (let t0 = 0; hr.length && t0 < hr[hr.length - 1].t; t0 += 120) {
+      let n = 0, somme = 0;
+      while (i < hr.length && hr[i].t <= t0 + 120) { if (hr[i].t > t0) { somme += hr[i].hr; n++; } i++; }
+      if (n) fenHr.push({ t: t0 + 120, hr: Math.round(somme / n) });
+    }
+    const fenPc = []; let prev = 0, t0 = 0, d = 0, du = 0;
+    pc.forEach((p) => { const dt = p.t - prev; prev = p.t; if (dt <= 0 || dt > 120) return; d += dt * 1000 / p.pace; du += dt;
+      if (p.t - t0 >= 593 && d > 0) { fenPc.push({ t: p.t, pace: Math.round(du / (d / 1000)) }); t0 = p.t; d = 0; du = 0; } });
+    if (d > 0) fenPc.push({ t: prev, pace: Math.round(du / (d / 1000)) });
+    return { ...row, hr_series: hr.length ? fenHr : row.hr_series, pace_series: pc.length ? fenPc : row.pace_series, lap_markers: null };
+  }
+
   // Cœur fiable : au moins une mesure toutes les 30 s en moyenne, sur au moins 70 % de la sortie.
   const cacheFiable = new Map();
   function coeurFiable(s, reg) {
@@ -273,13 +308,13 @@ const Calc = (() => {
     let hab = habitude(s, toutes, r, r.habitudeSemaines), semaines = r.habitudeSemaines;
     if (hab.length < r.minSortiesHabitude) { hab = habitude(s, toutes, r, r.bilanFenetreMaxSemaines); semaines = r.bilanFenetreMaxSemaines; }
     const res = ressentiDe(s, ressentis);
-    const fiable = coeurFiable(s, r) && !!s.fc;
+    const fiable = coeurMoyenOk(s, r);   // 29/10 : le cœur moyen suffit (Garmin), même sans courbe détaillée
     const tuileAllure = (habVal) => ({ cle: "allure", label: "Allure", valeur: allureTxt(s.allure), unite: "/km", habitude: habVal != null ? allureTxt(habVal) : null });
     const notePartielle = !fiable && s.fc ? "Données cardio partielles avec ta montre : le bilan s'appuie sur ton allure et ton ressenti." : null;
     const lib = libelleType(s, s.type === "Seuil" ? decoupage(s, z, r) : null);
     // 3) Rien à comparer : première sortie de ce type, elle devient le point de départ.
     if (hab.length < r.minSortiesHabitude) {
-      const pd = fiable ? passageDominant(s, z, r) : null;
+      const pd = coeurFiable(s, r) ? passageDominant(s, z, r) : null;   // les passages demandent la courbe détaillée
       const tuiles = pd && pd.fc ? [{ cle: "allure", label: `Allure ${ZONE_A[pd.zone]}`, valeur: allureTxt(pd.allure), unite: "/km", habitude: null },
         { cle: "coeur", label: `Cœur ${ZONE_A[pd.zone]}`, valeur: String(Math.round(pd.fc)), unite: "bpm", habitude: null }]
         : [tuileAllure(null)].concat(s.fc ? [{ cle: "coeur", label: "Cœur moyen", valeur: String(Math.round(s.fc)), unite: "bpm", habitude: null }] : []);
@@ -292,7 +327,7 @@ const Calc = (() => {
     const allureHab = moyenne(hab.map((h) => h.allure)), compare = `comparé à ${plur(hab.length, "sortie", "sorties")} de ce type des ${semaines} dernières semaines`;
     const compareCourt = `Comparé à ${plur(hab.length, "sortie", "sorties")} des ${semaines} dernières semaines`;
     if (fiable) {
-      const avecCoeur = hab.filter((h) => h.fc && coeurFiable(h, r));
+      const avecCoeur = hab.filter((h) => coeurMoyenOk(h, r));
       const comparables = avecCoeur.filter((h) => Math.abs(h.allure - s.allure) <= r.allureComparableSec);
       let fcAttendue = null;
       if (comparables.length >= r.minSortiesComparables) fcAttendue = moyenne(comparables.map((h) => h.fc));
@@ -417,7 +452,7 @@ const Calc = (() => {
   function repere(sorties, nowTs, reg, ilYaJours) {
     const r = reg || REGLAGES;
     const faciles = sorties.filter((s) => estCourse(s) && (s.type === "EF" || s.type === "Long"));
-    const avecCoeur = faciles.filter((s) => s.fc && coeurFiable(s, r));
+    const avecCoeur = faciles.filter((s) => coeurMoyenOk(s, r));   // 29/10 : cœur moyen juste suffit (Garmin)
     const fcRef = med(avecCoeur.filter((s) => s.ts >= nowTs - r.repereFcRefJours * JOUR).map((s) => s.fc));
     const modeCoeur = !!fcRef && avecCoeur.filter((s) => s.ts >= nowTs - r.repereFenetreJours * JOUR).length >= r.repereMinSorties;
     const val = (s) => modeCoeur ? s.allure * s.fc / fcRef : s.allure;
@@ -480,7 +515,8 @@ const Calc = (() => {
     };
     const liste = efforts.map((e) => ({ ...e, detail: defs ? `cœur en ${e.zone} · ${defs[e.k - 1].max + 1} à ${defs[e.k].max} bpm` : `cœur en ${e.zone}`,
       ...resume(parSortie.filter((x) => x.a[e.k].sec >= r.effortMinSec[e.k]).map((x) => ({ ts: x.ts, v: x.a[e.k].allure })), r.effortMinSorties) }));
-    const frac = recents.filter((s) => s.type === "Fractionné").map((s) => {
+    // 29/10 : sans allure détaillée (Garmin : une mesure toutes les ~10 min), l'allure des blocs serait fausse : pas de mesure.
+    const frac = recents.filter((s) => s.type === "Fractionné" && (s.fracWorkManual || allureDetaillee(s, r))).map((s) => {
       const ip = getIntervalPaces({ paceSeries: s.pace, lapMarkers: s.lapMarkers, fracWorkManual: s.fracWorkManual, fracRecoveryManual: s.fracRecoveryManual });
       return ip && ip.work && (ip.manual || ip.workCount >= 2) ? { ts: s.ts, v: ip.work } : null;
     }).filter(Boolean);
@@ -552,7 +588,7 @@ const Calc = (() => {
   }
   const derive = (s) => { const d = cardiacDrift({ hrSeries: s.hr, paceSeries: s.pace, durationSec: s.dur, type: s.type }); return d ? d.pct : null; };
   const cadence = (s) => cadenceShown(s.cad, s.type);
-  const coeurMoyen = (s) => (s.fc && coeurFiable(s) ? s.fc : null);
+  const coeurMoyen = (s) => (coeurMoyenOk(s) ? s.fc : null);
 
   /* ---------- Courses : volume, régularité, records ---------- */
   function volumeParMois(sorties, nowTs, mois) {
@@ -894,5 +930,5 @@ const Calc = (() => {
     nomCourt, passageDominant, recordsBattus, ressentiCran, EFFORT_DE, frise3, zonesSortie, verdictRepartition, partZones, premierKm,
     allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, kmCoeur, kmParKm, allureZonesCardio, allureZonesCardioPeriode, JOUR, SEM, MOIS_J,
     // Révisions du 29/10
-    repartir, partsZones, serieCourbe, niveauCourbes, niveauSerie };
+    repartir, partsZones, serieCourbe, niveauCourbes, niveauSerie, coeurMoyenOk, allureDetaillee, intervalleCoeur, detailMontre, commeGarmin };
 })();

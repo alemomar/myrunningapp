@@ -36,9 +36,9 @@ window.__appels = [];
 </script>
 <script src="../config.js"></script>
 <script src="../logic.js?v=113"></script>
-<script src="reglages.js?v=12"></script>
+<script src="reglages.js?v=13"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=20"></script>
+<script src="calculs.js?v=21"></script>
 <script src="conseil.js?v=3"></script>
 <script>
 (async () => {
@@ -99,7 +99,7 @@ window.__appels = [];
   const habA = [1, 2, 3].map((i) => sortie({ id: "z" + i, ts: NOW - i * 7 * JOUR, km: 8, pace: 370 }));
   ok(Calc.verdict(sortie({ id: "y4", ts: NOW, km: 8, pace: 355 }), habA, {}).cle === "rapide", "Verdict allure seule : 15 s/km plus vite → plus rapide que d'habitude");
   ok(Calc.verdict(sortie({ id: "y5", ts: NOW, km: 8, pace: 385 }), habA, {}).cle === "lente", "Verdict allure seule : 15 s/km plus lent → plus lente que d'habitude");
-  const part = Calc.verdict(sortie({ id: "y6", ts: NOW, km: 8, pace: 372, fc: 150, hrPas: 120, rpe: 3 }), habR, {});
+  const part = Calc.verdict(sortie({ id: "y6", ts: NOW, km: 8, pace: 372, fc: 150, hrPas: 960, rpe: 3 }), habR, {});   // 29/10 : un cœur toutes les 16 min (toutes les 2 min suffit désormais pour le cœur moyen)
   ok(part.base === "ressenti" && /partielles/.test(part.note || ""), "Cœur partiel : verdict sur l'allure et le ressenti, avec la phrase « Données cardio partielles »");
   // Zones d'allure
   const profil = { program_settings: { refDistanceKm: 10, refTimeSec: 3000, refDate: "2026-09-15", refSource: "chrono" } };
@@ -247,6 +247,22 @@ window.__appels = [];
   const nsF2 = Calc.niveauSerie(eF, NOW, 2);
   ok(nsF2.n === 1 && nsF2.valeur === 256 && nsF2.ecart === 2 && Calc.niveauSerie(eF, NOW, 1).n === 0,
     "Ton niveau (retour du 29/10) : un fractionné d'il y a 7 semaines s'affiche sur 2 mois (4'16), pas sur 1 mois");
+
+  // Garmin (29/10) : dans Apple Santé, un cœur toutes les 2 min et une allure toutes les ~10 min
+  const gs = (id, j, fc) => sortie({ id, ts: NOW - j * JOUR, km: 8, pace: 365, fc, hrPas: 120 });
+  const g0 = gs("g0", 0, 146), habG = [7, 14, 21].map((j, i) => gs("gh" + i, j, 151));
+  ok(!Calc.coeurFiable(g0) && Calc.coeurMoyenOk(g0) && !Calc.coeurMoyenOk(sortie({ id: "g16", ts: NOW, km: 8, pace: 365, fc: 150, hrPas: 960 })),
+    "Garmin : un cœur toutes les 2 min → pas de courbe fiable, mais un cœur moyen juste ; toutes les 16 min → pas fiable");
+  const vG = Calc.verdict(g0, habG, {});
+  ok(vG.base === "coeur" && vG.cle === "facile" && !vG.note, "Garmin : le bilan compare ton cœur moyen (5 battements de moins → plus facile), plus seulement ton allure");
+  const ligG = { id: "gr", start_date: iso(NOW), type: "Fractionné", apple_type: "Running", distance_km: 8.57, duration_sec: 3000, avg_hr: 150, include_in_stats: true,
+    pace_series: Array.from({ length: 600 }, (_, i) => ({ t: (i + 1) * 5, pace: i % 120 < 60 ? 300 : 420 })), hr_series: Array.from({ length: 600 }, (_, i) => ({ t: (i + 1) * 5, hr: 150 })) };
+  const sgG = Calc.versSortie(Calc.commeGarmin(ligG)), sdG = Calc.versSortie(ligG);
+  ok(Calc.allureDetaillee(sdG) && !Calc.allureDetaillee(sgG) && sgG.hr.length === 25 && Math.abs(Calc.intervalleCoeur(sgG) - 120) < 1 && sgG.pace.length <= 6,
+    "Voir comme une Garmin : cœur toutes les 2 min (" + sgG.hr.length + " mesures), allure toutes les ~10 min (" + sgG.pace.length + " mesures)");
+  const fracG = Calc.alluresParEffort([sgG], NOW, 3, z, defs).find((e) => e.cle === "frac"), fracD = Calc.alluresParEffort([sdG], NOW, 3, z, defs).find((e) => e.cle === "frac");
+  ok(fracG.points.length === 0, "Garmin : pas d'allure de fractionné tirée d'une allure toutes les 10 min (elle serait fausse) ; avec l'allure détaillée : " + fracD.points.length + " mesure");
+  ok(!Calc.detailMontre([g0, ...habG], NOW).coeur && Calc.detailMontre([sdG], NOW).coeur && !Calc.detailMontre([sgG], NOW).allure, "Ta montre : peu détaillée (Garmin) ou détaillée (Apple Watch)");
 
   // Ton conseil (C3 à C10)
   const ctxC = (courses, now) => ({ courses, nowTs: now || NOW, fmax: 188, frepos: 58, defs, objectif: null, niveau: [], bilan: () => ({ cle: "moyenne" }) });

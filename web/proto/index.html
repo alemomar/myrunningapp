@@ -377,6 +377,10 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .attenue{opacity:.55}
 .toast{position:fixed;left:50%;bottom:calc(92px + var(--safe-b));transform:translateX(-50%);z-index:70;background:var(--text);color:var(--on-accent);padding:11px 16px;border-radius:14px;font-weight:600;font-size:14px;width:max-content;max-width:calc(100% - 32px);box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .demo-bandeau{padding:9px 12px;border-radius:12px;background:var(--attention-bg);color:var(--attention-text);font-size:13px;font-weight:600}
+.interrupteur{width:46px;height:28px;border-radius:999px;background:var(--control-2);position:relative;flex:none;transition:background .2s}   /* 29/10 : « Voir comme une Garmin » */
+.interrupteur i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--text);transition:transform .2s}
+.interrupteur.on{background:var(--accent)}.interrupteur.on i{transform:translateX(18px);background:var(--on-accent)}
+@media (prefers-reduced-motion:reduce){.interrupteur,.interrupteur i{transition:none}}
 svg text{font-family:"Barlow",system-ui,sans-serif}
 [id^=graphe-]{scroll-margin-top:70px}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
@@ -392,10 +396,10 @@ svg text{font-family:"Barlow",system-ui,sans-serif}
 <script src="../logic.js?v=113"></script>
 <script src="../record-man.js?v=1"></script>
 <script src="../mra-cheer.js?v=1"></script>
-<script src="reglages.js?v=12"></script>
+<script src="reglages.js?v=13"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=20"></script>
+<script src="calculs.js?v=21"></script>
 <script src="composants.js?v=8"></script>
-<script src="app.js?v=23"></script>
+<script src="app.js?v=24"></script>
 </body>
 </html>

@@ -30,6 +30,10 @@ const REGLAGES = {
   /* ---- Cœur fiable ---- */
   coeurFiableIntervalleSec: 30, // au moins une mesure toutes les 30 s en moyenne (l'app, elle, demande 1 par minute)
   coeurFiableCouverture: 0.7,   // … et des mesures sur au moins 70 % de la sortie (même règle que « Détail incomplet »)
+  // Montres peu détaillées (29/10, Garmin : dans Apple Santé, un cœur toutes les 2 min et une allure toutes les ~10 min) :
+  coeurMoyenIntervalleMaxSec: 180,  // le cœur moyen d'une sortie reste juste avec au moins une mesure toutes les 3 min
+  allureDetailleeParMin: 1,         // allure détaillée : au moins une mesure par minute (allure par km, fractionnés)
+  detailSorties: 10,                // ta montre est « détaillée » si la moitié de tes 10 dernières courses l'est
 
   /* ---- Verdict sans cœur fiable : allure et ressenti ---- */
   ecartAllureSec: 10,           // au moins 10 s/km plus vite (ou plus lent) que l'habitude
