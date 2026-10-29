@@ -160,7 +160,7 @@
         <div class="txt2" style="font-size:14px">${esc(U.MOIS[new Date(new Date(m.debut).getTime() - JOUR).getMonth()].replace(/^./, (x) => x.toUpperCase()))} : ${a.n} ${a.n > 1 ? "sorties" : "sortie"} · ${U.kmTxt(a.km)} km.${der ? ` Ta dernière : il y a ${Math.round((now - der.ts) / JOUR)} jours.` : ""}</div>${bande}</section>`;
     }
     const dKm = a.n ? c.km - a.km : null, dN = a.n ? c.n - a.n : null;
-    const zones = tot > 0 ? `<div class="filet"></div>${U.deuxGrands((m.secs[0] + m.secs[1]) / tot * 100, (m.secs[2] + m.secs[3] + m.secs[4]) / tot * 100)}${U.zbarre(m.secs, { repere: true })}` : "";
+    const zones = tot > 0 ? `<div class="filet"></div>${U.deuxGrands((m.secs[0] + m.secs[1]) / tot * 100, (m.secs[2] + m.secs[3] + m.secs[4]) / tot * 100)}${U.zbarre(m.secs, { repere: true })}${U.zcols(m.secs, false)}` : "";
     // 28/10 (« un peu trop surchargé, il y a moyen de l'aérer ? ») : plus d'espace entre les trois parties, chiffres un peu moins gros.
     return `<section class="carte aeree" aria-label="Ton mois"><span class="sur">Ton mois · ${esc(nomMois)}</span>
       <div class="mini" style="gap:6px"><div>${U.num(U.kmTxt(c.km), "km", "n34")}<div class="cap" style="margin-top:4px">${dKm != null ? `<b class="${dKm >= 0 ? "citron" : "gris"}">${dKm >= 0 ? "+" : "−"}${U.kmTxt(Math.abs(dKm))} km</b> vs ${esc(moisAvant)}` : "ce mois-ci"}</div></div>
@@ -264,7 +264,7 @@
     return `<section class="carte"><div class="carte-tete"><h2>Cœur</h2>${info("coeur")}</div>${U.courbeCoeur(s, defs)}
       <div class="mini" style="background:var(--sunken);border-radius:14px;padding:4px">${trois.join("").replace(/class="mt"/g, 'class="mt" style="background:transparent"')}</div>
       ${facile && der ? `<div class="txt2" style="font-size:14.5px">${esc(cardiacDriftText(der))}</div>` : ""}
-      ${zs ? `<div class="filet"></div><span class="sur">Temps par zone cardio · d'après ton cœur</span><b style="font-size:14px">Ta sortie</b>${U.zbarre(zs.secs, { labels: true, haute: true })}${U.zcols(zs.secs, true, Calc.allureZonesCardio(s, etat.zones, defs))}<div class="cap" style="margin-top:-4px">Sous chaque zone : le temps passé, puis ton allure moyenne quand ton cœur y était.</div>
+      ${zs ? `<div class="filet"></div><span class="sur">Temps par zone cardio · d'après ton cœur</span><b style="font-size:14px">Ta sortie</b>${U.zbarre(zs.secs, { labels: true, haute: true })}${U.zcols(zs.secs, true, Calc.allureZonesCardio(s, etat.zones, defs))}
 
         ${vr ? U.verdictBox(vr) : ""}` : ""}</section>`;
   }
@@ -447,7 +447,7 @@
       const z = Calc.zonesCardioPeriode(etat.courses, now, mois, fm.valeur, fr), tot = z.secs.reduce((a, v) => a + v, 0);
       const dur = etat.courses.filter((s) => s.ts >= now - mois * MOIS_J * JOUR && Calc.coeurFiable(s)).reduce((a, s) => a + s.dur, 0);
       if (z.n) { const fac = (z.secs[0] + z.secs[1]) / tot * 100;
-        zones = `${U.deuxGrands(fac, 100 - fac)}${U.zbarre(z.secs, { repere: true })}${U.zcols(z.secs, false, Calc.allureZonesCardioPeriode(etat.courses, now, mois, etat.zones, z.defs))}<div class="cap" style="margin-top:-4px">Sous chaque zone : ton allure moyenne quand ton cœur y était, sur la période.</div>
+        zones = `${U.deuxGrands(fac, 100 - fac)}${U.zbarre(z.secs, { repere: true })}${U.zcols(z.secs, false, Calc.allureZonesCardioPeriode(etat.courses, now, mois, etat.zones, z.defs))}
           ${U.verdictBox(fac >= R.repereFacilePct ? { ton: "bon", titre: `Bon équilibre : ${Math.round(fac)} % en facile.` } : { ton: "presque", titre: `Un peu trop de soutenu : vise ${R.repereFacilePct} % en facile.` })}
           <div class="cap">${z.n} sorties · ${esc(U.dureeTxt(dur))} de course</div>`; }
       else zones = `<div class="txt2">Pas de sortie au cœur fiable sur la période.</div>`;
