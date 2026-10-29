@@ -264,7 +264,7 @@
     return `<section class="carte"><div class="carte-tete"><h2>Cœur</h2>${info("coeur")}</div>${U.courbeCoeur(s, defs)}
       <div class="mini" style="background:var(--sunken);border-radius:14px;padding:4px">${trois.join("").replace(/class="mt"/g, 'class="mt" style="background:transparent"')}</div>
       ${facile && der ? `<div class="txt2" style="font-size:14.5px">${esc(cardiacDriftText(der))}</div>` : ""}
-      ${zs ? `<div class="filet"></div><span class="sur">Temps par zone</span><b style="font-size:14px">Ta sortie</b>${U.zbarre(zs.secs, { labels: true, haute: true })}${U.zcols(zs.secs, true)}
+      ${zs ? `<div class="filet"></div><span class="sur">Temps par zone cardio · d'après ton cœur</span><b style="font-size:14px">Ta sortie</b>${U.zbarre(zs.secs, { labels: true, haute: true })}${U.zcols(zs.secs, true)}
         ${id ? `<div class="carte-tete" style="font-size:14px;margin-top:4px"><b>Idéal pour ${esc(pour(lib))}</b><span class="cap">${esc(id.texte)}</span></div>${U.zbarre(id.pct, { pale: true })}` : ""}
         ${vr ? U.verdictBox(vr) : ""}` : ""}</section>`;
   }
@@ -305,8 +305,9 @@
     const t = dec.tempsParZone, tot = t.reduce((a, v) => a + v, 0) || 1, mx = Math.max(...t, 1), plages = Calc.zonesLibelles(z), prof = z.niveau;
     const rangs = [4, 3, 2, 1, 0].map((i) => `<div class="za"><span class="za-z">Zone ${i + 1}</span><span class="za-piste"><i style="width:${(t[i] / mx * 100).toFixed(1)}%;background:${R.zonesCouleurs[i]}"></i><b>${Math.round(t[i] / tot * 100)} %</b></span><span class="za-p">${esc(plages[i].plage)}</span></div>`).join("");
     return `<section class="carte"><h2>Temps par zone d'allure</h2>
-      <div class="cap" style="margin-top:-6px">${prof ? `D'après ton chrono : ${Calc.kmTxt(prof.distanceKm * 1000)} km en ${fmtDur(prof.timeSec)}` : "D'après ton allure habituelle en sortie facile"}</div>
-      <div style="display:flex;flex-direction:column;gap:10px">${rangs}</div></section>`;
+      <div class="cap" style="margin-top:-6px">${prof ? `D'après ta vitesse · zones tirées de ton chrono : ${Calc.kmTxt(prof.distanceKm * 1000)} km en ${fmtDur(prof.timeSec)}` : "D'après ta vitesse · zones tirées de ton allure facile habituelle"}</div>
+      <div style="display:flex;flex-direction:column;gap:10px">${rangs}</div>
+      <div class="cap">Ta vitesse, pas ton cœur : les % diffèrent du temps par zone cardio (le cœur met du temps à monter, puis dérive avec la fatigue).</div></section>`;
   }
 
   /* =================== Sorties (5) =================== */
@@ -418,17 +419,19 @@
       const coul = U.couleurType(e.cle === "tempo" ? "Tempo" : e.cle === "seuil" ? "Seuil" : "Fractionné");
       const quoi = e.cle === "frac" ? "fractionné" : e.cle === "tempo" ? "séance au tempo" : "séance au seuil";
       const pts = e.points.slice().sort((a, b) => a.ts - b.ts), dernier = pts[pts.length - 1];
-      const c = pts.length >= 3 ? U.courbe(pts, { debut, fin: now, couleur: coul, rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 4, h: 112, label: `Allure ${e.nom}`, grille: "allure" }) : null;
-      const em = c && c.debut != null ? U.ecartMots(ecartCourbe(c, true), suffixeCourbe(c, mois)) : U.ecartMots(e.ecart);   // l'écart dit ce que montre la courbe
-      const valeur = e.maintenant != null ? `${U.num(fmtKmPace(e.maintenant), "/km", "ta-v")}<span class="cap">tes 4 dernières semaines</span>`
-        : dernier ? `${U.num(fmtKmPace(dernier.v), "/km", "ta-v")}<span class="cap">ton dernier ${quoi === "fractionné" ? "fractionné" : quoi.replace("séance", "passage")}, le ${esc(U.jourMois(dernier.ts).replace(/\.$/, ""))} · rien depuis</span>` : "";
+      const c = pts.length >= 3 ? U.courbe(pts, { debut, fin: now, couleur: coul, rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 4, label: `Allure ${e.nom}`, grille: "allure" }) : null;
       let bas;
       if (c) bas = c.svg;
       else if (pts.length) bas = `<div class="txt2" style="font-size:14px">${pts.length} ${pts.length > 1 ? "séances" : "séance"} sur ${mois} mois. Encore ${3 - pts.length} pour tracer ta tendance.</div>`;
       else bas = `<div class="txt2" style="font-size:14px">${e.cle !== "frac" && !defs ? "Renseigne ta FC max ou ton âge pour lire l'effort au cœur." : `Pas de ${quoi} sur ${mois} mois.`}</div>`;
-      return `<div class="effort" id="graphe-${e.cle}" style="display:flex;flex-direction:column;gap:6px;${i ? "border-top:1px solid var(--line);padding-top:14px" : ""}">
-        <div class="carte-tete"><span class="ta-tete" style="--c:${coul};color:var(--text);font-size:15px"><i></i>${esc(e.nom)}</span>${c || e.maintenant != null ? `<b class="${em.cls}" style="font-size:13.5px">${esc(em.txt)}</b>` : ""}</div>
-        ${valeur ? `<div style="display:flex;flex-direction:column;gap:2px">${valeur}</div>` : ""}${bas}</div>`;
+      // 29/10 (retour d'Omar) : un bloc bien distinct par type d'allure, construit comme « Ton allure facile ».
+      const ec = c && c.debut != null ? ecartCourbe(c, true) : e.ecart, suf = c && c.debut != null ? suffixeCourbe(c, mois) : null;
+      const titre = { tempo: "Ton allure au tempo", seuil: "Ton allure au seuil", frac: "Ton allure en fractionné" }[e.cle];
+      const grand = e.maintenant != null ? fmtKmPace(e.maintenant) : dernier ? fmtKmPace(dernier.v) : null;
+      const sous = e.maintenant != null ? "tes 4 dernières semaines" : dernier ? `ton dernier ${quoi === "fractionné" ? "fractionné" : quoi.replace("séance", "passage")}, le ${esc(U.jourMois(dernier.ts).replace(/\.$/, ""))} · rien depuis` : "";
+      return `<section class="carte" id="graphe-${e.cle}"><div class="carte-tete"><span class="ta-tete" style="--c:${coul};color:var(--text);font-size:16px"><i></i>${esc(titre)}</span>${info("efforts")}</div>
+        ${grand ? `<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">${U.num(grand, "/km", "n52")}<div style="text-align:right;display:flex;flex-direction:column;gap:4px;align-items:flex-end">${c || e.maintenant != null ? pastilleEcart(ec, mois, suf) : ""}<span class="cap">${sous}</span></div></div>` : ""}
+        ${bas}</section>`;
     }).join("");
     // Croisements
     const ar = Calc.allureRegularite(etat.courses, now);
@@ -444,7 +447,7 @@
         ${[as.debut, as.fin].map((x, i) => `<div style="display:flex;align-items:center;gap:12px"><span class="txt2" style="width:40px;font-size:13.5px">${U.MOIS_C[x.mois]}</span>${barre10(x.ressenti, i ? "#C6F432" : "#8B8F96")}${U.num(String(Math.round(x.ressenti * 10) / 10).replace(".", ","), "/10", i ? "citron" : "")}</div>`).join("")}
         <div class="cap">Ressenti moyen de tes sorties faciles notées · ${as.n} sorties</div>`;
     return `<section class="carte" id="graphe-ef"><div class="carte-tete"><span class="ta-tete" style="--c:#C6F432;color:var(--text);font-size:16px"><i></i>Ton allure facile</span>${info("allure-facile")}</div>${facile}${obj}</section>
-      <section class="carte"><div class="carte-tete"><h2>Tes allures par effort</h2>${info("efforts")}</div>${efforts}</section>
+      ${efforts}
       <section class="carte"><div class="carte-tete"><h2>${nouveau("Allure × régularité")}</h2>${info("croisements")}</div>${regu}</section>
       <section class="carte"><div class="carte-tete"><h2>${nouveau("Allure × ressenti")}</h2>${info("croisements")}</div>${ress}</section>`;
   }
@@ -470,7 +473,7 @@
     const sf = fm ? Calc.sortiesFacilesZones(etat.courses, now, fm.valeur, fr) : [], vraies = sf.filter((x) => x.vraiment).length;
     // La valeur en grand = tes 4 dernières semaines = le bout de la courbe (même chiffre des deux côtés).
     const valCm = cC.fin ?? cm.maintenant, valDer = cD.fin ?? der.maintenant;
-    return `<section class="carte"><div class="carte-tete"><h2>Temps par zone</h2>${info("coeur")}</div>${zones}</section>
+    return `<section class="carte"><div class="carte-tete"><h2>Temps par zone cardio</h2>${info("coeur")}</div>${zones}</section>
       <section class="carte"><div class="carte-tete"><span class="ta-tete" style="--c:#C6F432;color:var(--text);font-size:16px"><i></i>Ton cœur en sortie facile</span>${info("coeur-facile")}</div>
         ${valCm != null ? `<div style="display:flex;align-items:flex-end;justify-content:space-between">${U.num(Math.round(valCm), "bpm", "n52")}<b class="${ecartBpm == null || Math.abs(ecartBpm) < 2 ? "gris" : ecartBpm > 0 ? "citron" : "violet"}" style="font-size:13.5px">${ecartBpm == null || Math.abs(ecartBpm) < 2 ? `stable ${suffixeCourbe(cC, mois)}` : `${Math.abs(ecartBpm)} bpm ${ecartBpm > 0 ? "de moins" : "de plus"} ${suffixeCourbe(cC, mois)}`}</b></div>` : ""}
         ${cC.svg}<div class="txt2" style="font-size:14.5px">À allure égale, un cœur qui baisse veut dire que tu progresses.</div></section>
