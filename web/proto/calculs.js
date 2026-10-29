@@ -835,16 +835,20 @@ const Calc = (() => {
         manque: e.maintenant != null ? 0 : e.cle === "ef" && rp.etat === "bientot" ? rp.manque : Math.max(min - n4, 0) };
     });
   }
-  // La courbe d'un effort sur 1, 2 ou 3 mois, et son écart (> 0 : plus vite) depuis la 1re valeur de la période.
-  // tronquee : pas de valeur tout au début (l'écart se lit alors « depuis le 5 août ») ; nouveau : seulement la valeur
-  // d'aujourd'hui (« 3 sorties depuis le 12 oct. »).
+  // Un effort sur 1, 2 ou 3 mois (4, 8 ou 13 semaines) : retour d'Omar du 29/10 (« le grand chiffre, la moyenne du dernier
+  // mois, qui s'actualise si je clique sur 2 mois ; l'allure actuelle est déjà en bout de courbe »).
+  // valeur : la valeur du milieu de tes séances de la période (médiane, comme partout : une sortie ratée ne fausse rien ; sur
+  // 1 mois, c'est pile le bout de la courbe). n : séances de la période (une séance du 12 sept. compte sur 2 mois, même sans
+  // rien depuis). serie : un point par semaine, le dernier = tes 4 dernières semaines quand il y en a. ecart (> 0 : plus vite) :
+  // du 1er au dernier point ; tronquee : pas de point tout au début (« depuis le 5 août ») ; nouveau : 1re séance dans la période.
   function niveauSerie(e, nowTs, mois) {
-    if (e.maintenant == null) return null;
-    const serie = serieCourbe(e.points, nowTs, mois, "semaine", { fin: e.maintenant, min: e.min || 1 });
-    const debut = nowTs - Math.floor(mois * MOIS_J / 7) * SEM, nouveau = serie.filter((p) => p.v != null).length < 2;
-    const depuis = serie.length ? e.points.filter((p) => p.ts > serie[0].ts - 28 * JOUR && p.ts <= nowTs) : [];
-    return { serie, nouveau, tronquee: !serie.length || serie[0].ts > debut, ecart: nouveau ? null : Math.round(serie[0].v) - Math.round(e.maintenant),
-      depuisTs: depuis.length ? depuis[0].ts : null, nDepuis: depuis.length };
+    const k = Math.floor(mois * MOIS_J / 7), debut = nowTs - k * SEM;
+    const dans = e.points.filter((p) => p.ts > debut && p.ts <= nowTs);
+    if (!dans.length) return { n: 0, valeur: null, serie: [], ecart: null };
+    const serie = serieCourbe(e.points, nowTs, mois, "semaine", e.maintenant != null ? { fin: e.maintenant, min: e.min || 1 } : { min: e.min || 1 });
+    const pleins = serie.filter((p) => p.v != null), ecart = pleins.length >= 2 ? Math.round(pleins[0].v) - Math.round(pleins[pleins.length - 1].v) : null;
+    return { n: dans.length, valeur: Math.round(med(dans.map((p) => p.v))), serie, ecart, tronquee: !serie.length || serie[0].ts > debut,
+      nouveau: !!e.premiere && e.premiere.ts > debut, depuisTs: dans[0].ts, derniere: dans[dans.length - 1] };
   }
   // Ton niveau actuel (Accueil) : Facile, Tempo, Seuil, Fractionné sur tes 4 dernières semaines, face à il y a 3 mois.
   // 28/10 (question d'Omar « pourquoi 7'12 ici et 7'09 dans Progression ? ») : le Facile est « Ton allure facile » de la

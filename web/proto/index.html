@@ -106,7 +106,7 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .tiret{display:block;width:22px;height:3px;border-radius:2px;background:var(--faint);margin:16px 0 13px}
 
 /* ---------- Révisions Claude Design du 29/10 : courbe 11a, Ton niveau 13a, Ton mois 15a, temps par zone 16c ---------- */
-.n32{font-size:32px}.n56{font-size:56px;line-height:.85}.n56 small{font-size:.29em}
+.n32{font-size:32px}.n46{font-size:46px;line-height:.85}.n46 small{font-size:.32em}
 .courbe11{display:block}
 .courbe11 .cv{font-family:var(--cond);font-weight:700}
 .niv13{gap:14px}
@@ -133,8 +133,8 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .nt-v.rien{color:var(--faint)}
 .nt-e{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-3)}
 .nt-e.citron{color:var(--accent)}.nt-e.violet{color:var(--attention-text)}.nt-e.rien{color:var(--faint)}
-.fl-tuile{position:absolute;right:9px;top:36px;color:var(--muted);animation:clignote 3.2s ease-in-out infinite}
-@keyframes clignote{0%,100%{opacity:1}50%{opacity:.15}}
+.fl-tuile{position:absolute;right:9px;top:36px;color:#DDF78C;animation:clignote 3.2s ease-in-out infinite}   /* 29/10 : citron pâle, plus visible */
+@keyframes clignote{0%,100%{opacity:1}50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.fl-tuile{animation:none}}
 .mois-chiffres{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .mois-chiffres>div{display:flex;flex-direction:column;gap:6px}
@@ -169,7 +169,6 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .carte.aeree{gap:20px;padding:22px 18px}
 .carte.aeree .filet{margin:2px 0}
 .carte.aeree .n34{font-size:30px}
-.carte.aeree .deux-grands .num{font-size:38px}
 .carte.aeree .zbarre{margin-top:22px!important;height:12px}
 .carte.aeree .regu-case{font-size:14px}
 
@@ -241,15 +240,6 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .zbarre.pale i{opacity:.42}
 .repere80{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--text);border-radius:1px}
 .repere80 span{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-size:10.5px;font-weight:700;white-space:nowrap;margin-bottom:2px}
-.zcols{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.zcol{display:flex;flex-direction:column;gap:2px;border-top:3px solid var(--c);padding-top:7px;min-width:0}
-.zcol .p{font-family:var(--cond);font-weight:700;font-size:20px;line-height:1}
-.zcol .m,.zcol .n{font-size:11.5px;color:var(--muted);white-space:nowrap}
-.zcol .a{font-family:var(--cond);font-weight:700;font-size:16px;color:var(--text);white-space:nowrap;margin-top:2px}
-.zcol .n{color:var(--c);font-weight:700}   /* 29/10 : le nom de la zone dans sa couleur */
-.zcol.zero{opacity:.38}
-.deux-grands{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.deux-grands .num{font-size:44px}
 .verdict-box{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border-radius:14px;background:var(--sunken)}
 .verdict-box.bon{background:var(--accent-soft)}
 .verdict-box .vi{width:26px;height:26px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
@@ -404,8 +394,8 @@ svg text{font-family:"Barlow",system-ui,sans-serif}
 <script src="../mra-cheer.js?v=1"></script>
 <script src="reglages.js?v=12"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=19"></script>
-<script src="composants.js?v=7"></script>
-<script src="app.js?v=21"></script>
+<script src="calculs.js?v=20"></script>
+<script src="composants.js?v=8"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

@@ -96,14 +96,6 @@ const UI = (() => {
     const rep = opt.repere ? `<span class="repere80" style="left:${R.repereFacilePct}%"><span>repère ${R.repereFacilePct} %</span></span>` : "";
     return `<div class="zbarre${opt.pale ? " pale" : ""}${opt.haute ? " haute" : ""}"${opt.repere ? ' style="margin-top:16px"' : ""} aria-hidden="true">${segs}${rep}</div>`;
   }
-  // 5 colonnes : % en grand, minutes dessous (si demandé), « Zone 1 » à « Zone 5 » (retour d'Omar du 28/10 : pas de noms) ;
-  // une zone à 0 reste visible, grisée. Les % sont arrondis pour faire 100 pile (29/10).
-  // `allures` (facultatif, 29/10) : l'allure moyenne quand le cœur était dans chaque zone (« 7'24 »).
-  function zcols(secs, minutes, allures) {
-    const pz = Calc.partsZones(secs);
-    return `<div class="zcols">${secs.map((v, i) => { const p = pz.pcts[i];
-      return `<div class="zcol${p === 0 ? " zero" : ""}" style="--c:${couleurZone(i)}"><span class="p">${p} %</span>${minutes ? `<span class="m">${pz.mins[i]} min</span>` : ""}${allures ? `<span class="a">${allures[i] ? allure(allures[i]) : "—"}</span>` : ""}<span class="n">Zone ${i + 1}</span></div>`; }).join("")}</div>`;
-  }
   // 15a · Ton mois (révision du 29/10) : « 61 % en zones 1-2 » en grand, barre 2 couleurs (1-2 citron, 3-5 gris) avec le repère
   // 80 %, puis les 5 zones en petites tuiles groupées comme la barre (1-2 à gauche, 3-5 à droite). Zone à 0 % en gris.
   function partFacile(pz) {
@@ -114,18 +106,14 @@ const UI = (() => {
   }
   // 16c · Temps par zone d'une sortie (révision du 29/10) : une colonne par zone, minutes au-dessus (hauteur = temps), « Z1 »
   // dessous, puis l'allure moyenne dans la zone (« — » sans mesure). Zone vide : un trait gris.
-  function zcolonnes(mins, allures) {
+  // `unite` : "min" (une sortie) ou "%" (une période, Progression › Cœur).
+  function zcolonnes(mins, allures, unite) {
     const mx = Math.max(...mins, 1);
-    return `<div class="zcolonnes">${mins.map((m, i) => `<div class="zk${m ? "" : " zero"}" style="--c:${couleurZone(i)}"><span class="zk-m"><b class="num">${m}</b>min</span><i style="height:${m ? Math.max(6, Math.round(m / mx * 88)) : 4}px"></i><span class="zk-n">Z${i + 1}</span><span class="zk-a num">${allures && allures[i] ? `${allure(allures[i])}<small>/km</small>` : '<span class="zk-rien">—</span>'}</span></div>`).join("")}</div>`;
+    return `<div class="zcolonnes">${mins.map((m, i) => `<div class="zk${m ? "" : " zero"}" style="--c:${couleurZone(i)}"><span class="zk-m"><b class="num">${m}</b>${unite === "%" ? " %" : "min"}</span><i style="height:${m ? Math.max(6, Math.round(m / mx * 88)) : 4}px"></i><span class="zk-n">Z${i + 1}</span><span class="zk-a num">${allures && allures[i] ? `${allure(allures[i])}<small>/km</small>` : '<span class="zk-rien">—</span>'}</span></div>`).join("")}</div>`;
   }
   // Pastille de verdict : « bien » (citron), « presque » (gris), « trop soutenu » (violet).
   const pastille = (ton, mot) => `<span class="pastille ${esc(ton)}">${esc(mot)}</span>`;
   const legendeZones = () => `<div class="leg">${[0, 1, 2, 3, 4].map((i) => `<span style="--c:${couleurZone(i)}">Zone ${i + 1}</span>`).join("")}</div>`;
-  // Facile / Soutenu en grand (zones 1-2 et 3-5).
-  function deuxGrands(facilePct, soutenuPct) {
-    return `<div class="deux-grands"><div><div class="num citron">${Math.round(facilePct)} %</div><div class="txt2" style="font-size:14px;margin-top:4px">en facile · zones 1-2</div></div>
-      <div><div class="num">${Math.round(soutenuPct)} %</div><div class="txt2" style="font-size:14px;margin-top:4px">en soutenu · zones 3-5</div></div></div>`;
-  }
   const verdictBox = (v) => `<div class="verdict-box ${v.ton}"><span class="vi">${v.ton === "bon" ? ic("check", 15, 3) : "!"}</span><div><b>${esc(v.titre)}</b>${v.phrase ? `<span>${esc(v.phrase)}</span>` : ""}</div></div>`;
 
   /* ---------- 1.11 · Régularité ---------- */
@@ -186,7 +174,7 @@ const UI = (() => {
     const voisins = (l) => { const v = l.filter(Boolean).slice(0, 3); return v.length ? v.reduce((x, q) => x + q[1], 0) / v.length : null; };
     const vF = voisins(P.slice(iF + 1)), vL = voisins(P.slice(0, iL).reverse());
     const yF = vF != null && vF > F[1] + 2 ? F[1] - 12 : F[1] + 22;
-    const yL = vL != null && vL < L[1] - 2 ? L[1] + 24 : L[1] - 13;
+    const yL = vL != null && vL < L[1] - 2 ? L[1] + 26 : L[1] - 14;
     // Repère (5 %, 170) : son étiquette à droite, sinon à gauche, sinon au milieu, là où elle ne touche pas une valeur écrite.
     let rep = "";
     if (o.repere) {
@@ -216,7 +204,7 @@ const UI = (() => {
       <circle cx="${f2(F[0])}" cy="${f2(F[1])}" r="5" fill="#17191C" stroke="${c}" stroke-width="2.5"/>
       <circle cx="${f2(L[0])}" cy="${f2(L[1])}" r="6.5" fill="${c}" stroke="#17191C" stroke-width="3"/>
       <text class="cv" x="${f2(Math.max(F[0] - 4, 0))}" y="${f2(yF)}" fill="#A3A7AD" font-size="15">${esc(fmt(vals[0].v))}</text>
-      <text class="cv" x="${f2(Math.min(L[0] + 4, W))}" y="${f2(yL)}" fill="#F2F3F0" font-size="17" text-anchor="end">${esc(fmt(vals[vals.length - 1].v))}</text>
+      <text class="cv" x="${f2(Math.min(L[0] + 4, W))}" y="${f2(yL)}" fill="#F2F3F0" font-size="20" text-anchor="end">${esc(fmt(vals[vals.length - 1].v))}</text>
       ${axe}</svg>`;
     return { svg, debut: vals[0].v, fin: vals[vals.length - 1].v, depuis: serie[0].ts, finTs: vals[vals.length - 1].ts };
   }
@@ -263,6 +251,6 @@ const UI = (() => {
   }
 
   return Object.freeze({ esc, ic, JOUR, JOURS, MOIS, MOIS_C, debutJour, jourTxt, heureTxt, dateCourte, jourMois, relatif, memeJour, kmTxt, dureeTxt, allure, num,
-    couleurType, couleurZone, couleurEffort, flecheTuile, pillType, icBilan, bilanLigne, ecartMots, frise, friseTexte, COUL_FRISE, zbarre, zcols, partFacile, zcolonnes, pastille, legendeZones, deuxGrands, verdictBox,
+    couleurType, couleurZone, couleurEffort, flecheTuile, pillType, icBilan, bilanLigne, ecartMots, frise, friseTexte, COUL_FRISE, zbarre, partFacile, zcolonnes, pastille, legendeZones, verdictBox,
     fondRegu, reguCases, reguBande, crans, dessinCourbe, courbe, courbeCoeur, toast });
 })();

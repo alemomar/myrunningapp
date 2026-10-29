@@ -38,7 +38,7 @@ window.__appels = [];
 <script src="../logic.js?v=113"></script>
 <script src="reglages.js?v=12"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=19"></script>
+<script src="calculs.js?v=20"></script>
 <script src="conseil.js?v=3"></script>
 <script>
 (async () => {
@@ -237,10 +237,16 @@ window.__appels = [];
   ok(ns1.serie.length === 5 && ns1.ecart === 5 && !ns1.nouveau && !ns1.tronquee, "Ton niveau (13a) : sur 1 mois, 5 s plus vite qu'il y a 1 mois");
   const eTr = { ...eT, points: eT.points.slice(2) }, nsTr = Calc.niveauSerie(eTr, NOW, 3);
   ok(nsTr.tronquee && !nsTr.nouveau && nsTr.ecart === 5, "Ton niveau (13a) : rien au début de la période → l'écart part de ta 1re valeur (« 5 s plus vite depuis le … »)");
-  const eN = { cle: "seuil", maintenant: 380, min: 2, points: [{ ts: NOW - 95 * JOUR, v: 420 }, { ts: NOW - 20 * JOUR, v: 385 }, { ts: NOW - 5 * JOUR, v: 380 }] };
+  ok(ns3.valeur === 403 && ns3.n === 4 && ns1.valeur === 400 && ns1.valeur === ns1.serie[ns1.serie.length - 1].v,
+    "Ton niveau (retour du 29/10) : le grand chiffre = tes séances de la période (3 mois : 6'43) ; sur 1 mois, c'est le bout de la courbe (6'40)");
+  const eN = { cle: "seuil", maintenant: 380, min: 2, points: [{ ts: NOW - 20 * JOUR, v: 385 }, { ts: NOW - 5 * JOUR, v: 380 }] };
+  eN.premiere = eN.points[0];
   const nsN = Calc.niveauSerie(eN, NOW, 3);
-  ok(nsN.nouveau && nsN.ecart === null && nsN.nDepuis === 2 && Calc.niveauSerie({ ...eN, maintenant: null }, NOW, 3) === null,
-    "Ton niveau (13a) : une seule séance il y a 3 mois ne suffit pas (2 par point, comme avant) → « nouveau », « 2 sorties depuis » ; sans valeur des 4 semaines, pas de courbe");
+  ok(nsN.nouveau && nsN.ecart === null && nsN.n === 2, "Ton niveau (13a) : 1re séance dans la période → « nouveau », 2 sorties depuis");
+  const eF = { cle: "frac", maintenant: null, min: 1, points: [[60, 258], [47, 256]].map(([j, v]) => ({ ts: NOW - j * JOUR, v })) };
+  const nsF2 = Calc.niveauSerie(eF, NOW, 2);
+  ok(nsF2.n === 1 && nsF2.valeur === 256 && nsF2.ecart === 2 && Calc.niveauSerie(eF, NOW, 1).n === 0,
+    "Ton niveau (retour du 29/10) : un fractionné d'il y a 7 semaines s'affiche sur 2 mois (4'16), pas sur 1 mois");
 
   // Ton conseil (C3 à C10)
   const ctxC = (courses, now) => ({ courses, nowTs: now || NOW, fmax: 188, frepos: 58, defs, objectif: null, niveau: [], bilan: () => ({ cle: "moyenne" }) });
