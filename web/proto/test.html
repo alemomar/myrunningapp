@@ -38,7 +38,7 @@ window.__appels = [];
 <script src="../logic.js?v=113"></script>
 <script src="reglages.js?v=11"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=16"></script>
+<script src="calculs.js?v=17"></script>
 <script src="conseil.js?v=3"></script>
 <script>
 (async () => {
@@ -208,6 +208,8 @@ window.__appels = [];
   const niv = Calc.alluresParEffort([4, 11, 95, 100].map((j, i) => serieSortie("nv" + i, NOW - j * JOUR, "EF", [[8000, j < 50 ? 400 : 410, 145]])), NOW, 3, z, defs, null, 3)[0];
   const kc = Calc.kmCoeur(serieSortie("kc", NOW, "EF", [[1000, 300, 140], [1000, 300, 150], [1000, 300, 160], [500, 300, 165]]));
   ok(kc && kc.length === 4 && Math.abs(kc[0] - 140) <= 1 && Math.abs(kc[1] - 150) <= 1 && Math.abs(kc[2] - 160) <= 1 && Math.abs(kc[3] - 165) <= 1, "Allure par km (29/10) : le cœur moyen de chaque km, et du bout final (" + (kc || []).join(" · ") + ")");
+  const azc = Calc.allureZonesCardio(serieSortie("azc", NOW, "EF", [[3000, 420, 140], [2000, 360, 155]]), z, defs);
+  ok(azc && Math.abs(azc[1] - 420) <= 6 && Math.abs(azc[2] - 360) <= 6 && azc[0] === null && azc[4] === null, "Allure par zone cardio (29/10) : 7'00 en zone 2, 6'00 en zone 3, rien ailleurs (" + (azc || []).map((v) => v ? fmtKmPace(v) : "—").join(" · ") + ")");
   const na = Calc.niveauActuel(fac, NOW, z, defs)[0], rpNa = Calc.repere(fac, NOW);
   ok(na.cle === "ef" && na.maintenant === rpNa.valeur && na.maintenant === 360 && na.avant === 370 && na.ecart === 10, "Ton niveau actuel : le Facile de l'Accueil = « Ton allure facile » de la Progression (même chiffre, 6'10 → 6'00)");
   ok(Math.abs(niv.maintenant - 400) <= 2 && Math.abs(niv.avant - 410) <= 2 && niv.ecart === niv.avant - niv.maintenant, "Ton niveau actuel (28/10) : l'allure d'il y a 3 mois → celle des 4 dernières semaines (" + fmtKmPace(niv.avant) + " → " + fmtKmPace(niv.maintenant) + ")");

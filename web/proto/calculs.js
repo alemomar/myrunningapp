@@ -656,6 +656,17 @@ const Calc = (() => {
     const ks = kmSplits({ paceSeries: s.pace, distanceKm: s.dist, durationSec: s.dur, type: "EF" });
     return ks ? { premier: ks.kms[0], moyenne: ks.avg } : null;
   }
+  // Allure moyenne dans chaque zone cardio d'une sortie (retour d'Omar du 29/10 : « l'allure moyenne par zone, celles du dessus ») :
+  // pour chaque zone 1 à 5, l'allure tenue pendant que ton cœur y était (cœur décalé de 45 s, comme pour le bilan). Il faut au
+  // moins 1 min dans la zone ; sinon null.
+  function allureZonesCardio(s, z, defs, reg) {
+    const r = reg || REGLAGES, pts = defs ? pointsAllure(s, z, r) : null;
+    if (!pts) return null;
+    const zc = (hr) => { for (let i = 0; i < defs.length; i++) if (hr <= defs[i].max) return i; return defs.length - 1; };
+    const o = [0, 1, 2, 3, 4].map(() => ({ sec: 0, m: 0 }));
+    pts.forEach((x) => { if (x.hr != null) { const a = o[zc(x.hr)]; a.sec += x.dt; a.m += x.m; } });
+    return o.map((a) => (a.sec >= r.coeurMinSec && a.m > 0 ? Math.round(a.sec / (a.m / 1000)) : null));
+  }
   // Cœur moyen de chaque km (retour d'Omar du 29/10) : les mêmes km que l'allure par km de l'app (kmSplits : pauses de plus de
   // 2 min ignorées, distance recalée sur celle de la sortie), le cœur mesuré entre deux passages au km. Tableau des km entiers,
   // puis le bout final s'il fait 100 m ou plus ; null sans allure détaillée ou sans cœur.
@@ -783,5 +794,5 @@ const Calc = (() => {
     records, cap, fcMaxEffective, moyenne, med, kmTxt, allureTxt, TITRES, ZONE_A,
     // V2
     nomCourt, passageDominant, recordsBattus, ressentiCran, EFFORT_DE, frise3, zonesSortie, verdictRepartition, partZones, premierKm,
-    allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, kmCoeur, JOUR, SEM, MOIS_J };
+    allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, kmCoeur, allureZonesCardio, JOUR, SEM, MOIS_J };
 })();

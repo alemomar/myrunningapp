@@ -242,9 +242,9 @@
         <div class="rang deux"><div class="stat"><div class="l">Ressenti</div>${res != null ? `${U.num(res, "/10", "v")}<div class="h">${esc(cran.mot)}</div>` : `<button type="button" class="citron" style="font-weight:700;margin-top:4px" data-feuille="ressenti" data-id="${esc(s.id)}">Noter</button>`}</div>
         ${manuel && s.fc ? `<div class="stat"><div class="l">Cœur moy.</div>${U.num(Math.round(s.fc), "bpm", "v")}</div>` : cad ? `<div class="stat"><div class="l">Cadence</div>${U.num(cad, "pas/min", "v")}<div class="h">${cadH}</div></div>` : ""}</div></section>`;
     if (!manuel) h += coeurCarte(s, v, lib, pd);
-    // 29/10 (retours d'Omar) : « Ta sortie en un coup d'œil » et « En résumé » retirés ; temps par zone d'allure (comme Strava)
-    // et allure par km avec le cœur moyen de chaque km.
-    if (!manuel) h += zonesAllureHTML(s) + allureParKmHTML(s, lib);
+    // 29/10 (retours d'Omar) : « Ta sortie en un coup d'œil » et « En résumé » retirés ; allure par km avec le cœur de chaque km.
+    // (Le temps par zone d'allure façon Strava a été retiré : Omar voulait l'allure moyenne dans chaque zone cardio, ajoutée au-dessus.)
+    if (!manuel) h += allureParKmHTML(s, lib);
     if (manuel) h += `<div class="cap" style="padding:0 4px">Saisie à la main : pas de courbe, de zones ni d'allure par km. Le bilan s'appuie sur ton allure.</div>`;
     return h;
   }
@@ -264,7 +264,7 @@
     return `<section class="carte"><div class="carte-tete"><h2>Cœur</h2>${info("coeur")}</div>${U.courbeCoeur(s, defs)}
       <div class="mini" style="background:var(--sunken);border-radius:14px;padding:4px">${trois.join("").replace(/class="mt"/g, 'class="mt" style="background:transparent"')}</div>
       ${facile && der ? `<div class="txt2" style="font-size:14.5px">${esc(cardiacDriftText(der))}</div>` : ""}
-      ${zs ? `<div class="filet"></div><span class="sur">Temps par zone cardio · d'après ton cœur</span><b style="font-size:14px">Ta sortie</b>${U.zbarre(zs.secs, { labels: true, haute: true })}${U.zcols(zs.secs, true)}
+      ${zs ? `<div class="filet"></div><span class="sur">Temps par zone cardio · d'après ton cœur</span><b style="font-size:14px">Ta sortie</b>${U.zbarre(zs.secs, { labels: true, haute: true })}${U.zcols(zs.secs, true, Calc.allureZonesCardio(s, etat.zones, defs))}<div class="cap" style="margin-top:-4px">Sous chaque zone : le temps passé, puis ton allure moyenne quand ton cœur y était.</div>
         ${id ? `<div class="carte-tete" style="font-size:14px;margin-top:4px"><b>Idéal pour ${esc(pour(lib))}</b><span class="cap">${esc(id.texte)}</span></div>${U.zbarre(id.pct, { pale: true })}` : ""}
         ${vr ? U.verdictBox(vr) : ""}` : ""}</section>`;
   }
@@ -297,18 +297,7 @@
     const tete = `<div class="km km-tete"><span></span><span></span><span class="p">allure</span><span class="c">${fc ? "cœur" : ""}</span></div>`;
     return `<section class="carte"><h2>Allure par km</h2>${U.verdictBox({ ton: bon ? "bon" : "presque", titre: msg })}<div style="display:flex;flex-direction:column;gap:9px">${tete}${rows}</div></section>`;
   }
-  // Temps par zone d'allure (retour d'Omar du 29/10, sur le modèle de Strava) : le temps passé dans chaque zone d'allure, la plus
-  // rapide en haut, avec ses bornes. Les zones viennent de ton chrono (Profil › Ton chrono), sinon de ton allure facile habituelle.
-  function zonesAllureHTML(s) {
-    const z = etat.zones, dec = z ? Calc.decoupage(s, z) : null;
-    if (!dec) return "";
-    const t = dec.tempsParZone, tot = t.reduce((a, v) => a + v, 0) || 1, mx = Math.max(...t, 1), plages = Calc.zonesLibelles(z), prof = z.niveau;
-    const rangs = [4, 3, 2, 1, 0].map((i) => `<div class="za"><span class="za-z">Zone ${i + 1}</span><span class="za-piste"><i style="width:${(t[i] / mx * 100).toFixed(1)}%;background:${R.zonesCouleurs[i]}"></i><b>${Math.round(t[i] / tot * 100)} %</b></span><span class="za-p">${esc(plages[i].plage)}</span></div>`).join("");
-    return `<section class="carte"><h2>Temps par zone d'allure</h2>
-      <div class="cap" style="margin-top:-6px">${prof ? `D'après ta vitesse · zones tirées de ton chrono : ${Calc.kmTxt(prof.distanceKm * 1000)} km en ${fmtDur(prof.timeSec)}` : "D'après ta vitesse · zones tirées de ton allure facile habituelle"}</div>
-      <div style="display:flex;flex-direction:column;gap:10px">${rangs}</div>
-      <div class="cap">Ta vitesse, pas ton cœur : les % diffèrent du temps par zone cardio (le cœur met du temps à monter, puis dérive avec la fatigue).</div></section>`;
-  }
+
 
   /* =================== Sorties (5) =================== */
   function ligneCourse(s) {

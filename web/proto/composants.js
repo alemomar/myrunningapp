@@ -124,10 +124,11 @@ const UI = (() => {
   }
   // 5 colonnes : % en grand, minutes dessous (si demandé), « Zone 1 » à « Zone 5 » (retour d'Omar du 28/10 : pas de noms) ;
   // une zone à 0 reste visible, grisée.
-  function zcols(secs, minutes) {
+  // `allures` (facultatif, 29/10) : l'allure moyenne quand le cœur était dans chaque zone (« 7'24 »).
+  function zcols(secs, minutes, allures) {
     const tot = secs.reduce((a, v) => a + v, 0) || 1;
     return `<div class="zcols">${secs.map((v, i) => { const p = Math.round(v / tot * 100);
-      return `<div class="zcol${p === 0 ? " zero" : ""}" style="--c:${couleurZone(i)}"><span class="p">${p} %</span>${minutes ? `<span class="m">${Math.round(v / 60)} min</span>` : ""}<span class="n">Zone ${i + 1}</span></div>`; }).join("")}</div>`;
+      return `<div class="zcol${p === 0 ? " zero" : ""}" style="--c:${couleurZone(i)}"><span class="p">${p} %</span>${minutes ? `<span class="m">${Math.round(v / 60)} min</span>` : ""}${allures ? `<span class="a">${allures[i] ? allure(allures[i]) : "—"}</span>` : ""}<span class="n">Zone ${i + 1}</span></div>`; }).join("")}</div>`;
   }
   const legendeZones = () => `<div class="leg">${[0, 1, 2, 3, 4].map((i) => `<span style="--c:${couleurZone(i)}">Zone ${i + 1}</span>`).join("")}</div>`;
   // Facile / Soutenu en grand (zones 1-2 et 3-5).
