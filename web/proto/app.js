@@ -41,7 +41,7 @@
   const defsZones = () => memo("defs", () => { const fm = fcMax(); return fm ? hrZoneDefs(fm.valeur, fcRepos()) : null; });
   const bilanDe = (s) => memo(`b${s.id}`, () => Calc.verdict(s, etat.courses, etat.ressentis, null, etat.zones));
   const libDe = (s) => memo(`l${s.id}`, () => Calc.libelleType(s, s.type === "Seuil" ? Calc.decoupage(s, etat.zones) : null));
-  const niveau = (now, mois) => memo(`n${now}|${mois || 3}`, () => Calc.alluresParEffort(etat.courses, now, mois || 3, etat.zones, defsZones(), null, mois || 3));
+  const niveau = (now) => memo(`n${now}`, () => Calc.niveauActuel(etat.courses, now, etat.zones, defsZones()));   // même Facile que « Ton allure facile » (Progression)
   function objectif() {
     const o = etat.objectifLocal, p = etat.profil && etat.profil.goals && etat.profil.goals.principal;
     const KM = { "5km": 5, "10km": 10, "15km": 15, Semi: 21.0975, Marathon: 42.195 };
@@ -107,8 +107,8 @@
     if (!der) return h + aucuneSortieHTML();
     const premieres = etat.courses.length < R.conseilMinSorties || now - etat.courses[0].ts < 28 * JOUR;
     if (premieres) h += `<section class="carte" style="background:var(--accent-soft);border:1px solid var(--accent-line);flex-direction:row;gap:12px">${ic("montre", 22)}<div><b class="lead">Tes ${etat.courses.length} premières sorties sont là</b><div class="txt2" style="font-size:14px;margin-top:4px">Ton bilan démarre dès maintenant. Ton niveau se précise après 4 semaines.</div></div></section>`;
-    const corps = modeA ? [taSortieHTML(der), niveauHTML(now, der, false), moisHTML(now)]
-      : [niveauHTML(now, null, !premieres), moisHTML(now), derniereLigneHTML(der)];
+    const corps = modeA ? [taSortieHTML(der), niveauHTML(now, der), moisHTML(now)]
+      : [niveauHTML(now, null), moisHTML(now), derniereLigneHTML(der)];
     return h + (etat.demo === "reseau" ? `<div class="attenue" style="display:flex;flex-direction:column;gap:12px">${corps.join("")}</div>` : corps.join(""));
   }
   // 10H : rien reçu (après « Plus tard » ou « Pas de montre »).
@@ -139,12 +139,11 @@
   /* ---------- Ton niveau actuel (retour d'Omar du 28/10) ----------
      Bien dire que c'est ton niveau d'AUJOURD'HUI (4 dernières semaines), pas une moyenne de l'année : une ligne par effort,
      l'allure d'il y a 3 mois → l'allure actuelle en grand. */
-  function niveauHTML(now, sortieDuJour, avecPhrase) {
+  function niveauHTML(now, sortieDuJour) {
     const liste = niveau(now), bougee = sortieDuJour ? Calc.EFFORT_DE[libDe(sortieDuJour)] : null;
     const premieres = etat.courses.length && now - etat.courses[0].ts < 28 * JOUR;
     return `<section class="carte" aria-label="Ton niveau actuel"><div><h2>Ton niveau actuel</h2>
         <div class="txt2" style="font-size:14px;margin-top:3px">${premieres ? "Tes allures de départ : les écarts apparaîtront quand on pourra comparer." : "Tes allures des <b style=\"color:var(--text)\">4 dernières semaines</b>, face à il y a 3 mois."}</div></div>
-      ${avecPhrase ? `<div class="lead">${esc(Calc.niveauPhrase(liste, 3))}</div>` : ""}
       ${U.niveauLignes(liste, { bougee })}</section>`;
   }
 
@@ -154,15 +153,16 @@
     const nomMois = U.MOIS[new Date(m.debut).getMonth()], moisAvant = U.MOIS_C[new Date(new Date(m.debut).getTime() - JOUR).getMonth()];
     const sem = Calc.sortiesParSemaine(etat.sorties, now, 12), avec = sem.filter((w) => w.n > 0).length, serie = Calc.serie(etat.sorties, now);
     const bande = `<div class="filet"></div><div role="link" tabindex="0" data-go="#/progression/volume" style="display:flex;flex-direction:column;gap:10px" aria-label="Ta régularité : voir le détail">
-        <div class="carte-tete"><span><b>${avec} semaines sur 12</b>${serie > 1 ? `<span class="cap"> · ${serie} d'affilée</span>` : ""}</span><span style="color:var(--faint)">${ic("chevron", 16)}</span></div>${U.reguBande(sem)}</div>`;
+        <div class="carte-tete"><span><b>${avec} semaines sur 12</b>${serie > 1 ? `<span class="cap"> · ${serie} d'affilée</span>` : ""}</span><span style="color:var(--faint)">${ic("chevron", 16)}</span></div>${U.reguCases(sem)}<div class="carte-tete cap" style="margin-top:-2px"><span>${esc(U.jourMois(sem[0].debut))}</span><span>cette semaine</span></div></div>`;   // 28/10 : les chiffres, comme dans Progression
     if (!c.n) {
       const der = etat.courses.filter((s) => s.ts <= now).slice(-1)[0];
-      return `<section class="carte" aria-label="Ton mois"><span class="sur">Ton mois · ${esc(nomMois)}</span><div class="lead">Pas encore de sortie ce mois-ci.</div>
+      return `<section class="carte aeree" aria-label="Ton mois"><span class="sur">Ton mois · ${esc(nomMois)}</span><div class="lead">Pas encore de sortie ce mois-ci.</div>
         <div class="txt2" style="font-size:14px">${esc(U.MOIS[new Date(new Date(m.debut).getTime() - JOUR).getMonth()].replace(/^./, (x) => x.toUpperCase()))} : ${a.n} ${a.n > 1 ? "sorties" : "sortie"} · ${U.kmTxt(a.km)} km.${der ? ` Ta dernière : il y a ${Math.round((now - der.ts) / JOUR)} jours.` : ""}</div>${bande}</section>`;
     }
     const dKm = a.n ? c.km - a.km : null, dN = a.n ? c.n - a.n : null;
     const zones = tot > 0 ? `<div class="filet"></div>${U.deuxGrands((m.secs[0] + m.secs[1]) / tot * 100, (m.secs[2] + m.secs[3] + m.secs[4]) / tot * 100)}${U.zbarre(m.secs, { repere: true })}` : "";
-    return `<section class="carte" aria-label="Ton mois"><span class="sur">Ton mois · ${esc(nomMois)}</span>
+    // 28/10 (« un peu trop surchargé, il y a moyen de l'aérer ? ») : plus d'espace entre les trois parties, chiffres un peu moins gros.
+    return `<section class="carte aeree" aria-label="Ton mois"><span class="sur">Ton mois · ${esc(nomMois)}</span>
       <div class="mini" style="gap:6px"><div>${U.num(U.kmTxt(c.km), "km", "n34")}<div class="cap" style="margin-top:4px">${dKm != null ? `<b class="${dKm >= 0 ? "citron" : "gris"}">${dKm >= 0 ? "+" : "−"}${U.kmTxt(Math.abs(dKm))} km</b> vs ${esc(moisAvant)}` : "ce mois-ci"}</div></div>
         <div>${U.num(c.n, "", "n34")}<div class="cap" style="margin-top:4px">${c.n > 1 ? "sorties" : "sortie"}${dN ? ` <b class="${dN > 0 ? "citron" : "gris"}">${dN > 0 ? "+" : "−"}${Math.abs(dN)}</b>` : ""}</div></div>
         <div>${U.num(U.dureeTxt(c.sec), "", "n34")}<div class="cap" style="margin-top:4px">de course</div></div></div>
@@ -411,18 +411,23 @@
     const obj = o ? `<div class="filet"></div><div style="display:flex;align-items:center;gap:10px;font-size:14.5px">${ic("drapeau", 17)}<span class="txt2" style="flex:1">Ton objectif <b style="color:var(--text)">${esc(o.label)}</b></span>${o.allure ? `<span class="txt2">${fmtKmPace(o.allure)}/km</span>` : ""}</div>` : "";
     // Tes allures par effort : Tempo, Seuil, Fractionné (le Facile est « Ton allure facile », Q2).
     const liste = Calc.alluresParEffort(etat.courses, now, mois, etat.zones, defs, null, mois);
+    // 28/10 (« sur 12 mois, je ne vois aucune séance de fractionné ») : la courbe suit la période choisie, même sans séance dans
+    // les 4 dernières semaines ; le chiffre en grand est alors celui de ta dernière séance, avec sa date.
     const efforts = liste.filter((e) => e.cle !== "ef").map((e, i) => {
       const coul = U.couleurType(e.cle === "tempo" ? "Tempo" : e.cle === "seuil" ? "Seuil" : "Fractionné");
-      const c = e.maintenant != null && e.points.length >= 3 ? U.courbe(e.points, { debut, fin: now, couleur: coul, rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 4, h: 112, label: `Allure ${e.nom}` }) : null;
+      const quoi = e.cle === "frac" ? "fractionné" : e.cle === "tempo" ? "séance au tempo" : "séance au seuil";
+      const pts = e.points.slice().sort((a, b) => a.ts - b.ts), dernier = pts[pts.length - 1];
+      const c = pts.length >= 3 ? U.courbe(pts, { debut, fin: now, couleur: coul, rapideEnHaut: true, fmt: (v) => fmtKmPace(v), padMin: 4, h: 112, label: `Allure ${e.nom}` }) : null;
       const em = c && c.debut != null ? U.ecartMots(ecartCourbe(c, true), suffixeCourbe(c, mois)) : U.ecartMots(e.ecart);   // l'écart dit ce que montre la courbe
+      const valeur = e.maintenant != null ? `${U.num(fmtKmPace(e.maintenant), "/km", "ta-v")}<span class="cap">tes 4 dernières semaines</span>`
+        : dernier ? `${U.num(fmtKmPace(dernier.v), "/km", "ta-v")}<span class="cap">ton dernier ${quoi === "fractionné" ? "fractionné" : quoi.replace("séance", "passage")}, le ${esc(U.jourMois(dernier.ts).replace(/\.$/, ""))} · rien depuis</span>` : "";
       let bas;
-      if (e.maintenant == null && e.cle === "frac") { const der = etat.courses.filter((s) => s.type === "Fractionné").slice(-1)[0]; bas = `<div class="txt2" style="font-size:14px">${der ? `Ton dernier fractionné, le ${U.jourMois(der.ts).replace(/\.$/, "")}. Rien depuis.` : "Pas encore de fractionné."}</div>`; }
-      else if (e.maintenant == null) bas = `<div class="txt2" style="font-size:14px">${!defs ? "Renseigne ta FC max ou ton âge pour lire l'effort au cœur." : `Pas assez de passages ${e.cle === "tempo" ? "au tempo" : "au seuil"} sur 4 semaines.`}</div>`;
-      else if (e.points.length < 3) bas = `<div class="txt2" style="font-size:14px">${e.points.length} ${e.points.length > 1 ? "sorties" : "sortie"} ${e.cle === "frac" ? "de fractionné" : e.cle === "tempo" ? "au tempo" : "au seuil"}. Encore ${3 - e.points.length} pour tracer ta tendance.</div>`;
-      else bas = c.svg;
+      if (c) bas = c.svg;
+      else if (pts.length) bas = `<div class="txt2" style="font-size:14px">${pts.length} ${pts.length > 1 ? "séances" : "séance"} sur ${mois} mois. Encore ${3 - pts.length} pour tracer ta tendance.</div>`;
+      else bas = `<div class="txt2" style="font-size:14px">${e.cle !== "frac" && !defs ? "Renseigne ta FC max ou ton âge pour lire l'effort au cœur." : `Pas de ${quoi} sur ${mois} mois.`}</div>`;
       return `<div class="effort" id="graphe-${e.cle}" style="display:flex;flex-direction:column;gap:6px;${i ? "border-top:1px solid var(--line);padding-top:14px" : ""}">
-        <div class="carte-tete"><span class="ta-tete" style="--c:${coul};color:var(--text);font-size:15px"><i></i>${esc(e.nom)}</span>${e.maintenant != null ? `<b class="${em.cls}" style="font-size:13.5px">${esc(em.txt)}</b>` : ""}</div>
-        ${e.maintenant != null ? U.num(fmtKmPace(e.maintenant), "/km", "ta-v") : ""}${bas}</div>`;
+        <div class="carte-tete"><span class="ta-tete" style="--c:${coul};color:var(--text);font-size:15px"><i></i>${esc(e.nom)}</span>${c || e.maintenant != null ? `<b class="${em.cls}" style="font-size:13.5px">${esc(em.txt)}</b>` : ""}</div>
+        ${valeur ? `<div style="display:flex;flex-direction:column;gap:2px">${valeur}</div>` : ""}${bas}</div>`;
     }).join("");
     // Croisements
     const ar = Calc.allureRegularite(etat.courses, now);

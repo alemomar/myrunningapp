@@ -68,9 +68,10 @@ const UI = (() => {
   // e > 0 : plus rapide. « 3 s plus vite » en citron ; plus lent, stable, nouveau en gris (tuiles) ou violet (pastilles de courbe).
   function ecartMots(e, suffixe) {
     const min = R.repereEcartMinSec, s = suffixe ? ` ${suffixe}` : "";
+    const sec = (n) => (n >= 60 ? `${Math.floor(n / 60)} min ${String(n % 60).padStart(2, "0")} s` : `${n} s`);   // « 1 min 59 s » plutôt que « 119 s »
     if (e == null) return { txt: "nouveau", cls: "gris" };
-    if (e >= min) return { txt: `${e} s plus vite${s}`, cls: "citron" };
-    if (e <= -min) return { txt: `${-e} s plus lent${s}`, cls: "violet" };
+    if (e >= min) return { txt: `${sec(e)} plus vite${s}`, cls: "citron" };
+    if (e <= -min) return { txt: `${sec(-e)} plus lent${s}`, cls: "violet" };
     return { txt: `stable${s}`, cls: "gris" };
   }
 

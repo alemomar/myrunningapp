@@ -716,6 +716,14 @@ const Calc = (() => {
     }
     return out;
   }
+  // Ton niveau actuel (Accueil) : Facile, Tempo, Seuil, Fractionné sur tes 4 dernières semaines, face à il y a 3 mois.
+  // 28/10 (question d'Omar « pourquoi 7'12 ici et 7'09 dans Progression ? ») : le Facile est « Ton allure facile » de la
+  // Progression (allure de tes sorties faciles ramenée à un même cœur, décision Q2 du Challenge), le même chiffre partout.
+  function niveauActuel(sorties, nowTs, z, defs, reg) {
+    const liste = alluresParEffort(sorties, nowTs, 3, z, defs, reg, 3), rp = repere(sorties, nowTs, reg);
+    return liste.map((e) => (e.cle !== "ef" ? e : rp.etat !== "valeur" ? { ...e, maintenant: null, avant: null, ecart: null, n: 0 }
+      : { ...e, maintenant: rp.valeur, avant: rp.ecart != null ? rp.valeur + rp.ecart : null, ecart: rp.ecart, n: rp.n, aCoeurEgal: rp.modeCoeur }));
+  }
   // Ton niveau en une phrase (Accueil, moment B) : le progrès le plus net des 4 allures, sinon ce qui tient.
   function niveauPhrase(liste, mois, reg) {
     const r = reg || REGLAGES, NOM = { ef: "Ton allure facile", tempo: "Ton tempo", seuil: "Ton seuil", frac: "Ton fractionné" };
@@ -750,5 +758,5 @@ const Calc = (() => {
     records, cap, fcMaxEffective, moyenne, med, kmTxt, allureTxt, TITRES, ZONE_A,
     // V2
     nomCourt, passageDominant, recordsBattus, ressentiCran, EFFORT_DE, frise3, zonesSortie, verdictRepartition, partZones, premierKm,
-    allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, JOUR, SEM, MOIS_J };
+    allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, JOUR, SEM, MOIS_J };
 })();
