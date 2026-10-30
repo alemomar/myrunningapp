@@ -34,6 +34,14 @@ const Calc = (() => {
   // une allure toutes les ~10 min. La courbe et les zones ne sont alors pas fiables, mais le cœur moyen de la sortie l'est.
   const mesures = (serie, cle) => (serie || []).filter((p) => p && p[cle] > 0);
   const coeurMoyenOk = (s, reg) => { const r = reg || REGLAGES; return s.fc > 0 && (coeurFiable(s, r) || (s.dur > 0 && mesures(s.hr, "hr").length >= s.dur / r.coeurMoyenIntervalleMaxSec)); };
+  // Zones avec un cœur moins détaillé (29/10, test d'Omar : sur 9 sorties, verdict des zones identique 9 fois sur 9) : il suffit
+  // d'une mesure toutes les 3 min au plus, sur au moins 70 % de la sortie.
+  function coeurZonesOk(s, reg) {
+    const r = reg || REGLAGES;
+    if (coeurFiable(s, r)) return true;
+    const t = mesures(s.hr, "hr").map((p) => p.t).sort((a, b) => a - b);
+    return s.dur > 0 && t.length >= 2 && t.length >= s.dur / r.coeurMoyenIntervalleMaxSec && (t[t.length - 1] - t[0]) / s.dur >= r.coeurFiableCouverture;
+  }
   const allureDetaillee = (s, reg) => s.dur > 0 && mesures(s.pace, "pace").length / s.dur * 60 >= (reg || REGLAGES).allureDetailleeParMin;
   // Écart habituel entre deux mesures de cœur d'une sortie, en secondes (« toutes les 2 min »).
   function intervalleCoeur(s) {
@@ -44,12 +52,14 @@ const Calc = (() => {
   // Ta montre sur tes dernières courses (hors saisies à la main) : cœur détaillé ? allure détaillée ? intervalle de cœur habituel.
   function detailMontre(sorties, nowTs, reg) {
     const r = reg || REGLAGES, l = sorties.filter((s) => estCourse(s) && !s.manuel && !s.local && s.ts <= nowTs).slice(-r.detailSorties);
-    if (!l.length) return { coeur: true, allure: true, intervalle: null };
-    return { coeur: l.filter((s) => coeurFiable(s, r)).length * 2 >= l.length, allure: l.filter((s) => allureDetaillee(s, r)).length * 2 >= l.length,
+    if (!l.length) return { coeur: true, zones: true, allure: true, intervalle: null };
+    return { coeur: l.filter((s) => coeurFiable(s, r)).length * 2 >= l.length, zones: l.filter((s) => coeurZonesOk(s, r)).length * 2 >= l.length,
+      allure: l.filter((s) => allureDetaillee(s, r)).length * 2 >= l.length,
       intervalle: med(l.map(intervalleCoeur).filter((v) => v != null)) };
   }
   // Démo « Voir comme une Garmin » (Profil › Écrans de démonstration) : une sortie telle que Garmin l'envoie à Apple Santé
-  // (cœur moyenné toutes les 2 min, allure moyenne toutes les ~10 min, pas de tours). Calcul sur le téléphone, rien n'est écrit.
+  // (cœur moyenné toutes les 2 min, allure moyenne toutes les ~10 min, pas de tours ; cœur moyen et max tirés de ces relevés,
+  // comme le fait RunSync). Calcul sur le téléphone, rien n'est écrit.
   function commeGarmin(row) {
     const hr = mesures(row.hr_series, "hr").sort((a, b) => a.t - b.t), pc = mesures(row.pace_series, "pace").sort((a, b) => a.t - b.t);
     const fenHr = []; let i = 0;
@@ -62,7 +72,9 @@ const Calc = (() => {
     pc.forEach((p) => { const dt = p.t - prev; prev = p.t; if (dt <= 0 || dt > 120) return; d += dt * 1000 / p.pace; du += dt;
       if (p.t - t0 >= 593 && d > 0) { fenPc.push({ t: p.t, pace: Math.round(du / (d / 1000)) }); t0 = p.t; d = 0; du = 0; } });
     if (d > 0) fenPc.push({ t: prev, pace: Math.round(du / (d / 1000)) });
-    return { ...row, hr_series: hr.length ? fenHr : row.hr_series, pace_series: pc.length ? fenPc : row.pace_series, lap_markers: null };
+    // RunSync tire le cœur moyen et le cœur max des mesures d'Apple Santé : avec une Garmin, des relevés toutes les 2 min.
+    const moy = fenHr.length ? Math.round(fenHr.reduce((a, p) => a + p.hr, 0) / fenHr.length) : row.avg_hr, max = fenHr.length ? Math.max(...fenHr.map((p) => p.hr)) : row.peak_hr;
+    return { ...row, hr_series: hr.length ? fenHr : row.hr_series, pace_series: pc.length ? fenPc : row.pace_series, lap_markers: null, avg_hr: moy, peak_hr: max };
   }
 
   // Cœur fiable : au moins une mesure toutes les 30 s en moyenne, sur au moins 70 % de la sortie.
@@ -326,7 +338,12 @@ const Calc = (() => {
     }
     const allureHab = moyenne(hab.map((h) => h.allure)), compare = `comparé à ${plur(hab.length, "sortie", "sorties")} de ce type des ${semaines} dernières semaines`;
     const compareCourt = `Comparé à ${plur(hab.length, "sortie", "sorties")} des ${semaines} dernières semaines`;
-    if (fiable) {
+    // 29/10 (test d'Omar) : sans courbe de cœur détaillée (Garmin), le cœur moyen de toute la sortie ne dit souvent pas la même
+    // chose que le cœur à la même allure : ton ressenti passe d'abord quand il est noté.
+    const ressentiDabord = !coeurFiable(s, r) && res != null && moyenne(hab.map((h) => ressentiDe(h, ressentis)).filter((v) => v != null)) != null;
+    // Un fractionné sans allure détaillée : ni son allure moyenne ni son cœur moyen ne se comparent (tout dépend des blocs).
+    const fracSansDetail = s.type === "Fractionné" && !allureDetaillee(s, r) && !s.fracWorkManual;
+    if (fiable && !ressentiDabord && !fracSansDetail) {
       const avecCoeur = hab.filter((h) => coeurMoyenOk(h, r));
       const comparables = avecCoeur.filter((h) => Math.abs(h.allure - s.allure) <= r.allureComparableSec);
       let fcAttendue = null;
@@ -360,6 +377,11 @@ const Calc = (() => {
         : cle === "dure" ? (memeAllure ? "Même allure, et tu l'as trouvée plus dure." : "Plus lente, et tu l'as trouvée plus dure.") : "Même allure, même ressenti que d'habitude.";
       return { cle, sens: SENS[cle], titre: TITRES[cle], phrase, pourquoi, compare: compareCourt, base: "ressenti", note: notePartielle, comparees: hab.length,
         tuiles: [tuileAllure(allureHab), { cle: "ressenti", label: "Ressenti", valeur: String(res), unite: "/10", habitude: rh }] };
+    }
+    if (fracSansDetail) {   // 29/10 : pas de « plus lent / plus rapide » trompeur ; le ressenti fera le bilan
+      return { cle: "aNoter", sens: "egal", titre: res != null ? "Ressenti noté" : "Note ton ressenti", base: "ressenti", note: null, comparees: hab.length, compare: compareCourt,
+        pourquoi: res != null ? `${res}/10 : il servira de repère pour tes prochains fractionnés.` : "Sans le détail de ta montre, c'est ton ressenti qui fait le bilan d'un fractionné.",
+        phrase: "Fractionné sans allure détaillée : ton ressenti fait le bilan.", tuiles: [tuileAllure(null)].concat(s.fc ? [{ cle: "coeur", label: "Cœur moyen", valeur: String(Math.round(s.fc)), unite: "bpm", habitude: null }] : []) };
     }
     const cle = dA <= -r.ecartAllureSec ? "rapide" : dA >= r.ecartAllureSec ? "lente" : "moyenne";
     const phrase = cle === "moyenne" ? `${allureTxt(s.allure)}/km : comme tes sorties de ce type (${compare}).`
@@ -546,7 +568,7 @@ const Calc = (() => {
     const bilan = ([de, a]) => { const c = sorties.filter((s) => estCourse(s) && s.ts >= de && s.ts < a && s.ts <= nowTs); return { n: c.length, km: c.reduce((x, s) => x + s.dist, 0), sec: c.reduce((x, s) => x + s.dur, 0), sorties: c }; };
     const ce = bilan(bornes(0)), avant = bilan(bornes(-1));
     const secs = [0, 0, 0, 0, 0]; let nCoeur = 0;
-    if (fmax) ce.sorties.filter((s) => coeurFiable(s, r)).forEach((s) => { computeHrZoneSeconds(s.hr, fmax, frepos).secs.forEach((v, i) => { secs[i] += v; }); nCoeur++; });
+    if (fmax) ce.sorties.filter((s) => coeurZonesOk(s, r)).forEach((s) => { computeHrZoneSeconds(s.hr, fmax, frepos).secs.forEach((v, i) => { secs[i] += v; }); nCoeur++; });
     const tot = secs.reduce((a, v) => a + v, 0), pctFacile = tot > 0 ? Math.round((secs[0] + secs[1]) / tot * 100) : null;
     const phrase = !ce.n ? "Pas encore de sortie ce mois-ci : une sortie facile pour le lancer."
       : pctFacile == null ? "Ajoute des sorties avec ta montre au poignet pour voir la répartition de ton effort."
@@ -572,7 +594,7 @@ const Calc = (() => {
   function zonesCardioPeriode(sorties, nowTs, mois, fmax, frepos, reg) {
     const secs = [0, 0, 0, 0, 0]; let n = 0;
     if (!fmax) return { secs, n, defs: null };
-    sorties.filter((s) => estCourse(s) && s.ts >= nowTs - mois * MOIS_J * JOUR && coeurFiable(s, reg)).forEach((s) => {
+    sorties.filter((s) => estCourse(s) && s.ts >= nowTs - mois * MOIS_J * JOUR && coeurZonesOk(s, reg)).forEach((s) => {
       const res = computeHrZoneSeconds(s.hr, fmax, frepos); res.secs.forEach((v, i) => { secs[i] += v; }); n++;
     });
     return { secs, n, defs: hrZoneDefs(fmax, frepos) };
@@ -659,7 +681,7 @@ const Calc = (() => {
 
   // Temps en zones cardio 1 à 5 d'une sortie (cœur fiable seulement).
   function zonesSortie(s, fmax, frepos, reg) {
-    if (!fmax || !s.hr || !coeurFiable(s, reg)) return null;
+    if (!fmax || !s.hr || !coeurZonesOk(s, reg)) return null;
     const { secs, defs } = computeHrZoneSeconds(s.hr, fmax, frepos);
     const tot = secs.reduce((a, v) => a + v, 0);
     return tot > 0 ? { secs, defs, tot } : null;
@@ -705,7 +727,7 @@ const Calc = (() => {
   function partZones(sorties, finTs, jours, fmax, frepos, reg, exclureId) {
     if (!fmax) return null;
     const secs = [0, 0, 0, 0, 0]; let n = 0;
-    sorties.filter((s) => estCourse(s) && s.id !== exclureId && s.ts <= finTs && s.ts > finTs - jours * JOUR && coeurFiable(s, reg)).forEach((s) => {
+    sorties.filter((s) => estCourse(s) && s.id !== exclureId && s.ts <= finTs && s.ts > finTs - jours * JOUR && coeurZonesOk(s, reg)).forEach((s) => {
       computeHrZoneSeconds(s.hr, fmax, frepos).secs.forEach((v, i) => { secs[i] += v; }); n++;
     });
     const tot = secs.reduce((a, v) => a + v, 0);
@@ -817,7 +839,7 @@ const Calc = (() => {
   function sortiesFacilesZones(sorties, nowTs, fmax, frepos, reg, n) {
     const r = reg || REGLAGES;
     if (!fmax) return [];
-    return sorties.filter((s) => estCourse(s) && s.type === "EF" && s.ts <= nowTs && coeurFiable(s, r)).slice(-(n || 6)).reverse().map((s) => {
+    return sorties.filter((s) => estCourse(s) && s.type === "EF" && s.ts <= nowTs && coeurZonesOk(s, r)).slice(-(n || 6)).reverse().map((s) => {
       const zs = zonesSortie(s, fmax, frepos, r);
       if (!zs) return null;
       const pct = (zs.secs[0] + zs.secs[1]) / zs.tot * 100;
@@ -930,5 +952,5 @@ const Calc = (() => {
     nomCourt, passageDominant, recordsBattus, ressentiCran, EFFORT_DE, frise3, zonesSortie, verdictRepartition, partZones, premierKm,
     allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, kmCoeur, kmParKm, allureZonesCardio, allureZonesCardioPeriode, JOUR, SEM, MOIS_J,
     // Révisions du 29/10
-    repartir, partsZones, serieCourbe, niveauCourbes, niveauSerie, coeurMoyenOk, allureDetaillee, intervalleCoeur, detailMontre, commeGarmin };
+    repartir, partsZones, serieCourbe, niveauCourbes, niveauSerie, coeurMoyenOk, coeurZonesOk, allureDetaillee, intervalleCoeur, detailMontre, commeGarmin };
 })();

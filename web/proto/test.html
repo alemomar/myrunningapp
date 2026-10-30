@@ -38,7 +38,7 @@ window.__appels = [];
 <script src="../logic.js?v=113"></script>
 <script src="reglages.js?v=13"></script>
 <script src="lecture.js?v=1"></script>
-<script src="calculs.js?v=21"></script>
+<script src="calculs.js?v=24"></script>
 <script src="conseil.js?v=3"></script>
 <script>
 (async () => {
@@ -263,6 +263,15 @@ window.__appels = [];
   const fracG = Calc.alluresParEffort([sgG], NOW, 3, z, defs).find((e) => e.cle === "frac"), fracD = Calc.alluresParEffort([sdG], NOW, 3, z, defs).find((e) => e.cle === "frac");
   ok(fracG.points.length === 0, "Garmin : pas d'allure de fractionné tirée d'une allure toutes les 10 min (elle serait fausse) ; avec l'allure détaillée : " + fracD.points.length + " mesure");
   ok(!Calc.detailMontre([g0, ...habG], NOW).coeur && Calc.detailMontre([sdG], NOW).coeur && !Calc.detailMontre([sgG], NOW).allure, "Ta montre : peu détaillée (Garmin) ou détaillée (Apple Watch)");
+
+  ok(Calc.coeurZonesOk(g0) && !Calc.coeurZonesOk(sortie({ id: "g16b", ts: NOW, km: 8, pace: 365, fc: 150, hrPas: 960 })) && Calc.zonesSortie(g0, 188, 58) != null,
+    "Garmin (proposition du 29/10) : temps par zone calculé avec un cœur toutes les 2 min ; pas avec un cœur toutes les 16 min");
+  const gR = sortie({ id: "gR", ts: NOW, km: 8, pace: 365, fc: 146, hrPas: 120, rpe: 7 }), habGR = [7, 14, 21].map((j, i) => sortie({ id: "gRh" + i, ts: NOW - j * JOUR, km: 8, pace: 365, fc: 151, hrPas: 120, rpe: 5 }));
+  const vGR = Calc.verdict(gR, habGR, {});
+  ok(vGR.base === "ressenti" && vGR.cle === "dure", "Garmin (proposition du 29/10) : ressenti noté → le bilan s'appuie d'abord dessus (7/10 contre 5 d'habitude → plus dure), pas sur le cœur moyen");
+
+  const vF = Calc.verdict(sgG, [sgG, Calc.versSortie(Calc.commeGarmin({ ...ligG, id: "gr2", start_date: iso(NOW - 7 * JOUR) }))], {});
+  ok(vF.cle === "aNoter" && vF.titre === "Note ton ressenti", "Garmin : un fractionné sans allure détaillée n'est pas jugé « plus lent » sur son allure moyenne → « Note ton ressenti »");
 
   // Ton conseil (C3 à C10)
   const ctxC = (courses, now) => ({ courses, nowTs: now || NOW, fmax: 188, frepos: 58, defs, objectif: null, niveau: [], bilan: () => ({ cle: "moyenne" }) });

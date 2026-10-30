@@ -41,14 +41,17 @@
   // mesurer est dit franchement, au lieu de « pas encore de séance ».
   const detail = () => memo("detail", () => Calc.detailMontre(etat.courses, maintenant()));
   const toutesLes = (sec) => (sec >= 90 ? `${Math.round(sec / 60)} min` : `${Math.round(sec)} s`);
-  const nonMesure = (cle) => (cle === "tempo" || cle === "seuil" ? !detail().coeur : cle === "frac" ? !detail().allure : false);
+  const nonMesure = (cle) => (cle === "tempo" || cle === "seuil" ? !detail().coeur || !detail().allure : cle === "frac" ? !detail().allure : false);
   const texteNonMesure = (cle) => (cle === "frac" ? "Ta montre n'envoie pas ton allure assez souvent à Apple Santé pour mesurer tes fractionnés."
-    : `Ta montre n'envoie ton cœur à Apple Santé que toutes les ${toutesLes(detail().intervalle || 120)} : pas assez pour repérer ${cle === "tempo" ? "ton tempo" : "ton seuil"}.`);
+    : `Ta montre n'envoie ton allure à Apple Santé que toutes les 10 min environ : pas assez pour mesurer ${cle === "tempo" ? "ton tempo" : "ton seuil"}.`);
   const fcMax = () => Calc.fcMaxEffective(etat.profil, etat.courses);
   const fcRepos = () => (etat.profil && etat.profil.resting_hr ? Number(etat.profil.resting_hr) : null);
   const defsZones = () => memo("defs", () => { const fm = fcMax(); return fm ? hrZoneDefs(fm.valeur, fcRepos()) : null; });
   const bilanDe = (s) => memo(`b${s.id}`, () => Calc.verdict(s, etat.courses, etat.ressentis, null, etat.zones));
-  const libDe = (s) => memo(`l${s.id}`, () => Calc.libelleType(s, s.type === "Seuil" ? Calc.decoupage(s, etat.zones) : null));
+  // Tempo ou Seuil : d'après l'allure détaillée ; sans elle (Garmin, 29/10), d'après le temps de cœur en zones 3 et 4.
+  const libDe = (s) => memo(`l${s.id}`, () => { if (s.type !== "Seuil") return Calc.libelleType(s, null);
+    const fm = fcMax(), zs = !Calc.allureDetaillee(s) && fm ? Calc.zonesSortie(s, fm.valeur, fcRepos()) : null;
+    return Calc.libelleType(s, Calc.decoupage(s, etat.zones) || (zs ? { tempsParZone: zs.secs } : null)); });
   const niveau = (now) => memo(`n${now}`, () => Calc.niveauActuel(etat.courses, now, etat.zones, defsZones()));   // même Facile que « Ton allure facile » (Progression)
   function objectif() {
     const o = etat.objectifLocal, p = etat.profil && etat.profil.goals && etat.profil.goals.principal;
@@ -297,7 +300,7 @@
   }
   function coeurCarte(s, v, lib, pd) {
     const fm = fcMax(), defs = defsZones();
-    if (!(Calc.coeurFiable(s) && s.fc) || !defs) {
+    if (!(Calc.coeurZonesOk(s) && s.fc) || !defs) {
       const ic2 = Calc.intervalleCoeur(s), moyOk = Calc.coeurMoyenOk(s);
       const txt = moyOk && ic2 ? `Ta montre n'envoie ton cœur à Apple Santé que toutes les ${toutesLes(ic2)} : pas de courbe ni de zones. Ton bilan s'appuie sur ton cœur moyen.` : "Données cardio partielles avec ta montre : le bilan s'appuie sur ton allure et ton ressenti.";
       return `<section class="carte"><div class="carte-tete"><h2>Cœur</h2>${info("coeur")}</div><div class="verdict-box"><span class="vi" style="background:var(--control);color:var(--text)">${ic("montre", 14)}</span><span>${esc(txt)}</span></div>
@@ -315,7 +318,7 @@
     return `<section class="carte"><div class="carte-tete"><h2>Cœur</h2>${info("coeur")}</div>${U.courbeCoeur(s, defs)}
       <div class="mini" style="background:var(--sunken);border-radius:14px;padding:4px">${trois.join("").replace(/class="mt"/g, 'class="mt" style="background:transparent"')}</div>
       ${facile && der ? `<div class="txt2" style="font-size:14.5px">${esc(cardiacDriftText(der))}</div>` : ""}
-      ${zs ? `<div class="filet"></div><span class="sur">Temps par zone cardio</span>
+      ${zs ? `<div class="filet"></div><span class="sur">Temps par zone cardio${Calc.coeurFiable(s) ? "" : ` · cœur toutes les ${toutesLes(Calc.intervalleCoeur(s) || 120)}`}</span>
         ${vr ? `<div class="carte-tete"><div class="pf"><span class="num pf-v citron">${vr.tete.pct} %</span><span class="pf-t">${esc(vr.tete.txt)}</span></div>${U.pastille(vr.ton, vr.mot)}</div>` : ""}
         ${U.zcolonnes(Calc.partsZones(zs.secs).mins, Calc.allureZonesCardio(s, etat.zones, defs))}
         ${vr ? U.verdictBox({ ton: vr.ton, titre: vr.conseil }) : ""}` : ""}</section>`;
@@ -498,11 +501,13 @@
   function progressionCoeur(now, mois) {
     const fm = fcMax(), fr = fcRepos();
     let zones = `<div class="txt2">Renseigne ta FC max ou ton âge pour voir tes zones.</div>`;
-    const detaille = detail().coeur;   // 29/10 : montre peu détaillée (Garmin) → une carte qui le dit, au lieu de 3 blocs vides
+    // 29/10 : avec un cœur toutes les 2 min (Garmin), les zones et les sorties faciles restent justes ; la dérive demande l'allure
+    // détaillée. Cœur trop rare (toutes les 16 min) : une carte qui le dit, au lieu de blocs vides.
+    const detaille = detail().zones, derivePossible = detail().coeur && detail().allure;
     if (!detaille) zones = `<div class="txt2" style="font-size:14.5px">Ta montre n'envoie ton cœur à Apple Santé que toutes les ${toutesLes(detail().intervalle || 120)} : pas assez pour ton temps par zone, ta dérive et tes sorties faciles. Ton cœur moyen, lui, reste juste.</div>`;
     else if (fm) {
       const z = Calc.zonesCardioPeriode(etat.courses, now, mois, fm.valeur, fr), tot = z.secs.reduce((a, v) => a + v, 0);
-      const dur = etat.courses.filter((s) => s.ts >= now - mois * MOIS_J * JOUR && Calc.coeurFiable(s)).reduce((a, s) => a + s.dur, 0);
+      const dur = etat.courses.filter((s) => s.ts >= now - mois * MOIS_J * JOUR && Calc.coeurZonesOk(s)).reduce((a, s) => a + s.dur, 0);
       // 29/10 (retour d'Omar) : comme le temps par zone d'une sortie (16c) : « 70 % en zones 1-2 » et sa pastille, une colonne
       // par zone (% du temps, ton allure dans la zone), puis le conseil seul.
       if (z.n) { const pz = Calc.partsZones(z.secs), fac = pz.facilePct, ton = fac >= R.repereFacilePct ? "bon" : fac >= R.moisFacileMinPct ? "presque" : "attention";
@@ -525,10 +530,10 @@
       <section class="carte"><div class="carte-tete"><span class="ta-tete" style="--c:#C6F432;color:var(--text);font-size:16px"><i></i>Ton cœur en sortie facile</span>${info("coeur-facile")}</div>
         ${valCm != null ? `<div style="display:flex;align-items:flex-end;justify-content:space-between">${U.num(Math.round(valCm), "bpm", "n52")}<b class="${ecartBpm == null || Math.abs(ecartBpm) < 2 ? "gris" : ecartBpm > 0 ? "citron" : "violet"}" style="font-size:13.5px">${ecartBpm == null || Math.abs(ecartBpm) < 2 ? `stable ${suffixeCourbe(cC, mois)}` : `${Math.abs(ecartBpm)} bpm ${ecartBpm > 0 ? "de moins" : "de plus"} ${suffixeCourbe(cC, mois)}`}</b></div>` : ""}
         ${cC.svg}<div class="txt2" style="font-size:14.5px">À allure égale, un cœur qui baisse veut dire que tu progresses.</div></section>
-      ${detaille ? `<section class="carte"><div class="carte-tete"><b style="font-size:16px">Dérive cardiaque</b>${info("derive")}</div>
+      ${derivePossible ? `<section class="carte"><div class="carte-tete"><b style="font-size:16px">Dérive cardiaque</b>${info("derive")}</div>
         ${valDer != null ? `<div style="display:flex;align-items:flex-end;justify-content:space-between">${U.num(Math.round(valDer), "%", "n52")}<b class="${valDer < R.repereDerivePct ? "citron" : "violet"}" style="font-size:13.5px">${valDer < R.repereDerivePct ? `stable · sous ${R.repereDerivePct} %` : `au-dessus de ${R.repereDerivePct} %`}</b></div>` : ""}
-        ${cD.svg}<div class="txt2" style="font-size:14.5px">Combien ton cœur monte en fin de sortie facile. Sous ${R.repereDerivePct} % : ton endurance tient.</div></section>
-      <section class="carte"><div class="carte-tete"><h2>${nouveau("Tes sorties faciles")}</h2>${info("sorties-faciles")}</div>
+        ${cD.svg}<div class="txt2" style="font-size:14.5px">Combien ton cœur monte en fin de sortie facile. Sous ${R.repereDerivePct} % : ton endurance tient.</div></section>` : ""}
+      ${detaille ? `<section class="carte"><div class="carte-tete"><h2>${nouveau("Tes sorties faciles")}</h2>${info("sorties-faciles")}</div>
         ${sf.length ? `<div style="display:flex;align-items:center;gap:12px"><span class="num" style="font-size:52px">${vraies}<span style="color:var(--text-3);font-size:30px">/${sf.length}</span></span><span class="txt2" style="font-size:14.5px">vraiment faciles :<br>${R.repereFacilePct} % ou plus en zones 1-2</span></div>
           <div style="display:flex;flex-direction:column;gap:10px">${sf.map((x) => `<div role="link" tabindex="0" data-go="#/sortie/${esc(x.id)}" style="display:grid;grid-template-columns:52px 1fr 44px 16px;align-items:center;gap:10px;font-size:13.5px"><span class="txt2">${esc(U.jourMois(x.ts))}</span>
             <span style="position:relative;height:10px;border-radius:5px;background:var(--control)"><i style="display:block;height:100%;width:${Math.round(x.pct)}%;border-radius:5px;background:${x.vraiment ? "#C6F432" : "#5A6068"}"></i><i style="position:absolute;top:-4px;bottom:-4px;left:${R.repereFacilePct}%;width:2px;background:var(--text)"></i></span>
