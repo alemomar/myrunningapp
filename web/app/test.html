@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Tests de l'app V2</title>
+<style>body{font-family:system-ui,sans-serif;background:#0C0D0F;color:#F2F3F0;padding:16px}.ok{color:#30d158}.ko{color:#ff453a}li{margin:2px 0}</style>
+</head>
+<body>
+<h1>Tests de l'app V2 (accès aux données et calculs)</h1>
+<p id="bilan">Exécution des tests…</p>
+<ul id="liste"></ul>
+<!-- Faux Supabase installé AVANT donnees.js : il note chaque appel et garde la dernière ligne écrite. -->
+<script>
+window.__appels = []; window.__ecrit = null;
+(function () {
+  const note = (x) => window.__appels.push(x);
+  function constructeur(table) {
+    const b = {
+      select(c) { note(`lecture ${table}`); return b; }, order() { return b; }, maybeSingle() { return b; }, single() { return b; }, eq() { return b; }, not() { return b; }, neq() { return b; },
+      then(ok) { return Promise.resolve({ data: table === "runs" ? [] : null, error: null, count: 0 }).then(ok); },
+    };
+    ["insert", "update", "upsert", "delete"].forEach((m) => { b[m] = (ligne) => { note(`écriture ${m} ${table}`); window.__ecrit = ligne || null; return b; }; });
+    return b;
+  }
+  const user = { id: "u1", email: "test@exemple.fr", created_at: "2026-10-31T08:00:00Z" };
+  const client = {
+    from: (t) => constructeur(t),
+    rpc: (f) => { note(`rpc ${f}`); return Promise.resolve({ error: null }); },
+    storage: { from: () => ({ list: () => Promise.resolve({ data: [] }), remove: () => Promise.resolve({}) }) },
+    auth: {
+      signInWithPassword: (x) => { note(`connexion ${x.email}`); return Promise.resolve({ data: { session: { user } }, error: null }); },
+      signOut: (o) => { note(`déconnexion ${JSON.stringify(o || {})}`); return Promise.resolve({}); },
+      getSession: () => Promise.resolve({ data: { session: null } }), getUser: () => Promise.resolve({ data: { user } }),
+    },
+  };
+  window.supabase = { createClient: (url, cle, options) => { note(`client créé ${JSON.stringify(options || {})}`); return client; } };
+})();
+</script>
+<script src="../config.js"></script>
+<script src="../logic.js?v=114"></script>
+<script src="reglages.js?v=1"></script>
+<script src="donnees.js?v=1"></script>
+<script src="calculs.js?v=1"></script>
+<script>
+(async () => {
+  const res = [];
+  const ok = (cond, nom) => res.push({ ok: !!cond, nom });
+  const JOUR = 86400000, NOW = Date.parse("2026-10-26T12:00:00");
+  const iso = (ts) => new Date(ts).toISOString();
+
+  /* ---------- 1 · Accès aux données ---------- */
+  ok(Object.isFrozen(Donnees), "Donnees : objet figé (on ne peut rien lui ajouter)");
+  await Donnees.lireSorties(); await Donnees.lireProfil();
+  ok(window.__appels.includes("client créé {}"), "Même session que l'ancienne app : client Supabase sans clé de stockage à part (les testeurs restent connectés)");
+  await Donnees.deconnexion();
+  ok(window.__appels.includes('déconnexion {"scope":"local"}'), "Déconnexion limitée à ce téléphone (scope local), jamais tous les appareils");
+  await Donnees.ajouterSortie({ date: "2026-10-30", type: "Tempo", distKm: "8", durationMin: 40, hr: "", time: "" }, 6);
+  const e = window.__ecrit || {};
+  ok(e.user_id === "u1" && e.apple_type === "Manuel" && e.type === "Tempo" && e.include_in_stats === true && e.pain_ratings && e.pain_ratings.rpe === 6 && e.duration_sec === 2400,
+    "Ajout à la main : sortie « Manuel » du coureur connecté, Tempo compté comme une course, ressenti 6/10");
+  await Donnees.ajouterSortie({ date: "2026-10-30", type: "Marche", distKm: "", durationMin: 30, hr: "", time: "" }, null);
+  ok(window.__ecrit && window.__ecrit.include_in_stats === false && !window.__ecrit.pain_ratings, "Ajout à la main : une marche ne compte pas dans les courses");
+  const fichiers = ["../index.html", "reglages.js", "donnees.js", "calculs.js", "app.js", "composants.js"];
+  const textes = await Promise.all(fichiers.map((f) => fetch(f + "?t=" + Date.now()).then((r) => r.text())));
+  const sansCommentaires = (t) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  fichiers.forEach((f, i) => { if (f !== "donnees.js") ok(!/createClient|window\.supabase|supabase\.(from|auth|rpc|storage)/.test(sansCommentaires(textes[i]).replace(/<script src=[^>]+><\/script>/g, "")), `${f} : ne parle pas à Supabase directement (tout passe par donnees.js)`); });
+  ok(!/storageKey|service_role/.test(textes[2]), "donnees.js : ni clé de stockage à part ni clé de service");
+
+  /* ---------- 2 · Calculs ---------- */
+  const serie = (dur, pas, f) => { const a = []; for (let t = pas; t <= dur; t += pas) a.push(f(t)); return a; };
+  const sortie = (o) => Calc.versSortie({ id: o.id, start_date: iso(o.ts), type: o.type || "EF", apple_type: "Running", distance_km: o.km, duration_sec: Math.round(o.km * o.pace),
+    avg_hr: o.fc || null, peak_hr: o.fcMax || null, avg_cadence: o.cad || null, pain_ratings: o.rpe != null ? { rpe: o.rpe } : null, include_in_stats: true,
+    hr_series: o.hrPas ? serie(Math.round(o.km * o.pace), o.hrPas, (t) => ({ t, hr: o.fc })) : null, pace_series: o.paceSerie || null });
+  // Cœur fiable
+  ok(Calc.coeurFiable(sortie({ id: "a", ts: NOW, km: 8, pace: 365, fc: 150, hrPas: 5 })), "Cœur fiable : une mesure toutes les 5 s");
+  ok(!Calc.coeurFiable(sortie({ id: "b", ts: NOW, km: 8, pace: 365, fc: 150, hrPas: 60 })), "Cœur pas fiable : une mesure par minute");
+  // Verdict avec cœur
+  const hab = [1, 2, 3].map((i) => sortie({ id: "h" + i, ts: NOW - i * 7 * JOUR, km: 8, pace: 365, fc: 151, hrPas: 5 }));
+  const v1 = Calc.verdict(sortie({ id: "x1", ts: NOW, km: 8.2, pace: 365, fc: 146, hrPas: 5 }), hab, {});
+  ok(v1.cle === "facile" && /5 battements de moins/.test(v1.phrase) && v1.base === "coeur", "Verdict cœur : 5 battements sous l'habitude → plus facile (" + v1.phrase + ")");
+  ok(Calc.verdict(sortie({ id: "x2", ts: NOW, km: 8, pace: 365, fc: 155, hrPas: 5 }), hab, {}).cle === "dure", "Verdict cœur : 4 battements au-dessus → plus dure");
+  ok(Calc.verdict(sortie({ id: "x3", ts: NOW, km: 8, pace: 368, fc: 150, hrPas: 5 }), hab, {}).cle === "moyenne", "Verdict cœur : 1 battement d'écart → dans ta moyenne");
+  ok(Calc.verdict(sortie({ id: "x4", ts: NOW, km: 8, pace: 365, fc: 150, hrPas: 5 }), [hab[0]], {}).cle === "moyenne", "Bilan : une seule sortie comparable suffit (toujours un bilan)");
+  const prem = Calc.verdict(sortie({ id: "x6", ts: NOW, km: 8, pace: 365, fc: 150, hrPas: 5 }), [], {});
+  ok(prem.cle === "premiere" && /point de départ/.test(prem.phrase), "Bilan : rien à comparer sur 12 semaines → « Ta première sortie de ce type »");
+  ok(Calc.verdict(sortie({ id: "x7", ts: NOW, km: 8, pace: 365, fc: 146, hrPas: 5 }), [sortie({ id: "x8", ts: NOW - 9 * 7 * JOUR, km: 8, pace: 365, fc: 151, hrPas: 5 })], {}).cle === "facile", "Bilan : la fenêtre s'élargit à 12 semaines s'il le faut");
+  const vieille = sortie({ id: "v", ts: NOW - 50 * JOUR, km: 8, pace: 365, fc: 151, hrPas: 5 });
+  ok(Calc.habitude(sortie({ id: "x5", ts: NOW, km: 8, pace: 365 }), [...hab, vieille], REGLAGES).length === 3, "Habitude : 6 semaines seulement, sortie du jour exclue");
+  // Verdict sans cœur fiable
+  const habR = [1, 2, 3].map((i) => sortie({ id: "r" + i, ts: NOW - i * 7 * JOUR, km: 8, pace: 370, rpe: 5 }));
+  ok(Calc.verdict(sortie({ id: "y1", ts: NOW, km: 8, pace: 372, rpe: 3 }), habR, {}).cle === "facile", "Verdict ressenti : même allure, 2 points de moins → plus facile");
+  ok(Calc.verdict(sortie({ id: "y2", ts: NOW, km: 8, pace: 372, rpe: 7 }), habR, {}).cle === "dure", "Verdict ressenti : même allure, 2 points de plus → plus dure");
+  ok(Calc.verdict(sortie({ id: "y3", ts: NOW, km: 8, pace: 372 }), habR, { y3: 3 }).cle === "facile", "Verdict ressenti : le ressenti noté dans le prototype compte");
+  const habA = [1, 2, 3].map((i) => sortie({ id: "z" + i, ts: NOW - i * 7 * JOUR, km: 8, pace: 370 }));
+  ok(Calc.verdict(sortie({ id: "y4", ts: NOW, km: 8, pace: 355 }), habA, {}).cle === "rapide", "Verdict allure seule : 15 s/km plus vite → plus rapide que d'habitude");
+  ok(Calc.verdict(sortie({ id: "y5", ts: NOW, km: 8, pace: 385 }), habA, {}).cle === "lente", "Verdict allure seule : 15 s/km plus lent → plus lente que d'habitude");
+  const part = Calc.verdict(sortie({ id: "y6", ts: NOW, km: 8, pace: 372, fc: 150, hrPas: 960, rpe: 3 }), habR, {});   // 29/10 : un cœur toutes les 16 min (toutes les 2 min suffit désormais pour le cœur moyen)
+  ok(part.base === "ressenti" && /partielles/.test(part.note || ""), "Cœur partiel : verdict sur l'allure et le ressenti, avec la phrase « Données cardio partielles »");
+  // Zones d'allure
+  const profil = { program_settings: { refDistanceKm: 10, refTimeSec: 3000, refDate: "2026-09-15", refSource: "chrono" } };
+  const z = Calc.zonesAllure(profil, [], NOW);
+  ok(z && z.bornes.every((b, i) => i === 0 || b < z.bornes[i - 1]) && /chrono/.test(z.source), "Zones : 5 zones de la plus lente à la plus rapide, tirées du chrono (" + z.bornes.map((b) => fmtKmPace(b)).join(" · ") + ")");
+  ok(Calc.zoneDe(z.bornes[0] + 5, z) === 0 && Calc.zoneDe(z.bornes[3] - 5, z) === 4, "Zones : une allure très lente = Récupération, très rapide = Rapide");
+  // Découpage : 1 km d'échauffement, 4 km faciles, 1,5 km au tempo, 1,2 km faciles
+  const allures = [[1000, z.bornes[0] + 15], [4000, (z.bornes[0] + z.bornes[1]) / 2], [1500, (z.bornes[1] + z.bornes[2]) / 2], [1200, (z.bornes[0] + z.bornes[1]) / 2]];
+  const ps = []; let t = 0;
+  allures.forEach(([m, p]) => { const dur = m * p / 1000; for (let u = 5; u <= dur; u += 5) ps.push({ t: Math.round(t + u), pace: Math.round(p) }); t += dur; });
+  const kmTot = allures.reduce((a, x) => a + x[0], 0) / 1000;
+  const sd = Calc.versSortie({ id: "d", start_date: iso(NOW), type: "EF", distance_km: kmTot, duration_sec: Math.round(t), pace_series: ps, include_in_stats: true });
+  const dec = Calc.decoupage(sd, z);
+  ok(dec && dec.segments.length === 4, "Découpage : 4 segments (" + (dec ? dec.texte : "aucun") + ")");
+  ok(dec && dec.segments[0].role === "echauffement" && dec.segments[3].role === null, "Découpage : échauffement au début ; une EF qui finit facile garde « faciles »");
+  ok(dec && /reste classée « facile »/.test(dec.commentaire) && /au 6e km/.test(dec.commentaire), "Découpage : une EF avec des km rapides reste une EF, km rapides signalés (" + (dec ? dec.commentaire : "") + ")");
+  ok(dec && Math.abs(dec.soutenuM - 1500) < 120, "Découpage : environ 1,5 km en soutenu");
+  ok(Calc.libelleType({ type: "Seuil" }, { tempsParZone: [0, 0, 100, 300, 0] }) === "Seuil" && Calc.libelleType({ type: "Seuil" }, { tempsParZone: [0, 0, 300, 100, 0] }) === "Tempo", "Type : séance « Seuil » de l'app classée Tempo ou Seuil selon la zone dominante");
+  ok(Calc.decoupage(sortie({ id: "n", ts: NOW, km: 8, pace: 365 }), z) === null, "Découpage : rien sans allure détaillée");
+  // Évolution sur cette distance
+  const anciennes = [sortie({ id: "e1", ts: NOW - 8 * 7 * JOUR, km: 8, pace: 380 }), sortie({ id: "e2", ts: NOW - 9 * 7 * JOUR, km: 8.4, pace: 380 }), sortie({ id: "e3", ts: NOW - 2 * 7 * JOUR, km: 8, pace: 300 })];
+  const ev = Calc.evolution(sortie({ id: "e", ts: NOW, km: 8.2, pace: 364 }), anciennes);
+  ok(ev.ecart === 16 && ev.n === 2 && /16 s\/km plus vite/.test(ev.texte), "Évolution : 16 s/km plus vite qu'il y a 2 mois, sur les sorties de 6 à 10 semaines (" + ev.texte + ")");
+  ok(Calc.evolution(sortie({ id: "f", ts: NOW, km: 21, pace: 364 }), anciennes).ecart === null, "Évolution : rien sans sortie de distance proche");
+  // Ressenti face à la mesure
+  ok(/les deux disent que tu progresses/.test(Calc.ressentiFaceMesure({ id: "q", rpe: 2 }, { cle: "facile", base: "coeur" }, {})), "Ressenti face à la mesure : facile + cœur plus bas → « les deux disent que tu progresses »");
+  ok(/6\/10 et un cœur plus haut que d'habitude : les deux parlent de fatigue/.test(Calc.ressentiFaceMesure({ id: "q2", rpe: 6, type: "EF" }, { cle: "dure", base: "coeur" }, {})), "Ressenti face à la mesure (V2) : 6/10 « Soutenu » sur une sortie facile plus dure → fatigue, jamais « cœur dans ta moyenne »");
+  // Ta semaine (lundi 26/10 : la semaine commence aujourd'hui)
+  const sem = Calc.semaine([sortie({ id: "s1", ts: NOW - 2 * JOUR, km: 8, pace: 365 }), sortie({ id: "s2", ts: NOW - 1 * 3600000, km: 5, pace: 365 })], NOW, null);
+  ok(sem.cette.n === 1 && sem.derniere.n === 1, "Ta semaine : la semaine commence le lundi");
+  // Repère
+  const rp = Calc.repere([sortie({ id: "p1", ts: NOW - 3 * JOUR, km: 8, pace: 365, fc: 150, hrPas: 5 })], NOW);
+  ok(rp.etat === "bientot" && rp.manque === 2, "Repère : « bientôt » tant qu'il n'y a pas 3 sorties faciles sur 4 semaines");
+  const fac = [3, 8, 15].map((d, i) => sortie({ id: "pa" + i, ts: NOW - d * JOUR, km: 8, pace: 360, fc: 150, hrPas: 5 }))
+    .concat([95, 100, 110].map((d, i) => sortie({ id: "pb" + i, ts: NOW - d * JOUR, km: 8, pace: 370, fc: 150, hrPas: 5 })));
+  const rp2 = Calc.repere(fac, NOW);
+  ok(rp2.etat === "valeur" && rp2.valeur === 360 && rp2.ecart === 10, "Repère : allure à effort égal 6'00, 10 s de mieux qu'il y a 3 mois");
+
+  // Bilan sur les passages à la même allure (toutes sorties confondues)
+  const serieSortie = (id, ts, type, blocs) => { const ps = [], hs = []; let t = 0, m = 0;
+    blocs.forEach(([mb, p, hr]) => { const dur = mb * p / 1000; for (let u = 5; u <= dur; u += 5) { ps.push({ t: Math.round(t + u), pace: Math.round(p) }); hs.push({ t: Math.round(t + u), hr }); } t += dur; m += mb; });
+    return Calc.versSortie({ id, start_date: iso(ts), type, apple_type: "Running", distance_km: m / 1000, duration_sec: Math.round(t), avg_hr: 155, peak_hr: 175, include_in_stats: true, pace_series: ps, hr_series: hs }); };
+  const pSeuil = (z.bornes[2] + z.bornes[3]) / 2, pEndu = (z.bornes[0] + z.bornes[1]) / 2;
+  const sA = serieSortie("sa", NOW - 5 * JOUR, "Seuil", [[1500, pEndu, 140], [4000, pSeuil, 168], [1000, pEndu, 145]]);
+  const sB = serieSortie("sb", NOW, "Seuil", [[1500, pEndu, 140], [4000, pSeuil, 165], [1000, pEndu, 145]]);
+  const vB = Calc.verdict(sB, [sA, sB], {}, null, z);
+  ok(vB.cle === "facile" && vB.zone === 3 && /Au seuil/.test(vB.phrase) && /3 battements de moins/.test(vB.phrase), "Bilan : passages au seuil comparés à ceux d'une autre sortie (" + vB.phrase + ")");
+  const sC = serieSortie("sc", NOW - 3 * JOUR, "EF", [[2000, pSeuil, 169], [5000, pEndu, 142]]);
+  ok(Calc.verdict(sB, [sC, sB], {}, null, z).cle === "facile", "Bilan : les passages au seuil d'une sortie facile comptent aussi");
+  // Allures par effort (cœur en zone 2 = EF)
+  const defs = hrZoneDefs(188, 58);
+  const ef1 = serieSortie("ef1", NOW - 4 * JOUR, "EF", [[8000, 400, 145]]), ef2 = serieSortie("ef2", NOW - 11 * JOUR, "EF", [[8000, 404, 145]]);
+  const ape = Calc.alluresParEffort([ef1, ef2], NOW, 3, z, defs);
+  ok(ape[0].nom === "Facile" && Math.abs(ape[0].maintenant - 402) <= 2 && ape[1].maintenant === null, "Allures par effort : allure tenue cœur en zone 2 (Facile), rien en zone 3");
+  ok(Calc.serie([sortie({ id: "w1", ts: NOW - 3600000, km: 5, pace: 365 }), sortie({ id: "w2", ts: NOW - 4 * JOUR, km: 5, pace: 365 }), sortie({ id: "w3", ts: NOW - 10 * JOUR, km: 5, pace: 365 })], NOW) === 3, "Série : 3 semaines d'affilée avec au moins une sortie");
+  const decS = Calc.decoupage(sB, z);
+  ok(decS && decS.segments.length === 3 && decS.segments[1].cat === "soutenu", "Découpage : 3 catégories au plus, passages soutenus voisins regroupés (" + (decS ? decS.texte : "") + ")");
+
+  // Retours du 27/10 (2) : niveau Fractionné, comparaison selon la période, régularité par semaine
+  const fr1 = Calc.versSortie({ id: "fr1", start_date: iso(NOW - 6 * JOUR), type: "Fractionné", apple_type: "Running", distance_km: 6, duration_sec: 2000, include_in_stats: true, frac_work_manual: 270 });
+  const ape2 = Calc.alluresParEffort([ef1, ef2, fr1], NOW, 3, z, defs);
+  ok(ape2.length === 4 && ape2[3].cle === "frac" && ape2[3].maintenant === 270, "Ton niveau : 4 allures, dont le Fractionné (allure de travail des blocs)");
+  ok(Calc.alluresParEffort([ef1, ef2], NOW, 3, z, null)[0].maintenant === null, "Ton niveau : sans FC max, pas d'allure EF / Tempo / Seuil (le Fractionné reste possible)");
+  const sps = Calc.sortiesParSemaine([ef1, ef2, sortie({ id: "sp3", ts: NOW - 2 * 3600000, km: 5, pace: 365 }), sortie({ id: "sp4", ts: NOW - 3 * 3600000, km: 5, pace: 365 })], NOW, 12);
+  ok(sps.length === 12 && sps[11].n === 2 && sps[10].n === 1 && sps[9].n === 1, "Régularité : nombre de sorties de chaque semaine");
+  const pts6 = [3, 8, 15].map((d, i) => sortie({ id: "q" + i, ts: NOW - d * JOUR, km: 8, pace: 360, fc: 150, hrPas: 5 })).concat([185, 190, 195].map((d, i) => sortie({ id: "q6" + i, ts: NOW - d * JOUR, km: 8, pace: 380, fc: 150, hrPas: 5 })));
+  ok(Calc.repere(pts6, NOW, null, 183).ecart === 20 && Calc.repere(pts6, NOW).ecart === null, "Repère : la comparaison suit la période choisie (6 mois : 20 s de mieux)");
+
+  // Accueil du 27/10 : types de sorties sur 4 semaines, ton mois, semaines en couleurs
+  const ty = Calc.typesSur([sortie({ id: "t1", ts: NOW - 3 * JOUR, km: 8, pace: 420 }), sortie({ id: "t2", ts: NOW - 10 * JOUR, km: 6, pace: 420, type: "Fractionné" }), sortie({ id: "t3", ts: NOW - 40 * JOUR, km: 8, pace: 420 })], NOW, 28, z);
+  ok(ty["Sortie facile"] === 1 && ty["Fractionné"] === 1 && Object.keys(ty).length === 2, "Ton niveau : types de sorties des 4 dernières semaines seulement");
+  const mo = Calc.mois([ef1, ef2, sortie({ id: "mo3", ts: Date.parse("2026-09-20T08:00:00"), km: 10, pace: 420 })], NOW, 188, 58);
+  ok(mo.ce.n === 2 && Math.abs(mo.ce.km - 16) < 0.01 && mo.avant.n === 1 && mo.pctFacile === 100 && /zones 1 et 2/.test(mo.phrase), "Ton mois : volume face au mois dernier et part du temps en zones 1 et 2 (" + mo.phrase + ")");
+  const spt = Calc.semainesParType([ef1, serieSortie("st2", NOW - 2 * 3600000, "Fractionné", [[3000, 300, 175]])], NOW, 12, z);
+  ok(spt.length === 12 && spt[11].parType["Fractionné"] === 3 && spt[11 - 1].parType["Sortie facile"] === 8, "Régularité en couleurs : km par type et par semaine");
+
+  // Progression (étape 3)
+  const vol = Calc.volumeParMois([sortie({ id: "m1", ts: NOW - 2 * JOUR, km: 8, pace: 365 }), sortie({ id: "m2", ts: Date.parse("2026-09-10T08:00:00"), km: 10, pace: 365 })], NOW, 3);
+  ok(vol.length === 3 && vol[2].km === 8 && vol[1].km === 10 && vol[0].km === 0, "Volume par mois : 3 mois, mois en cours en dernier");
+  const rg = Calc.regularite([sortie({ id: "g1", ts: NOW - 1 * 3600000, km: 5, pace: 365 }), sortie({ id: "g2", ts: NOW - 15 * JOUR, km: 5, pace: 365 })], NOW, 12);
+  ok(rg.semaines.length === 12 && rg.avec === 2 && rg.semaines[11] === true, "Régularité : 12 semaines, 2 avec au moins une sortie");
+  const rec = Calc.records([sortie({ id: "k1", ts: NOW - 5 * JOUR, km: 10.02, pace: 330 }), sortie({ id: "k2", ts: NOW - 9 * JOUR, km: 10, pace: 345 }), sortie({ id: "k3", ts: NOW - 20 * JOUR, km: 15.2, pace: 380 })]);
+  ok(rec.find((x) => x.cle === "10k").id === "k1" && rec.find((x) => x.cle === "longue").valeur === "15,2 km" && rec.find((x) => x.cle === "5k").valeur === null, "Records : meilleur 10 km, plus longue sortie, 5 km « à venir »");
+  ok(Calc.cap({ goals: { principal: { objectifPrincipal: "Préparer une course", distanceCourse: "10km", dateCible: "2027-03-14" } } }) === "10 km le 14/03/2027", "Ton cap : la course visée et sa date");
+
+  /* ---------- 3 · V2 (maquettes Claude Design du 27/10) ---------- */
+  ok(Calc.libelleType({ type: "Long" }) === "Longue" && Calc.libelleType({ type: "Course" }) === "Compétition" && Calc.libelleType({ type: "Tempo" }) === "Tempo" && Calc.libelleType({ type: "Other" }) === "Autre", "V2 · vocabulaire : Longue, Compétition, Tempo (choix 5), Autre");
+  ok(Calc.libelleType({ type: "Seuil", typeVerifie: true }, { tempsParZone: [0, 0, 300, 100, 0] }) === "Seuil", "V2 · un « Seuil » confirmé par le coureur reste un seuil, même si le cœur dit tempo");
+  ok(Calc.estCourse(Calc.versSortie({ id: "t", start_date: iso(NOW), type: "Tempo", apple_type: "Running", distance_km: 8, duration_sec: 2600, include_in_stats: true })), "V2 · une sortie « Tempo » compte comme une course");
+  const f1 = Calc.frise3(sd, z), f2 = Calc.frise3(sB, z);
+  ok(f1 && f1.morceaux.length === 1 && f1.morceaux[0].cat === "facile", "V2 · frise : une sortie facile reste d'un seul bloc, aucun km rapide signalé");
+  ok(f2 && f2.morceaux.map((m) => m.cat).join(",") === "calme,soutenu,calme" && f2.morceaux[0].mot === "d'échauffement", "V2 · frise : 3 morceaux au plus (échauffement, soutenu, retour au calme)");
+  // Répartition du cœur (règles d'Omar du 31/10) : une sortie zone par zone, une mesure par seconde.
+  const hrZ = (k) => (k === 0 ? defs[0].max - 5 : k < 4 ? defs[k].max - 3 : defs[3].max + 8);
+  const coeurPar = (blocs, pas) => { const hr = []; let t = 0; blocs.forEach(([k, min]) => { for (let x = 0; x < min * 60; x += pas || 1) { hr.push({ t, hr: hrZ(k) }); t += pas || 1; } }); hr.push({ t, hr: hrZ(blocs[blocs.length - 1][0]) }); return { hr, dur: t }; };
+  const enZones = (blocs) => { const secs = [0, 0, 0, 0, 0]; blocs.forEach(([k, min]) => { secs[k] += min * 60; }); return { secs, tot: secs.reduce((a, v) => a + v, 0), defs }; };
+  const juge = (lib, blocs, pas) => Calc.verdictRepartition(lib, enZones(blocs), null, coeurPar(blocs, pas));
+  ok(juge("Sortie facile", [[0, 2], [1, 41], [2, 6], [3, 1]]).ton === "bon", "Répartition · sortie facile à 86 % en zones 1-2 → bien (70 % ou plus)");
+  ok(juge("Sortie facile", [[1, 32], [2, 15], [3, 3]]).ton === "presque" && juge("Longue", [[1, 25], [2, 20], [3, 5]]).ton === "attention", "Répartition · facile à 64 % → presque ; longue à 50 % → trop soutenu");
+  const tBon = juge("Tempo", [[1, 10], [2, 30], [1, 5]]);
+  ok(tBon.ton === "bon" && tBon.tete.pct === 100, "Répartition · tempo : 30 min en zone 3 entre 10 min d'échauffement et 5 min de retour au calme → bien (100 % hors échauffement, 67 % sur toute la sortie)");
+  ok(juge("Tempo", [[1, 10], [2, 10], [1, 10], [2, 10], [1, 5]]).ton === "presque", "Répartition · tempo coupé par 10 min de facile : 67 % en zone 3 sur le corps de la séance → presque");
+  ok(juge("Tempo", [[1, 10], [3, 25], [1, 5]]).ton === "attention", "Répartition · tempo couru en zone 4 → trop haut pour un tempo");
+  const s3 = (ech) => [...(ech ? [[1, 10]] : []), [3, 8], [1, 2], [3, 8], [1, 2], [3, 8], [1, 5]];
+  ok(juge("Seuil", s3(true)).ton === "bon", "Répartition · seuil : échauffement en zone 2 puis 3 blocs en zone 4 → bien");
+  ok(juge("Seuil", s3(false)).ton === "presque" && /échauffement/.test(juge("Seuil", s3(false)).conseil), "Répartition · seuil sans échauffement → presque, « prends 10 min d'échauffement »");
+  ok(juge("Seuil", [[1, 10], [2, 20], [3, 5], [1, 5]]).titre === "Plutôt un tempo.", "Répartition · seuil surtout en zone 3 → « Plutôt un tempo »");
+  const reps = (n) => [[1, 10], ...Array.from({ length: n }, () => [[4, 2], [1, 1.5]]).flat(), [1, 5]];
+  const f6 = juge("Fractionné", reps(6));
+  ok(f6.ton === "bon" && /6 répétitions/.test(f6.titre), "Répartition · fractionné : 6 montées en zone 5 avec récupération → bien (" + f6.titre + ")");
+  ok(juge("Fractionné", reps(2)).ton === "presque", "Répartition · fractionné : 2 répétitions seulement → presque (il en faut 3)");
+  ok(juge("Fractionné", [[1, 10], [2, 30], [1, 5]]).ton === "attention", "Répartition · fractionné sans zone 4-5 → pas assez");
+  ok(juge("Fractionné", reps(6), 120) === null, "Répartition · fractionné avec un cœur toutes les 2 min (Garmin) : on ne compte pas les répétitions");
+  ok(Calc.ressentiCran(6).mot === "Soutenu" && /quelques mots/.test(Calc.ressentiCran(8).phrase) && Calc.ressentiCran(null) === null, "V2 · ressenti : chaque cran a son sens (6 Soutenu, 8 Dur)");
+  ok(rec.find((x) => x.cle === "15k").valeur && rec.find((x) => x.cle === "semi").manque === 6 && rec.find((x) => x.cle === "longue").label === "Max", "V2 · records : 15 km ajouté, « encore 6 km » pour le semi, distance max");
+  const rb = Calc.recordsBattus(sortie({ id: "k0", ts: NOW, km: 10, pace: 320 }), [sortie({ id: "k1", ts: NOW - 5 * JOUR, km: 10.02, pace: 330 })]);
+  ok(rb.length === 1 && rb[0].cle === "10k" && rb[0].temps === 3200 && rb[0].ancien === 3300, "V2 · record battu : 10 km en 53:20 contre 55:00");
+  ok(v1.pourquoi === "À la même allure, ton cœur battait moins vite." && /^Comparé à 3 sorties/.test(v1.compare) && v1.tuiles[1].delta === -5, "V2 · bilan : une phrase de pourquoi, la base en petit, l'écart de cœur dans la tuile");
+  ok(prem.titre === "Ta première sortie facile" && /point de départ/.test(prem.pourquoi), "V2 · bilan : « Ta première sortie facile », point de départ");
+  const ar = Calc.allureRegularite([sortie({ id: "r1", ts: NOW - 1 * JOUR, km: 6, pace: 400 }), sortie({ id: "r2", ts: NOW - 2 * JOUR, km: 6, pace: 400 }), sortie({ id: "r3", ts: NOW - 9 * JOUR, km: 6, pace: 412 })], NOW);
+  ok(ar.deux === 400 && ar.une === 412 && ar.gain === 12, "V2 · allure × régularité : les semaines à 2 sorties, 12 s/km plus vite");
+  const sfz = Calc.sortiesFacilesZones([ef1, ef2], NOW, 188, 58);
+  ok(sfz.length === 2 && sfz.every((x) => x.vraiment && x.pct > 95), "V2 · tes sorties faciles : cœur en zone 2 → vraiment faciles");
+  ok(Calc.lisser([{ ts: NOW - 20 * JOUR, v: 10 }, { ts: NOW - 2 * JOUR, v: 20 }], NOW - 28 * JOUR, NOW).slice(-1)[0].v === 15, "V2 · courbe : tendance lissée sur 4 semaines");
+  const niv = Calc.alluresParEffort([4, 11, 95, 100].map((j, i) => serieSortie("nv" + i, NOW - j * JOUR, "EF", [[8000, j < 50 ? 400 : 410, 145]])), NOW, 3, z, defs, null, 3)[0];
+  const kc = Calc.kmCoeur(serieSortie("kc", NOW, "EF", [[1000, 300, 140], [1000, 300, 150], [1000, 300, 160], [500, 300, 165]]));
+  ok(kc && kc.length === 4 && Math.abs(kc[0] - 140) <= 1 && Math.abs(kc[1] - 150) <= 1 && Math.abs(kc[2] - 160) <= 1 && Math.abs(kc[3] - 165) <= 1, "Allure par km (29/10) : le cœur moyen de chaque km, et du bout final (" + (kc || []).join(" · ") + ")");
+  // 29/10 : un arrêt de 40 s (au feu) au milieu d'une sortie à 6'40 ne doit pas ralentir les allures calculées.
+  const psP = [], hsP = []; for (let t = 3; t <= 1640; t += 3) { if (t > 800 && t <= 840) continue; psP.push({ t, pace: 400 }); hsP.push({ t, hr: 145 }); }
+  const sPause = Calc.versSortie({ id: "pause", start_date: iso(NOW), type: "EF", apple_type: "Running", distance_km: 4, duration_sec: 1600, avg_hr: 145, include_in_stats: true, pace_series: psP, hr_series: hsP });
+  const kpP = Calc.kmParKm(sPause), tpsP = Calc.pointsAllure(sPause, z).reduce((a, x) => a + x.dt, 0);
+  ok(kpP && Math.abs(kpP.avg - 400) <= 2 && kpP.kms.every((k) => Math.abs(k - 400) <= 3) && Math.abs(tpsP - 1600) <= 10, "Pauses (29/10) : un arrêt de 40 s n'est pas compté comme du temps de course (km à " + (kpP ? kpP.kms.map(fmtKmPace).join(" · ") : "—") + ", moyenne " + (kpP ? fmtKmPace(kpP.avg) : "—") + ")");
+  const azcP = Calc.allureZonesCardio(sPause, z, defs);
+  ok(azcP && Math.abs(azcP[1] - 400) <= 3, "Allure par zone cardio : la même que celle de la sortie quand tout est en zone 2 (" + (azcP && azcP[1] ? fmtKmPace(azcP[1]) : "—") + ")");
+  const azc = Calc.allureZonesCardio(serieSortie("azc", NOW, "EF", [[3000, 420, 140], [2000, 360, 155]]), z, defs);
+  ok(azc && Math.abs(azc[1] - 420) <= 6 && Math.abs(azc[2] - 360) <= 6 && azc[0] === null && azc[4] === null, "Allure par zone cardio (29/10) : 7'00 en zone 2, 6'00 en zone 3, rien ailleurs (" + (azc || []).map((v) => v ? fmtKmPace(v) : "—").join(" · ") + ")");
+  const na = Calc.niveauActuel(fac, NOW, z, defs)[0], rpNa = Calc.repere(fac, NOW);
+  ok(na.cle === "ef" && na.maintenant === rpNa.valeur && na.maintenant === 360 && na.avant === 370 && na.ecart === 10, "Ton niveau actuel : le Facile de l'Accueil = « Ton allure facile » de la Progression (même chiffre, 6'10 → 6'00)");
+  ok(Math.abs(niv.maintenant - 400) <= 2 && Math.abs(niv.avant - 410) <= 2 && niv.ecart === niv.avant - niv.maintenant, "Ton niveau actuel (28/10) : l'allure d'il y a 3 mois → celle des 4 dernières semaines (" + fmtKmPace(niv.avant) + " → " + fmtKmPace(niv.maintenant) + ")");
+
+  // Révisions Claude Design du 29/10 (11a, 13a, 15a, 16c)
+  const pzT = Calc.partsZones([63, 806, 114, 13, 4]);
+  ok(pzT.pcts.reduce((a, v) => a + v, 0) === 100 && pzT.facilePct + pzT.soutenuPct === 100 && pzT.soutenuPct === pzT.pcts[2] + pzT.pcts[3] + pzT.pcts[4] && pzT.soutenuPct === 13,
+    "Zones (16c) : les % affichés font 100 pile, le chiffre annoncé = la somme des zones (" + pzT.pcts.join(" + ") + ", soutenu " + pzT.soutenuPct + " %)");
+  const vrF = juge("Sortie facile", [[1, 32], [2, 15], [3, 3]]);
+  ok(vrF.tete.pct === vrF.pz.facilePct && vrF.mot === "presque" && /^Vise 70 % en zones 1-2/.test(vrF.conseil),
+    "Temps par zone (16c) : « " + vrF.tete.pct + " % en zones 1-2 » en tête, pastille « presque », l'encadré = le conseil seul (" + vrF.conseil + ")");
+  const ptsC = [{ ts: Date.parse("2026-08-10T08:00:00"), v: 400 }, { ts: Date.parse("2026-08-20T08:00:00"), v: 410 }, { ts: Date.parse("2026-10-20T08:00:00"), v: 390 }];
+  const scM = Calc.serieCourbe(ptsC, NOW, 3, "mois");
+  ok(scM.length === 3 && scM[0].v === 405 && scM[1].v === null && scM[2].v === 390 && scM[2].ts === NOW, "Courbe 11a : un point par mois (août 6'45), septembre sans sortie = trou, octobre = tes 4 dernières semaines");
+  ok(Calc.serieCourbe(ptsC, NOW, 6, "mois").length === 3 && Calc.serieCourbe(ptsC, NOW, 3, "mois", { fin: 385 })[2].v === 385, "Courbe 11a : démarre à la 1re mesure ; le bout = la valeur en grand");
+  const eT = { cle: "tempo", maintenant: 400, min: 2, points: [[100, 410], [95, 410], [40, 405], [33, 405], [10, 400], [3, 400]].map(([j, v]) => ({ ts: NOW - j * JOUR, v })) };
+  const ns3 = Calc.niveauSerie(eT, NOW, 3), ns1 = Calc.niveauSerie(eT, NOW, 1);
+  ok(ns3.serie.length === 14 && ns3.ecart === 10 && !ns3.nouveau && ns3.serie[13].v === 400, "Ton niveau (13a) : un point par semaine sur 3 mois, 10 s plus vite qu'il y a 3 mois");
+  ok(ns1.serie.length === 5 && ns1.ecart === 5 && !ns1.nouveau && !ns1.tronquee, "Ton niveau (13a) : sur 1 mois, 5 s plus vite qu'il y a 1 mois");
+  const eTr = { ...eT, points: eT.points.slice(2) }, nsTr = Calc.niveauSerie(eTr, NOW, 3);
+  ok(nsTr.tronquee && !nsTr.nouveau && nsTr.ecart === 5, "Ton niveau (13a) : rien au début de la période → l'écart part de ta 1re valeur (« 5 s plus vite depuis le … »)");
+  ok(ns3.valeur === 403 && ns3.n === 4 && ns1.valeur === 400 && ns1.valeur === ns1.serie[ns1.serie.length - 1].v,
+    "Ton niveau (retour du 29/10) : le grand chiffre = tes séances de la période (3 mois : 6'43) ; sur 1 mois, c'est le bout de la courbe (6'40)");
+  const eN = { cle: "seuil", maintenant: 380, min: 2, points: [{ ts: NOW - 20 * JOUR, v: 385 }, { ts: NOW - 5 * JOUR, v: 380 }] };
+  eN.premiere = eN.points[0];
+  const nsN = Calc.niveauSerie(eN, NOW, 3);
+  ok(nsN.nouveau && nsN.ecart === null && nsN.n === 2, "Ton niveau (13a) : 1re séance dans la période → « nouveau », 2 sorties depuis");
+  const eF = { cle: "frac", maintenant: null, min: 1, points: [[60, 258], [47, 256]].map(([j, v]) => ({ ts: NOW - j * JOUR, v })) };
+  const nsF2 = Calc.niveauSerie(eF, NOW, 2);
+  ok(nsF2.n === 1 && nsF2.valeur === 256 && nsF2.ecart === 2 && Calc.niveauSerie(eF, NOW, 1).n === 0,
+    "Ton niveau (retour du 29/10) : un fractionné d'il y a 7 semaines s'affiche sur 2 mois (4'16), pas sur 1 mois");
+
+  // Garmin (29/10) : dans Apple Santé, un cœur toutes les 2 min et une allure toutes les ~10 min
+  const gs = (id, j, fc) => sortie({ id, ts: NOW - j * JOUR, km: 8, pace: 365, fc, hrPas: 120 });
+  const g0 = gs("g0", 0, 146), habG = [7, 14, 21].map((j, i) => gs("gh" + i, j, 151));
+  ok(!Calc.coeurFiable(g0) && Calc.coeurMoyenOk(g0) && !Calc.coeurMoyenOk(sortie({ id: "g16", ts: NOW, km: 8, pace: 365, fc: 150, hrPas: 960 })),
+    "Garmin : un cœur toutes les 2 min → pas de courbe fiable, mais un cœur moyen juste ; toutes les 16 min → pas fiable");
+  const vG = Calc.verdict(g0, habG, {});
+  ok(vG.base === "coeur" && vG.cle === "facile" && !vG.note, "Garmin : le bilan compare ton cœur moyen (5 battements de moins → plus facile), plus seulement ton allure");
+  const ligG = { id: "gr", start_date: iso(NOW), type: "Fractionné", apple_type: "Running", distance_km: 8.57, duration_sec: 3000, avg_hr: 150, include_in_stats: true,
+    pace_series: Array.from({ length: 600 }, (_, i) => ({ t: (i + 1) * 5, pace: i % 120 < 60 ? 300 : 420 })), hr_series: Array.from({ length: 600 }, (_, i) => ({ t: (i + 1) * 5, hr: 150 })) };
+  const sgG = Calc.versSortie(Calc.commeGarmin(ligG)), sdG = Calc.versSortie(ligG);
+  ok(Calc.allureDetaillee(sdG) && !Calc.allureDetaillee(sgG) && sgG.hr.length === 25 && Math.abs(Calc.intervalleCoeur(sgG) - 120) < 1 && sgG.pace.length <= 6,
+    "Voir comme une Garmin : cœur toutes les 2 min (" + sgG.hr.length + " mesures), allure toutes les ~10 min (" + sgG.pace.length + " mesures)");
+  const fracG = Calc.alluresParEffort([sgG], NOW, 3, z, defs).find((e) => e.cle === "frac"), fracD = Calc.alluresParEffort([sdG], NOW, 3, z, defs).find((e) => e.cle === "frac");
+  ok(fracG.points.length === 0, "Garmin : pas d'allure de fractionné tirée d'une allure toutes les 10 min (elle serait fausse) ; avec l'allure détaillée : " + fracD.points.length + " mesure");
+  ok(!Calc.detailMontre([g0, ...habG], NOW).coeur && Calc.detailMontre([sdG], NOW).coeur && !Calc.detailMontre([sgG], NOW).allure, "Ta montre : peu détaillée (Garmin) ou détaillée (Apple Watch)");
+
+  ok(Calc.coeurZonesOk(g0) && !Calc.coeurZonesOk(sortie({ id: "g16b", ts: NOW, km: 8, pace: 365, fc: 150, hrPas: 960 })) && Calc.zonesSortie(g0, 188, 58) != null,
+    "Garmin (proposition du 29/10) : temps par zone calculé avec un cœur toutes les 2 min ; pas avec un cœur toutes les 16 min");
+  const gR = sortie({ id: "gR", ts: NOW, km: 8, pace: 365, fc: 146, hrPas: 120, rpe: 7 }), habGR = [7, 14, 21].map((j, i) => sortie({ id: "gRh" + i, ts: NOW - j * JOUR, km: 8, pace: 365, fc: 151, hrPas: 120, rpe: 5 }));
+  const vGR = Calc.verdict(gR, habGR, {});
+  ok(vGR.base === "ressenti" && vGR.cle === "dure", "Garmin (proposition du 29/10) : ressenti noté → le bilan s'appuie d'abord dessus (7/10 contre 5 d'habitude → plus dure), pas sur le cœur moyen");
+
+  const vF = Calc.verdict(sgG, [sgG, Calc.versSortie(Calc.commeGarmin({ ...ligG, id: "gr2", start_date: iso(NOW - 7 * JOUR) }))], {});
+  ok(vF.cle === "aNoter" && vF.titre === "Note ton ressenti", "Garmin : un fractionné sans allure détaillée n'est pas jugé « plus lent » sur son allure moyenne → « Note ton ressenti »");
+
+  const nOk = res.filter((r) => r.ok).length, nKo = res.length - nOk;
+  document.getElementById("bilan").innerHTML = `<b class="${nKo ? "ko" : "ok"}">${nOk} passés, ${nKo} échoués</b>`;
+  document.getElementById("liste").innerHTML = res.map((r) => `<li class="${r.ok ? "ok" : "ko"}">${r.ok ? "✓" : "✗"} ${r.nom.replace(/</g, "&lt;")}</li>`).join("");
+})().catch((e) => { document.getElementById("bilan").innerHTML = `<b class="ko">Erreur : ${String(e && e.message || e)}</b>`; });
+</script>
+</body>
+</html>

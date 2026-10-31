@@ -3297,7 +3297,9 @@ function generateCrossTrainingSessions(frequencyAutre, runDayIndexes, weekIndex,
    03/10/2026) : seules les sorties de course alimentent graphiques, indicateurs,
    records et charge ; tous les autres types sont hors stats par défaut. */
 const MANUAL_RUN_MARKER = "Manuel";
-const RUNNING_RUN_TYPES = ["EF","Long","Fractionné","Seuil","Course"];
+// « Tempo » (app V2, choix 5 d'Omar du 31/10/2026) : une vraie valeur, choisie par le coureur ; « Seuil » non vérifié reste
+// départagé Tempo / Seuil d'après le cœur (app/calculs.js).
+const RUNNING_RUN_TYPES = ["EF","Long","Fractionné","Seuil","Tempo","Course"];
 function isRunningRunType(type){ return RUNNING_RUN_TYPES.includes(type); }
 // Une saisie est valide si on peut l'enregistrer (errors vide) ; les
 // warnings sont des doutes (allure invraisemblable) que l'utilisateur peut
