@@ -60,7 +60,10 @@ window.__appels = []; window.__ecrit = null;
     "Ajout à la main : sortie « Manuel » du coureur connecté, Tempo compté comme une course, ressenti 6/10");
   await Donnees.ajouterSortie({ date: "2026-10-30", type: "Marche", distKm: "", durationMin: 30, hr: "", time: "" }, null);
   ok(window.__ecrit && window.__ecrit.include_in_stats === false && !window.__ecrit.pain_ratings, "Ajout à la main : une marche ne compte pas dans les courses");
-  const fichiers = ["../index.html", "reglages.js", "donnees.js", "calculs.js", "app.js", "composants.js"];
+  // La page de l'app V2 : web/index.html, ou web/test-v2.html tant qu'elle est à l'adresse de test (l'ancienne app reste à index.html).
+  const pages = await Promise.all(["../index.html", "../test-v2.html"].map((f) => fetch(f + "?t=" + Date.now()).then((r) => (r.ok ? r.text() : "")).then((t) => [f, t])));
+  const pageV2 = (pages.find(([, t]) => /app\/app\.js/.test(t)) || pages[0])[0];
+  const fichiers = [pageV2, "reglages.js", "donnees.js", "calculs.js", "app.js", "composants.js"];
   const textes = await Promise.all(fichiers.map((f) => fetch(f + "?t=" + Date.now()).then((r) => r.text())));
   const sansCommentaires = (t) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
   fichiers.forEach((f, i) => { if (f !== "donnees.js") ok(!/createClient|window\.supabase|supabase\.(from|auth|rpc|storage)/.test(sansCommentaires(textes[i]).replace(/<script src=[^>]+><\/script>/g, "")), `${f} : ne parle pas à Supabase directement (tout passe par donnees.js)`); });
