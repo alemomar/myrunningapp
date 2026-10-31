@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Privacy · MyRunningApp</title>
+<meta name="description" content="What MyRunningApp keeps of your data, why, where, for how long, and your rights.">
+<meta name="theme-color" content="#0C0D0F">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="alternate" hreflang="fr" href="confidentialite.html">
+<!-- Version anglaise de confidentialite.html (31/10/2026, adresse donnée à Garmin pour la demande d'accès développeur).
+     Même texte que la page française : à chaque changement de l'une, mettre l'autre à jour et changer la date sur les deux. -->
+<style>
+@font-face{font-family:"Barlow";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/barlow-400.woff2) format("woff2")}
+@font-face{font-family:"Barlow";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/barlow-600.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/barlow-condensed-700.woff2) format("woff2")}
+:root{--bg:#0C0D0F;--surface:#17191C;--line:#26292E;--text:#F2F3F0;--text-2:#C9CCD0;--text-3:#A3A7AD;--text-muted:#8B8F96;--accent:#C6F432}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.55 "Barlow",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:680px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom))}
+.logo{display:block;width:150px;height:auto;margin-bottom:28px}
+h1{font:700 34px/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase;margin:0 0 6px;text-wrap:balance}
+.upd{color:var(--text-muted);font-size:14px;margin:0 0 26px}
+.upd a{color:var(--text-3)}
+#privacy-text h2{font:700 21px/1.15 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.01em;margin:26px 0 8px;color:var(--text)}
+#privacy-text p,#privacy-text li{color:var(--text-2)}
+#privacy-text p{margin:0 0 10px}
+#privacy-text ul{margin:0 0 10px;padding-left:20px}
+#privacy-text li{margin:0 0 6px}
+#privacy-text b{color:var(--text);font-weight:600}
+#privacy-text a{color:var(--accent)}
+.foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);color:var(--text-muted);font-size:13.5px}
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="150" height="93">
+  <h1>Privacy of your data</h1>
+  <p class="upd">Updated October 31, 2026 · <a href="confidentialite.html" hreflang="fr" lang="fr">Version française</a></p>
+  <article id="privacy-text">
+    <h2>Who is responsible?</h2>
+    <p>Omar Alem, creator of MyRunningApp. For any question or request: <a href="mailto:get.myrunningapp@gmail.com">get.myrunningapp@gmail.com</a>.</p>
+
+    <h2>What the app keeps</h2>
+    <ul>
+      <li><b>Your account:</b> your email address and your password, encrypted so that no one can read it.</li>
+      <li><b>Your profile:</b> nickname, photo if you add one, age, sex, city, level, goals, availability, equipment.</li>
+      <li><b>Your runs,</b> received from Apple Health through RunSync, or from Garmin Connect if you link your Garmin account: date, duration, distance, pace, heart rate (average, maximum and curve), resting heart rate, VO2 max, steps, power, calories.</li>
+      <li><b>What you record:</b> effort, fatigue, mood, breathing, discomfort and pain, with the body areas concerned.</li>
+      <li><b>Your training plan:</b> planned and completed sessions, exercises ticked off.</li>
+      <li><b>The date you gave your consent.</b></li>
+    </ul>
+    <p>Heart rate, how you feel and your pain are <b>health data</b>. The app does not keep any GPS location.</p>
+
+    <h2>Why</h2>
+    <p>To offer you a suitable training plan, follow your progress (pace, load, heart rate), lighten your sessions when a pain comes back, and tell you when a pain deserves medical advice. No advertising, no resale, nothing visible to other users.</p>
+
+    <h2>On what basis</h2>
+    <p>Your explicit consent, given by ticking a box. You can withdraw it at any time. Without it, the app cannot work.</p>
+
+    <h2>Where your data is, and who can access it</h2>
+    <ul>
+      <li><b>The database:</b> Supabase, hosted in Ireland (European Union).</li>
+      <li><b>RunSync,</b> on your iPhone, reads Apple Health with your permission and sends your runs to the database.</li>
+      <li><b>Garmin Connect, coming soon:</b> if you link your Garmin account to the app, Garmin sends us your new runs. The app keeps neither the GPS track nor your location. You can remove this link at any time, in the app or from your Garmin account: Garmin then stops sending us your runs.</li>
+      <li><b>Backups:</b> twice a day, on the controller's computer, <b>encrypted</b>, with an encrypted copy in the controller's Google Drive space.</li>
+      <li><b>The app's code</b> is hosted by GitHub. It contains none of your data.</li>
+      <li><b>Who can access it:</b> you, and the controller, to run and fix the app. No one else.</li>
+    </ul>
+
+    <h2>How long</h2>
+    <ul>
+      <li><b>As long as your account exists.</b></li>
+      <li><b>If you delete your account:</b> everything is erased from the database immediately, and from the backups within 30 days.</li>
+      <li><b>If you do not open the app for 2 years:</b> your account is deleted.</li>
+    </ul>
+
+    <h2>Your rights</h2>
+    <ul>
+      <li>See and correct your information, in Profil (Profile).</li>
+      <li>Download all your data in one file, in Mon compte › Tes données (My account › Your data).</li>
+      <li>Withdraw your consent and delete your account, in the same place.</li>
+      <li>For any other request, write to <a href="mailto:get.myrunningapp@gmail.com">get.myrunningapp@gmail.com</a>. Answer within one month.</li>
+      <li>You can also contact the CNIL, the French data protection authority (<a href="https://www.cnil.fr" rel="noopener">cnil.fr</a>).</li>
+    </ul>
+
+    <h2>Security</h2>
+    <p>Encrypted connection, password never readable, access protected by your account, encrypted backups.</p>
+
+    <h2>Good to know</h2>
+    <p>MyRunningApp does not provide medical diagnoses. If this page changes, you will be notified in the app.</p>
+  </article>
+  <p class="foot">MyRunningApp · running app in beta.</p>
+</main>
+</body>
+</html>

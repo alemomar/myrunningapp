@@ -9,7 +9,8 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <!-- Page publique (A6, texte validé par Omar le 13/10/2026). Elle sert aussi d'adresse de confidentialité pour RunSync
      (App Store Connect, HealthKit). L'app l'ouvre dans une fenêtre : elle lit seulement le bloc #privacy-text, donc tout
-     le texte reste ici, en un seul endroit. À chaque changement du texte : mettre à jour la date et prévenir les utilisateurs dans l'app. -->
+     le texte reste ici, en un seul endroit. À chaque changement du texte : mettre à jour la date et prévenir les utilisateurs dans l'app.
+     Version anglaise : privacy.html (adresse donnée à Garmin le 31/10/2026), à garder identique à ce texte. -->
 <style>
 @font-face{font-family:"Barlow";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/barlow-400.woff2) format("woff2")}
 @font-face{font-family:"Barlow";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/barlow-600.woff2) format("woff2")}
@@ -21,6 +22,7 @@ main{max-width:680px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 16
 .logo{display:block;width:150px;height:auto;margin-bottom:28px}
 h1{font:700 34px/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase;margin:0 0 6px;text-wrap:balance}
 .upd{color:var(--text-muted);font-size:14px;margin:0 0 26px}
+.upd a{color:var(--text-3)}
 #privacy-text h2{font:700 21px/1.15 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.01em;margin:26px 0 8px;color:var(--text)}
 #privacy-text p,#privacy-text li{color:var(--text-2)}
 #privacy-text p{margin:0 0 10px}
@@ -35,7 +37,7 @@ h1{font:700 34px/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase;mar
 <main>
   <img class="logo" src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="150" height="93">
   <h1>Confidentialité de tes données</h1>
-  <p class="upd">Mise à jour le 18 octobre 2026</p>
+  <p class="upd">Mise à jour le 31 octobre 2026 · <a href="privacy.html" hreflang="en" lang="en">English version</a></p>
   <article id="privacy-text">
     <h2>Qui est responsable ?</h2>
     <p>Omar Alem, créateur de MyRunningApp. Pour toute question ou demande : <a href="mailto:get.myrunningapp@gmail.com">get.myrunningapp@gmail.com</a>.</p>
@@ -44,7 +46,7 @@ h1{font:700 34px/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase;mar
     <ul>
       <li><b>Ton compte :</b> ton adresse e-mail et ton mot de passe, chiffré, que personne ne peut lire.</li>
       <li><b>Ton profil :</b> pseudo, photo si tu en mets une, âge, sexe, ville, niveau, objectifs, disponibilités, équipement.</li>
-      <li><b>Tes séances,</b> reçues d'Apple Santé grâce à RunSync : date, durée, distance, allure, fréquence cardiaque (moyenne, maximale et courbe), fréquence cardiaque au repos, VO2 max, pas, puissance, calories.</li>
+      <li><b>Tes séances,</b> reçues d'Apple Santé grâce à RunSync, ou de Garmin Connect si tu relies ton compte Garmin : date, durée, distance, allure, fréquence cardiaque (moyenne, maximale et courbe), fréquence cardiaque au repos, VO2 max, pas, puissance, calories.</li>
       <li><b>Ce que tu notes :</b> difficulté, fatigue, mental, respiration, gênes et douleurs avec les zones du corps concernées.</li>
       <li><b>Ton programme :</b> séances prévues et faites, exercices cochés.</li>
       <li><b>La date à laquelle tu as donné ton accord.</b></li>
@@ -61,6 +63,7 @@ h1{font:700 34px/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase;mar
     <ul>
       <li><b>La base de données :</b> Supabase, hébergée en Irlande (Union européenne).</li>
       <li><b>RunSync,</b> sur ton iPhone, lit Apple Santé avec ton autorisation et envoie tes séances à la base.</li>
+      <li><b>Garmin Connect, bientôt :</b> si tu relies ton compte Garmin à l'app, Garmin nous envoie tes nouvelles séances. L'app n'en garde ni le tracé GPS ni ta position. Tu peux couper ce lien à tout moment, dans l'app ou depuis ton compte Garmin : Garmin cesse alors de nous envoyer tes séances.</li>
       <li><b>Les sauvegardes :</b> deux fois par jour, sur l'ordinateur du responsable, <b>chiffrées</b>, avec une copie chiffrée dans son espace Google Drive.</li>
       <li><b>Le code de l'app</b> est hébergé par GitHub. Il ne contient aucune de tes données.</li>
       <li><b>Qui y a accès :</b> toi, et le responsable pour faire fonctionner et corriger l'app. Personne d'autre.</li>
