@@ -7,12 +7,12 @@ const Donnees = (() => {
   let client = null;
   const c = () => client || (client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
   const COLONNES_SORTIES = "id,start_date,type,type_checked,apple_type,distance_km,duration_sec,avg_hr,peak_hr,avg_cadence,pain_ratings,include_in_stats,hr_series,pace_series,lap_markers,frac_work_manual,frac_recovery_manual,notes";
-  const COLONNES_PROFIL = "pseudo,age,max_hr,resting_hr,goals,program_settings,sync_since_date,onboarding_completed_at,privacy_consent_at";
+  const COLONNES_PROFIL = "pseudo,age,max_hr,resting_hr,goals,program_settings,sync_since_date,onboarding_completed_at,privacy_consent_at,terms_accepted_at";
 
   /* ---------- Banc : une base en mémoire ---------- */
   const banc = B && (() => {
     const u = { id: "banc-utilisateur", email: B.email || "camille@exemple.fr", created_at: B.creeLe || "2026-05-01T08:00:00Z" };
-    let profil = { privacy_consent_at: "2026-05-01T08:00:00Z", onboarding_completed_at: "2026-05-01T08:00:00Z", sync_since_date: "2026-05-01", ...(B.profil || {}) };
+    let profil = { privacy_consent_at: "2026-05-01T08:00:00Z", terms_accepted_at: "2026-05-01T08:00:00Z", onboarding_completed_at: "2026-05-01T08:00:00Z", sync_since_date: "2026-05-01", ...(B.profil || {}) };
     let runs = (B.runs || []).map((r) => ({ type_checked: null, notes: null, ...r }));
     let connecte = B.connecte !== false, n = 0;
     const ok = (data) => Promise.resolve({ data, error: null });
@@ -22,7 +22,7 @@ const Donnees = (() => {
       connexion: () => { connecte = true; return ok({ session: { user: u } }); },
       deconnexion: () => { connecte = false; return ok(null); },
       lireSorties: () => ok(runs.slice().sort((a, b) => Date.parse(a.start_date) - Date.parse(b.start_date))),
-      lireProfil: () => ok({ ...profil }),
+      lireProfil: () => Promise.resolve({ data: { ...profil }, error: null, sans: [] }),
       majProfil: (f) => { profil = { ...profil, ...f }; return ok(null); },
       majSortie: (id, f) => { runs = runs.map((r) => (String(r.id) === String(id) ? { ...r, ...f } : r)); return ok(null); },
       ajouterSortie: (row) => { const id = `banc-${++n}`; runs.push({ ...row, id }); return ok({ id }); },
@@ -50,12 +50,17 @@ const Donnees = (() => {
     if (banc) return banc.lireSorties();
     return c().from("runs").select(COLONNES_SORTIES).order("start_date", { ascending: true });
   }
-  // Profil : en deux temps, comme l'ancienne app (A6) — si la colonne de l'accord manquait, le reste se charge quand même.
+  // Profil : si une colonne récente manque (migration 027 des conditions, 026 de l'accord pas encore collées), le reste se
+  // charge quand même, sans elle : l'app ne demande alors pas l'accord correspondant.
   async function lireProfil() {
     if (banc) return banc.lireProfil();
-    const r = await c().from("profiles").select(COLONNES_PROFIL).maybeSingle();
-    if (!r.error) return r;
-    return c().from("profiles").select(COLONNES_PROFIL.replace(",privacy_consent_at", "")).maybeSingle();
+    // `sans` : les colonnes absentes de la base, pour que l'app ne demande pas un accord qu'elle ne pourrait pas enregistrer.
+    let r = await c().from("profiles").select(COLONNES_PROFIL).maybeSingle();
+    if (!r.error) return { ...r, sans: [] };
+    r = await c().from("profiles").select(COLONNES_PROFIL.replace(",terms_accepted_at", "")).maybeSingle();
+    if (!r.error) return { ...r, sans: ["terms_accepted_at"] };
+    r = await c().from("profiles").select(COLONNES_PROFIL.replace(",privacy_consent_at,terms_accepted_at", "")).maybeSingle();
+    return { ...r, sans: ["privacy_consent_at", "terms_accepted_at"] };
   }
   // Courses reçues d'Apple Santé (guide de connexion) : requête légère, sans les courbes.
   async function compterRecues() {

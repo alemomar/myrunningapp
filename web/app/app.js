@@ -17,7 +17,7 @@
   const etat = { session: null, email: "", userId: "", creeLe: null, profil: null, brutes: [], sorties: [], courses: [], zones: null, doutes: [],
     erreur: "", erreurChargement: false, pret: false, chargeA: 0, ressentis: {}, plis: lire(CLES.plis, {}), filtre: "courses", periode: 12,
     autresRecues: [], now: null, memo: {}, nivSel: "ef", nivPer: 3,   // Ton niveau (13a) : Facile sur 3 mois à l'ouverture, rien n'est mémorisé
-    accord: { coche: false, occupe: false, refus: false }, pp: null, finPremiersPas: false };
+    accord: { coche: false, cocheCgu: false, occupe: false, refus: false }, pp: null, finPremiersPas: false };
   const maintenant = () => etat.now || Date.now();
 
   /* ---------- Données ---------- */
@@ -161,7 +161,7 @@
     if (e === "connexion") h = `<div style="display:flex;justify-content:center;padding:36px 0 8px"><img src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="150" height="110" style="height:110px;width:auto"></div>
       <h1 class="h-plein">Content de te revoir</h1>${champEmail("username")}${champMdp("Mot de passe", "current-password")}
       <button type="button" class="citron" style="font-weight:700;font-size:14px;align-self:flex-start" data-auth-aller="oubli">Mot de passe oublié ?</button>${msgs}
-      <div class="pp-bas">${go("Se connecter")}${lien("inscription", "Créer un compte")}<button type="button" class="btn-texte" data-feuille="confidentialite">Confidentialité</button></div>`;
+      <div class="pp-bas">${go("Se connecter")}${lien("inscription", "Créer un compte")}<div style="display:flex;justify-content:center;gap:4px"><button type="button" class="btn-texte" style="width:auto" data-feuille="confidentialite">Confidentialité</button><button type="button" class="btn-texte" style="width:auto" data-feuille="conditions">Conditions</button></div></div>`;
     else if (e === "inscription") h = `${barres(1, 'data-auth-aller="connexion"')}<h1 class="h-plein">Crée ton compte</h1>${champEmail("email")}${champMdp("Mot de passe", "new-password")}<div class="cap" style="margin-top:-6px">6 caractères minimum.</div>${msgs}
       <div class="pp-bas">${go("Continuer")}${lien("connexion", "J'ai déjà un compte")}</div>`;
     else if (e === "code") h = `${barres(1, 'data-auth-aller="inscription"')}<h1 class="h-plein">Vérifie ta boîte mail</h1>
@@ -259,28 +259,45 @@
   }
 
   /* =================== Ton accord (A6, choix d'Omar du 13/10 ; texte allégé le 31/10 : ni douleurs ni programme) ===================
-     Avant tout le reste, pour un compte neuf comme pour un compte existant sans accord. Case jamais cochée d'avance. « Je
-     refuse » : l'app ne peut pas fonctionner sans ; revenir, ou supprimer son compte. */
-  const accordManquant = () => privacyConsentNeeded(etat.accordPret, etat.profil && etat.profil.privacy_consent_at);
+     Avant tout le reste, pour un compte neuf comme pour un compte existant sans accord. Cases jamais cochées d'avance. « Je
+     refuse » : l'app ne peut pas fonctionner sans ; revenir, ou supprimer son compte.
+     02/11 (décision d'Omar) : les conditions d'utilisation (web/conditions.html, exigées par le contrat Garmin, 5.3) s'acceptent
+     ici aussi : une 2e case pour un compte neuf, un écran à elles pour un compte qui a déjà donné son accord. Date gardée dans
+     terms_accepted_at ; tant que cette colonne n'existe pas (migration 027), rien n'est demandé. */
+  const santeManquante = () => privacyConsentNeeded(etat.accordPret, etat.profil && etat.profil.privacy_consent_at);
+  const conditionsManquantes = () => !!etat.conditionsPret && !(etat.profil && etat.profil.terms_accepted_at);
+  const accordManquant = () => santeManquante() || conditionsManquantes();
   function accordHTML() {
-    const a = etat.accord, ancien = etat.brutes.length > 0 || !!(etat.profil && etat.profil.onboarding_completed_at);
+    const a = etat.accord, ancien = etat.brutes.length > 0 || !!(etat.profil && etat.profil.onboarding_completed_at), sante = santeManquante(), cgu = conditionsManquantes();
     if (a.refus) return `<div class="pp"><h1 class="h-plein" style="margin-top:30px">Ton accord est nécessaire</h1>
-      <div class="txt2">Sans cet accord, l'app ne peut pas fonctionner : elle s'appuie sur ton cœur et ton ressenti pour suivre ta progression.</div>
+      <div class="txt2">${sante ? "Sans cet accord, l'app ne peut pas fonctionner : elle s'appuie sur ton cœur et ton ressenti pour suivre ta progression." : "Sans accepter les conditions d'utilisation, tu ne peux pas utiliser l'app."}</div>
       <div class="txt2">Tu peux revenir pour donner ton accord, ou supprimer ton compte et toutes tes données.</div>
       <div class="pp-bas"><button type="button" class="btn primaire" data-action="accord-revenir">Revenir</button><button type="button" class="btn second" data-feuille="supprimer">Supprimer mon compte</button></div></div>`;
+    const caseH = (cle, coche, texte) => `<label class="carte" style="flex-direction:row;gap:12px;background:var(--surface);border:1px solid var(--line)"><input type="checkbox" data-accord-case="${cle}"${coche ? " checked" : ""} style="width:22px;height:22px;accent-color:#F2F3F0;flex:none"><span>${texte}</span></label>`;
+    const lienH = (cle, texte) => `<button type="button" class="citron" style="font-weight:700;font-size:14px;align-self:flex-start" data-feuille="${cle}">${texte}</button>`;
+    const pret = (!sante || a.coche) && (!cgu || a.cocheCgu) && !a.occupe;
+    const bas = `<div class="pp-bas"><button type="button" class="btn primaire" id="accordGo" data-action="accord-ok"${pret ? "" : " disabled"}>${a.occupe ? "Enregistrement…" : "Continuer"}</button><button type="button" class="btn-texte" data-action="accord-refus">Je refuse</button></div>`;
+    const caseCgu = caseH("cgu", a.cocheCgu, "J'accepte les conditions d'utilisation de MyRunningApp.");
+    if (!sante) return `<div class="pp"><h1 class="h-plein" style="margin-top:30px">Nos conditions d'utilisation</h1>
+      <div class="txt2">Rien ne change dans l'app. MyRunningApp a maintenant des conditions d'utilisation : qui édite l'app, ce qu'elle est et n'est pas, et ce que chacun s'engage à faire.</div>
+      ${caseCgu}${lienH("conditions", "Lire les conditions d'utilisation")}${bas}</div>`;
     return `<div class="pp">${ancien ? "" : barres(2)}<h1 class="h-plein"${ancien ? ' style="margin-top:30px"' : ""}>Ton accord</h1>
       <div class="txt2">${ancien ? "Rien ne change dans l'app : la loi demande simplement ton accord pour garder des données de santé." : "Avant de commencer, l'app a besoin de ton accord pour garder des données de santé."}</div>
       <div style="display:flex;gap:10px" class="txt2"><span class="citron">${ic("coeur", 18)}</span><span>Ta fréquence cardiaque et ton ressenti servent à suivre ta progression.</span></div>
       <div style="display:flex;gap:10px" class="txt2"><span class="citron">${ic("cadenas", 18)}</span><span>Personne d'autre ne les voit : pas de publicité, pas de revente. Tu peux tout télécharger ou tout supprimer quand tu veux.</span></div>
-      <label class="carte" style="flex-direction:row;gap:12px;background:var(--surface);border:1px solid var(--line)"><input type="checkbox" data-accord-case${a.coche ? " checked" : ""} style="width:22px;height:22px;accent-color:#F2F3F0;flex:none"><span>J'accepte que MyRunningApp utilise mes données de santé (fréquence cardiaque, ressenti) pour suivre ma progression.</span></label>
-      <button type="button" class="citron" style="font-weight:700;font-size:14px;align-self:flex-start" data-feuille="confidentialite">Lire la page Confidentialité</button>
-      <div class="pp-bas"><button type="button" class="btn primaire" id="accordGo" data-action="accord-ok"${a.coche && !a.occupe ? "" : " disabled"}>${a.occupe ? "Enregistrement…" : "Continuer"}</button><button type="button" class="btn-texte" data-action="accord-refus">Je refuse</button></div></div>`;
+      ${caseH("sante", a.coche, "J'accepte que MyRunningApp utilise mes données de santé (fréquence cardiaque, ressenti) pour suivre ma progression.")}
+      ${lienH("confidentialite", "Lire la page Confidentialité")}
+      ${cgu ? `${caseCgu}${lienH("conditions", "Lire les conditions d'utilisation")}` : ""}${bas}</div>`;
   }
   async function accepterAccord() {
-    if (!etat.accord.coche || etat.accord.occupe) return;
-    etat.accord.occupe = true; rendre();
-    const ok = await majProfil({ privacy_consent_at: new Date().toISOString() });
-    etat.accord = { coche: false, occupe: false, refus: false };
+    const a = etat.accord, sante = santeManquante(), cgu = conditionsManquantes();
+    if ((sante && !a.coche) || (cgu && !a.cocheCgu) || a.occupe) return;
+    a.occupe = true; rendre();
+    const maintenantIso = new Date().toISOString(), champs = {};
+    if (sante) champs.privacy_consent_at = maintenantIso;
+    if (cgu) champs.terms_accepted_at = maintenantIso;
+    const ok = await majProfil(champs);
+    etat.accord = { coche: false, cocheCgu: false, occupe: false, refus: false };
     window.scrollTo(0, 0); rendre();
     if (ok) apresChargement();
   }
@@ -1069,7 +1086,7 @@
           <div class="erreur" role="alert">${esc(st.erreur)}</div><button type="button" class="btn primaire" data-action="mdp-changer"${dis}>${st.occupe ? "Un instant…" : "Changer le mot de passe"}</button>`}</section>`;
     }
     if (page === "donnees") return `${haut("Tes données", "Ton profil, tes sorties avec ton cœur et ton allure, tes ressentis. Personne d'autre ne les voit.")}
-      <div class="groupe"><button type="button" class="rangee" data-action="telecharger-tout"><b>Télécharger toutes mes données</b>${ic("telecharger", 17)}</button><button type="button" class="rangee" data-action="telecharger-csv"><b>Mes sorties en tableau (CSV)</b>${ic("telecharger", 17)}</button><button type="button" class="rangee" data-feuille="confidentialite"><b>Lire la page Confidentialité</b>${ic("chevron", 16)}</button></div>
+      <div class="groupe"><button type="button" class="rangee" data-action="telecharger-tout"><b>Télécharger toutes mes données</b>${ic("telecharger", 17)}</button><button type="button" class="rangee" data-action="telecharger-csv"><b>Mes sorties en tableau (CSV)</b>${ic("telecharger", 17)}</button><button type="button" class="rangee" data-feuille="confidentialite"><b>Lire la page Confidentialité</b>${ic("chevron", 16)}</button><button type="button" class="rangee" data-feuille="conditions"><b>Lire les conditions d'utilisation</b>${ic("chevron", 16)}</button></div>
       <button type="button" class="btn violet" data-feuille="supprimer">Retirer mon accord et supprimer mon compte</button>`;
     return profilHTML();
   }
@@ -1155,7 +1172,7 @@
   }
   function reinitialiser() {
     fermerGuide(); mdp = null; brouillon = null;
-    Object.assign(etat, { session: null, email: "", userId: "", profil: null, brutes: [], pret: false, pp: null, ppMontre: null, accord: { coche: false, occupe: false, refus: false } });
+    Object.assign(etat, { session: null, email: "", userId: "", profil: null, brutes: [], pret: false, pp: null, ppMontre: null, accord: { coche: false, cocheCgu: false, occupe: false, refus: false } });
     recalculer();
     Object.assign(auth, { etape: "connexion", email: "", mdp: "", code: "", info: "", erreur: "", occupe: false, envoyeA: 0, verifie: false, installer: false });
     history.replaceState(null, "", "#/accueil");
@@ -1186,16 +1203,19 @@
     ["cible", "Le programme d'entraînement disparaît : l'app se concentre sur ta progression. Tes anciennes séances restent enregistrées."],
     ["coeur", "Après une course, une seule question : ton ressenti."],
     ["montre", "Nouveau dans Profil : « Ta montre », pour voir si tes sorties arrivent bien."]];
-  let confidentialite = null;
-  async function chargerConfidentialite() {
+  // Textes légaux lus dans leur page publique (un seul endroit pour chaque texte) : confidentialité, conditions d'utilisation.
+  const TEXTES_LEGAUX = { confidentialite: ["Confidentialité", "confidentialite.html", "privacy-text"], conditions: ["Conditions d'utilisation", "conditions.html", "cgu-text"] };
+  const textesLegaux = {};
+  async function chargerTexteLegal(cle) {
+    const [, fichier, bloc] = TEXTES_LEGAUX[cle];
     try {
-      const r = await fetch("confidentialite.html", { cache: "no-cache" }); if (!r.ok) throw new Error(String(r.status));
-      const doc = new DOMParser().parseFromString(await r.text(), "text/html"), art = doc.getElementById("privacy-text"), upd = doc.querySelector(".upd");
+      const r = await fetch(fichier, { cache: "no-cache" }); if (!r.ok) throw new Error(String(r.status));
+      const doc = new DOMParser().parseFromString(await r.text(), "text/html"), art = doc.getElementById(bloc), upd = doc.querySelector(".upd");
       if (!art) throw new Error("texte introuvable");
-      confidentialite = `${upd ? `<div class="cap">${esc(upd.textContent)}</div>` : ""}${art.innerHTML}`;
-    } catch (e) { confidentialite = null; }
+      textesLegaux[cle] = `${upd ? `<div class="cap">${esc(upd.textContent)}</div>` : ""}${art.innerHTML}`;
+    } catch (e) { textesLegaux[cle] = null; }
     const el = document.getElementById("texteLegal");
-    if (el) el.innerHTML = confidentialite || "<p>Pas pu charger la page. Vérifie ta connexion et réessaie.</p>";
+    if (el) el.innerHTML = textesLegaux[cle] || "<p>Pas pu charger la page. Vérifie ta connexion et réessaie.</p>";
   }
   function feuille(cle, id) {
     const calque = document.getElementById("calque");
@@ -1221,9 +1241,9 @@
       return fenetre("Supprimer cette sortie ?", `<div class="txt2" style="font-size:14.5px">Elle disparaît de tes sorties, de ton bilan et de tes courbes. Ce n'est pas réversible.</div>`, `<button type="button" class="btn violet" data-action="supprimer-sortie" data-id="${attr(id)}">Supprimer</button>`);
     } else if (cle === "supprimer") {
       return fenetre("Supprimer ton compte ?", `<div class="txt2" style="font-size:14.5px">Ton profil, tes sorties et tes ressentis seront effacés tout de suite, et de nos sauvegardes sous 30 jours. Ce n'est pas réversible.</div><div class="txt2" style="font-size:14.5px">Pense aussi à supprimer RunSync de ton iPhone.</div>`, `<button type="button" class="btn violet" data-action="supprimer-compte">Supprimer</button>`);
-    } else if (cle === "confidentialite") {
-      html = `<div class="feuille"><div class="poignee"></div><div class="carte-tete"><h2>Confidentialité</h2>${fermer}</div><div class="texte-legal" id="texteLegal">${confidentialite || "<p>Chargement…</p>"}</div></div>`;
-      if (!confidentialite) setTimeout(chargerConfidentialite, 0);
+    } else if (TEXTES_LEGAUX[cle]) {
+      html = `<div class="feuille"><div class="poignee"></div><div class="carte-tete"><h2>${esc(TEXTES_LEGAUX[cle][0])}</h2>${fermer}</div><div class="texte-legal" id="texteLegal">${textesLegaux[cle] || "<p>Chargement…</p>"}</div></div>`;
+      if (!textesLegaux[cle]) setTimeout(() => chargerTexteLegal(cle), 0);
     } else if (cle === "nouveautes") {
       garder(CLES.nouveautes, [...new Set([...lire(CLES.nouveautes, []), NOUVEAUTES_ID])]);
       html = `<div class="feuille"><div class="poignee"></div><div class="carte-tete"><h2>La nouvelle MyRunningApp</h2>${fermer}</div>
@@ -1365,7 +1385,11 @@
   document.addEventListener("change", (e) => {
     const t = e.target;
     if (t.hasAttribute && t.hasAttribute("data-profil-champ")) { enregistrerChampProfil(t); return; }
-    if (t.hasAttribute && t.hasAttribute("data-accord-case")) { etat.accord.coche = t.checked; const b = document.getElementById("accordGo"); if (b) b.disabled = !t.checked || etat.accord.occupe; }
+    if (t.hasAttribute && t.hasAttribute("data-accord-case")) {
+      if (t.getAttribute("data-accord-case") === "cgu") etat.accord.cocheCgu = t.checked; else etat.accord.coche = t.checked;
+      const a = etat.accord, b = document.getElementById("accordGo");
+      if (b) b.disabled = a.occupe || (santeManquante() && !a.coche) || (conditionsManquantes() && !a.cocheCgu);
+    }
   });
   document.addEventListener("submit", (e) => { if (e.target && e.target.id === "fAuth") { e.preventDefault(); authEnvoyer(); } });
   document.addEventListener("keydown", (e) => {
@@ -1389,7 +1413,9 @@
     etat.profilErreur = !!prof.error;
     if (prof.error) U.toast("Tes réglages n'ont pas pu être chargés : ils peuvent apparaître vides sans être perdus.");
     etat.profil = prof.error ? etat.profil || {} : prof.data || {};
-    etat.accordPret = !prof.error && (prof.data ? Object.prototype.hasOwnProperty.call(prof.data, "privacy_consent_at") : true);
+    const sans = prof.sans || [];
+    etat.accordPret = !prof.error && !sans.includes("privacy_consent_at");
+    etat.conditionsPret = !prof.error && !sans.includes("terms_accepted_at");
     etat.brutes = runs.data || []; recalculer(); etat.chargeA = Date.now();
     return true;
   }
