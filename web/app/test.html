@@ -40,7 +40,7 @@ window.__appels = []; window.__ecrit = null;
 <script src="../logic.js?v=114"></script>
 <script src="reglages.js?v=1"></script>
 <script src="donnees.js?v=2"></script>
-<script src="calculs.js?v=1"></script>
+<script src="calculs.js?v=2"></script>
 <script>
 (async () => {
   const res = [];
@@ -171,6 +171,11 @@ window.__appels = []; window.__ecrit = null;
   ok(ty["Sortie facile"] === 1 && ty["Fractionné"] === 1 && Object.keys(ty).length === 2, "Ton niveau : types de sorties des 4 dernières semaines seulement");
   const mo = Calc.mois([ef1, ef2, sortie({ id: "mo3", ts: Date.parse("2026-09-20T08:00:00"), km: 10, pace: 420 })], NOW, 188, 58);
   ok(mo.ce.n === 2 && Math.abs(mo.ce.km - 16) < 0.01 && mo.avant.n === 1 && mo.pctFacile === 100 && /zones 1 et 2/.test(mo.phrase), "Ton mois : volume face au mois dernier et part du temps en zones 1 et 2 (" + mo.phrase + ")");
+  // Révisions du 2 nov. (18a) : le mois précédent à la même date (le 26 octobre à midi → le 26 septembre à midi).
+  const moD = Calc.mois([sortie({ id: "md1", ts: Date.parse("2026-09-20T08:00:00"), km: 10, pace: 420 }), sortie({ id: "md2", ts: Date.parse("2026-09-28T08:00:00"), km: 6, pace: 420 })], NOW, 188, 58);
+  const mo31 = Calc.mois([], Date.parse("2026-10-31T12:00:00"), 188, 58);
+  ok(moD.avant.n === 2 && moD.avantMemeDate.n === 1 && Math.abs(moD.avantMemeDate.km - 10) < 0.01 && new Date(moD.memeDate).getDate() === 26 && new Date(mo31.memeDate).getDate() === 30,
+    "Ton mois (18a) : septembre à la même date = 10 km (la sortie du 28 ne compte pas encore) ; le 31 octobre se compare au 30 septembre");
   const spt = Calc.semainesParType([ef1, serieSortie("st2", NOW - 2 * 3600000, "Fractionné", [[3000, 300, 175]])], NOW, 12, z);
   ok(spt.length === 12 && spt[11].parType["Fractionné"] === 3 && spt[11 - 1].parType["Sortie facile"] === 8, "Régularité en couleurs : km par type et par semaine");
 
@@ -225,6 +230,11 @@ window.__appels = []; window.__ecrit = null;
   const niv = Calc.alluresParEffort([4, 11, 95, 100].map((j, i) => serieSortie("nv" + i, NOW - j * JOUR, "EF", [[8000, j < 50 ? 400 : 410, 145]])), NOW, 3, z, defs, null, 3)[0];
   const kc = Calc.kmCoeur(serieSortie("kc", NOW, "EF", [[1000, 300, 140], [1000, 300, 150], [1000, 300, 160], [500, 300, 165]]));
   ok(kc && kc.length === 4 && Math.abs(kc[0] - 140) <= 1 && Math.abs(kc[1] - 150) <= 1 && Math.abs(kc[2] - 160) <= 1 && Math.abs(kc[3] - 165) <= 1, "Allure par km (29/10) : le cœur moyen de chaque km, et du bout final (" + (kc || []).join(" · ") + ")");
+  // Révisions du 2 nov. (26a) : l'axe du cœur en km suit les passages au km de l'allure par km.
+  const kpx = Calc.kmParKm(serieSortie("kx", NOW, "EF", [[1000, 300, 140], [1000, 300, 150], [1000, 300, 160], [500, 300, 165]]));
+  const pos = (t) => Calc.positionKm(kpx, t);
+  ok(kpx && kpx.bornes.length === 4 && Math.abs(pos((kpx.bornes[1] + kpx.bornes[2]) / 2) - 1.5) < 0.02 && Math.abs(pos(kpx.fin) - 3.5) < 0.02 && pos(-10) === 0 && pos(kpx.fin + 60) === pos(kpx.fin),
+    "Cœur en km (26a) : à mi-chemin entre le km 1 et le km 2 → 1,5 km ; à l'arrivée → 3,5 km (" + (kpx ? pos(kpx.fin).toFixed(2) : "—") + ")");
   // 29/10 : un arrêt de 40 s (au feu) au milieu d'une sortie à 6'40 ne doit pas ralentir les allures calculées.
   const psP = [], hsP = []; for (let t = 3; t <= 1640; t += 3) { if (t > 800 && t <= 840) continue; psP.push({ t, pace: 400 }); hsP.push({ t, hr: 145 }); }
   const sPause = Calc.versSortie({ id: "pause", start_date: iso(NOW), type: "EF", apple_type: "Running", distance_km: 4, duration_sec: 1600, avg_hr: 145, include_in_stats: true, pace_series: psP, hr_series: hsP });

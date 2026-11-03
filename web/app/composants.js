@@ -1,7 +1,7 @@
 /* Prototype V2 « progression » : les composants communs (étape 1 des maquettes Claude Design, validée par Omar le 27/10/2026).
    Chaque composant a une seule forme, partout : menu du bas, ressenti à 10 crans, pastilles de type, ligne de bilan, frise,
-   zones, courbe 11a, cases de régularité (révisions du 29/10 : courbe 11a, Ton mois 15a, temps par zone 16c). Rien ici ne lit
-   ni n'écrit de données : on reçoit des chiffres, on rend du HTML. */
+   zones, courbe 11a, cases de régularité (révisions du 29/10 : courbe 11a, temps par zone 16c ; du 2 nov. : zones en lignes
+   16a / 23b, courbe du cœur 26a). Rien ici ne lit ni n'écrit de données : on reçoit des chiffres, on rend du HTML. */
 const UI = (() => {
   const R = REGLAGES;
   const esc = (t) => String(t == null ? "" : t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -104,14 +104,12 @@ const UI = (() => {
     const rep = opt.repere ? `<span class="repere80" style="left:${R.repereFacilePct}%"><span>repère ${R.repereFacilePct} %</span></span>` : "";
     return `<div class="zbarre${opt.pale ? " pale" : ""}${opt.haute ? " haute" : ""}"${opt.repere ? ' style="margin-top:16px"' : ""} aria-hidden="true">${segs}${rep}</div>`;
   }
-  // 15a · Ton mois (révision du 29/10) : « 61 % en zones 1-2 » en grand, barre 2 couleurs (1-2 citron, 3-5 gris) avec le repère
-  // 80 %, puis les 5 zones en petites tuiles groupées comme la barre (1-2 à gauche, 3-5 à droite). Zone à 0 % en gris.
-  function partFacile(pz) {
-    const seg = (p, c) => (p > 0 ? `<i style="flex:${p};background:${c}"></i>` : "");
-    return `<div class="pf"><span class="num pf-v citron">${pz.facilePct} %</span><span class="pf-t">en zones 1-2</span></div>
-      <div class="zbarre deux" aria-hidden="true">${seg(pz.facilePct, "var(--accent)")}${seg(pz.soutenuPct, "var(--control-2)")}<span class="repere80" style="left:${R.repereFacilePct}%"><span>repère ${R.repereFacilePct} %</span></span></div>
-      <div class="ztuiles">${[[0, 1], [2, 3, 4]].map((g) => `<div style="flex:${g.length}">${g.map((i) => `<div class="zt${pz.pcts[i] ? "" : " zero"}" style="--c:${couleurZone(i)}"><span><i></i>Z${i + 1}</span><b class="num">${pz.pcts[i]} %</b></div>`).join("")}</div>`).join("")}</div>`;
-  }
+  // 16a / 23b (révisions du 2 nov.) : en tête « 83 % en zones 1-2 » et la pastille, puis une ligne par zone (point, nom, barre, %).
+  // La zone 5 reste toujours affichée : à 0 %, barre vide et % en gris. `plages` : la plage de chaque zone en bpm (détail d'une sortie).
+  const zTete = (pct, txt, ton, mot) => `<div class="carte-tete"><div class="pf"><span class="num pf-v citron">${pct} %</span><span class="pf-t">${esc(txt)}</span></div>${ton ? pastille(ton, mot) : ""}</div>`;
+  const zlignes = (pcts, plages) => `<div class="zlignes${plages ? " bpm" : ""}">${pcts.map((p, i) => `<div class="zl${p ? "" : " zero"}" style="--c:${couleurZone(i)}"><span class="zl-n"><i></i>Zone ${i + 1}</span><span class="zl-b">${p ? `<i style="width:${p}%"></i>` : ""}</span>${plages ? `<span class="zl-r">${esc(plages[i])}</span>` : ""}<b class="num">${p} %</b></div>`).join("")}</div>`;
+  // « < 128 bpm », « 128-149 bpm »… « > 171 bpm » : les limites des zones (une limite appartient à la zone du dessous).
+  const plagesBpm = (defs) => defs.map((d, i) => (i === 0 ? `< ${d.max} bpm` : i === 4 ? `> ${defs[3].max} bpm` : `${defs[i - 1].max}-${d.max} bpm`));
   // 16c · Temps par zone d'une sortie (révision du 29/10) : une colonne par zone, minutes au-dessus (hauteur = temps), « Z1 »
   // dessous, puis l'allure moyenne dans la zone (« — » sans mesure). Zone vide : un trait gris.
   // `unite` : "min" (une sortie) ou "%" (une période, Progression › Cœur).
@@ -225,28 +223,38 @@ const UI = (() => {
     return dessinCourbe(Calc.serieCourbe(points, o.fin, o.mois, o.mois <= 3 ? "semaine" : "mois", so), { ...o, axe: "mois" });
   }
 
-  /* ---------- Courbe du cœur d'une sortie, sur les bandes de zones (détail) ---------- */
-  function courbeCoeur(s, defs) {
+  /* ---------- Courbe du cœur d'une sortie, sur les bandes de zones (26a, révisions du 2 nov.) ----------
+     Courbe blanche sur les 5 bandes de zones teintées, Z1 à Z5 à droite, pic marqué (point + valeur). Axe en km, un trait à
+     chaque km, quand l'allure détaillée donne les passages au km (`ks`, Calc.kmParKm) ; sinon en minutes. */
+  function courbeCoeur(s, defs, ks) {
     const brut = (s.hr || []).filter((p) => p && p.hr > 0).sort((a, b) => a.t - b.t);
     if (brut.length < 2) return "";
     const pas = Math.max(1, Math.ceil(brut.length / 160)), pts = [];
     for (let i = 0; i < brut.length; i += pas) { const g = brut.slice(i, i + pas); pts.push({ t: g[Math.floor(g.length / 2)].t, hr: g.reduce((a, p) => a + p.hr, 0) / g.length }); }
-    const W = 326, H = 150, tmax = Math.max(brut[brut.length - 1].t, 1), hrs = pts.map((p) => p.hr);
-    const lo = Math.min(...hrs) - 8, hi = Math.max(Math.max(...hrs) + 8, defs[3].max + 6);
-    const X = (t) => 2 + t / tmax * (W - 30), Y = (h) => 6 + (1 - (h - lo) / (hi - lo)) * (H - 30);
+    const W = 300, H = 140, f1 = (v) => v.toFixed(1), hrs = pts.map((p) => p.hr), pic = Math.round(Math.max(...brut.map((p) => p.hr)));
+    const lo = Math.min(...hrs) - 8, hi = Math.max(Math.max(...hrs) + 8, defs[3].max + 6), Y = (h) => (1 - (h - lo) / (hi - lo)) * H;
+    // L'axe : en km (distance de la sortie) ou en minutes ; une graduation au plus toutes les 22 px.
+    const tmax = Math.max(brut[brut.length - 1].t, 1), fin = ks ? ks.kms.length + (ks.partial ? ks.partial.km : 0) : tmax / 60;
+    const X = ks ? (t) => Calc.positionKm(ks, t) / fin * W : (t) => t / tmax * W;
+    const pasAxe = (ks ? [1, 2, 5, 10] : [5, 10, 15, 20, 30, 60]).find((k) => k / fin * W >= 22) || 60;
+    let axe = `<text x="0" y="${H + 16}" fill="#5A6068" font-size="11">${ks ? "km" : "min"}</text>`;
+    for (let k = 1; k < fin - 1e-6; k++) {
+      const x = f1(k / fin * W), lu = k % pasAxe === 0;
+      if (lu || (ks && W / fin >= 10)) axe += `<line x1="${x}" x2="${x}" y1="0" y2="${H}" stroke="#0C0D0F" stroke-width="1.5" opacity=".8"/>`;
+      if (lu && k / fin * W >= 22) axe += `<text x="${x}" y="${H + 16}" fill="#5A6068" font-size="11" font-weight="600" text-anchor="middle">${k}</text>`;
+    }
     const bandes = defs.map((d, i) => { const bas = Math.max(i === 0 ? lo : defs[i - 1].max, lo), haut = Math.min(i === 4 ? hi : d.max, hi);
       if (haut <= bas) return "";
       const y1 = Y(haut), y2 = Y(bas);
-      return `<rect x="2" y="${y1.toFixed(1)}" width="${W - 30}" height="${(y2 - y1).toFixed(1)}" fill="${couleurZone(i)}" opacity="${i === 0 ? 0.06 : 0.11}"/>
-        <line x1="2" x2="${W - 28}" y1="${y1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="#0C0D0F" stroke-width="1"/>
-        ${y2 - y1 > 9 ? `<text x="${W - 2}" y="${((y1 + y2) / 2 + 3.5).toFixed(1)}" fill="${couleurZone(i)}" font-size="10" font-weight="700" text-anchor="end">Z${i + 1}</text>` : ""}`; }).join("");
-    const iMax = hrs.indexOf(Math.max(...hrs)), pm = pts[iMax], mn = (sec) => `${Math.round(sec / 60)} min`;
-    return `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cœur pendant la sortie, jusqu'à ${Math.round(Math.max(...brut.map((p) => p.hr)))} battements">
-      ${bandes}
-      <polyline points="${pts.map((p) => `${X(p.t).toFixed(1)},${Y(p.hr).toFixed(1)}`).join(" ")}" fill="none" stroke="#F2F3F0" stroke-width="1.6" stroke-linejoin="round"/>
-      <circle cx="${X(pm.t).toFixed(1)}" cy="${Y(pm.hr).toFixed(1)}" r="3.5" fill="#F2F3F0"/>
-      <text x="${X(pm.t).toFixed(1)}" y="${(Y(pm.hr) - 8).toFixed(1)}" fill="#F2F3F0" font-size="11" font-weight="700" text-anchor="middle">${Math.round(Math.max(...brut.map((p) => p.hr)))}</text>
-      <text x="2" y="${H - 5}" fill="#5A6068" font-size="10">0</text><text x="${((W - 28) / 2).toFixed(1)}" y="${H - 5}" fill="#5A6068" font-size="10" text-anchor="middle">${mn(tmax / 2)}</text><text x="${W - 28}" y="${H - 5}" fill="#5A6068" font-size="10" text-anchor="end">${mn(tmax)}</text></svg>`;
+      return `<rect x="0" y="${f1(y1)}" width="${W}" height="${f1(y2 - y1)}" fill="${couleurZone(i)}" opacity=".13"/>
+        ${i < 4 ? `<line x1="0" x2="${W}" y1="${f1(y1)}" y2="${f1(y1)}" stroke="#0C0D0F" stroke-width="1"/>` : ""}
+        ${y2 - y1 > 9 ? `<text x="${W + 8}" y="${f1((y1 + y2) / 2 + 4)}" fill="${couleurZone(i)}" font-size="11" font-weight="700">Z${i + 1}</text>` : ""}`; }).join("");
+    const pm = pts[hrs.indexOf(Math.max(...hrs))], xp = X(pm.t), yp = Y(pm.hr);
+    return `<svg width="100%" viewBox="0 0 326 ${H + 22}" role="img" aria-label="Cœur pendant la sortie, jusqu'à ${pic} battements" style="overflow:visible">
+      ${bandes}${axe}
+      <polyline points="${pts.map((p) => `${f1(X(p.t))},${f1(Y(p.hr))}`).join(" ")}" fill="none" stroke="#F2F3F0" stroke-width="1.8" stroke-linejoin="round"/>
+      <circle cx="${f1(xp)}" cy="${f1(yp)}" r="4" fill="#F2F3F0"/>
+      <text x="${f1(Math.min(Math.max(xp, 10), W - 10))}" y="${f1(yp < 16 ? yp + 18 : yp - 9)}" fill="#F2F3F0" font-size="13" font-weight="700" text-anchor="middle" style="font-family:var(--cond)">${pic}</text></svg>`;
   }
 
   /* ---------- Message éphémère ---------- */
@@ -259,6 +267,6 @@ const UI = (() => {
   }
 
   return Object.freeze({ esc, ic, JOUR, JOURS, MOIS, MOIS_C, debutJour, jourTxt, heureTxt, dateCourte, jourMois, relatif, memeJour, kmTxt, dureeTxt, allure, num,
-    couleurType, couleurZone, couleurEffort, flecheTuile, pillType, icBilan, bilanLigne, ecartMots, frise, friseTexte, COUL_FRISE, zbarre, partFacile, zcolonnes, pastille, legendeZones, verdictBox,
+    couleurType, couleurZone, couleurEffort, flecheTuile, pillType, icBilan, bilanLigne, ecartMots, frise, friseTexte, COUL_FRISE, zbarre, zTete, zlignes, plagesBpm, zcolonnes, pastille, legendeZones, verdictBox,
     fondRegu, reguCases, reguBande, crans, dessinCourbe, courbe, courbeCoeur, toast });
 })();

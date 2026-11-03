@@ -51,7 +51,8 @@ h2{margin:0;font-family:var(--cond);font-weight:700;font-size:22px;text-transfor
 .cond{font-family:var(--cond);font-weight:700}
 .num{font-family:var(--cond);font-weight:700;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
 .num small,.u{font-family:var(--cond);font-size:.42em;color:var(--text-3);font-weight:600;margin-left:3px;letter-spacing:.02em}
-.n28{font-size:28px}.n34{font-size:34px}.n52{font-size:52px}
+.n28{font-size:28px}.n30{font-size:30px}.n34{font-size:34px}.n40{font-size:40px}.n52{font-size:52px}
+.n40 small{font-size:14px;color:var(--muted)}.n88{font-size:88px;line-height:.85;letter-spacing:-.01em}.n88 small{font-size:24px;color:var(--muted);margin-left:6px}
 .n52 small{font-size:.32em}
 .cap{font-size:12.5px;color:var(--muted);line-height:1.4}
 .txt2{color:var(--text-2)}
@@ -138,20 +139,33 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .fl-tuile{position:absolute;right:9px;top:36px;color:#DDF78C;animation:clignote 3.2s ease-in-out infinite}   /* 29/10 : citron pâle, plus visible */
 @keyframes clignote{0%,100%{opacity:1}50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.fl-tuile{animation:none}}
-.mois-chiffres{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.mois-chiffres>div{display:flex;flex-direction:column;gap:6px}
-.mois-chiffres b{font-size:13px;font-weight:700}
+/* Ton mois › récap 18a (2 nov.) : les km du mois, la barre vers le total du mois précédent, le trait « à la même date » */
+.mois-recap{display:flex;flex-direction:column;gap:12px}
+.mois-km{display:flex;align-items:baseline;gap:10px}
+.mois-km>span:last-child{font-size:14px;color:var(--text-3)}
+.mois-barre{position:relative;padding:20px 0}
+.mb-piste{height:10px;border-radius:5px;background:var(--control);overflow:hidden}
+.mb-piste i{display:block;height:100%;border-radius:5px;background:var(--accent)}
+.mb-trait{position:absolute;top:16px;width:2px;height:18px;margin-left:-1px;border-radius:1px;background:var(--text)}
+.mb-et,.mb-0,.mb-fin{position:absolute;font-size:11.5px;white-space:nowrap}
+.mb-et{top:0;color:var(--text-3)}
+.mb-0{left:0;bottom:0;color:var(--faint)}
+.mb-fin{right:0;bottom:0;color:var(--muted)}
 .pf{display:flex;align-items:baseline;gap:8px}
 .pf-v{font-size:32px}
 .pf-t{font-size:15px;font-weight:600;color:var(--text-2)}
-.zbarre.deux i:first-of-type{border-radius:6px 0 0 6px}.zbarre.deux i:last-of-type{border-radius:0 6px 6px 0}.zbarre.deux i:only-of-type{border-radius:6px}
-.ztuiles{display:flex;gap:10px}
-.ztuiles>div{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
-.zt{background:var(--sunken);border-radius:12px;padding:9px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:4px}
-.zt span{display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--text-3)}
-.zt span i{width:6px;height:6px;border-radius:50%;background:var(--c)}
-.zt b{font-size:20px}
-.zt.zero b{color:var(--faint)}.zt.zero span i{opacity:.4}
+/* Zones en lignes 16a / 23b (2 nov.) : point, nom, barre, (plage en bpm), % ; la zone 5 toujours là, à 0 % en gris */
+.mois-zones,.liste-zones{display:flex;flex-direction:column;gap:12px}
+.zlignes{display:flex;flex-direction:column;gap:4px}
+.zl{display:grid;grid-template-columns:62px 1fr 48px;align-items:center;gap:10px;min-height:30px}
+.zlignes.bpm .zl{grid-template-columns:62px 1fr 64px 44px}
+.zl-n{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--text-2);white-space:nowrap}
+.zl-n i{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.zl-b{height:10px;border-radius:5px;background:var(--control);overflow:hidden}
+.zl-b i{display:block;height:100%;min-width:4px;border-radius:5px;background:var(--c)}
+.zl-r{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap}
+.zl b{font-size:19px;text-align:right}
+.zl.zero b{color:var(--faint)}
 .zcolonnes{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:end;padding-top:4px}
 .zk{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
 .zk-m{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap}
@@ -164,14 +178,13 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .zk-a small{font-size:.75em;color:var(--text-3);margin-left:1px}
 .zk-rien{color:var(--faint)}
 .pastille{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;font-weight:700;font-size:13px;background:var(--control);color:var(--text);white-space:nowrap;flex:none}
-.pastille.bon{background:var(--accent-soft);color:var(--accent)}
+.pastille.bon{background:var(--accent);color:var(--on-accent)}
 .pastille.attention{background:var(--attention-bg);color:var(--attention-text)}
 
 /* ---------- Ton mois aéré (28/10) : plus d'espace, chiffres un peu moins gros ---------- */
 .carte.aeree{gap:20px;padding:22px 18px}
 .carte.aeree .filet{margin:2px 0}
 .carte.aeree .n34{font-size:30px}
-.carte.aeree .zbarre{margin-top:22px!important;height:12px}
 .carte.aeree .regu-case{font-size:14px}
 
 /* ---------- Progression : onglets à icônes et période bien visible (28/10) ---------- */
@@ -222,12 +235,26 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .mt .v{font-size:26px}
 .mt .v.g{font-size:30px}
 .mt .h{font-size:12.5px;color:var(--text-3)}
-.stats{background:var(--surface);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:14px}
-.stats .rang{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.stats .rang.deux{grid-template-columns:repeat(2,1fr);border-top:1px solid var(--line);padding-top:14px}
-.stat .l{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:5px}
-.stat .v{font-size:28px}
-.stat .h{font-size:12.5px;color:var(--text-3);margin-top:4px}
+/* Détail d'une sortie 27a (2 nov.) : date en clair, distance en grand, 3 colonnes, lignes de réglage discrètes */
+.det-haut{display:flex;align-items:center;gap:12px}
+.det-date{flex:1;font-size:16px;font-weight:700}
+.det-date sup{font-size:10px}
+.det-chiffres{display:flex;flex-direction:column;gap:14px;padding:4px 0}
+.det-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.det-3>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.det-3 .l{font-size:12.5px;color:var(--muted)}
+.det-3 b{font-size:12.5px;font-weight:600}
+.reglages{display:flex;flex-direction:column;gap:8px}
+.reglage{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 12px;border:1px solid var(--control);border-radius:14px}
+.rg-l{flex:1;font-size:13px;color:var(--muted)}
+.rg-v{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--text-2)}
+.rg-v i{width:7px;height:7px;border-radius:50%;flex:none}
+.rg-a{font-size:13px;font-weight:600;color:var(--muted);margin-left:4px}
+/* Cœur 26a : encadré FC max / dérive sous la courbe */
+.fc-boite{background:var(--sunken);border-radius:16px;padding:14px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fc-boite>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fc-boite .l{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.fc-boite .h{font-size:12.5px;font-weight:600;color:var(--text-3)}
 
 /* ---------- Frise, zones ---------- */
 .frise{display:flex;gap:3px;height:14px}
@@ -308,17 +335,21 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .reperes{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:8px}
 .reperes span:nth-child(2){text-align:center}.reperes span:last-child{text-align:right}
 
-/* ---------- Allure par km ---------- */
-.km{display:grid;grid-template-columns:56px 1fr 40px 34px;white-space:nowrap;align-items:center;gap:10px;font-size:13.5px;color:var(--text-2)}
-.km .c{text-align:right;font-family:var(--cond);font-weight:700;font-size:15px;color:var(--text-3)}
-.km.km-tete{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:-2px}
-.km.km-tete .p,.km.km-tete .c{font-family:inherit;font-size:10px;font-weight:600;color:var(--muted)}
-.km .piste{height:11px;border-radius:6px;background:var(--sunken);overflow:hidden}
-.km .piste i{display:block;height:100%;border-radius:6px;background:#3A3E44}
+/* ---------- Allure par km (24a, 2 nov.) : allure et cœur de chaque km, le plus rapide en citron, le bout final en contour ---------- */
+.km{display:grid;grid-template-columns:64px 1fr 48px 40px;white-space:nowrap;align-items:center;gap:10px;min-height:36px;font-size:14.5px;font-weight:500;color:var(--text-2)}
+.km .p,.km .c{text-align:right;font-family:var(--cond);font-weight:700;font-size:19px;color:var(--text)}
+.km.km-tete{min-height:0;padding-bottom:6px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.km.km-tete .p,.km.km-tete .c{font-family:inherit;font-size:11px;font-weight:600;color:var(--muted)}
+.km .piste{height:10px;border-radius:5px;background:var(--sunken);overflow:hidden}
+.km .piste i{display:block;height:100%;border-radius:5px;background:var(--grabber)}
 .km.rapide{color:var(--text);font-weight:700}
 .km.rapide .piste i{background:var(--accent)} .km.rapide .p{color:var(--accent)}
-.km.partiel .piste i{background:transparent;border:1.5px solid var(--faint)}
-.km .p{text-align:right;font-family:var(--cond);font-weight:700;font-size:15px}
+.km.partiel .piste i{background:transparent;border:1.5px solid var(--grabber)}
+/* Cadence moyenne, en bas de l'allure par km (demandée par Omar le 03/11) */
+.cad{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 10px;border-top:1px solid var(--line);padding-top:12px;margin-top:6px}
+.cad .l{font-size:13px;color:var(--muted)}
+.cad .h{grid-row:2;font-size:12.5px;font-weight:600;color:var(--text-3)}
+.cad .num{grid-row:1/3;grid-column:2;font-size:24px}
 .resume{display:flex;gap:12px;align-items:flex-start;padding:12px 0}
 .resume+.resume{border-top:1px solid var(--line)}
 
@@ -414,8 +445,8 @@ svg text{font-family:"Barlow",system-ui,sans-serif}
 <script src="mra-cheer.js?v=1"></script>
 <script src="app/reglages.js?v=1"></script>
 <script src="app/donnees.js?v=2"></script>
-<script src="app/calculs.js?v=1"></script>
-<script src="app/composants.js?v=1"></script>
-<script src="app/app.js?v=2"></script>
+<script src="app/calculs.js?v=2"></script>
+<script src="app/composants.js?v=2"></script>
+<script src="app/app.js?v=3"></script>
 </body>
 </html>

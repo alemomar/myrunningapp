@@ -577,6 +577,9 @@ const Calc = (() => {
     const bornes = (k) => [new Date(d.getFullYear(), d.getMonth() + k, 1).getTime(), new Date(d.getFullYear(), d.getMonth() + k + 1, 1).getTime()];
     const bilan = ([de, a]) => { const c = sorties.filter((s) => estCourse(s) && s.ts >= de && s.ts < a && s.ts <= nowTs); return { n: c.length, km: c.reduce((x, s) => x + s.dist, 0), sec: c.reduce((x, s) => x + s.dur, 0), sorties: c }; };
     const ce = bilan(bornes(0)), avant = bilan(bornes(-1));
+    // 18a (révisions du 2 nov.) : le mois précédent à la même date, même heure (le 31 devient le dernier jour du mois précédent).
+    const memeDate = new Date(d.getFullYear(), d.getMonth() - 1, Math.min(d.getDate(), new Date(d.getFullYear(), d.getMonth(), 0).getDate()), d.getHours(), d.getMinutes(), d.getSeconds()).getTime();
+    const avantMemeDate = bilan([bornes(-1)[0], memeDate + 1]);
     const secs = [0, 0, 0, 0, 0]; let nCoeur = 0;
     if (fmax) ce.sorties.filter((s) => coeurZonesOk(s, r)).forEach((s) => { computeHrZoneSeconds(s.hr, fmax, frepos).secs.forEach((v, i) => { secs[i] += v; }); nCoeur++; });
     const tot = secs.reduce((a, v) => a + v, 0), pctFacile = tot > 0 ? Math.round((secs[0] + secs[1]) / tot * 100) : null;
@@ -585,7 +588,7 @@ const Calc = (() => {
       : pctFacile >= r.moisFacileBienPct ? `${pctFacile} % de ton temps en zones 1 et 2 : surtout du facile, c'est la base qui fait progresser.`
       : pctFacile >= r.moisFacileMinPct ? `${pctFacile} % de ton temps en zones 1 et 2 : un bon mélange de facile et de soutenu.`
       : `${pctFacile} % de ton temps en zones 1 et 2 : beaucoup d'intensité, garde au moins 3 sorties sur 4 en facile.`;
-    return { ce, avant, secs, nCoeur, pctFacile, phrase, debut: bornes(0)[0], defs: fmax ? hrZoneDefs(fmax, frepos) : null };
+    return { ce, avant, avantMemeDate, memeDate, secs, nCoeur, pctFacile, phrase, debut: bornes(0)[0], defs: fmax ? hrZoneDefs(fmax, frepos) : null };
   }
   // Tes semaines en couleurs : pour chacune des `semaines` dernières semaines, les km de chaque type de sortie.
   function semainesParType(sorties, nowTs, semaines, z, reg) {
@@ -849,7 +852,15 @@ const Calc = (() => {
     const hr = (s.hr || []).filter((p) => p && p.hr > 0).sort((a, b) => a.t - b.t);
     const moy = (a, b) => { const l = hr.filter((p) => p.t >= a && p.t < b).map((p) => p.hr); return l.length ? Math.round(l.reduce((x, v) => x + v, 0) / l.length) : null; };
     const coeur = hr.length ? kms.map((_, i) => moy(bornes[i], bornes[i + 1])).concat(partial ? [moy(bornes[bornes.length - 1], parts[parts.length - 1].t + 1)] : []) : null;
-    return { kms, partial, avg: Math.round(t / s.dist), fastest: kms.indexOf(Math.min(...kms)), slowest: kms.indexOf(Math.max(...kms)), coeur };
+    return { kms, partial, avg: Math.round(t / s.dist), fastest: kms.indexOf(Math.min(...kms)), slowest: kms.indexOf(Math.max(...kms)), coeur, bornes, fin: parts[parts.length - 1].t };
+  }
+  // Où tu en étais (en km) à l'instant t de la sortie (26a, axe du cœur en km) : entre deux passages au km de kmParKm, au prorata
+  // du temps ; le bout final va jusqu'à sa distance. Avant le départ : 0 ; après l'arrivée : la distance totale.
+  function positionKm(ks, t) {
+    const b = ks.bornes, n = ks.kms.length;
+    if (t <= b[0]) return 0;
+    for (let i = 0; i < n; i++) if (t < b[i + 1]) return i + (t - b[i]) / (b[i + 1] - b[i]);
+    return ks.partial && ks.fin > b[n] ? n + Math.min(1, (t - b[n]) / (ks.fin - b[n])) * ks.partial.km : n;
   }
   const kmCoeur = (s) => { const k = kmParKm(s); return k ? k.coeur : null; };
   // Allure moyenne dans chaque zone cardio sur une période (Progression › Cœur, 29/10) : toutes tes courses au cœur fiable.
@@ -1020,5 +1031,7 @@ const Calc = (() => {
     nomCourt, passageDominant, recordsBattus, ressentiCran, EFFORT_DE, frise3, zonesSortie, verdictRepartition, partZones, premierKm,
     allureParZoneMois, allureRegularite, allureRessenti, sortiesFacilesZones, lisser, niveauPhrase, niveauActuel, kmCoeur, kmParKm, allureZonesCardio, allureZonesCardioPeriode, JOUR, SEM, MOIS_J,
     // Révisions du 29/10
-    repartir, partsZones, serieCourbe, niveauCourbes, niveauSerie, coeurMoyenOk, coeurZonesOk, allureDetaillee, intervalleCoeur, detailMontre, commeGarmin };
+    repartir, partsZones, serieCourbe, niveauCourbes, niveauSerie, coeurMoyenOk, coeurZonesOk, allureDetaillee, intervalleCoeur, detailMontre, commeGarmin,
+    // Révisions du 2 nov.
+    positionKm };
 })();
