@@ -1,6 +1,6 @@
 /* Prototype V2 « progression » : les composants communs (étape 1 des maquettes Claude Design, validée par Omar le 27/10/2026).
    Chaque composant a une seule forme, partout : menu du bas, ressenti à 10 crans, pastilles de type, ligne de bilan, frise,
-   zones, courbe 11a, cases de régularité (révisions du 29/10 : courbe 11a, temps par zone 16c ; du 2 nov. : zones en lignes
+   zones, courbe 11a, cases de régularité (révisions du 29/10 : courbe 11a ; du 2 nov. : zones en lignes
    16a / 23b, courbe du cœur 26a). Rien ici ne lit ni n'écrit de données : on reçoit des chiffres, on rend du HTML. */
 const UI = (() => {
   const R = REGLAGES;
@@ -105,18 +105,12 @@ const UI = (() => {
     return `<div class="zbarre${opt.pale ? " pale" : ""}${opt.haute ? " haute" : ""}"${opt.repere ? ' style="margin-top:16px"' : ""} aria-hidden="true">${segs}${rep}</div>`;
   }
   // 16a / 23b (révisions du 2 nov.) : en tête « 83 % en zones 1-2 » et la pastille, puis une ligne par zone (point, nom, barre, %).
-  // La zone 5 reste toujours affichée : à 0 %, barre vide et % en gris. `plages` : la plage de chaque zone en bpm (détail d'une sortie).
+  // La zone 5 reste toujours affichée : à 0 %, barre vide et % en gris. `col` : un texte de plus par zone, avant le % (la plage en
+  // bpm dans le détail d'une sortie, ton allure dans la zone dans Progression › Cœur).
   const zTete = (pct, txt, ton, mot) => `<div class="carte-tete"><div class="pf"><span class="num pf-v citron">${pct} %</span><span class="pf-t">${esc(txt)}</span></div>${ton ? pastille(ton, mot) : ""}</div>`;
-  const zlignes = (pcts, plages) => `<div class="zlignes${plages ? " bpm" : ""}">${pcts.map((p, i) => `<div class="zl${p ? "" : " zero"}" style="--c:${couleurZone(i)}"><span class="zl-n"><i></i>Zone ${i + 1}</span><span class="zl-b">${p ? `<i style="width:${p}%"></i>` : ""}</span>${plages ? `<span class="zl-r">${esc(plages[i])}</span>` : ""}<b class="num">${p} %</b></div>`).join("")}</div>`;
+  const zlignes = (pcts, col) => `<div class="zlignes${col ? " col" : ""}">${pcts.map((p, i) => `<div class="zl${p ? "" : " zero"}" style="--c:${couleurZone(i)}"><span class="zl-n"><i></i>Zone ${i + 1}</span><span class="zl-b">${p ? `<i style="width:${p}%"></i>` : ""}</span>${col ? `<span class="zl-r">${esc(col[i])}</span>` : ""}<b class="num">${p} %</b></div>`).join("")}</div>`;
   // « < 128 bpm », « 128-149 bpm »… « > 171 bpm » : les limites des zones (une limite appartient à la zone du dessous).
   const plagesBpm = (defs) => defs.map((d, i) => (i === 0 ? `< ${d.max} bpm` : i === 4 ? `> ${defs[3].max} bpm` : `${defs[i - 1].max}-${d.max} bpm`));
-  // 16c · Temps par zone d'une sortie (révision du 29/10) : une colonne par zone, minutes au-dessus (hauteur = temps), « Z1 »
-  // dessous, puis l'allure moyenne dans la zone (« — » sans mesure). Zone vide : un trait gris.
-  // `unite` : "min" (une sortie) ou "%" (une période, Progression › Cœur).
-  function zcolonnes(mins, allures, unite) {
-    const mx = Math.max(...mins, 1);
-    return `<div class="zcolonnes">${mins.map((m, i) => `<div class="zk${m ? "" : " zero"}" style="--c:${couleurZone(i)}"><span class="zk-m"><b class="num">${m}</b>${unite === "%" ? " %" : "min"}</span><i style="height:${m ? Math.max(6, Math.round(m / mx * 88)) : 4}px"></i><span class="zk-n">Z${i + 1}</span><span class="zk-a num">${allures && allures[i] ? `${allure(allures[i])}<small>/km</small>` : '<span class="zk-rien">—</span>'}</span></div>`).join("")}</div>`;
-  }
   // Pastille de verdict : « bien » (citron), « presque » (gris), « trop soutenu » (violet).
   const pastille = (ton, mot) => `<span class="pastille ${esc(ton)}">${esc(mot)}</span>`;
   const legendeZones = () => `<div class="leg">${[0, 1, 2, 3, 4].map((i) => `<span style="--c:${couleurZone(i)}">Zone ${i + 1}</span>`).join("")}</div>`;
@@ -267,6 +261,6 @@ const UI = (() => {
   }
 
   return Object.freeze({ esc, ic, JOUR, JOURS, MOIS, MOIS_C, debutJour, jourTxt, heureTxt, dateCourte, jourMois, relatif, memeJour, kmTxt, dureeTxt, allure, num,
-    couleurType, couleurZone, couleurEffort, flecheTuile, pillType, icBilan, bilanLigne, ecartMots, frise, friseTexte, COUL_FRISE, zbarre, zTete, zlignes, plagesBpm, zcolonnes, pastille, legendeZones, verdictBox,
+    couleurType, couleurZone, couleurEffort, flecheTuile, pillType, icBilan, bilanLigne, ecartMots, frise, friseTexte, COUL_FRISE, zbarre, zTete, zlignes, plagesBpm, pastille, legendeZones, verdictBox,
     fondRegu, reguCases, reguBande, crans, dessinCourbe, courbe, courbeCoeur, toast });
 })();

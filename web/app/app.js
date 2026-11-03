@@ -897,15 +897,14 @@
     const detaille = detail().zones, derivePossible = detail().coeur && detail().allure;
     if (!detaille) zones = `<div class="txt2" style="font-size:14.5px">Ta montre n'envoie ton cœur à Apple Santé que toutes les ${toutesLes(detail().intervalle || 120)} : pas assez pour ton temps par zone, ta dérive et tes sorties faciles. Ton cœur moyen, lui, reste juste.</div>`;
     else if (fm) {
-      const z = Calc.zonesCardioPeriode(etat.courses, now, mois, fm.valeur, fr), tot = z.secs.reduce((a, v) => a + v, 0);
-      const dur = etat.courses.filter((s) => s.ts >= now - mois * MOIS_J * JOUR && Calc.coeurZonesOk(s)).reduce((a, s) => a + s.dur, 0);
-      // 29/10 (retour d'Omar) : comme le temps par zone d'une sortie (16c) : « 70 % en zones 1-2 » et sa pastille, une colonne
-      // par zone (% du temps, ton allure dans la zone), puis le conseil seul.
+      const z = Calc.zonesCardioPeriode(etat.courses, now, mois, fm.valeur, fr);
+      // 03/11 (retour d'Omar) : même design que Ton mois sur l'Accueil (16a) : « 70 % en zones 1-2 » et sa pastille, une ligne par
+      // zone en %, le repère 80 % en gris. Ton allure dans chaque zone reste, en petite colonne : c'est le seul endroit où on la voit.
       if (z.n) { const pz = Calc.partsZones(z.secs), fac = pz.facilePct, ton = fac >= R.repereFacilePct ? "bon" : fac >= R.moisFacileMinPct ? "presque" : "attention";
-        zones = `<div class="carte-tete"><div class="pf"><span class="num pf-v citron">${fac} %</span><span class="pf-t">en zones 1-2</span></div>${U.pastille(ton, { bon: "bien", presque: "presque", attention: "trop soutenu" }[ton])}</div>
-          ${U.zcolonnes(pz.pcts, Calc.allureZonesCardioPeriode(etat.courses, now, mois, etat.zones, z.defs), "%")}
-          ${U.verdictBox(ton === "bon" ? { ton, titre: "Bon équilibre : surtout du facile." } : { ton, titre: `Vise ${R.repereFacilePct} % en zones 1-2 : un peu plus de facile.` })}
-          <div class="cap">${z.n} sorties · ${esc(U.dureeTxt(dur))} de course</div>`; }
+        const allures = Calc.allureZonesCardioPeriode(etat.courses, now, mois, etat.zones, z.defs) || [];
+        zones = `<div class="liste-zones">${U.zTete(fac, "en zones 1-2", ton, { bon: "bien", presque: "presque", attention: "trop soutenu" }[ton])}
+          ${U.zlignes(pz.pcts, pz.pcts.map((_, i) => (allures[i] ? `${U.allure(allures[i])} /km` : "—")))}
+          <div class="cap" style="color:var(--faint)">Repère : ${R.repereFacilePct} % en zones 1-2.</div></div>`; }
       else zones = `<div class="txt2">Pas de sortie au cœur fiable sur la période.</div>`;
     }
     const cm = Calc.indicateurDansLeTemps(etat.courses, now, mois, Calc.coeurMoyen), der = Calc.indicateurDansLeTemps(etat.courses, now, mois, Calc.derive);
