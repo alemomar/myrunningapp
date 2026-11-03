@@ -173,6 +173,17 @@
         <button type="button" class="btn second" data-action="installer-plus-tard">Continuer dans le navigateur</button>
         <div class="cap" style="text-align:center">Dans le navigateur, pas de plein écran, et il faudra te reconnecter si tu installes l'app plus tard.</div></div></div>`;
   }
+  /* ---------- iPhone sans l'app (choix 2 d'Omar du 02/11, mis en ligne le jour de la sortie sur TestFlight) ----------
+     Sur iPhone ou iPad, hors de l'app MyRunningApp (Safari, autre navigateur, icône de l'écran d'accueil), connecté ou pas :
+     seulement « Télécharge l'app ». Plus de « Continuer dans le navigateur ». Android et ordinateur : rien ne change. */
+  const iphoneSansApp = () => !natif && detectInstallContext(navigator.userAgent, false, navigator.maxTouchPoints).ios;
+  function telechargerHTML() {
+    return `<div class="pp"><div style="display:flex;justify-content:center;padding:36px 0 6px"><img src="logo/logo-vertical-couleur.svg" alt="MyRunningApp" width="150" height="110" style="height:110px;width:auto"></div>
+      <h1 class="h-plein">Télécharge l'app</h1><div class="txt2" style="margin-top:-6px">Sur iPhone, MyRunningApp est maintenant une vraie app : tes sorties y arrivent toutes seules depuis Apple Santé.</div>
+      <section class="carte" style="gap:4px"><b>Tu as déjà RunSync ?</b><span class="cap">Ouvre TestFlight et mets-le à jour : il devient MyRunningApp, et tu restes connecté.</span></section>
+      <div class="pp-bas"><button type="button" class="btn primaire" data-action="telecharger-app">Télécharger l'app</button>
+        <div class="cap" style="text-align:center">Elle s'installe avec TestFlight, l'app d'Apple pour les apps en test. Connecte-toi ensuite avec ton e-mail et ton mot de passe habituels.${autonome() ? " Tu pourras alors supprimer cette icône de ton écran d'accueil." : ""}</div></div></div>`;
+  }
   // Barres des premiers pas : compte, accord, toi, ta montre, et dans l'app iPhone Apple Santé (5e).
   const barres = (k, retour) => { const n = natif ? 5 : 4;
     return `<div class="pp-haut">${retour ? `<button type="button" class="rond" ${retour} aria-label="Retour">${ic("retour", 18)}</button>` : `<span style="width:40px"></span>`}<div class="pp-barres">${Array.from({ length: n }, (_, i) => `<i class="${i < k ? "on" : ""}"></i>`).join("")}</div><span class="cap">${k} / ${n}</span></div>`; };
@@ -1361,6 +1372,7 @@
     const app = document.getElementById("app"), nav = document.getElementById("onglets"), y = window.scrollY;
     document.body.classList.remove("feuille-ouverte"); app.classList.remove("plein");
     const pleinEcran = (html) => { nav.classList.add("cache"); app.classList.add("plein"); app.innerHTML = html; if (garderDefilement) window.scrollTo(0, y); };
+    if (iphoneSansApp()) { pleinEcran(telechargerHTML()); return; }
     if (!etat.session) { pleinEcran(auth.installer ? installHTML() : authHTML()); if (!auth.installer) apresAuth(); return; }
     if (!etat.pret) { nav.classList.add("cache"); app.innerHTML = etat.erreurChargement ? erreurHTML() : chargementHTML(); return; }
     if (accordManquant()) { pleinEcran(accordHTML()); return; }
@@ -1436,6 +1448,7 @@
     if (a === "deconnexion") { Donnees.deconnexion().then(() => { reinitialiser(); ecranEntree(); rendre(); }); }
     else if (a === "reessayer") demarrer();
     else if (a === "installer-plus-tard") { garder(CLES.installer, true); auth.installer = false; rendre(); }
+    else if (a === "telecharger-app") location.href = RUNSYNC_INSTALL_URL;
     else if (a === "copier-lien") { const u = location.href.split("#")[0].split("?")[0]; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => U.toast("Lien copié."), () => U.toast("Copie l'adresse dans la barre du navigateur.")); }
     else if (a === "voir-mdp") { auth.voir = !auth.voir; const i = document.getElementById("aMdp"); if (i) i.type = auth.voir ? "text" : "password"; el.innerHTML = ic(auth.voir ? "oeilBarre" : "oeil", 18); el.setAttribute("aria-pressed", String(auth.voir)); el.setAttribute("aria-label", `${auth.voir ? "Masquer" : "Afficher"} le mot de passe`); }
     else if (a === "auth-renvoyer") authRenvoyer();
@@ -1542,7 +1555,7 @@
   }
   // Ce qui s'ouvre tout seul après le chargement : le bilan d'une nouvelle sortie, sinon l'annonce de la V2.
   function apresChargement() {
-    if (accordManquant() || premiersPasEnCours() || santeAFaire()) return;
+    if (iphoneSansApp() || accordManquant() || premiersPasEnCours() || santeAFaire()) return;
     if (!ouvrirSiNouvelles() && nouveautesAMontrer()) feuille("nouveautes");
   }
   async function demarrer() {
