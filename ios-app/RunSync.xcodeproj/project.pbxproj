@@ -12,6 +12,7 @@
 		2D52B53A11D4498F8B31C896 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD088921B5CC4EA7B9C2EBB5 /* Models.swift */; };
 		477443936BBA4F3E9CEB5899 /* SyncWorkoutsIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F346190AE240450EB77F6873 /* SyncWorkoutsIntent.swift */; };
 		489FF51127BA4941BDADA051 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B6943963C9847BEA1061664 /* Config.swift */; };
+		5A1B2C3D4E5F600000000120 /* WebAppView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1B2C3D4E5F600000000020 /* WebAppView.swift */; };
 		5C268EA5B5884FD4962E3C4D /* RunSyncApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27748970E9704731B29DFD42 /* RunSyncApp.swift */; };
 		700D81C3305087FC00228E61 /* BackgroundSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 700D81C2305087FC00228E61 /* BackgroundSyncManager.swift */; };
 		778AFC6CD3E04399AC69EF12 /* SyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50665868EACB464980139C80 /* SyncCoordinator.swift */; };
@@ -33,6 +34,7 @@
 		24968408623A43AE8353F7F0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		27748970E9704731B29DFD42 /* RunSyncApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunSyncApp.swift; sourceTree = "<group>"; };
 		2B6943963C9847BEA1061664 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		5A1B2C3D4E5F600000000020 /* WebAppView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebAppView.swift; sourceTree = "<group>"; };
 		32C0D425DE3841EF8D42B038 /* RunSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RunSync.entitlements; sourceTree = "<group>"; };
 		50665868EACB464980139C80 /* SyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncCoordinator.swift; sourceTree = "<group>"; };
 		62EDB7F84C624CCCAE71FA24 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
@@ -83,6 +85,7 @@
 				23E420785BE244F6B373F071 /* SyncService.swift */,
 				CD088921B5CC4EA7B9C2EBB5 /* Models.swift */,
 				2B6943963C9847BEA1061664 /* Config.swift */,
+				5A1B2C3D4E5F600000000020 /* WebAppView.swift */,
 				F346190AE240450EB77F6873 /* SyncWorkoutsIntent.swift */,
 				02E4610CEA8540B7BE00EC1B /* AuthService.swift */,
 				50665868EACB464980139C80 /* SyncCoordinator.swift */,
@@ -190,6 +193,7 @@
 				77FF2CC1CF5D493FA1924EEF /* SyncService.swift in Sources */,
 				2D52B53A11D4498F8B31C896 /* Models.swift in Sources */,
 				489FF51127BA4941BDADA051 /* Config.swift in Sources */,
+				5A1B2C3D4E5F600000000120 /* WebAppView.swift in Sources */,
 				700D81C3305087FC00228E61 /* BackgroundSyncManager.swift in Sources */,
 				477443936BBA4F3E9CEB5899 /* SyncWorkoutsIntent.swift in Sources */,
 				0D48BC5C3BA54BDA8DFFDDD9 /* AuthService.swift in Sources */,
@@ -235,18 +239,17 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RunSync/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RunSync;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "RunSync lit tes entraînements pour les envoyer à MyRunningApp. Il n'écrit rien dans Santé.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "RunSync lit tes entraînements pour les envoyer à MyRunningApp. Il n'écrit rien dans Santé.";
+				INFOPLIST_KEY_CFBundleDisplayName = MyRunningApp;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "MyRunningApp lit tes entraînements dans Santé pour suivre ta progression. Elle n'écrit rien dans Santé.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "MyRunningApp lit tes entraînements dans Santé pour suivre ta progression. Elle n'écrit rien dans Santé.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.omaralem.RunSync;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -267,18 +270,17 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RunSync/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = RunSync;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "RunSync lit tes entraînements pour les envoyer à MyRunningApp. Il n'écrit rien dans Santé.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "RunSync lit tes entraînements pour les envoyer à MyRunningApp. Il n'écrit rien dans Santé.";
+				INFOPLIST_KEY_CFBundleDisplayName = MyRunningApp;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "MyRunningApp lit tes entraînements dans Santé pour suivre ta progression. Elle n'écrit rien dans Santé.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "MyRunningApp lit tes entraînements dans Santé pour suivre ta progression. Elle n'écrit rien dans Santé.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.omaralem.RunSync;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

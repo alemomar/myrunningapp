@@ -18,20 +18,29 @@ struct Session: Codable {
     // transmet par son lien. Les anciennes sessions ne l'ont pas : on la lit alors dans le jeton d'accès
     // (un JWT Supabase porte l'adresse du compte), jusqu'au prochain rafraîchissement qui l'enregistre.
     var accountEmail: String? {
-        email ?? Self.emailInToken(accessToken)
+        email ?? Self.claims(of: accessToken)?["email"] as? String
     }
 
-    private static func emailInToken(_ token: String) -> String? {
+    // Fin de validité du jeton d'accès (champ « exp » du JWT).
+    var expiresAt: Date? {
+        (Self.claims(of: accessToken)?["exp"] as? NSNumber).map { Date(timeIntervalSince1970: $0.doubleValue) }
+    }
+
+    private static func claims(of token: String) -> [String: Any]? {
         let parts = token.split(separator: ".")
         guard parts.count >= 2 else { return nil }
         var base64 = String(parts[1])
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
         while base64.count % 4 != 0 { base64 += "=" }
-        guard let data = Data(base64Encoded: base64),
-              let claims = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
-        return claims["email"] as? String
+        guard let data = Data(base64Encoded: base64) else { return nil }
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
+}
+
+extension Notification.Name {
+    // L'app a rafraîchi la session elle-même (synchro en arrière-plan) : la page doit reprendre les nouveaux jetons.
+    static let sessionRefreshed = Notification.Name("mra.sessionRefreshed")
 }
 
 private struct TokenResponse: Codable {
@@ -76,6 +85,65 @@ final class AuthService {
 
     static func signOut() {
         currentSession = nil
+        webSession = nil
+    }
+
+    // MARK: Session partagée avec la page (app unique, 03/11/2026)
+    //
+    // La page MyRunningApp affichée dans l'app (WebAppView) et la synchro Apple Santé utilisent UNE seule session : les
+    // jetons de rafraîchissement de Supabase ne servent qu'une fois, deux sessions séparées finiraient par se déconnecter
+    // l'une l'autre. La page transmet chaque session neuve (connexion, rafraîchissement) : on la garde telle quelle. Au
+    // chargement de la page, on lui rend la plus récente (avec les jetons rafraîchis ici entre-temps, le cas échéant).
+
+    private static let webSessionKey = "mra.webSession"
+    // Clé de stockage de supabase-js dans la page : « sb-<projet>-auth-token ».
+    static let webStorageKey = "sb-\(URL(string: Config.supabaseURL)?.host?.split(separator: ".").first ?? "")-auth-token"
+
+    // La session telle que la page l'a transmise (objet JSON de supabase-js).
+    private static var webSession: [String: Any]? {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: webSessionKey) else { return nil }
+            return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        }
+        set {
+            if let newValue, let data = try? JSONSerialization.data(withJSONObject: newValue) {
+                UserDefaults.standard.set(data, forKey: webSessionKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: webSessionKey)
+            }
+        }
+    }
+
+    // Session reçue de la page. Renvoie true si c'est un autre compte que celui d'avant.
+    @discardableResult
+    static func adoptWebSession(_ object: [String: Any]) -> Bool {
+        guard let access = object["access_token"] as? String, let refresh = object["refresh_token"] as? String,
+              let user = object["user"] as? [String: Any], let userId = user["id"] as? String else { return false }
+        let otherAccount = currentSession?.userId != userId
+        currentSession = Session(accessToken: access, refreshToken: refresh, userId: userId, email: user["email"] as? String)
+        webSession = object
+        return otherAccount
+    }
+
+    // La session à rendre à la page. Une session d'avant l'app unique (RunSync seul) n'a jamais été vue par la page : on
+    // la lui donne déjà expirée, pour que supabase-js la rafraîchisse tout de suite et récupère le compte complet.
+    static func sessionForWeb() -> [String: Any]? {
+        guard let session = currentSession else { return nil }
+        if var object = webSession, (object["user"] as? [String: Any])?["id"] as? String == session.userId {
+            if object["refresh_token"] as? String != session.refreshToken {
+                object["access_token"] = session.accessToken
+                object["refresh_token"] = session.refreshToken
+                if let expiresAt = session.expiresAt {
+                    object["expires_at"] = Int(expiresAt.timeIntervalSince1970)
+                    object["expires_in"] = max(0, Int(expiresAt.timeIntervalSinceNow))
+                }
+            }
+            return object
+        }
+        return ["access_token": session.accessToken, "refresh_token": session.refreshToken, "token_type": "bearer",
+                "expires_in": 0, "expires_at": 0,
+                "user": ["id": session.userId, "email": session.accountEmail ?? "", "aud": "authenticated", "role": "authenticated",
+                         "app_metadata": [String: Any](), "user_metadata": [String: Any]()]]
     }
 
     func signIn(email: String, password: String) async throws {
@@ -155,5 +223,16 @@ final class AuthService {
     @discardableResult
     func refreshIfPossible() async -> Bool {
         await refresh() == .refreshed
+    }
+
+    // Avant une synchro (app unique) : on ne rafraîchit que si le jeton d'accès expire dans moins de 5 minutes. La page le
+    // rafraîchit elle-même quand elle est ouverte ; chaque rafraîchissement d'ici invalide le jeton qu'elle garde, il faut
+    // donc le lui repasser (notification `sessionRefreshed`).
+    func refreshIfNeeded() async {
+        guard let session = AuthService.currentSession else { return }
+        if let expiresAt = session.expiresAt, expiresAt.timeIntervalSinceNow > 300 { return }
+        if await refresh() == .refreshed {
+            await MainActor.run { NotificationCenter.default.post(name: .sessionRefreshed, object: nil) }
+        }
     }
 }

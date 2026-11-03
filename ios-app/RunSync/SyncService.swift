@@ -99,8 +99,8 @@ final class SyncService {
             syncLogger.notice("[sync] pas de session")
             throw SyncServiceError.notSignedIn
         }
-        await AuthService().refreshIfPossible()
-        syncLogger.notice("[sync] token rafraîchi")
+        await AuthService().refreshIfNeeded()
+        syncLogger.notice("[sync] token vérifié")
         guard let session = AuthService.currentSession else {
             syncLogger.notice("[sync] session absente après refresh")
             throw SyncServiceError.notSignedIn
