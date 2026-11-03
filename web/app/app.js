@@ -112,13 +112,42 @@
   const pour = (lib) => ({ "Sortie facile": "une sortie facile", Longue: "une sortie longue", Tempo: "un tempo", Seuil: "un seuil", "Fractionné": "un fractionné" }[lib] || "ce type");
   const attr = (t) => esc(t).replace(/"/g, "&quot;");
 
+  /* =================== App iPhone (app unique, choix d'Omar du 02/11) ===================
+     Dans l'app iPhone MyRunningApp (l'ancienne RunSync), cette page est affichée par l'app, qui pose window.MRA_NATIF avant
+     tout script. L'app lit Apple Santé et envoie les sorties : la page lui écrit par webkit.messageHandlers.mra et reçoit ses
+     réponses par MRA_NATIF.recu(). Hors de l'app (Safari, écran d'accueil, ordinateur), rien de tout ça ne sert. */
+  const natif = !!(window.MRA_NATIF && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mra);
+  const attentesNatif = {};   // réponse attendue (même type que la demande) → fonction
+  function versNatif(msg) { try { window.webkit.messageHandlers.mra.postMessage(msg); } catch (e) { /* pas dans l'app */ } }
+  // Demande à l'app, puis sa réponse ; null si elle ne répond pas dans le temps donné.
+  const demanderNatif = (type, extra, delai) => new Promise((ok) => {
+    const fin = (m) => { clearTimeout(t); delete attentesNatif[type]; ok(m); }, t = setTimeout(() => fin(null), delai || 4000);
+    attentesNatif[type] = fin; versNatif({ type, ...(extra || {}) });
+  });
+  // Toujours la session du moment pour l'app, avant ce qui en a besoin (import, synchro) : elle lit Apple Santé pour ce compte.
+  const sessionVersNatif = async () => { const s = await Donnees.session(); if (s && !s.banc) versNatif({ type: "session", session: s }); };
+  if (natif) {
+    window.MRA_NATIF.recu = (m) => {
+      if (!m || !m.type) return;
+      if (m.type === "importAvance") { etat.imp = { ...(etat.imp || {}), ...m, phase: m.total ? "envoi" : "recherche" }; peindreImport(); return; }
+      if (m.type === "session") { if (m.session) Donnees.reprendreSession(m.session); return; }
+      if (m.type === "nouvellesSorties") { if (etat.pret && !occupe() && !accordManquant() && !premiersPasEnCours()) actualiser(false); return; }
+      const f = attentesNatif[m.type]; if (f) f(m);
+    };
+    // Connexion, rafraîchissement, déconnexion : l'app suit la même session que la page.
+    Donnees.ecouterSession((evenement, s) => {
+      if (s) versNatif({ type: "session", session: s });
+      else if (evenement === "SIGNED_OUT") versNatif({ type: "deconnexion" });
+    });
+  }
+
   /* =================== Installation et connexion (D99 à D101 de l'ancienne app, au style V2) ===================
      Connexion, création de compte, code reçu par e-mail, « mot de passe oublié » puis nouveau mot de passe. Tout se passe dans
      l'app : le code se recopie ici (un lien d'e-mail s'ouvrirait dans le navigateur, pas dans l'app installée). Le mot de passe
      tapé reste en mémoire le temps de l'étape « code », jamais sur l'appareil. */
   const auth = { etape: "connexion", email: "", mdp: "", code: "", info: "", erreur: "", occupe: false, envoyeA: 0, verifie: false, voir: false, installer: false };
   let minuteurAuth = null, minuteurCode = null;
-  const autonome = () => { try { return navigator.standalone === true || matchMedia("(display-mode: standalone)").matches; } catch (e) { return false; } };
+  const autonome = () => { if (natif) return true; try { return navigator.standalone === true || matchMedia("(display-mode: standalone)").matches; } catch (e) { return false; } };
   const contexte = () => detectInstallContext(navigator.userAgent, autonome(), navigator.maxTouchPoints);
   // Étape « code » ou « nouveau mot de passe » gardée une heure, pour la reprendre si l'iPhone décharge l'app pendant qu'on lit son e-mail.
   function garderAuthEnCours() {
@@ -144,8 +173,9 @@
         <button type="button" class="btn second" data-action="installer-plus-tard">Continuer dans le navigateur</button>
         <div class="cap" style="text-align:center">Dans le navigateur, pas de plein écran, et il faudra te reconnecter si tu installes l'app plus tard.</div></div></div>`;
   }
-  // Barres des premiers pas (1 à 4) : compte, accord, toi, ta montre.
-  const barres = (k, retour) => `<div class="pp-haut">${retour ? `<button type="button" class="rond" ${retour} aria-label="Retour">${ic("retour", 18)}</button>` : `<span style="width:40px"></span>`}<div class="pp-barres">${[1, 2, 3, 4].map((i) => `<i class="${i <= k ? "on" : ""}"></i>`).join("")}</div><span class="cap">${k} / 4</span></div>`;
+  // Barres des premiers pas : compte, accord, toi, ta montre, et dans l'app iPhone Apple Santé (5e).
+  const barres = (k, retour) => { const n = natif ? 5 : 4;
+    return `<div class="pp-haut">${retour ? `<button type="button" class="rond" ${retour} aria-label="Retour">${ic("retour", 18)}</button>` : `<span style="width:40px"></span>`}<div class="pp-barres">${Array.from({ length: n }, (_, i) => `<i class="${i < k ? "on" : ""}"></i>`).join("")}</div><span class="cap">${k} / ${n}</span></div>`; };
   const champEmail = (ac) => `<div class="champ"><label for="aEmail">E-mail</label><input id="aEmail" type="email" inputmode="email" autocomplete="${ac}" autocapitalize="none" autocorrect="off" spellcheck="false" data-auth-champ="email" value="${attr(auth.email)}"></div>`;
   // E13 de l'ancienne app : voir le mot de passe tapé (le même sert ensuite dans RunSync).
   const champMdp = (label, ac) => `<div class="champ"><label for="aMdp">${label}</label><div class="avec-u"><input id="aMdp" type="${auth.voir ? "text" : "password"}" autocomplete="${ac}" autocapitalize="none" autocorrect="off" spellcheck="false" data-auth-champ="mdp" value="${attr(auth.mdp)}"><button type="button" class="oeil" data-action="voir-mdp" aria-label="${auth.voir ? "Masquer" : "Afficher"} le mot de passe" aria-pressed="${auth.voir}">${ic(auth.voir ? "oeilBarre" : "oeil", 18)}</button></div></div>`;
@@ -313,7 +343,7 @@
     const p = etat.profil || {};
     if (!p.age && !p.max_hr) return "toi";
     if (!goalsEquip()) return "montre";
-    return "guide";
+    return natif ? "sante" : "guide";
   }
   const MONTRES_PP = [["Apple Watch", "Bilan complet : cœur et allure détaillés", "Apple Watch"], ["Garmin", "Cœur partiel : le bilan s'appuie sur ton allure", "Garmin"],
     ["Une autre montre", "Si elle envoie tes sorties à Apple Santé", "Autre"], ["Pas de montre", "Tu ajouteras tes sorties à la main", "Aucun"]];
@@ -331,7 +361,7 @@
         ${MONTRES_PP.map(([t, d]) => `<button type="button" class="montre${t === choisie ? " actif" : ""}" data-pp-montre="${attr(t)}"><div><b>${esc(t)}</b><span class="cap">${esc(d)}</span></div><span class="coche${t === choisie ? " on" : ""}">${t === choisie ? ic("check", 14, 3) : ""}</span></button>`).join("")}
         <div class="pp-bas"><button type="button" class="btn primaire" data-action="pp-montre">Continuer</button></div></div>`;
     }
-    return guideHTML(true);
+    return n === "sante" ? santeHTML(true) : guideHTML(true);
   }
   async function ppToi() {
     const v = (id) => String((document.getElementById(id) || {}).value || "").trim(), err = (t) => { const e = document.getElementById("ppErreur"); if (e) e.textContent = t; };
@@ -345,7 +375,7 @@
     const choisie = etat.ppMontre || (MONTRES_PP.find((m) => m[2] === goalsEquip().split(",")[0]) || MONTRES_PP[0])[0], m = MONTRES_PP.find((x) => x[0] === choisie);
     if (!(await majGoals({ equipement: m[2] }))) return;
     if (m[2] === "Aucun") return terminerPremiersPas();
-    etat.pp = "guide"; window.scrollTo(0, 0); rendre();
+    etat.pp = natif ? "sante" : "guide"; window.scrollTo(0, 0); rendre();
   }
   // Fin des premiers pas : le compte est marqué, l'annonce de la V2 ne lui sera jamais montrée, puis « Tout est prêt ».
   async function terminerPremiersPas(versAccueil) {
@@ -361,6 +391,60 @@
       ${etat.courses.length ? niveauHTML(maintenant()) : ""}
       <span class="sur" style="margin-top:6px">Pour aller plus loin · facultatif</span><div class="groupe"><button type="button" class="rangee" data-go="#/profil/chrono"><span style="flex:1"><b style="display:block">Ajoute un chrono récent</b><span class="cap">Sert quand ta montre ne donne pas ton cœur</span></span>${ic("chevron", 16)}</button><button type="button" class="rangee" data-go="#/profil/objectif"><span style="flex:1"><b style="display:block">Fixe-toi un objectif</b><span class="cap">Un repère dans Progression</span></span>${ic("chevron", 16)}</button></div>
       <div class="pp-bas"><button type="button" class="btn primaire" data-go="#/accueil">Voir mon accueil</button></div></div>`;
+  }
+
+  /* =================== Apple Santé dans l'app iPhone (choix 3 d'Omar du 02/11) ===================
+     Remplace le guide RunSync : « Autoriser Apple Santé » (la fenêtre d'Apple vient de l'app), puis l'import tout seul des 12
+     derniers mois (la date posée d'office par la base) avec son avancement, puis « Tout est prêt ». Aussi pour un compte
+     existant qui ouvre l'app pour la première fois sur cet iPhone (son premier import n'y est pas fait). `etat.imp` : null
+     (pas commencé), { phase: "recherche" | "envoi" | "vide" | "erreur", fait, total, message }. */
+  const santeAFaire = () => natif && !!etat.natif && !etat.natif.premierImportFait && goalsEquip() !== "Aucun" && !etat.santePlusTard;
+  function santeHTML(dansPremiersPas) {
+    const im = etat.imp, haut = dansPremiersPas ? barres(5, im ? "" : 'data-action="pp-vers-montre"') : `<div class="pp-haut"><span style="width:40px"></span></div>`;
+    const plusTard = dansPremiersPas ? "" : `<button type="button" class="btn-texte" data-action="sante-plus-tard">Plus tard</button>`;
+    if (!im) {
+      // Garmin, Strava, Whoop : leur envoi vers Apple Santé se règle dans leur app, avant (sans la phrase sur RunSync).
+      const eq = syncEquip(goalsEquip()), note = eq.kind === "app" || eq.kind === "whoop" ? syncGuideNote(eq) : null;
+      return `<div class="pp">${haut}<h1 class="h-plein">Relie Apple Santé</h1><div class="txt2" style="margin-top:-6px">Tes sorties arriveront ici toutes seules : l'app les lit dans Apple Santé, sans rien y écrire.</div>
+        ${note ? U.verdictBox({ ton: "presque", titre: note.text.replace(SYNC_RUNSYNC_LATER, "").replace(/\s+/g, " ").trim() }) : ""}
+        <div class="cap">Dans la fenêtre d'Apple, touche « Tout activer », puis « Autoriser ».</div>
+        <div class="pp-bas"><button type="button" class="btn primaire" data-action="sante-autoriser">Autoriser Apple Santé</button>${plusTard}</div></div>`;
+    }
+    if (im.phase === "vide") return `<div class="pp">${haut}<h1 class="h-plein">Aucune sortie trouvée</h1>
+      <div class="txt2" style="margin-top:-6px">Apple Santé n'a rien donné sur tes 12 derniers mois : l'accès est peut-être fermé.</div>
+      <div class="cap">Ouvre Réglages › Confidentialité et sécurité › Santé › MyRunningApp, et active tout. Puis reviens ici et touche « Réessayer ».</div>
+      <div class="pp-bas"><button type="button" class="btn primaire" data-action="sante-importer">Réessayer</button>
+        <button type="button" class="btn-texte" data-action="sante-continuer">Continuer sans sortie</button></div></div>`;
+    if (im.phase === "erreur") return `<div class="pp">${haut}<h1 class="h-plein">L'import s'est arrêté</h1>${U.verdictBox({ ton: "presque", titre: im.message || "Quelque chose n'a pas marché." })}
+      <div class="cap">Ce qui est déjà arrivé reste là : on reprend sans doublon.</div>
+      <div class="pp-bas"><button type="button" class="btn primaire" data-action="sante-importer">Réessayer</button>${plusTard}</div></div>`;
+    return `<div class="pp">${haut}<h1 class="h-plein">On récupère tes sorties</h1><div class="txt2" style="margin-top:-6px">Tes 12 derniers mois dans Apple Santé. Garde l'app ouverte : c'est l'affaire d'une minute ou deux.</div>
+      <div id="impZone">${importCorps()}</div></div>`;
+  }
+  const importCorps = () => { const im = etat.imp || {}, pct = im.total ? Math.round((im.fait || 0) / im.total * 100) : 0;
+    return im.phase === "envoi" ? `<div class="imp-barre" role="progressbar" aria-valuemin="0" aria-valuemax="${im.total}" aria-valuenow="${im.fait || 0}"><i style="width:${pct}%"></i></div><div class="cap">${im.fait || 0} sur ${im.total} ${im.total > 1 ? "séances" : "séance"}</div>`
+      : `<div class="txt2" style="display:flex;gap:10px;align-items:center"><span class="tourne" aria-hidden="true"></span>On cherche tes séances dans Apple Santé…</div>`; };
+  // L'avancement change souvent : seule la barre est repeinte.
+  function peindreImport() { const z = document.getElementById("impZone"); if (z) z.innerHTML = importCorps(); }
+  async function autoriserSante() {
+    const b = document.querySelector('[data-action="sante-autoriser"]'); if (b) b.disabled = true;
+    await demanderNatif("sante", null, 120000);   // la fenêtre d'Apple : refusée ou pas, Apple ne le dit pas
+    importerSante();
+  }
+  async function importerSante() {
+    etat.imp = { phase: "recherche" }; window.scrollTo(0, 0); rendre();
+    await sessionVersNatif();
+    const r = await demanderNatif("importer", null, 30 * 60000);
+    if (!r || r.erreur) { etat.imp = { phase: "erreur", message: (r && r.erreur) || "L'app n'a pas répondu. Réessaie dans un instant." }; rendre(); return; }
+    if (!r.seances) { etat.imp = { phase: "vide" }; rendre(); return; }
+    finirSante(r.seances);
+  }
+  async function finirSante(n) {
+    etat.imp = null; if (etat.natif) etat.natif.premierImportFait = true;
+    await charger();
+    if (premiersPasEnCours()) return terminerPremiersPas();
+    location.hash = "#/accueil"; rendre();
+    if (n) U.toast(`${n} ${n > 1 ? "séances reçues" : "séance reçue"} d'Apple Santé.`);
   }
 
   /* =================== Guide « Connecte tes courses » (D60, D102, D107 de l'ancienne app) ===================
@@ -494,7 +578,7 @@
   // 10H : rien reçu (après « Plus tard » ou « Pas de montre »).
   const aucuneSortieHTML = () => `<section class="carte" style="background:var(--accent-soft);border:1px solid var(--accent-line)">
       <div style="display:flex;gap:12px">${ic("montre", 22)}<div><b class="lead">Connecte tes courses</b><div class="txt2" style="font-size:14px;margin-top:4px">On lit tes sorties dans Apple Santé : allure, cœur, régularité. Ta progression apparaît dès ta première sortie reçue.</div></div></div>
-      <button type="button" class="btn primaire" data-go="#/guide">Voir comment</button><button type="button" class="btn second" data-go="#/ajouter">Ajouter une sortie à la main</button></section>`;
+      ${natif ? `<button type="button" class="btn primaire" data-action="natif-sync">Synchroniser maintenant</button>` : `<button type="button" class="btn primaire" data-go="#/guide">Voir comment</button>`}<button type="button" class="btn second" data-go="#/ajouter">Ajouter une sortie à la main</button></section>`;
 
   // 2A · Ta sortie : toute la carte se touche, plus le bouton.
   function taSortieHTML(s) {
@@ -933,7 +1017,7 @@
       <section class="carte"><div class="carte-tete"><h2>${nouveau("Ton cœur au repos")}</h2>${info("repos")}</div>
         <div style="display:flex;align-items:flex-end;justify-content:space-between">${U.num(fr || "—", fr ? "bpm" : "", "n52")}<span class="cap">${fr ? "valeur de ton profil" : "pas encore de mesure"}</span></div>
         <svg viewBox="0 0 300 50" width="100%" aria-hidden="true"><path d="M8 18 C80 22 160 30 292 36" fill="none" stroke="#33373D" stroke-width="3" stroke-dasharray="5 6"/></svg>
-        <div class="txt2" style="font-size:14.5px">Bientôt lu sur ta montre chaque matin, avec la prochaine version de RunSync. Un cœur au repos qui baisse : ta forme progresse.</div></section>`;
+        <div class="txt2" style="font-size:14.5px">Bientôt lu sur ta montre chaque matin, avec une prochaine version de l'app iPhone. Un cœur au repos qui baisse : ta forme progresse.</div></section>`;
   }
   function progressionVolume(now, mois) {
     const vol = Calc.volumeParMois(etat.sorties, now, mois), vmax = Math.max(...vol.map((m) => m.km), 1), W = 326, bw = (W - 8) / vol.length;
@@ -1043,16 +1127,20 @@
     const haut = (titre, sous, retour) => `${retourLigne("Profil", retour || "#/profil")}<h1 style="margin-top:4px">${esc(titre)}</h1>${sous ? `<div class="txt2" style="margin-top:-4px">${esc(sous)}</div>` : ""}`;
     const plageZ = (d, i) => (i === 0 ? `jusqu'à ${d.max}` : i === 4 ? `plus de ${defs[3].max}` : `${defs[i - 1].max + 1} à ${d.max}`);
     if (page === "montre") {
-      const recues = recuesDansEtat() > 0;
+      const recues = recuesDansEtat() > 0, qui = natif ? "L'app" : "RunSync";
+      // Dans l'app iPhone : la dernière fois qu'elle a lu Apple Santé, et « Synchroniser maintenant » à la place de RunSync.
+      const ds = natif && etat.natif && etat.natif.derniereSynchro ? Date.parse(etat.natif.derniereSynchro) : null;
+      const bouton = natif ? `<button type="button" class="btn primaire" style="margin-top:12px" data-action="natif-sync">Synchroniser maintenant</button><div class="cap" style="margin-top:10px">Tes sorties arrivent toutes seules. Pratique juste après une course.</div>`
+        : recues ? `<button type="button" class="btn primaire" style="margin-top:12px" data-action="ouvrir-runsync">Ouvrir RunSync ${ic("externe", 16, 2.4)}</button><div class="cap" style="margin-top:10px">RunSync envoie tout de suite tes dernières sorties. Pratique juste après une course.</div>`
+        : `<button type="button" class="btn primaire" style="margin-top:12px" data-go="#/guide">Connecter Apple Santé</button>`;
       return `${haut("Ta montre")}<section class="carte" style="gap:0"><div class="carte-tete" style="padding-bottom:10px"><b style="display:flex;align-items:center;gap:8px"><i style="width:9px;height:9px;border-radius:50%;background:${m.connectee ? "var(--accent)" : "var(--faint)"}"></i>${m.connectee ? "Connectée" : "Pas de sortie récente"}</b><span class="cap">via Apple Santé</span></div>
         <div class="kv"><span>Dernière sortie reçue</span><b>${m.der ? esc(`${U.relatif(m.der.ts, maintenant())}, ${U.heureTxt(m.der.ts)}`) : "—"}</b></div>
+        ${natif ? `<div class="kv"><span>Dernière synchro</span><b>${ds ? esc(`${U.relatif(ds, maintenant())}, ${U.heureTxt(ds)}`) : "—"}</b></div>` : ""}
         <div class="kv"><label for="pSync" style="color:var(--text-2)">Importer depuis</label><input id="pSync" class="date-kv" type="date" max="${aujourdhuiIso()}" value="${attr(String(p.sync_since_date || "").slice(0, 10))}" data-profil-champ="sync_since_date"></div>
-        <div class="cap">RunSync récupère tes sorties à partir de cette date.</div>
-        ${recues ? `<button type="button" class="btn primaire" style="margin-top:12px" data-action="ouvrir-runsync">Ouvrir RunSync ${ic("externe", 16, 2.4)}</button><div class="cap" style="margin-top:10px">RunSync envoie tout de suite tes dernières sorties. Pratique juste après une course.</div>`
-          : `<button type="button" class="btn primaire" style="margin-top:12px" data-go="#/guide">Connecter Apple Santé</button>`}</section>
+        <div class="cap">${qui} récupère tes sorties à partir de cette date.</div>${bouton}</section>
         <section class="carte"><span class="sur">Ta montre</span><div class="puces-choix">${MONTRES.map((x) => `<button type="button" data-montre="${attr(x)}" class="${m.declaree && m.nom === x ? "actif" : ""}">${esc(x)}</button>`).join("")}</div>
-          <div class="txt2" style="font-size:14px">${esc(AIDE_MONTRE[m.nom] || "Si elle envoie tes sorties à Apple Santé, RunSync les récupère.")}</div></section>
-        <div class="groupe"><button type="button" class="rangee" data-go="#/guide"><b>Revoir le guide de connexion</b><span style="color:var(--faint)">${ic("chevron", 16)}</span></button></div>`;
+          <div class="txt2" style="font-size:14px">${esc(AIDE_MONTRE[m.nom] || `Si elle envoie tes sorties à Apple Santé, ${natif ? "l'app" : "RunSync"} les récupère.`)}</div></section>
+        ${natif ? "" : `<div class="groupe"><button type="button" class="rangee" data-go="#/guide"><b>Revoir le guide de connexion</b><span style="color:var(--faint)">${ic("chevron", 16)}</span></button></div>`}`;
     }
     if (page === "coeur") return `${haut("Ton cœur", "Tes zones viennent de ces deux chiffres.")}
       <section class="carte"><div class="champs2"><div class="champ"><label for="pFcMax">FC max</label><div class="avec-u"><input id="pFcMax" inputmode="numeric" placeholder="${fm ? fm.valeur : "—"}" value="${attr(p.max_hr || "")}" data-profil-champ="max_hr"><em>bpm</em></div></div>
@@ -1155,7 +1243,10 @@
     mdp = null; U.toast("Mot de passe changé."); location.hash = "#/profil/compte";
   }
   // Tes données (A3) : un fichier JSON relu en base au moment du clic, ou tes sorties en tableau.
-  function telecharger(blob, nom) { const url = URL.createObjectURL(blob), a = document.createElement("a"); a.href = url; a.download = nom; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
+  // Dans l'app iPhone, un lien de fichier ne s'ouvre pas : le contenu passe à l'app, qui ouvre la feuille de partage d'iOS.
+  function telecharger(blob, nom) {
+    if (natif) { blob.text().then((contenu) => versNatif({ type: "fichier", nom, contenu })); return; }
+    const url = URL.createObjectURL(blob), a = document.createElement("a"); a.href = url; a.download = nom; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
   async function telechargerTout() {
     const r = await Donnees.exporter();
     if (r.error || !r.data) { U.toast("Pas pu préparer le fichier, vérifie ta connexion."); return; }
@@ -1196,7 +1287,7 @@
     "coeur-facile": ["Ton cœur en sortie facile", "Le cœur moyen de tes sorties faciles au cœur fiable. Courbe : un point par mois (par semaine sur 3 mois)."],
     derive: ["La dérive cardiaque", "De combien ton cœur monte entre la 1re et la 2e moitié d'une sortie facile d'au moins 40 min à allure régulière. Sous 5 % : ton endurance tient."],
     "sorties-faciles": ["Tes sorties faciles", `Tes 6 dernières sorties faciles au cœur fiable, et la part de leur temps en zones 1-2. Vraiment facile : ${R.idealZones["Sortie facile"].minPct} % ou plus.`],
-    repos: ["Ton cœur au repos", "La valeur de ton profil (Profil › Ton cœur). Bientôt lue chaque matin sur ta montre, avec une prochaine version de RunSync."],
+    repos: ["Ton cœur au repos", "La valeur de ton profil (Profil › Ton cœur). Bientôt lue chaque matin sur ta montre, avec une prochaine version de l'app iPhone."],
     cadence: ["Ta cadence", `Le nombre de pas par minute sur tes sorties faciles. Repère : ${R.repereCadence}.`],
     records: ["Tes records", "Temps ramené à la distance exacte, sur tes courses de 5, 10, 15 km, semi et marathon. Max : ta sortie la plus longue."],
     "sans-chrono": ["Pas de chrono récent ?", "Pas de souci : sans chrono, tes zones d'allure sont estimées d'après tes sorties faciles. Ajoute un chrono quand tu en auras un, après une course par exemple."],
@@ -1248,7 +1339,7 @@
     } else if (cle === "supprimer-sortie") {
       return fenetre("Supprimer cette sortie ?", `<div class="txt2" style="font-size:14.5px">Elle disparaît de tes sorties, de ton bilan et de tes courbes. Ce n'est pas réversible.</div>`, `<button type="button" class="btn violet" data-action="supprimer-sortie" data-id="${attr(id)}">Supprimer</button>`);
     } else if (cle === "supprimer") {
-      return fenetre("Supprimer ton compte ?", `<div class="txt2" style="font-size:14.5px">Ton profil, tes sorties et tes ressentis seront effacés tout de suite, et de nos sauvegardes sous 30 jours. Ce n'est pas réversible.</div><div class="txt2" style="font-size:14.5px">Pense aussi à supprimer RunSync de ton iPhone.</div>`, `<button type="button" class="btn violet" data-action="supprimer-compte">Supprimer</button>`);
+      return fenetre("Supprimer ton compte ?", `<div class="txt2" style="font-size:14.5px">Ton profil, tes sorties et tes ressentis seront effacés tout de suite, et de nos sauvegardes sous 30 jours. Ce n'est pas réversible.</div><div class="txt2" style="font-size:14.5px">Pense aussi à supprimer ${natif ? "l'app MyRunningApp" : "RunSync"} de ton iPhone.</div>`, `<button type="button" class="btn violet" data-action="supprimer-compte">Supprimer</button>`);
     } else if (TEXTES_LEGAUX[cle]) {
       html = `<div class="feuille"><div class="poignee"></div><div class="carte-tete"><h2>${esc(TEXTES_LEGAUX[cle][0])}</h2>${fermer}</div><div class="texte-legal" id="texteLegal">${textesLegaux[cle] || "<p>Chargement…</p>"}</div></div>`;
       if (!textesLegaux[cle]) setTimeout(() => chargerTexteLegal(cle), 0);
@@ -1274,6 +1365,7 @@
     if (!etat.pret) { nav.classList.add("cache"); app.innerHTML = etat.erreurChargement ? erreurHTML() : chargementHTML(); return; }
     if (accordManquant()) { pleinEcran(accordHTML()); return; }
     if (premiersPasEnCours()) { pleinEcran(premiersPasHTML()); return; }
+    if (santeAFaire() || (natif && etat.imp)) { pleinEcran(santeHTML(false)); return; }
     let [, vue, id, ancre] = (location.hash || "#/accueil").split("/");
     if (vue === "verdict") vue = "bilan";   // ancienne adresse
     const s = id && ["sortie", "bilan", "record"].includes(vue) ? etat.sorties.find((x) => String(x.id) === decodeURIComponent(id)) : null;
@@ -1289,7 +1381,7 @@
     else if (vue === "ajouter") { document.body.classList.add("feuille-ouverte"); html = ajouterHTML(); }
     else if (vue === "progression") html = progressionHTML(id, ancre);
     else if (vue === "profil") html = id ? profilPage(id) : profilHTML();
-    else if (vue === "guide") html = guideHTML(false);
+    else if (vue === "guide") html = natif ? santeHTML(false) : guideHTML(false);
     else if (vue === "pret") html = pretHTML();
     else html = accueilHTML();
     app.innerHTML = html;
@@ -1353,7 +1445,12 @@
     else if (a === "pp-toi") ppToi();
     else if (a === "pp-montre") ppMontre();
     else if (a === "pp-vers-toi") { etat.pp = "toi"; rendre(); }
-    else if (a === "pp-vers-montre") { etat.pp = "montre"; fermerGuide(); rendre(); }
+    else if (a === "pp-vers-montre") { etat.pp = "montre"; etat.imp = null; fermerGuide(); rendre(); }
+    else if (a === "sante-autoriser") autoriserSante();
+    else if (a === "sante-importer") importerSante();
+    else if (a === "sante-continuer") finirSante(0);
+    else if (a === "sante-plus-tard") { etat.santePlusTard = true; etat.imp = null; if ((location.hash || "").startsWith("#/guide")) location.hash = "#/profil/montre"; else rendre(); }
+    else if (a === "natif-sync") { el.disabled = true; actualiser(true).then(() => { el.disabled = false; rendre(true); }); }
     else if (a === "guide-fini") finirGuide(false);
     else if (a === "guide-plus-tard") finirGuide(true);
     else if (a === "guide-saisie") { const pp = premiersPasEnCours(); fermerGuide(); (pp ? terminerPremiersPas(true) : Promise.resolve()).then(() => { location.hash = "#/ajouter"; }); }
@@ -1445,7 +1542,7 @@
   }
   // Ce qui s'ouvre tout seul après le chargement : le bilan d'une nouvelle sortie, sinon l'annonce de la V2.
   function apresChargement() {
-    if (accordManquant() || premiersPasEnCours()) return;
+    if (accordManquant() || premiersPasEnCours() || santeAFaire()) return;
     if (!ouvrirSiNouvelles() && nouveautesAMontrer()) feuille("nouveautes");
   }
   async function demarrer() {
@@ -1459,10 +1556,19 @@
       p.onboarding_completed_at = new Date().toISOString(); Donnees.majProfil({ onboarding_completed_at: p.onboarding_completed_at });
     }
     if (!accordManquant() && (await fusionnerSaisies())) await charger();
+    // App iPhone : le premier import est-il fait sur cet iPhone pour ce compte ? Sinon, « Relie Apple Santé » d'abord.
+    if (natif) { await sessionVersNatif(); etat.natif = await demanderNatif("etat", { userId: etat.userId }); }
     etat.pret = true; rendre(); apresChargement();
   }
   async function actualiser(manuel) {
     if (etat.actualise) return; etat.actualise = true;
+    // App iPhone, à la demande (tirer, « Synchroniser maintenant ») : l'app relit d'abord Apple Santé et envoie le nouveau.
+    if (natif && manuel) {
+      await sessionVersNatif();
+      const r = await demanderNatif("synchroniser", null, 90000);
+      if (r && r.derniereSynchro && etat.natif) etat.natif.derniereSynchro = r.derniereSynchro;
+      if (!r || r.erreur) U.toast((r && r.erreur) || "L'app n'a pas pu lire Apple Santé. Réessaie dans un instant.");
+    }
     const avant = etat.brutes.length, ok = await charger(); etat.actualise = false;
     if (!ok) { U.toast("Pas pu actualiser tes sorties. On garde ce qui est affiché."); return; }
     const ouvert = ouvrirSiNouvelles(); rendre(true);

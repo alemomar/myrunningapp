@@ -202,6 +202,9 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .attente-barre{display:grid;gap:6px}
 .attente-barre i{display:block;height:7px;border-radius:4px;background:var(--control-2)}
 .attente-barre i.on{background:var(--accent)}
+/* Import des 12 derniers mois dans l'app iPhone (app unique, 03/11) */
+.imp-barre{height:10px;border-radius:5px;background:var(--control);overflow:hidden;margin-top:8px}
+.imp-barre i{display:block;height:100%;border-radius:5px;background:var(--accent);transition:width .3s}
 
 /* ---------- Ligne de bilan ---------- */
 .bilan-ligne{display:flex;gap:12px;align-items:flex-start}
@@ -377,9 +380,9 @@ nav.onglets button.actif{background:var(--accent);color:var(--on-accent);font-we
 .erreur{color:var(--attention-text);font-size:14px}
 
 /* ---------- Premiers pas ---------- */
-.pp{min-height:calc(100vh - 60px);display:flex;flex-direction:column;gap:14px}
+.pp{min-height:calc(100vh - 58px - var(--safe-t) - var(--safe-b));display:flex;flex-direction:column;gap:14px}
 .pp-haut{display:flex;align-items:center;gap:12px}
-.pp-barres{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.pp-barres{flex:1;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
 .pp-barres i{display:block;height:4px;border-radius:2px;background:var(--control-2)}
 .pp-barres i.on{background:var(--accent)}
 .pp-bas{margin-top:auto;display:flex;flex-direction:column;gap:4px;padding-top:18px}
@@ -433,9 +436,9 @@ svg text{font-family:"Barlow",system-ui,sans-serif}
 <script src="record-man.js?v=1"></script>
 <script src="mra-cheer.js?v=1"></script>
 <script src="app/reglages.js?v=1"></script>
-<script src="app/donnees.js?v=2"></script>
+<script src="app/donnees.js?v=3"></script>
 <script src="app/calculs.js?v=2"></script>
 <script src="app/composants.js?v=3"></script>
-<script src="app/app.js?v=4"></script>
+<script src="app/app.js?v=5"></script>
 </body>
 </html>

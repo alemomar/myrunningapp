@@ -44,6 +44,11 @@ const Donnees = (() => {
   const changerMotDePasse = (motDePasse) => c().auth.updateUser({ password: motDePasse });
   // Ce téléphone seulement (scope « local ») : RunSync et les autres appareils restent connectés.
   async function deconnexion() { if (banc) return banc.deconnexion(); try { await c().auth.signOut({ scope: "local" }); } catch (e) { /* déjà déconnecté */ } }
+  // App iPhone (app unique, 03/11) : une seule session pour la page et l'app, qui lit Apple Santé avec. Chaque session neuve
+  // (connexion, rafraîchissement) lui est passée ; une session rafraîchie par l'app en arrière-plan est reprise ici. `fn` ne
+  // doit pas rappeler Supabase (le rappel de supabase-js attendrait sa propre fin).
+  const ecouterSession = (fn) => { if (!banc) c().auth.onAuthStateChange((evenement, s) => fn(evenement, s)); };
+  const reprendreSession = (s) => (banc ? Promise.resolve({ error: null }) : c().auth.setSession({ access_token: s.access_token, refresh_token: s.refresh_token }));
 
   /* ---------- Lecture ---------- */
   async function lireSorties() {
@@ -123,7 +128,7 @@ const Donnees = (() => {
   }
 
   return Object.freeze({
-    banc: !!banc, session, utilisateur, connexion, inscription, verifierCode, renvoyerCode, motDePasseOublie, changerMotDePasse, deconnexion,
+    banc: !!banc, session, utilisateur, connexion, inscription, verifierCode, renvoyerCode, motDePasseOublie, changerMotDePasse, deconnexion, ecouterSession, reprendreSession,
     lireSorties, lireProfil, compterRecues, lireSyncDepuis, majProfil, majSortie, ajouterSortie, supprimerSortie, exporter, supprimerCompte,
   });
 })();
